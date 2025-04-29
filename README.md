@@ -1,183 +1,291 @@
-package com.tcs.security;
+import React, { useState, useEffect, useMemo } from 'react';
+import axios from 'axios';
+import {
+  Table,
+  TableBody,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  TextField,
+  Button,
+  Alert,
+  Box
+} from '@mui/material';
+import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import { styled } from '@mui/material/styles';
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import org.apache.commons.lang.StringUtils;
-import org.springframework.web.filter.OncePerRequestFilter;
+// Styled header and body cells
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  fontSize: '1rem',
+  [`&.${tableCellClasses.head}`]: {
+    backgroundColor: theme.palette.common.black,
+    color: theme.palette.common.white
+  }
+}));
+const StyledTableRow = styled(TableRow)(({ theme, error }) => ({
+  '&:nth-of-type(odd)': {
+    backgroundColor: theme.palette.action.hover
+  },
+  ...(error && { backgroundColor: '#ffe6e6' })
+}));
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Pattern;
+// Row definitions
+const rowDefinitions = [
+  { id: 'headerA1',  label: 'A-1. Facility Wise Classification', type: 'section' },
+  { id: 'fac1',      label: '[i] Bills Purchased and Discounted less bills rediscounted $', type: 'entry' },
+  { id: 'fac2',      label: '[ii] Cash Credits, Overdrafts, Loans repayable on Demand and Recalled Assets $$', type: 'entry' },
+  { id: 'fac3',      label: '[iii]  Term Loans , Agricultural Term Loans, FCNRB Term Loan', type: 'entry' },
+  { id: 'facTotal',  label: 'Total A-1', type: 'entry' },
 
-public class JWTTokenAuthFilter extends OncePerRequestFilter {
-    public static final String JWT_KEY = "JWT-TOKEN-SECRET";
-    private static final List<Pattern> AUTH_ROUTES = new ArrayList<>();
-    private static final List<String> NO_AUTH_ROUTES = new ArrayList<>();
-    private static final List<Pattern> NO_AUTH_ROUTES_PATTERNS = new ArrayList<>();
+  { id: 'headerA2',  label: 'A.2 Security Wise Classifications', type: 'section' },
+  { id: 'sec1',      label: '[i] Secured by Tangible Assets', type: 'entry' },
+  { id: 'sec2',      label: '[ii] Covered by Bank/DICGC/ECGC/CGTSI/Govt Guarantee', type: 'entry' },
+  { id: 'sec3',      label: '[iii] Unsecured', type: 'entry' },
+  { id: 'secTotal',  label: 'Total A-2', type: 'entry' },
 
-    static {
-        AUTH_ROUTES.add(Pattern.compile("/BS/*"));
-        NO_AUTH_ROUTES.add("/BS/Security/login");
-        NO_AUTH_ROUTES.add("/BS/Security/logout");
-        NO_AUTH_ROUTES.add("/BS/Security/reNewSession");
-        NO_AUTH_ROUTES.add("/BS/index.jsp");
-        NO_AUTH_ROUTES.add("/BS/views/login.jsp");
-        NO_AUTH_ROUTES.add("/BS/pdfStream.jsp");
-        NO_AUTH_ROUTES.add("/BS/displaySignedPDF.jsp");
-        NO_AUTH_ROUTES.add("/BS/signPDF.jsp");
-        NO_AUTH_ROUTES.add("/BS/favicon.ico");
-        NO_AUTH_ROUTES.add("/BS/signapplet.jar.pack.gz");
-        NO_AUTH_ROUTES.add("/BS/Admin/downloadSignedReport");
-        NO_AUTH_ROUTES.add("/BS/displayPDF.jsp");
-        NO_AUTH_ROUTES.add("/BS/acceptReport.jsp");
-        NO_AUTH_ROUTES_PATTERNS.add(Pattern.compile("/BS/resources/*"));
-        NO_AUTH_ROUTES_PATTERNS.add(Pattern.compile("/BS/assets/*"));
-        NO_AUTH_ROUTES_PATTERNS.add(Pattern.compile("/BS/Security/downloadHelp"));
-        NO_AUTH_ROUTES_PATTERNS.add(Pattern.compile("/BS/Security/downloadDocs"));
+  { id: 'headerA3',  label: 'A.3 Sector-Wise Classifications', type: 'section' },
+  { id: 'headerIn',  label: 'a) In India', type: 'subsection' },
+  { id: 'in1',       label: '[i] Priority', type: 'entry' },
+  { id: 'in2',       label: '[ii] Public', type: 'entry' },
+  { id: 'in3',       label: '[iii] Banks in India*', type: 'entry' },
+  { id: 'in4',       label: '[iv] Others', type: 'entry' },
+  { id: 'inTotal',   label: 'TOTAL IN INDIA (i+ii+iii+iv)', type: 'entry' },
+
+  { id: 'headerOut', label: 'b) Outside India (Excluding Foreign LCs and BGs)', type: 'subsection' },
+  { id: 'out1',      label: '[i] Due from Banks', type: 'entry' },
+  { id: 'out2',      label: '[ii] Due from Others', type: 'entry' },
+  { id: 'out3',      label: '[1] Bills Purchased and Discounted', type: 'entry' },
+  { id: 'out4',      label: '[2] Syndicated Loans', type: 'entry' },
+  { id: 'out5',      label: '[3] Others', type: 'entry' },
+  { id: 'outTotal',  label: 'TOTAL IN OUTSIDE INDIA (i+ii.1+ii.2+ii.3)', type: 'entry' },
+
+  { id: 'advA3',     label: 'Total advances A3 (a+b)', type: 'entry' }
+];
+
+// Columns
+const columns = [
+  { key: 'standard',    label: 'Standard',      editable: true },
+  { key: 'subStandard', label: 'Sub-standard',  editable: true },
+  { key: 'doubtful',    label: 'Doubtful',      editable: true },
+  { key: 'loss',        label: 'Loss',          editable: true },
+  { key: 'adjustment',  label: 'Adjustment',    editable: true, conditional: true },
+  { key: 'total',       label: 'Total',         editable: false }
+];
+
+// Rows that display YSA data
+const ysaRows = ['fac1','fac2','fac3','facTotal'];
+
+// Section-to-children mapping for totals
+const sectionMap = {
+  facTotal: ['fac1','fac2','fac3'],
+  secTotal: ['sec1','sec2','sec3'],
+  inTotal:  ['in1','in2','in3','in4'],
+  outTotal: ['out1','out2','out3','out4','out5'],
+  advA3:    ['inTotal','outTotal']
+};
+
+// Generate field name for API
+const getFieldName = (id, key) => {
+  let base = id.startsWith('fac') ? 'facility'
+           : id.startsWith('sec') ? 'security'
+           : 'sector';
+  let suffix = {
+    standard: 'Standard',
+    subStandard: 'SubStandard',
+    doubtful: 'Doubtful',
+    loss: 'Loss',
+    adjustment: 'Adj'
+  }[key] || 'Total';
+
+  let idx = 'Total';
+  if (!id.endsWith('Total')) idx = id.replace(/\D/g, '');
+  if (id === 'inTotal')  idx = 'a_Total';
+  if (id === 'outTotal') idx = 'b_Total';
+  if (id === 'advA3')    idx = 'ab_Total';
+
+  return `${base}_${suffix}_${idx}`;
+};
+
+export default function Schedule9Table({ showAdjustment=false, circleCode, quarterEndDate, role }) {
+  const [values, setValues] = useState(
+    rowDefinitions.reduce((acc, {id}) => { acc[id]={ standard:'', subStandard:'', doubtful:'', loss:'', adjustment:'', ysa:'' }; return acc; }, {})
+  );
+
+  // Fetch data
+  useEffect(() => {
+    const fetchReport = async () => {
+      try {
+        const { data } = await axios.post('http://localhost:7001/BS/Maker/getSC09ReportData', { circleCode, quarterEndDate, role, reportName:'SC9' });
+        setValues(prev => {
+          const nv = {...prev};
+          ['1','2','3'].forEach(num => {
+            ['standard','subStandard','doubtful','loss'].forEach(field => {
+              nv[`fac${num}`][field] = data[`facility_${field.charAt(0).toUpperCase()+field.slice(1)}_${num}`] || '';
+              nv[`sec${num}`][field] = data[`security_${field.charAt(0).toUpperCase()+field.slice(1)}_${num}`] || '';
+            });
+          });
+          return nv;
+        });
+      } catch (e) { console.error(e); }
+    };
+
+    const fetchValidation = async () => {
+      try {
+        const { data: map } = await axios.post('http://localhost:7001/BS/Maker/getSC09ValiadationData', { circleCode, quarterEndDate, role });
+        setValues(prev => {
+          const nv = {...prev};
+          const normalize = s => s.replace(/\s|[^a-zA-Z0-9]/g,'').toLowerCase();
+          ['fac1','fac2','fac3'].forEach(id => {
+            const label = rowDefinitions.find(r=>r.id===id).label;
+            const key = Object.keys(map).find(k => normalize(k)===normalize(label));
+            nv[id].ysa = map[key] || '0';
+          });
+          nv.facTotal.ysa = ['fac1','fac2','fac3']
+            .reduce((sum,id)=>(sum + (parseFloat(nv[id].ysa)||0)),0)
+            .toFixed(2);
+          return nv;
+        });
+      } catch(e) { console.error(e); }
+    };
+
+    fetchReport();
+    fetchValidation();
+  }, [circleCode, quarterEndDate, role]);
+
+  // Handle input changes
+  const handleChange = (id, field, val) => {
+    if(!/^\d*\.?\d{0,2}$/.test(val)) return;
+    setValues(prev => ({ ...prev, [id]: { ...prev[id], [field]: val } }));
+  };
+
+  // Compute row data and mismatch flag
+  const getRowData = id => {
+    if(!sectionMap[id]){
+      const b=values[id];
+      const sum=['standard','subStandard','doubtful','loss'].reduce((a,f)=>(a+(parseFloat(b[f])||0)),0);
+      const adj= showAdjustment?(parseFloat(b.adjustment)||0):0;
+      const total=sum+adj;
+      const ysa=parseFloat(b.ysa||0);
+      return { ...b, total: total.toFixed(2), isMismatch: ysa!==total };
     }
+    const agg=sectionMap[id].reduce((a,c)=>{
+      const r=getRowData(c);
+      ['standard','subStandard','doubtful','loss'].forEach(f=>a[f]+=parseFloat(r[f])||0);
+      if(showAdjustment) a.adjustment+=parseFloat(r.adjustment)||0;
+      return a;
+    },{standard:0,subStandard:0,doubtful:0,loss:0,adjustment:0});
+    const total=agg.standard+agg.subStandard+agg.doubtful+agg.loss+(showAdjustment?agg.adjustment:0);
+    const ysa=parseFloat(values[id].ysa||0);
+    return {
+      standard:agg.standard.toFixed(2),
+      subStandard:agg.subStandard.toFixed(2),
+      doubtful:agg.doubtful.toFixed(2),
+      loss:agg.loss.toFixed(2),
+      adjustment: showAdjustment?agg.adjustment.toFixed(2):'',
+      total: total.toFixed(2),
+      ysa: values[id].ysa,
+      isMismatch: ysa!==total
+    };
+  };
 
-    /*private Logger LOG = LoggerFactory.getLogger(JWTTokenAuthFilter.class);*/
-
-    /*@Autowired
-    private UserService userService;*/
-
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
-        String authorizationHeader = request.getHeader("authorization");
-        String authenticationHeader = request.getHeader("authentication");
-        String route = request.getRequestURI();
-
-        // no auth route matching
-        boolean needsAuthentication = false;
-        for (Pattern p : AUTH_ROUTES) {
-            if (p.matcher(route).matches()) {
-                needsAuthentication = true;
-                break;
-            }
-        }
-
-        if (route.startsWith("/BS/")) {
-            needsAuthentication = true;
-        }
-
-        if (NO_AUTH_ROUTES.contains(route)) {
-            needsAuthentication = false;
-        }
-
-        for (Pattern p : NO_AUTH_ROUTES_PATTERNS) {
-            if (p.matcher(route).find()) {
-                needsAuthentication = false;
-                break;
-            }
-        }
-        // Checking whether the current route needs to be authenticated
-        if (needsAuthentication) {
-            // Check for authorization header presence
-            String authHeader = null;
-            if (authorizationHeader == null || authorizationHeader.equalsIgnoreCase("")) {
-                if (authenticationHeader == null || authenticationHeader.equalsIgnoreCase("")) {
-                    authHeader = null;
-                } else {
-                    authHeader = authenticationHeader;
-                }
-            } else {
-                authHeader = authorizationHeader;
-            }
-
-            if (StringUtils.isBlank(authHeader) || !authHeader.startsWith("Bearer ")) {
-                throw new AuthCredentialsMissingException("Missing or invalid Authorization header.");
-            }
-
-            final String token = authHeader.substring(7); // The part after "Bearer "
-
-            logger.info("token === " + token);
-            try {
-                final Claims claims = Jwts.parser().setSigningKey(JWT_KEY)
-                        .parseClaimsJws(token).getBody();
-
-
-                // @@@ Validate the user session (using `userId` key from frontend)
-                boolean validation = validateSession(request, claims, response);
-                if (!validation) {
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.sendRedirect("/BS/Security/logout");
-                    return;
-
-                }
-                logger.info("Returned setAttribute");
-                    request.setAttribute("claims", claims);
-                    // Now since the authentication process if finished
-                    // move the request forward
-
-                logger.info("Returned setAttribute successfully");
-                    filterChain.doFilter(request, response);
-
-
-            } catch (final Exception e) {
-                throw new AuthenticationFailedException("Invalid token. Cause:" + e.getMessage());
-            }
-        } else {
-            filterChain.doFilter(request, response);
-        }
+  // Validation on submit
+  const validateForSubmit = useMemo(() => {
+    const errs=[];
+    // row-level
+    ['fac1','fac2','fac3'].forEach(id=>{
+      const { total, ysa }=getRowData(id);
+      if(parseFloat(ysa||0)!==parseFloat(total||0)) errs.push(`Total not matching for ${rowDefinitions.find(r=>r.id===id).label}`);
+    });
+    // section-level
+    const aTot=getRowData('facTotal'), bTot=getRowData('secTotal'), cTot=getRowData('advA3');
+    [['standard','Standard'],['subStandard','Sub-standard'],['doubtful','Doubtful'],['loss','Loss']]
+      .forEach(([key,label])=>{
+        if(!(parseFloat(aTot[key]||0)===parseFloat(bTot[key]||0) && parseFloat(bTot[key]||0)===parseFloat(cTot[key]||0)))
+          errs.push(`A-1,A-2,A-3 totals differ for ${label}`);
+      });
+    if(role==='61'){
+      if(!(parseFloat(aTot.adjustment||0)===parseFloat(bTot.adjustment||0) && parseFloat(bTot.adjustment||0)===parseFloat(cTot.adjustment||0)))
+        errs.push('A-1,A-2,A-3 totals differ for Adjustment');
     }
+    return errs;
+  },[values, showAdjustment, role]);
 
-    // Validate the session (userId key from JWT matches session userId)
-    private boolean validateSession(HttpServletRequest request, Claims claims, HttpServletResponse response) throws Exception {
-        String userIdFromToken = claims.get("userId", String.class);
-        String userIdFromSession = (String) request.getSession().getAttribute("userId");
-        logger.info("userIdFromToken: "+userIdFromToken);
-        logger.info("userIdFromSession: "+ userIdFromSession);
-//        if (userIdFromSession == null || !userIdFromSession.equals(userIdFromToken)) {
-//            System.err.println("User mismatch detected. Possible token manipulation.");
-//            return false;
-//        }
-        return true;
-    }
+  const onSave = async () => {
+    await axios.post('/api/saveSC09',{circleCode,quarterEndDate,role,reportName:'SC9',data:values});
+  };
+  const onSubmit = async () => {
+    if(validateForSubmit.length) return;
+    await axios.post('/api/submitSC09',{circleCode,quarterEndDate,role,reportName:'SC9',data:values});
+  };
+
+  return (
+    <Box sx={{p:2}}>
+      {validateForSubmit.length>0 && (
+        <Alert severity="error" sx={{mb:2}}>
+          <ul style={{margin:0,paddingLeft:'1.2em'}}>
+            {validateForSubmit.map((e,i)=><li key={i}>{e}</li>)}
+          </ul>
+        </Alert>
+      )}
+      <TableContainer component={Paper} sx={{width:'100%'}}>
+        <Table sx={{tableLayout:'fixed'}}>
+          <TableHead>
+            <TableRow>
+              <StyledTableCell>Classification of Advances</StyledTableCell>
+              {columns.map(col=>(!col.conditional||showAdjustment)&&(
+                <StyledTableCell key={col.key} align="center">{col.label}</StyledTableCell>
+              ))}
+              <StyledTableCell align="center">YSA Data</StyledTableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rowDefinitions.map(row=>{
+              const data=getRowData(row.id);
+              if(row.type!=='entry'){
+                return <StyledTableRow key={row.id}><StyledTableCell colSpan={columns.filter(c=>!c.conditional||showAdjustment).length+2} sx={{fontWeight:'bold'}}>{row.label}</StyledTableCell></StyledTableRow>;
+              }
+              return (
+                <StyledTableRow key={row.id} error={data.isMismatch}>
+                  <StyledTableCell>{row.label}</StyledTableCell>
+                  {columns.map(col=>(!col.conditional||showAdjustment)&&(
+                    <StyledTableCell key={col.key} align="right">
+                      <TextField
+                        name={getFieldName(row.id,col.key)}
+                        size="small"
+                        value={data[col.key]||'0.00'}
+                        onChange={e=>handleChange(row.id,col.key,e.target.value)}
+                        inputProps={{ style:{textAlign:'right'} }}
+                        fullWidth
+                        disabled={col.key==='total'||!col.editable||Boolean(sectionMap[row.id])}
+                      />
+                    </StyledTableCell>
+                  ))}
+                  <StyledTableCell align="right">
+                    {ysaRows.includes(row.id)&&(
+                      <TextField
+                        name={`${row.id}_ysa`}
+                        size="small"
+                        value={data.ysa}
+                        inputProps={{style:{textAlign:'right'}}}
+                        fullWidth
+                        disabled
+                        sx={data.isMismatch?{border:'1px solid red',borderRadius:1}:{}}
+                      />
+                    )}
+                  </StyledTableCell>
+                </StyledTableRow>
+              );
+            })}
+            <TableRow>
+              <TableCell colSpan={columns.filter(c=>!c.conditional||showAdjustment).length+2}>
+                <Button variant="contained" color="warning" onClick={onSave}>Save</Button>
+                <Button sx={{ml:1}} variant="contained" color="primary" onClick={onSubmit} disabled={!!validateForSubmit.length}>Submit</Button>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
+  );
 }
-
----------------------------------------------------
-
-package com.tcs.security;
-
-
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
-import org.springframework.stereotype.Component;
-
-import javax.servlet.*;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-
-@Component
-@Order(Ordered.HIGHEST_PRECEDENCE)
-public class CORSFilter implements Filter {
-
-    public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
-        HttpServletRequest request = (HttpServletRequest) req;
-        HttpServletResponse response = (HttpServletResponse) res;
-        response.setHeader("Access-Control-Allow-Origin", "*");
-        response.setHeader("Access-Control-Allow-Methods", "POST, PUT, GET, OPTIONS, DELETE");
-        response.setHeader("Access-Control-Allow-Headers", "x-requested-with");
-        response.setHeader("Access-Control-Max-Age", "3600");
-        if (request.getMethod() != "OPTIONS") {
-            chain.doFilter(req, res);
-        } else {
-        }
-    }
-
-    public void init(FilterConfig filterConfig) {}
-
-    public void destroy() {}
-    
-}
-
-
-
-
