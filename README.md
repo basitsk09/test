@@ -1,305 +1,929 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import {
-  Table,
-  TableBody,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  TextField,
-  Button
-} from '@mui/material';
-import TableCell, { tableCellClasses } from '@mui/material/TableCell';
-import { styled } from '@mui/material/styles';
-import useApi from '../../../../common/hooks/useApi';
+<head>
+    <style>
+        .validateColor {
+            border: "1px solid red";
+        }
 
-// Styled header and body cells
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontSize: '1rem',
-  [`&.${tableCellClasses.head}`]: {
-    backgroundColor: theme.palette.common.black,
-    color: theme.palette.common.white
-  }
-}));
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-  '&:nth-of-type(odd)': {
-    //backgroundColor: theme.palette.action.hover
-  }
-}));
+        .validateColor1 {
+            border: "0px solid white";
+        }
+    </style>
 
-// Row definitions
-const rowDefinitions = [
-  { id: 'headerA1', label: 'A-1. Facility Wise Classification', type: 'section' },
-  { id: 'fac1', label: '[i] Bills Purchased and Discounted less bills rediscounted $', type: 'entry' },
-  { id: 'fac2', label: '[ii] Cash Credits, Overdrafts, Loans repayable on Demand and Recalled Assets $$', type: 'entry' },
-  { id: 'fac3', label: '[iii]  Term Loans , Agricultural Term Loans, FCNRB Term Loan', type: 'entry' },
-  { id: 'facTotal', label: 'Total A-1', type: 'entry' },
+</head>
+<div class="wrapper">
+    <div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
+        <div class="container">
+            <div class="row tim-row">
+                <div class="col-md-8 col-md-offset-2">
+                    <div class="brand">
+                        <h3 style="color: white;">Schedule 9</h3>
+                    </div>
+                </div>
+            </div>
 
-  { id: 'headerA2', label: 'A.2 Security Wise Classifications', type: 'section' },
-  { id: 'sec1', label: '[i] Secured by Tangible Assets', type: 'entry' },
-  { id: 'sec2', label: '[ii] Covered by Bank/DICGC/ECGC/CGTSI/Govt Guarantee', type: 'entry' },
-  { id: 'sec3', label: '[iii] Unsecured', type: 'entry' },
-  { id: 'secTotal', label: 'Total A-2', type: 'entry' },
+        </div>
 
-  { id: 'headerA3', label: 'A.3 Sector-Wise Classifications', type: 'section' },
-  { id: 'headerIn', label: 'a) In India', type: 'subsection' },
-  { id: 'in1', label: '[i] Priority', type: 'entry' },
-  { id: 'in2', label: '[ii] Public', type: 'entry' },
-  { id: 'in3', label: '[iii] Banks in India*', type: 'entry' },
-  { id: 'in4', label: '[iv] Others', type: 'entry' },
-  { id: 'inTotal', label: 'TOTAL IN INDIA (i+ii+iii+iv)', type: 'entry' },
+    </div>
+    <div class="main main-raised ">
+        <div class="section">
+            <h3 style="margin-left: 5.5em; color: #9f191f"><b>{{sc09.displayMessage}}</b></h3>
+            <div class="container" ng-cloak class="ng-cloak" ng-init="sc09.getInitialScreenData()">
+                <div class="col-md-12">
 
-  { id: 'headerOut', label: 'b) Outside India (Excluding Foreign LCs and BGs)', type: 'subsection' },
-  { id: 'out1', label: '[i] Due from Banks', type: 'entry' },
-  { id: 'out2', label: '[ii] Due from Others', type: 'entry' },
-  { id: 'out3', label: '[1] Bills Purchased and Discounted', type: 'entry' },
-  { id: 'out4', label: '[2] Syndicated Loans', type: 'entry' },
-  { id: 'out5', label: '[3] Others', type: 'entry' },
-  { id: 'outTotal', label: 'TOTAL IN OUTSIDE INDIA (i+ii.1+ii.2+ii.3)', type: 'entry' },
+                    <script type="text/javascript">
+                        $(".decimal-2-places").numeric({decimalPlaces: 2});
 
-  { id: 'advA3', label: 'Total advances A3 (a+b)', type: 'entry' }
-];
+                    </script>
 
-// Columns
-const columns = [
-  { key: 'standard', label: 'Standard', editable: true },
-  { key: 'subStandard', label: 'Sub-standard', editable: true },
-  { key: 'doubtful', label: 'Doubtful', editable: true },
-  { key: 'loss', label: 'Loss', editable: true },
-  { key: 'adjustment', label: 'Adjustment', editable: true, conditional: true },
-  { key: 'total', label: 'Total', editable: false }
-];
 
-// Which rows show YSA data
-const ysaRows = ['fac1', 'fac2', 'fac3', 'facTotal'];
+                    <form name="sc09Form" ng-submit="sc09.SubmitSC09Report(sc09.row);">
+                        <input type="hidden" id="csrfPreventionSalt" value="${csrfPreventionSalt}"/>
+                        <table id="example1" class="table" border="1">
+                            <thead>
+                            <tr>
+                                <th style="text-align:center;">Classification of Advances (Excluding non-advances<br>related
+                                    items debited to Recalled Assets<br>and interest free Staff Advances)(A1 = A2 = A3)
+                                </th>
+                                <th style="text-align:center;">Standard</th>
+                                <th style="text-align:center;">Sub-standard</th>
+                                <th style="text-align:center;">Doubtful</th>
+                                <th style="text-align:center;">Loss</th>
+                                <th style="text-align:center;" ng-if="sc09.adjColmn==true">Adjustment</th>
+                                <th style="text-align:center;">Total</th>
+                                <th style="text-align:center;">YSA DATA</th>
+                            </tr>
+                            </thead>
+                            <tbody ng-readonly="true">
+                            <tr>
+                                <td colspan="7"><b>A-1. Facility Wise Classification</b></td>
 
-// Totals mapping
-const sectionMap = {
-  facTotal: ['fac1', 'fac2', 'fac3'],
-  secTotal: ['sec1', 'sec2', 'sec3'],
-  inTotal: ['in1', 'in2', 'in3', 'in4'],
-  outTotal: ['out1', 'out2', 'out3', 'out4', 'out5'],
-  advA3: ['inTotal', 'outTotal']
-};
 
-// Build API field name
-const getFieldName = (id, key) => {
-  let base = id.startsWith('fac') ? 'facility'
-    : id.startsWith('sec') ? 'security'
-      : 'sector';
-  let suffix = {
-    standard: 'Standard',
-    subStandard: 'SubStandard',
-    doubtful: 'Doubtful',
-    loss: 'Loss',
-    adjustment: 'Adj'
-  }[key] || 'Total';
+                            <tr>
+                                <td>[i] Bills Purchased and Discounted less bills rediscounted $</td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.facility_Standard_1"
+                                           style="text-align:right;" name="facility_Standard_1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.facility_SubStandard_1"
+                                           style="text-align:right;" name="facility_SubStandard_1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.facility_Doubtful_1"
+                                           style="text-align:right;" name="facility_Doubtful_1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.facility_Loss_1"
+                                           style="text-align:right;" name="facility_Loss_1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td ng-if="sc09.adjColmn==true">
+                                    <input type="text" maxlength="18"
+                                    ng-model="sc09.row.facility_Adj_1"
+                                    style="text-align:right;" name="facility_Adj_1"
+                                    class="form-control decimal-2-places"
+                                    ng-readonly="sc09.adjColmn==true"/></td>
 
-  let idx = 'Total';
-  if (!id.endsWith('Total')) idx = id.replace(/\D/g, '');
-  if (id === 'inTotal') idx = 'a_Total';
-  if (id === 'outTotal') idx = 'b_Total';
-  if (id === 'advA3') idx = 'ab_Total';
 
-  return `${base}_${suffix}_${idx}`;
-};
 
-export default function Schedule9Table({ showAdjustment = false, circleCode = "021", quarterEndDate = "31/03/2025", role = "51" }) {
-  const [values, setValues] = useState(
-    rowDefinitions.reduce((a, { id }) => (a[id] = { standard: '', subStandard: '', doubtful: '', loss: '', adjustment: '', ysa: '' }, a), {})
-  );
+								<%--Change Here :: New Column Added Here--%>
+								<td><input type="hidden" ng-model="sc09.row.facility_Total_1" style="text-align:right;"
+                                           name="facility_Total_1" class="form-control decimal-2-places"
+                                           ng-readonly="true"/>
+                                     <%--Additional Total--%>
+                                 <input type="text" class="form-control decimal-2-places" ng-model="sc09.row.facility_Total_Display1_SUM"
+                                           style="text-align:right;" <%--id="facility_Total_Display1"--%>
+                                           <%--name="facility_Total_Display1"--%> ng-readonly="true"/>
+                                </td>
 
-  const { data, apiError, loading, callApi } = useApi();
+                                <%--DOWN--%>
+                                <td><input type="hidden" ng-model="sc09.row.facility_Total_1" style="text-align:right;"
+                                           name="facility_Total_1" class="form-control decimal-2-places"
+                                           ng-readonly="true"/>
 
-  useEffect(() => {
-    // Report data
-    // callApi(import.meta.env.VITE_BASE_SERVICE_URL+
-    //   'Maker/getSC09ReportData',
-    //   {circleCode,quarterEndDate,role,reportName:'SC9'},
-    //   'POST'
-    // ).then(({data})=>{
-    //   setValues(prev=>{
-    //     const nv={...prev};
-    //     ['1','2','3'].forEach(n=>{
-    //       ['standard','subStandard','doubtful','loss'].forEach(field=>{
-    //         nv[`fac${n}`][field] = data[`facility_${field.charAt(0).toUpperCase()+field.slice(1)}_${n}`]||'';
-    //       });
-    //     });
-    //     return nv;
-    //   });
-    // })
-    // .catch(console.error);
+                                    <input type="text" ng-model="sc09.row.facility_Total_Display1"
+                                           style="text-align:right;" id="facility_Total_Display1"
+                                           name="facility_Total_Display1"  class="form-control decimal-2-places" " ng-readonly="true"/>
+                                </td>
+                            </tr>
 
-    axios.post('http://10.0.26.172:7001/BS/Maker/getSC09ReportData',
-      {
-        circleCode,
-        quarterEndDate,
-        role,
-        reportName: 'SC9'
-      }
-    ).then(({ data }) => {
-      setValues(prev => {
-        const nv = { ...prev };
-        ['1', '2', '3'].forEach(n => {
-          ['standard', 'subStandard', 'doubtful', 'loss'].forEach(field => {
-            nv[`fac${n}`][field] = data[`facility_${field.charAt(0).toUpperCase() + field.slice(1)}_${n}`] || '';
-            nv[`sec${n}`][field] = data[`security_${field.charAt(0).toUpperCase() + field.slice(1)}_${n}`] || '';
-            nv[`in${n}`][field] = data[`sector_${field.charAt(0).toUpperCase() + field.slice(1)}_${n}`] || '';
-            nv[`out${n}`][field] = data[`sector_${field.charAt(0).toUpperCase() + field.slice(1)}_a${n}`] || '';
-          });
-        });
-        return nv;
-      });
-    })
-      .catch(console.error);
 
-    // Validation (YSA) data
-    // callApi(import.meta.env.VITE_BASE_SERVICE_URL+
-    //   'Maker/getSC09ValiadationData',
-    //   {circleCode,quarterEndDate,role,reportName:'SC9'},
-    //   'POST'
-    // ) .then(({data:map})=>{
-    //   setValues(prev=>{
-    //     const nv={...prev};
-    //     const norm=s=>s.replace(/\s/g,'').toLowerCase();
-    //     ['fac1','fac2','fac3'].forEach(id=>{
-    //       const label = rowDefinitions.find(r=>r.id===id).label;
-    //       const key = Object.keys(map).find(k=>norm(k)===norm(label));
-    //       nv[id].ysa = map[key]||'0';
-    //     });
-    //     nv.facTotal.ysa = ['fac1','fac2','fac3']
-    //       .reduce((s,id)=>s + (parseFloat(nv[id].ysa)||0),0)
-    //       .toFixed(2);
-    //     return nv;
-    //   });
-    // })
-    // .catch(console.error);
+                            <tr>
+                                <td>[ii] Cash Credits, Overdrafts, Loans repayable on Demand and Recalled Assets $$</td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.facility_Standard_2"
+                                           style="text-align:right;" name="facility_Standard_2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.facility_SubStandard_2"
+                                           style="text-align:right;" name="facility_SubStandard_2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.facility_Doubtful_2"
+                                           style="text-align:right;" name="facility_Doubtful_2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.facility_Loss_2"
+                                           style="text-align:right;" name="facility_Loss_2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18"
+                                                                       ng-model="sc09.row.facility_Adj_2"
+                                                                       style="text-align:right;" name="facility_Adj_2"
+                                                                       class="form-control decimal-2-places"
+                                                                       ng-readonly="sc09.adjColmn==true"/></td>
 
-    axios.post('http://10.0.26.172:7001/BS/Maker/getSC09ValiadationData',
-      {
-        circleCode,
-        quarterEndDate,
-        role
-      }
-    ).then(({ data: map }) => {
-      setValues(prev => {
-        const nv = { ...prev };
-        const norm = s => s.replace(/\s/g, '').toLowerCase();
-        ['fac1', 'fac2', 'fac3'].forEach(id => {
-          const label = rowDefinitions.find(r => r.id === id).label;
-          const key = Object.keys(map).find(k => norm(k) === norm(label));
-          nv[id].ysa = map[key] || '0';
-        });
-        nv.facTotal.ysa = ['fac1', 'fac2', 'fac3']
-          .reduce((s, id) => s + (parseFloat(nv[id].ysa) || 0), 0)
-          .toFixed(2);
-        return nv;
-      });
-    })
-      .catch(console.error);
 
-  }, [circleCode, quarterEndDate, role]);
+                                <%--Change Here :: New Column Added Here--%>
+								<td><input type="hidden" ng-model="sc09.row.facility_Total_2" style="text-align:right;"
+                                           name="facility_Total_2" class="form-control decimal-2-places"
+                                           ng-readonly="true"/>
+                                    <input type="text" ng-model="sc09.row.facility_Total_Display2_SUM"
+                                           style="text-align:right;" <%--id="facility_Total_Display2"--%>
+                                           <%--name="facility_Total_Display2"--%>  class="form-control decimal-2-places" " ng-readonly="true"/>
+                                </td>
 
-  const handleChange = (id, field, val) => {
-    if (!/^\d*\.?\d{0,2}$/.test(val)) return;
-    setValues(p => ({ ...p, [id]: { ...p[id], [field]: val } }));
-  };
+                                <%--DOWN--%>
 
-  const onSave = () => axios.post('/api/saveSC09', { circleCode, quarterEndDate, role, reportName: 'SC9', data: values });
-  const onSubmit = () => axios.post('/api/submitSC09', { circleCode, quarterEndDate, role, reportName: 'SC9', data: values });
+                                <td><input type="hidden" ng-model="sc09.row.facility_Total_2" style="text-align:right;"
+                                           name="facility_Total_2" class="form-control decimal-2-places"
+                                           ng-readonly="true"/>
+                                    <input type="text" ng-model="sc09.row.facility_Total_Display2"
+                                           style="text-align:right;" id="facility_Total_Display2"
+                                           name="facility_Total_Display2"  class="form-control decimal-2-places" " ng-readonly="true"/>
+                                </td>
+                            </tr>
 
-  const getRowData = id => {
-    if (!sectionMap[id]) {
-      const b = values[id];
-      const sum = ['standard', 'subStandard', 'doubtful', 'loss']
-        .reduce((a, f) => a + (parseFloat(b[f]) || 0), 0);
-      const adj = showAdjustment ? (parseFloat(b.adjustment) || 0) : 0;
-      return { ...b, total: (sum + adj).toFixed(2) };
-    }
-    const agg = sectionMap[id].reduce((a, c) => {
-      const r = getRowData(c);
-      ['standard', 'subStandard', 'doubtful', 'loss'].forEach(f => a[f] += parseFloat(r[f]) || 0);
-      if (showAdjustment) a.adjustment += parseFloat(r.adjustment) || 0;
-      return a;
-    }, { standard: 0, subStandard: 0, doubtful: 0, loss: 0, adjustment: 0 });
-    const total = agg.standard + agg.subStandard + agg.doubtful + agg.loss + (showAdjustment ? agg.adjustment : 0);
-    return {
-      standard: agg.standard.toFixed(2),
-      subStandard: agg.subStandard.toFixed(2),
-      doubtful: agg.doubtful.toFixed(2),
-      loss: agg.loss.toFixed(2),
-      adjustment: showAdjustment ? agg.adjustment.toFixed(2) : '',
-      total: total.toFixed(2),
-      ysa: values[id].ysa
-    };
-  };
 
-  return (
-    <TableContainer component={Paper} sx={{ width: '100%' }}>
-      <Table sx={{ tableLayout: 'fixed' }}>
-        <TableHead>
-          <TableRow>
-            <StyledTableCell>Classification of Advances (Excluding non-advances
-              related items debited to Recalled Assets
-              and interest free Staff Advances)(A1 = A2 = A3)</StyledTableCell>
-            {columns.map(col => (!col.conditional || showAdjustment) && (
-              <StyledTableCell key={col.key} align="center">{col.label}</StyledTableCell>
-            ))}
-            <StyledTableCell align="center">YSA DATA</StyledTableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {rowDefinitions.map(row => row.type !== 'entry'
-            ? (
-              <StyledTableRow key={row.id}>
-                <StyledTableCell colSpan={columns.filter(c => !c.conditional || showAdjustment).length + 2} sx={{ fontWeight: 'bold' }}>
-                  {row.label}
-                </StyledTableCell>
-              </StyledTableRow>
-            ) : (() => {
-              const data = getRowData(row.id);
-              const isSection = Boolean(sectionMap[row.id]);
-              return (
-                <StyledTableRow key={row.id}>
-                  <StyledTableCell>{row.label}</StyledTableCell>
-                  {columns.map(col => (!col.conditional || showAdjustment) && (
-                    <StyledTableCell key={col.key} align="right">
-                      <TextField
-                        name={getFieldName(row.id, col.key)}
-                        size="small"
-                        value={data[col.key] || '0.00'}
-                        onChange={e => handleChange(row.id, col.key, e.target.value)}
-                        inputProps={{ inputMode: 'decimal', pattern: '^\\d*\\.?\\d{0,2}$', style: { textAlign: 'right' } }}
-                        fullWidth
-                        disabled={col.key === 'total' || !col.editable || isSection}
-                      />
-                    </StyledTableCell>
-                  ))}
-                  <StyledTableCell align="right">
-                    {ysaRows.includes(row.id) && (
-                      <TextField
-                        name={`${row.id}_ysa`}
-                        size="small"
-                        value={data.ysa}
-                        inputProps={{ style: { textAlign: 'right' } }}
-                        fullWidth
-                        disabled
-                      />
-                    )}
-                  </StyledTableCell>
-                </StyledTableRow>
-              );
-            })()
-          )}
-          <TableRow>
-            <TableCell colSpan={columns.filter(c => !c.conditional || showAdjustment).length + 2}>
-              <Button variant="contained" color="warning" size="small" sx={{ mr: 1 }} onClick={onSave}>Save</Button>
-              <Button variant="contained" color="success" size="small" onClick={onSubmit}>Submit</Button>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-}
+                            <tr>
+                                <td>[iii] Term Loans , Agricultural Term Loans, FCNRB Term Loan</td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.facility_Standard_3"
+                                           style="text-align:right;" name="facility_Standard_3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.facility_SubStandard_3"
+                                           style="text-align:right;" name="facility_SubStandard_3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.facility_Doubtful_3"
+                                           style="text-align:right;" name="facility_Doubtful_3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.facility_Loss_3"
+                                           style="text-align:right;" name="facility_Loss_3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18"
+                                                                       ng-model="sc09.row.facility_Adj_3"
+                                                                       style="text-align:right;" name="facility_Adj_3"
+                                                                       class="form-control decimal-2-places"
+                                                                       ng-readonly="sc09.adjColmn==true"/></td>
+
+								<%--Change Here--%>
+								<td><input type="hidden" ng-model="sc09.row.facility_Total_3" style="text-align:right;"
+                                           name="facility_Total_3" class="form-control decimal-2-places"
+                                           ng-readonly="true"/>
+                                    <input type="text" ng-model="sc09.row.facility_Total_Display3_SUM"
+                                           style="text-align:right;" <%--name="facility_Total_Display3"--%>
+                                           <%--id="facility_Total_Display3"--%>  class="form-control decimal-2-places" " ng-readonly="true"/>
+								</td>
+
+                                <%--DOWN--%>
+
+
+                                <td><input type="hidden" ng-model="sc09.row.facility_Total_3" style="text-align:right;"
+                                           name="facility_Total_3" class="form-control decimal-2-places"
+                                           ng-readonly="true"/>
+                                    <input type="text" ng-model="sc09.row.facility_Total_Display3"
+                                           style="text-align:right;" name="facility_Total_Display3"
+                                           id="facility_Total_Display3"  class="form-control decimal-2-places" ng-readonly="true"/>
+                                </td>
+                            </tr>
+
+
+                            <tr>
+                                <td>Total A-1</td>
+                                <td>
+                                    <input type="text" value="" ng-model="sc09.row.facility_Standard_Total"
+                                           id="facility_Standard_Total" style="text-align:right;"
+                                           name="facility_Standard_Total" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                                <td><input type="text" ng-model="sc09.row.facility_SubStandard_Total"
+                                           style="text-align:right;" id="facility_SubStandard_Total"
+                                           name="facility_SubStandard_Total" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                                <td><input type="text" ng-model="sc09.row.facility_Doubtful_Total"
+                                           style="text-align:right;" id="facility_Doubtful_Total"
+                                           name="facility_Doubtful_Total" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                                <td><input type="text" ng-model="sc09.row.facility_Loss_Total" style="text-align:right;"
+                                           id="facility_Loss_Total" name="facility_Loss_Total"
+                                           class="form-control decimal-2-places" ng-readonly="true"/></td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text"
+                                                                       ng-model="sc09.row.facility_Adj_Total"
+                                                                       style="text-align:right;" id="facility_Adj_Total"
+                                                                       name="facility_Adj_Total"
+                                                                       class="form-control decimal-2-places"
+                                                                       ng-readonly="true"/></td>
+
+
+								<%--Change Here--%>
+								<td><input type="hidden" ng-model="sc09.row.facility_Total_Total"
+                                           style="text-align:right;" name="facility_Total_Total"
+                                           class="form-control decimal-2-places" ng-readonly="true"/>
+                                    <%--Final Total--%>
+                                    <input type="text" class="form-control decimal-2-places" ng-model="sc09.row.facility_Total_TotalDisplay_SUM"
+                                           style="text-align:right;"<%-- id="facility_Total_TotalDisplay"--%>
+                                           <%--name="facility_Total_TotalDisplay"--%>
+                                           ng-readonly="true"/>
+								</td>
+
+                                <%--DOWN--%>
+
+                                <td><input type="hidden" ng-model="sc09.row.facility_Total_Total"
+                                           style="text-align:right;" name="facility_Total_Total"
+                                           class="form-control decimal-2-places" ng-readonly="true"/>
+                                    <input type="text" ng-model="sc09.row.facility_Total_TotalDisplay"
+                                           style="text-align:right;" id="facility_Total_TotalDisplay"
+                                           name="facility_Total_TotalDisplay" class="form-control decimal-2-places"
+                                           ng-readonly="true"/>
+                                </td>
+
+                            </tr>
+
+
+                            <tr>
+                                <td colspan="7"><b>A. 2 Security Wise Classifications</b></td>
+
+                            </tr>
+
+
+                            <tr>
+                                <td>[i] Secured by Tangible Assets</td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.security_Standard_1"
+                                           style="text-align:right;" name="security_Standard_1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.security_SubStandard_1"
+                                           style="text-align:right;" name="security_SubStandard_1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.security_Doubtful_1"
+                                           style="text-align:right;" name="security_Doubtful_1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.security_Loss_1"
+                                           style="text-align:right;" name="security_Loss_1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18"
+                                                                       ng-model="sc09.row.security_Adj_1"
+                                                                       style="text-align:right;" name="security_Adj_1"
+                                                                       class="form-control decimal-2-places"/></td>
+
+                                <td><input type="text" ng-model="sc09.row.security_Total_1" style="text-align:right;"
+                                           name="security_Total_1" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                            </tr>
+
+
+                            <tr>
+                                <td>[ii] Covered by Bank/ DICGC/ ECGC/ CGTSI/ Govt Guarantee</td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.security_Standard_2"
+                                           style="text-align:right;" name="security_Standard_2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.security_SubStandard_2"
+                                           style="text-align:right;" name="security_SubStandard_2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.security_Doubtful_2"
+                                           style="text-align:right;" name="security_Doubtful_2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.security_Loss_2"
+                                           style="text-align:right;" name="security_Loss_2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18"
+                                                                       ng-model="sc09.row.security_Adj_2"
+                                                                       style="text-align:right;" name="security_Adj_2"
+                                                                       class="form-control decimal-2-places"/></td>
+
+                                <td><input type="text" ng-model="sc09.row.security_Total_2" style="text-align:right;"
+                                           name="security_Total_2" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                            </tr>
+
+
+                            <tr>
+                                <td>[iii] Unsecured</td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.security_Standard_3"
+                                           style="text-align:right;" name="security_Standard_3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.security_SubStandard_3"
+                                           style="text-align:right;" name="security_SubStandard_3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.security_Doubtful_3"
+                                           style="text-align:right;" name="security_Doubtful_3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.security_Loss_3"
+                                           style="text-align:right;" name="security_Loss_3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18"
+                                                                       ng-model="sc09.row.security_Adj_3"
+                                                                       style="text-align:right;" name="security_Adj_3"
+                                                                       class="form-control decimal-2-places"/></td>
+
+                                <td><input type="text" ng-model="sc09.row.security_Total_3" style="text-align:right;"
+                                           name="security_Total_3" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                            </tr>
+
+
+                            <tr>
+                                <td>Total A-2</td>
+                                <td><input type="text" ng-model="sc09.row.security_Standard_Total"
+                                           style="text-align:right;" id="security_Standard_Total"
+                                           name="security_Standard_Total" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                                <td><input type="text" ng-model="sc09.row.security_SubStandard_Total"
+                                           style="text-align:right;" id="security_SubStandard_Total"
+                                           name="security_SubStandard_Total" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                                <td><input type="text" ng-model="sc09.row.security_Doubtful_Total"
+                                           style="text-align:right;" id="security_Doubtful_Total"
+                                           name="security_Doubtful_Total" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                                <td><input type="text" ng-model="sc09.row.security_Loss_Total" style="text-align:right;"
+                                           id="security_Loss_Total" name="security_Loss_Total"
+                                           class="form-control decimal-2-places" ng-readonly="true"/></td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text"
+                                                                       ng-model="sc09.row.security_Adj_Total"
+                                                                       style="text-align:right;" id="security_Adj_Total"
+                                                                       name="security_Adj_Total"
+                                                                       class="form-control decimal-2-places"
+                                                                       ng-readonly="true"/></td>
+
+                                <td><input type="text" ng-model="sc09.row.security_Total_Total"
+                                           style="text-align:right;" id="security_Total_Total"
+                                           name="security_Total_Total" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                            </tr>
+
+
+                            <tr>
+                                <td colspan="7"><b>A.3 Sector -Wise Classifications</b></td>
+
+                            </tr>
+
+
+                            <tr>
+                                <td colspan="7">a)In India</td>
+
+                            </tr>
+
+
+                            <tr>
+                                <td>[i] Priority</td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_a1"
+                                           style="text-align:right;" name="sector_Standard_a1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_a1"
+                                           style="text-align:right;" name="sector_SubStandard_a1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_a1"
+                                           style="text-align:right;" name="sector_Doubtful_a1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_a1"
+                                           style="text-align:right;" name="sector_Loss_a1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18"
+                                                                       ng-model="sc09.row.sector_Adj_a1"
+                                                                       style="text-align:right;" name="sector_Adj_a1"
+                                                                       class="form-control decimal-2-places"/></td>
+
+                                <td><input type="text" ng-model="sc09.row.sector_Total_a1" style="text-align:right;"
+                                           name="sector_Total_a1" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                            </tr>
+
+
+                            <tr>
+                                <td> [ii] Public</td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_a2"
+                                           style="text-align:right;" name="sector_Standard_a2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_a2"
+                                           style="text-align:right;" name="sector_SubStandard_a2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_a2"
+                                           style="text-align:right;" name="sector_Doubtful_a2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_a2"
+                                           style="text-align:right;" name="sector_Loss_a2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18"
+                                                                       ng-model="sc09.row.sector_Adj_a2"
+                                                                       style="text-align:right;" name="sector_Adj_a2"
+                                                                       class="form-control decimal-2-places"/></td>
+
+                                <td><input type="text" ng-model="sc09.row.sector_Total_a2" style="text-align:right;"
+                                           name="sector_Total_a2" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                            </tr>
+
+
+                            <tr>
+                                <td>[iii] Banks in India*</td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_a3"
+                                           style="text-align:right;" name="sector_Standard_a3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_a3"
+                                           style="text-align:right;" name="sector_SubStandard_a3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_a3"
+                                           style="text-align:right;" name="sector_Doubtful_a3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_a3"
+                                           style="text-align:right;" name="sector_Loss_a3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18"
+                                                                       ng-model="sc09.row.sector_Adj_a3"
+                                                                       style="text-align:right;" name="sector_Adj_a3"
+                                                                       class="form-control decimal-2-places"/></td>
+
+                                <td><input type="text" ng-model="sc09.row.sector_Total_a3" style="text-align:right;"
+                                           name="sector_Total_a3" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                            </tr>
+
+
+                            <tr>
+                                <td>[iv] Others</td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_a4"
+                                           style="text-align:right;" name="sector_Standard_a4"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_a4"
+                                           style="text-align:right;" name="sector_SubStandard_a4"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_a4"
+                                           style="text-align:right;" name="sector_Doubtful_a4"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_a4"
+                                           style="text-align:right;" name="sector_Loss_a4"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18"
+                                                                       ng-model="sc09.row.sector_Adj_a4"
+                                                                       style="text-align:right;" name="sector_Adj_a4"
+                                                                       class="form-control decimal-2-places"/></td>
+
+                                <td><input type="text" ng-model="sc09.row.sector_Total_a4" style="text-align:right;"
+                                           name="sector_Total_a4" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                            </tr>
+
+
+                            <tr>
+                                <td>TOTAL IN INDIA (i+ii+iii+iv)</td>
+                                <td><input type="text" ng-model="sc09.row.sector_Standard_a_Total"
+                                           style="text-align:right;" name="sector_Standard_a_Total"
+                                           class="form-control decimal-2-places" ng-readonly="true"/></td>
+                                <td><input type="text" ng-model="sc09.row.sector_SubStandard_a_Total"
+                                           style="text-align:right;" name="sector_SubStandard_a_Total"
+                                           class="form-control decimal-2-places" ng-readonly="true"/></td>
+                                <td><input type="text" ng-model="sc09.row.sector_Doubtful_a_Total"
+                                           style="text-align:right;" name="sector_Doubtful_a_Total"
+                                           class="form-control decimal-2-places" ng-readonly="true"/></td>
+                                <td><input type="text" ng-model="sc09.row.sector_Loss_a_Total" style="text-align:right;"
+                                           name="sector_Loss_a_Total" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text"
+                                                                       ng-model="sc09.row.sector_Adj_a_Total"
+                                                                       style="text-align:right;"
+                                                                       name="sector_Adj_a_Total"
+                                                                       class="form-control decimal-2-places"
+                                                                       ng-readonly="true"/></td>
+
+                                <td><input type="text" ng-model="sc09.row.sector_a_Total_a_Total"
+                                           style="text-align:right;" name="sector_a_Total_a_Total"
+                                           class="form-control decimal-2-places" ng-readonly="true"></td>
+                            </tr>
+
+
+                            <tr>
+                                <td colspan="7">b) Outside India ( Excluding Foreign LCs and BGs)</td>
+
+                            </tr>
+
+
+                            <tr>
+                                <td>[i] Due from Banks</td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_b1"
+                                           style="text-align:right;" name="sector_Standard_b1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_b1"
+                                           style="text-align:right;" name="sector_SubStandard_b1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_b1"
+                                           style="text-align:right;" name="sector_Doubtful_b1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_b1"
+                                           style="text-align:right;" name="sector_Loss_b1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18"
+                                                                       ng-model="sc09.row.sector_Adj_b1"
+                                                                       style="text-align:right;" name="sector_Adj_b1"
+                                                                       class="form-control decimal-2-places"/></td>
+
+                                <td><input type="text" ng-model="sc09.row.sector_Total_b1" style="text-align:right;"
+                                           name="sector_Total_b1" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                            </tr>
+
+
+                            <tr>
+                                <td colspan="7">[ii] Due from Others</td>
+                                <%--	<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_b2" style="text-align:right;" name="sector_Standard_b2"    class="form-control decimal-2-places"  ng-readonly="sc09.adjColmn==true"/></td>
+                                    <td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_b2" style="text-align:right;" name="sector_SubStandard_b2"    class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/></td>
+                                    <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_b2" style="text-align:right;" name="sector_Doubtful_b2"    class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true" /></td>
+                                    <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_b2" style="text-align:right;" name="sector_Loss_b2"    class="form-control decimal-2-places"ng-readonly="sc09.adjColmn==true" /></td>
+                                        <td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.sector_Adj_b2" style="text-align:right;" name="sector_Adj_b2"    class="form-control decimal-2-places" /></td>
+
+                                        <td><input type="text" ng-model="sc09.row.sector_Total_b2" style="text-align:right;"name="sector_Total_b2" class="form-control decimal-2-places" ng-readonly="true"/></td>--%>
+                            </tr>
+
+
+                            <tr>
+                                <td>[1] Bills Purchased and Discounted</td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_1"
+                                           style="text-align:right;" name="sector_Standard_1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_1"
+                                           style="text-align:right;" name="sector_SubStandard_1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_1"
+                                           style="text-align:right;" name="sector_Doubtful_1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_1"
+                                           style="text-align:right;" name="sector_Loss_1"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18"
+                                                                       ng-model="sc09.row.sector_Adj_1"
+                                                                       style="text-align:right;" name="sector_Adj_1"
+                                                                       class="form-control decimal-2-places"/></td>
+
+                                <td><input type="text" ng-model="sc09.row.sector_Total_1" style="text-align:right;"
+                                           name="sector_Total_1" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                            </tr>
+
+
+                            <tr>
+                                <td>[2] Syndicated Loans</td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_2"
+                                           style="text-align:right;" name="sector_Standard_2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_2"
+                                           style="text-align:right;" name="sector_SubStandard_2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_2"
+                                           style="text-align:right;" name="sector_Doubtful_2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_2"
+                                           style="text-align:right;" name="sector_Loss_2"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18"
+                                                                       ng-model="sc09.row.sector_Adj_2"
+                                                                       style="text-align:right;" name="sector_Adj_2"
+                                                                       class="form-control decimal-2-places"/></td>
+
+                                <td><input type="text" ng-model="sc09.row.sector_Total_2" style="text-align:right;"
+                                           name="sector_Total_2" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                            </tr>
+
+
+                            <tr>
+                                <td> [3] Others</td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_3"
+                                           style="text-align:right;" name="sector_Standard_3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_3"
+                                           style="text-align:right;" name="sector_SubStandard_3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_3"
+                                           style="text-align:right;" name="sector_Doubtful_3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_3"
+                                           style="text-align:right;" name="sector_Loss_3"
+                                           class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/>
+                                </td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18"
+                                                                       ng-model="sc09.row.sector_Adj_3"
+                                                                       style="text-align:right;" name="sector_Adj_3"
+                                                                       class="form-control decimal-2-places"/></td>
+
+                                <td><input type="text" ng-model="sc09.row.sector_Total_3" style="text-align:right;"
+                                           name="sector_Total_3" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                            </tr>
+
+
+                            <tr>
+                                <td>TOTAL IN OUTSIDE INDIA (i+ ii.1+ii.2+ii.3)</td>
+                                <td><input type="text" ng-model="sc09.row.sector_Standard_b_Total"
+                                           style="text-align:right;" name="sector_Standard_b_Total"
+                                           class="form-control decimal-2-places" ng-readonly="true"/></td>
+                                <td><input type="text" ng-model="sc09.row.sector_SubStandard_b_Total"
+                                           style="text-align:right;" name="sector_SubStandard_b_Total"
+                                           class="form-control decimal-2-places" ng-readonly="true"/></td>
+                                <td><input type="text" ng-model="sc09.row.sector_Doubtful_b_Total"
+                                           style="text-align:right;" name="sector_Doubtful_b_Total"
+                                           class="form-control decimal-2-places" ng-readonly="true"/></td>
+                                <td><input type="text" ng-model="sc09.row.sector_Loss_b_Total" style="text-align:right;"
+                                           name="sector_Loss_b_Total" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text"
+                                                                       ng-model="sc09.row.sector_Adj_b_Total"
+                                                                       style="text-align:right;"
+                                                                       name="sector_Adj_b_Total"
+                                                                       class="form-control decimal-2-places"
+                                                                       ng-readonly="true"/></td>
+
+                                <td><input type="text" ng-model="sc09.row.sector_b_Total_b_Total"
+                                           style="text-align:right;" name="sector_b_Total_b_Total"
+                                           class="form-control decimal-2-places" ng-readonly="true"></td>
+                            </tr>
+
+
+                            <tr>
+                                <td><b>Total advances A3 ( a+b)</b></td>
+                                <td><input type="text" ng-model="sc09.row.sector_Standard_ab_Total"
+                                           style="text-align:right;" id="sector_Standard_ab_Total"
+                                           name="sector_Standard_ab_Total" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                                <td><input type="text" ng-model="sc09.row.sector_SubStandard_ab_Total"
+                                           style="text-align:right;" id="sector_SubStandard_ab_Total"
+                                           name="sector_SubStandard_ab_Total" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                                <td><input type="text" ng-model="sc09.row.sector_Doubtful_ab_Total"
+                                           style="text-align:right;" id="sector_Doubtful_ab_Total"
+                                           name="sector_Doubtful_ab_Total" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                                <td><input type="text" ng-model="sc09.row.sector_Loss_ab_Total"
+                                           style="text-align:right;" id="sector_Loss_ab_Total"
+                                           name="sector_Loss_ab_Total" class="form-control decimal-2-places"
+                                           ng-readonly="true"/></td>
+                                <td ng-if="sc09.adjColmn==true"><input type="text"
+                                                                       ng-model="sc09.row.sector_Adj_ab_Total"
+                                                                       style="text-align:right;"
+                                                                       id="sector_Adj_ab_Total"
+                                                                       name="sector_Adj_ab_Total"
+                                                                       class="form-control decimal-2-places"
+                                                                       ng-readonly="true"/></td>
+
+                                <td><input type="text" ng-model="sc09.row.sector_ab_Total_ab_Total"
+                                           style="text-align:right;" id="sector_ab_Total_ab_Total"
+                                           name="sector_ab_Total_ab_Total" class="form-control decimal-2-places"
+                                           ng-readonly="true"></td>
+                            </tr>
+
+
+                            </tbody>
+                        </table>
+                        <button class="btn btn-warning" id="savebtn" type="submit" ng-click="sc09.row.save = true">
+                            Save
+                        </button>
+
+                        <button type="submit" class="btn btn-default btn-success" id="submitbtn"
+                                ng-click="sc09.row.save = false">Submit
+                        </button>
+
+                    </form>
+
+                    <%--<div ng-if="sc09.showView==true">
+                        <button type="submit" class="btn btn-default btn-primary" ng-click="sc09.viewSubmitData('V');">View</button>    </fieldset>
+                ng-if="sc09.isData ==false"
+                    </div>--%>
+
+
+                    <%--<div class="checkbox" ng-if="sc09.showView==true">
+                        <label> <input type="checkbox" ng-click="sc09.viewSubmitData('V');"
+                                       name="checkView" id="checkView"
+                                       ng-model="sc09.checkView"
+                        /><span
+                                class="checkbox-material"><span class="check"></span></span>
+                            <br>
+                        </label><span class="label label-primary">View</span>
+                    </div> </fieldset>
+                    <fieldset ng-disabled="sc09.isData ==true" >
+
+                    --%>
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="myModal2" role="dialog" style="z-index : 1400">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #E74C3C" ;>
+                <!--<button type="button" class="close" data-dismiss="modal">�</button> -->
+                <h4 class="modal-title" style="color: white;">Errors!</h4>
+            </div>
+            <div class="modal-body" id="popup">
+                <table id="example2" class="table table-hover table-responsive no-padding dataTable no-footer"
+                       style="width: 100%">
+                    <thead>
+                    <tr>
+                        <!-- 	<th style="width: 5%"></th> -->
+                    </thead>
+                    <tr data-ng-repeat="row in validateArray">
+                        <td>#.</td>
+                        <td>{{row}}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-success" data-dismiss="modal">Continue</button>
+            </div>
+        </div>
+
+
+    </div>
+
+</div>
+
+
+<div class="modal fade" id="myModal1" role="dialog" style="z-index : 1400">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #E74C3C" ;>
+                <!--<button type="button" class="close" data-dismiss="modal">�</button> -->
+                <h4 class="modal-title" style="color: white;">Attention!</h4>
+            </div>
+            <div class="modal-body" id="popup">
+                {{sc09.displayMessage}}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-success" data-dismiss="modal"
+                        ng-click="sc09.redirect();">Continue
+                </button>
+            </div>
+
+
+        </div>
+    </div>
+
+
+</div>
+
+
+<div class="modal fade" id="myModal3" role="dialog" style="z-index : 1400">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #E74C3C" ;>
+                <!--<button type="button" class="close" data-dismiss="modal">�</button> -->
+                <h4 class="modal-title" style="color: white;">Attention!</h4>
+            </div>
+            <div class="modal-body" id="popup">
+                {{sc09.displayMessage111}}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-success" ng-click="sc09.YesSubmitSc09(sc09.row);"
+                        data-dismiss="modal">YES
+                </button>
+
+                <button type="button" class="btn btn-default btn-success" data-dismiss="modal">No</button>
+            </div>
+
+
+        </div>
+    </div>
+
+
+</div>
+
+
+<div class="modal fade" id="myModal9" role="dialog" style="z-index : 1400">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #E74C3C" ;>
+                <!--<button type="button" class="close" data-dismiss="modal">?</button> -->
+                <h4 class="modal-title" style="color: white;">Attention!</h4>
+            </div>
+            <div class="modal-body" id="popup">
+                {{sc09.displayMessage}}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-success" data-dismiss="modal">Continue</button>
+            </div>
+
+
+        </div>
+    </div>
+
+
+</div>
+
+
+<!--// For SFTP Success Modal //-->
+<div class="modal fade" id="successSFTP" role="dialog" style="z-index : 1400">
+
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 20px;">
+            <div class="modal-header bg-success" style="border-radius: 20px;">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" style=" margin-bottom: 12px;color: black;font-weight: 300;">Schedule-9</h4>
+            </div>
+            <div class="modal-body">
+                {{sc09.displayMessage}}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    Continue
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+<!--// For SFTP Success Modal //-->
+
+
+<!--// failedSFTP Modal //-->
+<div class="modal fade" id="failedSFTP" role="dialog" style="z-index : 1400">
+
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 20px;">
+            <div class="modal-header bg-danger" style="border-radius: 20px;">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" style=" margin-bottom: 12px;color: black;font-weight: 300;">Failed</h4>
+            </div>
+            <div class="modal-body">
+                {{sc09.displayMessage}}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-dismiss="modal" ng-click="sc09.redirect();"
+                        data-backdrop="false" style="border-radius: 25px;
+    margin-bottom: 8px;
+    margin-right: 5px;">Continue
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+<!--// failedSFTP Modal //-->
+
+
+
+
+    
