@@ -1,0 +1,3779 @@
+<head>
+<style>
+.validateColor {
+	border: "2px solid red";
+}
+
+.validateColor1 {
+	border: "0px solid white";
+}
+</style>
+
+</head>
+
+
+
+
+<div class="wrapper">
+	<div class="header header-filter"
+		style="background-image: url('assets/img/bg2.jpeg');">
+		<div class="container">
+			<div class="row tim-row">
+				<div class="col-md-8 col-md-offset-2">
+					<div class="brand">
+						<h3 style="color: white;">YSA Supplementary</h3>
+					</div>
+				</div>
+			</div>
+
+		</div>
+
+	</div>
+
+	<div class="row">
+
+		<script type="text/javascript">
+			$(".decimal-2-places").numeric({
+				decimalPlaces : 2,
+				negative : false
+			});
+
+			/*   $(".decimal-3-places").numeric({ decimalPlaces: 2}); */
+
+			$(".positive-integer").numeric({
+				decimal : false,
+				negative : false
+			}, function() {
+				alert("Positive integers only");
+				this.value = "";
+				this.focus();
+			});
+		</script>
+
+
+		<div class="main main-raised">
+			<form name="ysaForm">
+				<div class="section">
+					<div class="container" ng-cloak class="ng-cloak">
+
+						<!-- <form data-ng-submit="ysa.submitYSA(rowYsaData)" name="ysaForm" > -->
+
+
+
+
+
+						<div class="row">
+							<%--<div class="col-md-1"></div>--%>
+							<div class="col-md-2" style="margin-bottom: 10px">
+								<button class="btn btn-warning"
+										ng-click="ysa.submitYSA(rowYsaData,true);" type="submit" >Save</button>
+
+
+							</div>
+							<div class="col-md-2" style="margin-bottom: 10px">
+								<button class="btn btn-danger"
+										ng-click="ysa.validate(rowYsaData);" type="submit">Validate Me</button>
+							</div>
+							<div class="col-md-2" style="margin-bottom: 10px">
+								<button class="btn btn-success"
+										ng-click="ysa.submitYSA(rowYsaData,false);" type="submit" >Submit</button>
+							</div>
+
+							<div class="col-md-2" style="margin-bottom: 10px">
+								<button class="btn btn-info" ng-click="ysa.PreCheckAmount();" type="submit">Pre Check Amount</button>
+							</div>
+
+							<div class="col-md-6"></div>
+						</div>
+
+
+
+
+						<div class="nav-tabs-navigation">
+							<div class="nav-tabs-wrapper">
+								<ul class="nav nav-tabs" data-tabs="tabs" id="xyz">
+									<li class="active" id="YSASupple1"><a href=""
+										data-target="#YSASupple" data-toggle="tab"> YSA
+											Supplementary </a></li>
+									<li id="Error1"><a href="" data-target="#Error" data-toggle="tab">
+
+											Errors </a></li>
+
+								</ul>
+							</div>
+						</div>
+
+
+
+
+
+
+
+						<div class="content">
+							<div class="tab-content">
+
+								<div class="tab-pane active" id="YSASupple">
+
+									<h4>
+										<b>QSA SUPPLEMENTARY INFORMATION AS ON {{ysa.qdate}}</b>
+									</h4>
+
+
+									<table id="example2"
+										class="table table-hover table-responsive table-bordered no-padding">
+
+										<thead>
+											<tr>
+												<th style="width: 10%">Comp-Code</th>
+												<th style="width: 50%">Particulars</th>
+
+												<th style="width: 30%">Amount</th>
+											</tr>
+										</thead>
+
+
+
+										<tr>
+											<td></td>
+											<td><b>Part I Particulars of Staff Security Deposits
+													received from Cashiers/POs</b></td>
+											<td></td>
+										</tr>
+
+
+
+
+
+
+										<tr>
+											<td>40001</td>
+											<td>i) Demand Deposits</td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.dmandDep" name="dmandDep"
+												class="form-control decimal-2-places" id="dmandDep"
+												ng-blur="calculateTotal();" maxlength="18"
+												style="text-align: right;" readonly="true"/></td>
+
+										</tr>
+
+										<tr>
+
+											<td>40003</td>
+											<td>ii)Time Deposits</td>
+
+											<td><input type="text" ng-model="ysa.rowYsaData.timeDep"
+												name="timeDep" class="form-control decimal-2-places"
+												id="timeDep" ng-blur="calculateTotal();" maxlength="18"
+												style="text-align: right" readonly="true"/></td>
+
+
+										</tr>
+										<tr>
+
+											<td>40019</td>
+											<td>Total</td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlforstaffsecrty"
+												name="ttlforstaffsecrty" ng-blur="calculateTotal();"
+												id="ttlforstaffsecrty" class="form-control decimal-2-places"
+												maxlength="20" style="text-align: right" readonly="true" /></td>
+										</tr>
+
+
+
+										<tr>
+											<td></td>
+											<td><b>Part II: Break Up Of Oustanding In Suspense
+													Account</b></td>
+											<td></td>
+										</tr>
+
+
+										<tr>
+											<td>40021</td>
+											<td>1. Advances to Staff - TA/HA/Medical ( a + b )</td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.advancesToStaffTA_HA_Medicalab"
+												name="advancesToStaffTA_HA_Medicalab"
+												style="text-align: right;"
+												class="form-control decimal-2-places"
+												id="advancesToStaffTA_HA_Medicalab" readonly="true"
+												maxlength="20" />
+										</tr>
+
+										<tr>
+
+											<td>40023</td>
+											<td>1.a. For the journey/treatment completed on or
+												before {{ysa.qdate}}</td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.jrny_trtmentCompltdOnorBefore_thirtyfirst_March_fifteen"
+												name="jrny_trtmentCompltdOnorBefore_thirtyfirst_March_fifteen"
+												class="form-control decimal-2-places"
+												id="jrny_trtmentCompltdOnorBefore_thirtyfirst_March_fifteen"
+												maxlength="18" style="text-align: right" />
+										</tr>
+										<tr>
+
+											<td>40025</td>
+											<td>1.b. For the journey/treatment not completed on
+												{{ysa.qdate}}</td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.jrny_trtmentNotCompltdOn_thirtyfirst_March_fifteen"
+												name="jrny_trtmentNotCompltdOn_thirtyfirst_March_fifteen"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+
+
+										<tr>
+
+											<td>40027</td>
+											<td>2. Bonus paid to Staff (there should be no
+												outstandings)</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.bonusPaidtoStaff_No_Outstandings"
+												name="bonusPaidtoStaff_No_Outstandings"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+										</tr>
+
+										<tr>
+
+											<td>40029</td>
+											<td>3. Clearing entries outstandings (i.e. clearing
+												cheques returned )</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.clearngEntriesOutstandings_Clear_Chq_Rtrnd"
+												name="clearngEntriesOutstandings_Clear_Chq_Rtrnd"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+											<td>40031</td>
+											<td>4. Clearing differences parked in Suspense A/C (upto
+												{{ysa.a5}} {{ysa.a7}})</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.clearngDiffrncsPrkedinSuspenseAcnt_upto_Thirtyth_Sept_Fortn"
+												name="clearngDiffrncsPrkedinSuspenseAcnt_upto_Thirtyth_Sept_Fortn"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+											<td>40033</td>
+											<td>5. Clearing differences parked in Suspense A/C
+												(after {{ysa.a5}} {{ysa.a7}})</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.clearngDiffrncsPrkedinSuspenseAcnt_after_Thirtyth_Sept_Fortn"
+												name="clearngDiffrncsPrkedinSuspenseAcnt_after_Thirtyth_Sept_Fortn"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+											<td>40034</td>
+											<td>6. Entries outstanding prior to sweeping in Sys Sus
+												A/c 98724</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.entrsOutstndPriortoSweepinginSysSusAcnt98724"
+												name="entrsOutstndPriortoSweepinginSysSusAcnt98724"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+											<td>40035</td>
+											<td>7. Subsidy receivable under PMRY Scheme</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.subsidyRecvbleUnderPMRYSchm"
+												name="subsidyRecvbleUnderPMRYSchm"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+											<td>40037</td>
+											<td>8. Advance payments made for Fixed Assets</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.advcPymntsMadeforFixedAssts"
+												name="advcPymntsMadeforFixedAssts"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+											<td>40039</td>
+											<td>9. Debit on account of Fraud, other losses</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.dbtOnAccntofFraudOthrLos"
+												name="dbtOnAccntofFraudOthrLos"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+
+										<tr>
+											<td>40041</td>
+											<td>10. Law Charges</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.lawCharges" name="lawCharges"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+											<td>40043</td>
+											<td>11. Court Fees</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.courtFees" name="courtFees"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+											<td>40045</td>
+											<td>12. Others</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.othersfrtbl1" name="othersfrtbl1"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+											<td>40049</td>
+											<td><b>Total </b> <span class="label label-danger"
+												style="font: -webkit-control;">should match with YSA
+													comp code [20471]</span></td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.totalfortbl1" name="totalfortbl1"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right" readonly="true" /></td>
+
+										</tr>
+
+										<td></td>
+										<td><b>Part III</b></td>
+
+										<tr>
+											<td>40099</td>
+											<td>Amount of Bankers Cheques issued by debit to Charges
+												Account and outstanding for more than 3 years credited to
+												Charges Account during the year</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.outsstandingfortb11"
+												name="outsstandingfortb11" style="text-align: right;"
+												class="form-control decimal-2-places" maxlength="18" /></td>
+
+										</tr>
+
+
+
+
+
+
+
+
+
+
+										<tr>
+											<td></td>
+											<td><b>Part IV Break Up Of Outstandings In Sundry
+													Deposits Account</b></td>
+											<td></td>
+
+										</tr>
+
+
+										<tr>
+											<td>40101</td>
+											<td>1. Excess found in Cash balance</td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.excsFndinCashbal"
+												name="excsFndinCashbal"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+										</tr>
+
+										<tr>
+
+											<td>40103</td>
+											<td>2.Clearing entries outstanding for Cheques presented
+												in Clearing on {{ysa.qdate}} or the previous working day</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.clearngEntrsOutstndngforChqsPrsntinClron_thrtyFrst_Mar_Fftn_Prv_wrkdy"
+												name="clearngEntrsOutstndngforChqsPrsntinClron_thrtyFrst_Mar_Fftn_Prv_wrkdy"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" />
+										</tr>
+										<tr>
+
+											<td>40105</td>
+											<td>3.Clearing differences parked in Sundry Deposit
+												Account (upto {{ysa.a5}} {{ysa.a7}})</td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.clearngDiffrncsPrkdinSndryDepAcnt_Upto_Thrtyth_Sept_Fortn"
+												name="clearngDiffrncsPrkdinSndryDepAcnt_Upto_Thrtyth_Sept_Fortn"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+
+
+
+
+										<tr>
+
+											<td>40107</td>
+											<td>4. Clearing differences parked in Sundry Deposit
+												Account (after {{ysa.a5}} {{ysa.a7}})</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.clearngDiffrncsPrkdinSndryDepAcnt_after_Thrtyth_Sept_Fortn"
+												name="clearngDiffrncsPrkdinSndryDepAcnt_after_Thrtyth_Sept_Fortn"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+										</tr>
+
+										<tr>
+
+											<td>40109</td>
+											<td>5. Amount held in respect of Constituents' Account
+												for want of full particulars</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.amntHldinRspctofCnstntsAcntforWntofFullPrtclrs"
+												name="amntHldinRspctofCnstntsAcntforWntofFullPrtclrs"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+											<td>40111</td>
+											<td>6. Others</td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.othersfrtbl2a" name="othersfrtbl2a"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+											<td>40119</td>
+											<td><b>Total</b> <span class="label label-danger"
+												style="font: -webkit-control;">should Match With YSA
+													Comp Code [1867]</span></td>
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.totalfortbl2a" name="totalfortbl2a"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right" readonly="true" /></td>
+										</tr>
+
+
+
+
+
+
+										<tr>
+											<td></td>
+											<td><b>Part V Other Monies for which Bank is
+													Contingently liable</b></td>
+											<td></td>
+										</tr>
+
+										<tr>
+											<td>40201</td>
+											<td>Bills Rediscounted with other Banks/ FIs/ IDBI/
+												SIDBI etc.</td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.blsRdscntdWthOthrBnks_FIs_IDBI_SIDBI"
+												name="blsRdscntdWthOthrBnks_FIs_IDBI_SIDBI"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+
+											<td>40203</td>
+											<td>Others,if any (provide the details)</td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.othrs_If_Any_Pvd"
+												name="othrs_If_Any_Pvd"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+										</tr>
+										<tr>
+
+											<td>40210</td>
+											<td><b>Total</b></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.totalfortbl2b" name="totalfortbl2b"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right" readonly="true" /></td>
+
+
+										</tr>
+
+
+
+
+
+
+
+
+										<tr>
+											<td></td>
+											<td><b>Part VI Staff Advances</b></td>
+											<td></td>
+										</tr>
+
+
+
+										<tr>
+											<td>40211</td>
+											<td><b>Interest free staff advances</b> <span
+												class="label label-danger" style="font: -webkit-control;">should
+													Match With YSA Comp Code [20167 + 20199]</span></td>
+
+
+
+											<td style="width: 18%"><input type="text"
+												ng-model="ysa.rowYsaData.intrstFreStf_Advncs"
+												name="intrstFreStf_Advncs"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" readonly="true" /></td>
+
+
+
+
+										</tr>
+
+										<tr>
+
+											<td>40213</td>
+											<td><b>Interest bearing staff advances</b></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.intrstBerngStf_Advncs"
+												name="intrstBerngStf_Advncs"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" readonly="true" /></td>
+										<tr>
+											<td>40219</td>
+											<td><b>Total Staff Advances</b></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlStf_Advncs" name="ttlStf_Advncs"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right" readonly="true" /></td>
+
+
+										</tr>
+
+
+
+									</table>
+
+
+
+									<th><b>Part VII: Letter of Credit, Guarantees,
+											Acceptances & Letter of Undertaking and Corresponding Margin
+											Money & Lien</b></th>
+
+									<table id="example7" class="table table-bordered table-hover">
+
+										<thead>
+											<tr>
+												<th style="width: 10%">Sr.No</th>
+												<th style="width: 30%">Particulars</th>
+
+												<th style="width: 15%">Letter of Credit</th>
+
+												<th style="width: 15%">Guarantees</th>
+
+												<th style="width: 15%">Acceptances</th>
+
+												<th style="width: 15%">Letter of Undertaking</th>
+
+											</tr>
+										</thead>
+
+										<tr>
+
+											<td>A</td>
+											<td>Total Outstanding Inland</td>
+
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlOutstndngInlndLCCol2Row1"
+												name="ttlOutstndngInlndLCCol2Row1"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlOutstndngInlndGrnteCol4Row1"
+												name="ttlOutstndngInlndGrnteCol4Row1"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlOutstndngInlndAcptCol6Row1"
+												name="ttlOutstndngInlndAcptCol6Row1"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlOutstndngInlndLUCol8Row1"
+												name="ttlOutstndngInlndLUCol8Row1"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+										</tr>
+
+										<tr>
+
+											<td>B</td>
+											<td>Total Outstanding Foreign</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlOutstndngFrgnLCCol2Row2"
+												name="ttlOutstndngFrgnLCCol2Row2"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlOutstndngFrgnGrnteCol4Row2"
+												name="ttlOutstndngFrgnGrnteCol4Row2"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlOutstndngFrgnAcptCol6Row2"
+												name="ttlOutstndngFrgnAcptCol6Row2"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlOutstndngFrgnLUCol8Row2"
+												name="ttlOutstndngFrgnLUCol8Row2"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+										</tr>
+										<tr>
+
+											<td>C</td>
+											<td>Total Outstanding (Inland + Foreign) (A+B) <span
+												class="label label-danger" style="font: -webkit-control;">
+													[LC] should match with YSA comp code [02302]<br>
+													[Guarntees] should match with YSA comp code [02301]<br>
+													[Acceptances] should match with YSA comp code [02303] <br>[LOU]
+													should match with YSA comp code [02842+02843]
+											</span>
+
+											</td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlOutstndng_InlndFrgnabLCCol2Row3"
+												name="ttlOutstndng_InlndFrgnabLCCol2Row3"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right" readonly="true" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlOutstndng_InlndFrgnabGrnteCol4Row3"
+												name="ttlOutstndng_InlndFrgnabGrnteCol4Row3"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right" readonly="true" /></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlOutstndng_InlndFrgnabAcptCol6Row3"
+												name="ttlOutstndng_InlndFrgnabAcptCol6Row3"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" readonly="true" /></td>
+
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlOutstndng_InlndFrgnabLUCol8Row3"
+												name="ttlOutstndng_InlndFrgnabLUCol8Row3"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" readonly="true" /></td>
+
+
+										</tr>
+										<tr>
+
+											<td>D</td>
+											<td>Margin Money held in Spl. Current A/c</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.mrgnMnyHldinSplCurntAcntLCCol2Row4"
+												name="mrgnMnyHldinSplCurntAcntLCCol2Row4"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.mrgnMnyHldinSplCurntAcntGrnteCol4Row4"
+												name="mrgnMnyHldinSplCurntAcntGrnteCol4Row4"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.mrgnMnyHldinSplCurntAcntAcptCol6Row4"
+												name="mrgnMnyHldinSplCurntAcntAcptCol6Row4"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.mrgnMnyHldinSplCurntAcntLUCol8Row4"
+												name="mrgnMnyHldinSplCurntAcntLUCol8Row4"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+										</tr>
+
+
+										<tr>
+
+											<td>E</td>
+											<td>Margin Money held in Spl. Term Deposit Account</td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.mrgnMnyHldinSplTrmDepAcntLCCol2Row5"
+												name="mrgnMnyHldinSplTrmDepAcntLCCol2Row5"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.mrgnMnyHldinSplTrmDepAcntGrnteCol4Row5"
+												name="mrgnMnyHldinSplTrmDepAcntGrnteCol4Row5"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.mrgnMnyHldinSplTrmDepAcntAcptCol6Row5"
+												name="mrgnMnyHldinSplTrmDepAcntAcptCol6Row5"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.mrgnMnyHldinSplTrmDepAcntLUCol8Row5"
+												name="mrgnMnyHldinSplTrmDepAcntLUCol8Row5"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+
+											<td>F</td>
+											<td>Margin Money held in Term Deposit Account</td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.mrgnMnyHldinTrmDepAcntLCCol2Row6"
+												name="mrgnMnyHldinTrmDepAcntLCCol2Row6"
+												class="form-control decimal-2-places"
+												style="text-align: right" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.mrgnMnyHldinTrmDepAcntGrnteCol4Row6"
+												name="mrgnMnyHldinTrmDepAcntGrnteCol4Row6"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.mrgnMnyHldinTrmDepAcntAcptCol6Row6"
+												name="mrgnMnyHldinTrmDepAcntAcptCol6Row6"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.mrgnMnyHldinTrmDepAcntLUCol8Row6"
+												name="mrgnMnyHldinTrmDepAcntLUCol8Row6"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+
+											<td>G</td>
+											<td>Lien on Deposits (Current A/c, SB, TDR etc)</td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.lnOnDep_Crnt_Acnt_SB_TDRLCCol2Row7"
+												name="lnOnDep_Crnt_Acnt_SB_TDRLCCol2Row7"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.lnOnDep_Crnt_Acnt_SB_TDRGrnteCol4Row7"
+												name="lnOnDep_Crnt_Acnt_SB_TDRGrnteCol4Row7"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.lnOnDep_Crnt_Acnt_SB_TDRAcptCol6Row7"
+												name="lnOnDep_Crnt_Acnt_SB_TDRAcptCol6Row7"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.lnOnDep_Crnt_Acnt_SB_TDRLUCol8Row7"
+												name="lnOnDep_Crnt_Acnt_SB_TDRLUCol8Row7"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+										</tr>
+
+										<tr>
+
+											<td>H</td>
+											<td>Total Value of Margin Money/Lien held (D+E+F+G) <span
+												class="label label-danger" style="font: -webkit-control;">Total
+													Value of [H] should Match with [L] <br>Total Value [H]
+													can't exceed [C]
+											</span>
+											</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLCCol2Row8"
+												name="ttlValueofMrgnMny_Lien_Hld_defgLCCol2Row8"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right" readonly="true" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgGrnteCol4Row8"
+												name="ttlValueofMrgnMny_Lien_Hld_defgGrnteCol4Row8"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right" readonly="true" /></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgAcptCol6Row8"
+												name="ttlValueofMrgnMny_Lien_Hld_defgAcptCol6Row8"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" readonly="true" /></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLUCol8Row8"
+												name="ttlValueofMrgnMny_Lien_Hld_defgLUCol8Row8"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" readonly="true" /></td>
+
+
+										</tr>
+
+										<tr>
+
+											<td>I</td>
+											<td>Break up of H above</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.brkUpofHAbvLCCol2Row9"
+												name="brkUpofHAbvLCCol2Row9"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" readonly="true" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.brkUpofHAbvGrnteCol4Row9"
+												name="brkUpofHAbvGrnteCol4Row9"
+												class="form-control decimal-2-places" maxlength="18"
+												maxlength="18" style="text-align: right" readonly="true" />
+
+											</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.brkUpofHAbvAcptCol6Row9"
+												name="brkUpofHAbvAcptCol6Row9"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" readonly="true" /></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.brkUpofHAbvLUCol8Row9"
+												name="brkUpofHAbvLUCol8Row9"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" readonly="true" /></td>
+										</tr>
+
+										<tr>
+
+											<td>J</td>
+											<td>On account of Rupee Transactions</td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.onAcntofRupTrnscnsLCCol2Row10"
+												name="onAcntofRupTrnscnsLCCol2Row10"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.onAcntofRupTrnscnsGrnteCol4Row10"
+												name="onAcntofRupTrnscnsGrnteCol4Row10"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.onAcntofRupTrnscnsAcptCol6Row10"
+												name="onAcntofRupTrnscnsAcptCol6Row10"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.onAcntofRupTrnscnsLUCol8Row10"
+												name="onAcntofRupTrnscnsLUCol8Row10"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+
+											<td>K</td>
+											<td>On account of Foreign Currency Transactions</td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLCCol2Row11"
+												name="onAcntofFrnCrrcyTrnscnsLCCol2Row11"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsGrnteCol4Row11"
+												name="onAcntofFrnCrrcyTrnscnsGrnteCol4Row11"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsAcptCol6Row11"
+												name="onAcntofFrnCrrcyTrnscnsAcptCol6Row11"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLUCol8Row11"
+												name="onAcntofFrnCrrcyTrnscnsLUCol8Row11"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" /></td>
+
+										</tr>
+
+										<tr>
+
+											<td>L</td>
+											<td>Total (J+K) <span class="label label-danger"
+												style="font: -webkit-control;">Total Value of [L]
+													should Match with [H] </span></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttl_JKLCCol2Row12"
+												name="ttl_JKLCCol2Row12"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right" readonly="true" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttl_JKGrnteCol4Row12"
+												name="ttl_JKGrnteCol4Row12"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right" readonly="true" /></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttl_JKAcptCol6Row12"
+												name="ttl_JKAcptCol6Row12"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right" readonly="true" /></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ttl_JKLUCol8Row12"
+												name="ttl_JKLUCol8Row12"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right" readonly="true" /></td>
+
+										</tr>
+
+
+										<tr>
+
+											<td>M</td>
+											<td>Net Liability (C- H)</td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ntLiblty_CHLCCol2Row13"
+												name="ntLiblty_CHLCCol2Row13"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right" readonly="true" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ntLiblty_CHGrnteCol4Row13"
+												name="ntLiblty_CHGrnteCol4Row13"
+												class="form-control decimal-2-places"
+												style="text-align: right" readonly="true" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ntLiblty_CHAcptCol6Row13"
+												name="ntLiblty_CHAcptCol6Row13"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right" readonly="true" /></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.ntLiblty_CHLUCol8Row13"
+												name="ntLiblty_CHLUCol8Row13"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right" readonly="true" /></td>
+
+										</tr>
+
+									</table>
+
+
+
+
+
+
+
+									<table id="example8" class="table table-bordered table-hover">
+
+
+										<thead>
+
+
+											<tr>
+												<th style="width: 10%">Comp Code</th>
+												<th style="width: 75%">Particulars</th>
+												<th style="width: 15%">Amount</th>
+											</tr>
+										</thead>
+
+										<tr>
+											<td></td>
+											<td><b>Part VIII Break Up of Bills Rediscounted</b></td>
+											<td></td>
+										</tr>
+
+
+										<tr>
+
+											<td>40500</td>
+											<td>Standard Assets</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.stndrdAsstLCCol2Row1"
+												name="stndrdAsstLCCol2Row1"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" readonly="true" /></td>
+										</tr>
+										<tr>
+											<td>40505</td>
+											<td>Sub Standard Assets</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.subStndrdAsstLCCol2Row2"
+												name="subStndrdAsstLCCol2Row2"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" readonly="true" /></td>
+										</tr>
+
+										<tr>
+											<td>40510</td>
+											<td>Doubtful Assets</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.dubtflAsstLCCol2Row3"
+												name="dubtflAsstLCCol2Row3"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" readonly="true" /></td>
+										</tr>
+
+										<tr>
+											<td>40511</td>
+											<td>Loss Assets</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.lsAsstLCCol2Row4"
+												name="lsAsstLCCol2Row4"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" readonly="true"  /></td>
+										</tr>
+
+										<tr>
+											<td>40515</td>
+											<td><b>Sub Total=(40500+40505+40510+40511)</b> <span
+												class="label label-danger" style="font: -webkit-control;">
+													<!-- [01027] Bills
+																		Rediscounted and [40515] Sub-Total (assets-wise) should
+																		match. --> should match with (40201) Bills
+													Rediscounted
+
+											</span></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.subTtl_OnToThreForLCCol2Row5"
+												name="subTtl_OnToThreForLCCol2Row5"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right;" readonly="true" /></td>
+										</tr>
+
+										<tr>
+											<td>40520</td>
+											<td>Secured by tangible assets</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.scrdbyTngblAsstLCCol2Row6"
+												name="scrdbyTngblAsstLCCol2Row6"
+												class="form-control decimal-2-places" maxlength="18"
+													   readonly="true" style="text-align: right;" /></td>
+										</tr>
+
+										<tr>
+											<td>40525</td>
+											<td>Secured by bank guarantee</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.scrdbyBnkGrnteLCCol2Row7"
+												name="scrdbyBnkGrnteLCCol2Row7"
+												class="form-control decimal-2-places" maxlength="18"
+													   readonly="true" style="text-align: right;" /></td>
+										</tr>
+
+										<tr>
+											<td>40530</td>
+											<td>Unsecured</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.unSecrdLCCol2Row8"
+												name="unSecrdLCCol2Row8"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" readonly="true" /></td>
+										</tr>
+
+										<tr>
+											<td>40535</td>
+											<td><b>Sub Total= (40520+40525+40530) </b> <span
+												class="label label-danger" style="font: -webkit-control;">
+													<!-- [01027] Bills
+																		Rediscounted and [40535] Sub-Total (security-wise) should
+																		match. --> should match with (40201) Bills
+													Rediscounted
+											</span></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.subTtl_Six_Svn_EghtLCCol2Row9"
+												name="subTtl_Six_Svn_EghtLCCol2Row9"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right;" readonly="true" /></td>
+										</tr>
+										<tr>
+											<td>40540</td>
+											<td>Priority Sector</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.prirtySectLCCol2Row10"
+												name="prirtySectLCCol2Row10"
+												class="form-control decimal-2-places"
+												style="text-align: right;" readonly="true"/></td>
+										</tr>
+
+										<tr>
+											<td>40545</td>
+											<td>Public Sector</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.publcSectLCCol2Row11"
+												name="publcSectLCCol2Row11"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" readonly="true" /></td>
+										</tr>
+
+										<tr>
+											<td>40550</td>
+											<td>Banks</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.bnksfrtbl3LCCol2Row12"
+												name="bnksfrtbl3LCCol2Row12"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" readonly="true" /></td>
+										</tr>
+
+										<tr>
+											<td>40555</td>
+											<td>Others</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.othersfrtbl3LCCol2Row13"
+												name="othersfrtbl3LCCol2Row13"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" readonly="true" /></td>
+										</tr>
+
+										<tr>
+											<td>40560</td>
+											<td><b>Sub Total= (40540+40545+40550+40555)</b> <span
+												class="label label-danger" style="font: -webkit-control;">
+													<!-- [01027] Bills
+																		Rediscounted and [40560] Sub-Total (Sector-wise) should
+																		match. --> should match with (40201) Bills
+													Rediscounted
+											</span></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.subTtl_Ten_Elvn_Twlv_ThrtnLCCol2Row14"
+												name="subTtl_Ten_Elvn_Twlv_ThrtnLCCol2Row14"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right;" readonly="true" /></td>
+										</tr>
+
+
+
+									</table>
+
+
+
+
+
+
+
+
+									<table id="example9" class="table table-bordered table-hover">
+
+										<thead>
+
+											<tr>
+												<th></th>
+												<th>Part IX Claims Against Bank Not Acknowledged as
+													Debts</th>
+												<th></th>
+												<th></th>
+											</tr>
+
+											<tr>
+												<th style="width: 10%">Comp Code</th>
+												<th style="width: 60%">Particulars</th>
+
+												<th style="width: 15%">No. of Claims</th>
+												<th style="width: 15%">Amount in Rs.</th>
+
+
+											</tr>
+										</thead>
+
+										<tr>
+
+											<td>40575</td>
+											<td>Counter suits filed by borrowers against whom Bank
+												has initiated legal action</td>
+
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.cntrSutsFldByBrwrsAgnstWhmBnkIntLglActnNoCol2Row1"
+												name="cntrSutsFldByBrwrsAgnstWhmBnkIntLglActnNoCol2Row1"
+												class="form-control positive-integer" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.cntrSutsFldByBrwrsAgnstWhmBnkIntLglActnAmntCol4Row1"
+												name="cntrSutsFldByBrwrsAgnstWhmBnkIntLglActnAmntCol4Row1"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+
+										</tr>
+
+										<tr>
+
+											<td>40580</td>
+											<td>Suits filed against Bank in Customer Service Courts
+												for deficiency in services</td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgntBnkInCustServCrtsForDefcncyInServcNoCol2Row2"
+												name="sutsFldAgntBnkInCustServCrtsForDefcncyInServcNoCol2Row2"
+												class="form-control positive-integer" maxlength="18"
+												style="text-align: right;" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgntBnkInCustServCrtsForDefcncyInServcAmntCol4Row2"
+												name="sutsFldAgntBnkInCustServCrtsForDefcncyInServcAmntCol4Row2"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+
+
+
+
+
+
+										</tr>
+										<tr>
+
+											<td>40585</td>
+											<td>Suits filed against Bank for non-sanction of
+												advances, non-issue of LC, BG</td>
+
+
+
+											<td style="text-align: left;"><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgnstBnkforNonSnctnofAdvncNonIsseofLCBGNoCol2Row3"
+												name="sutsFldAgnstBnkforNonSnctnofAdvncNonIsseofLCBGNoCol2Row3"
+												class="form-control positive-integer" maxlength="18"
+												style="text-align: right;" /></td>
+
+											<td style="text-align: left;"><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgnstBnkforNonSnctnofAdvncNonIsseofLCBGAmntCol4Row3"
+												name="sutsFldAgnstBnkforNonSnctnofAdvncNonIsseofLCBGAmntCol4Row3"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+
+
+
+
+
+
+
+										</tr>
+										<tr>
+
+											<td>40590</td>
+											<td>Delayed period interest claims in Government
+												business</td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.dlydPrdIntrstClmsInGovrnBusnsLCBGNoCol2Row4"
+												name="dlydPrdIntrstClmsInGovrnBusnsLCBGNoCol2Row4"
+												class="form-control positive-integer" maxlength="18"
+												style="text-align: right;" /></td>
+
+											<td style="text-align: left;"><input type="text"
+												ng-model="ysa.rowYsaData.dlydPrdIntrstClmsInGovrnBusnsAmntCol4Row4"
+												name="dlydPrdIntrstClmsInGovrnBusnsAmntCol4Row4"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+
+
+
+
+
+
+
+										</tr>
+
+
+										<tr>
+
+											<td>40595</td>
+											<td>Suits filed against Bank by landlords for recovery
+												of rent</td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgnstBnkByLndlrdforRcvryofRentNoCol2Row5"
+												name="sutsFldAgnstBnkByLndlrdforRcvryofRentNoCol2Row5"
+												class="form-control positive-integer" maxlength="18"
+												style="text-align: right;" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgnstBnkByLndlrdforRcvryofRentAmntCol4Row5"
+												name="sutsFldAgnstBnkByLndlrdforRcvryofRentAmntCol4Row5"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+
+
+
+
+
+										</tr>
+
+										<tr>
+
+											<td>40600</td>
+											<td>Suits filed against Bank for misplacement/ loss of
+												documents sent for collection</td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgnstBnkforMsplcmntlssofdocsSntforClctnNoCol2Row6"
+												name="sutsFldAgnstBnkforMsplcmntlssofdocsSntforClctnNoCol2Row6"
+												class="form-control positive-integer" maxlength="18"
+												style="text-align: right;" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgnstBnkforMsplcmntlssofdocsSntforClctnAmntCol4Row6"
+												name="sutsFldAgnstBnkforMsplcmntlssofdocsSntforClctnAmntCol4Row6"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+
+
+
+
+
+										</tr>
+
+										<tr>
+
+											<td>40605</td>
+											<td>Suits filed against Bank for failure of Bank to
+												return forged bills</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgnstBnkforFlreofBnktoRtrnFrgdBllsNoCol2Row7"
+												name="sutsFldAgnstBnkforFlreofBnktoRtrnFrgdBllsNoCol2Row7"
+												class="form-control positive-integer" maxlength="18"
+												style="text-align: right;" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgnstBnkforFlreofBnktoRtrnFrgdBllsAmntCol4Row7"
+												name="sutsFldAgnstBnkforFlreofBnktoRtrnFrgdBllsAmntCol4Row7"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+
+
+
+
+
+
+										</tr>
+
+										<tr>
+
+											<td>40610</td>
+											<td>Suits filed against Bank for excess charge of
+												interest/commission/exchange</td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgnstBnkforExcsChrgofIntrst_CmmssnExchgeNoCol2Row8"
+												name="sutsFldAgnstBnkforExcsChrgofIntrst_CmmssnExchgeNoCol2Row8"
+												class="form-control positive-integer" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgnstBnkforExcsChrgofIntrst_CmmssnExchgeAmntCol4Row8"
+												name="sutsFldAgnstBnkforExcsChrgofIntrst_CmmssnExchgeAmntCol4Row8"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+
+
+
+
+										</tr>
+
+										<tr>
+
+											<td>40615</td>
+											<td>Suits filed against Bank for misfeasance by the Bank
+												staff</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgnstBnkforMsfescebytheBnkStfNoCol2Row9"
+												name="sutsFldAgnstBnkforMsfescebytheBnkStfNoCol2Row9"
+												class="form-control positive-integer" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgnstBnkforMsfescebytheBnkStfAmntCol4Row9"
+												name="sutsFldAgnstBnkforMsfescebytheBnkStfAmntCol4Row9"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+
+
+
+										</tr>
+										<tr>
+
+											<td>40620</td>
+											<td>Suits filed against Bank against the Bank's right of
+												set-offs</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgnstBnkAgnsttheBnksRgtofSetOfsNoCol2Row10"
+												name="sutsFldAgnstBnkAgnsttheBnksRgtofSetOfsNoCol2Row10"
+												class="form-control positive-integer" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.sutsFldAgnstBnkAgnsttheBnksRgtofSetOfsAmntCol4Row10"
+												name="sutsFldAgnstBnkAgnsttheBnksRgtofSetOfsAmntCol4Row10"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+
+
+
+										</tr>
+
+
+
+										<tr>
+
+											<td>42335</td>
+											<td>Demand Notice u/s 201 of Income Tax Act (relating to
+												TDS) from Income Tax Department</td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.dmndNotcU_S201ofIncmeTxAct_ReltngTDS_fromIncmeTaxDepmntNoCol2Row11"
+												name="dmndNotcU_S201ofIncmeTxAct_ReltngTDS_fromIncmeTaxDepmntNoCol2Row11"
+												class="form-control positive-integer" maxlength="18"
+												style="text-align: right;" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.dmndNotcU_S201ofIncmeTxAct_ReltngTDS_fromIncmeTaxDepmntAmntCol4Row11"
+												name="dmndNotcU_S201ofIncmeTxAct_ReltngTDS_fromIncmeTaxDepmntAmntCol4Row11"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+
+
+
+
+
+										</tr>
+
+										<tr>
+
+											<td>42337</td>
+											<td>Demand-cum-Show Cause Notice received from Service
+												Tax Department (Only for CAO)</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.demnd_Cum_ShowCauseNotcRcvdfromSrvceTaxDepmnt_OnlforCAONoCol2Row12"
+												name="demnd_Cum_ShowCauseNotcRcvdfromSrvceTaxDepmnt_OnlforCAONoCol2Row12"
+												class="form-control positive-integer" maxlength="18"
+												style="text-align: right;" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.demnd_Cum_ShowCauseNotcRcvdfromSrvceTaxDepmnt_OnlforCAOAmntCol4Row12"
+												name="demnd_Cum_ShowCauseNotcRcvdfromSrvceTaxDepmnt_OnlforCAOAmntCol4Row12"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+
+
+
+
+
+										</tr>
+
+
+										<tr>
+
+											<td>40625</td>
+											<td>Any other claim not acknowledge as debt ( as per
+												details below)</td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.anyOthrClamNotAcknwldgasDebt_DtlsblwFldRecCol1Row12NoCol2Row13"
+												name="anyOthrClamNotAcknwldgasDebt_DtlsblwFldRecCol1Row12NoCol2Row13"
+												class="form-control positive-integer" maxlength="18"
+												style="text-align: right;" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.anyOthrClamNotAcknwldgasDebt_DtlsblwFldRecCol1Row12AmntCol4Row13"
+												name="anyOthrClamNotAcknwldgasDebt_DtlsblwFldRecCol1Row12AmntCol4Row13"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+
+
+
+
+
+										</tr>
+										<tr>
+
+											<td>40630</td>
+											<td><b>Total</b></td>
+
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.totalfortbl4NoCol2Row14"
+												name="totalfortbl4NoCol2Row14"
+												class="form-control positive-integer" maxlength="20"
+												style="text-align: right;" readonly="true" /></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.totalfortbl4AmntCol4Row14"
+												name="totalfortbl4AmntCol4Row14"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right;" readonly="true" /></td>
+
+
+
+
+
+										</tr>
+
+
+
+
+									</table>
+
+
+
+
+
+									<table id="example10" class="table table-bordered table-hover">
+
+
+
+
+										<tr>
+											<th style="width: 10%"></th>
+											<th style="width: 75%">Part X Partly Paid Investments
+												And Other Commitments(For Global Markets only)</th>
+											<th style="width: 15%"></th>
+										</tr>
+
+										<tr>
+											<th>Comp Code</th>
+											<th>Particulars</th>
+
+
+											<th>Amount in Rs.</th>
+
+
+										</tr>
+
+										<tr>
+
+											<td>40650</td>
+											<td>Partly paid investments (For Global Markets only)</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.prtlyPadInvstmnt_For_Glbl_Mrkts_OnlyAmntCol2Row11"
+												name="prtlyPadInvstmnt_For_Glbl_Mrkts_OnlyAmntCol2Row11"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+										<tr>
+											<td>42355</td>
+											<td>Undrawn Commitments for Venture Capital Funds/
+												Alternate Investment Funds (For Global Markets only)</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.undrwnCmmtmntsForVntrCptlFnd_Altrnte_Invst_FndsFor_Glbl_Mrkts_OnlyAmntCol2Row12"
+												name="undrwnCmmtmntsForVntrCptlFnd_Altrnte_Invst_FndsFor_Glbl_Mrkts_OnlyAmntCol2Row12"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+										</tr>
+
+										<!-- <tr>
+																<td>3</td>
+																<td><input type="text"  ng-model="ysa.undrwnCmmtmntsForVntrCptlFnd_Altrnte_Invst_FndsFor_Glbl_Mrkts_OnlyAmntCol1Row13"  name="undrwnCmmtmntsForVntrCptlFnd_Altrnte_Invst_FndsFor_Glbl_Mrkts_OnlyAmntCol1Row13"
+																		
+																		class="form-control decimal-2-places" maxlength="50"
+																		style="text-align: left;" /></td>
+
+
+																<td><input type="text"  ng-model="ysa.undrwnCmmtmntsForVntrCptlFnd_Altrnte_Invst_FndsFor_Glbl_Mrkts_OnlyAmntCol2Row13"  name="undrwnCmmtmntsForVntrCptlFnd_Altrnte_Invst_FndsFor_Glbl_Mrkts_OnlyAmntCol2Row13"
+																		
+																		class="form-control decimal-2-places"
+																		onblur="calculateTotal();checkisNegative('undrwnCmmtmntsForVntrCptlFnd_Altrnte_Invst_FndsFor_Glbl_Mrkts_OnlyAmntCol2Row13');"
+																		maxlength="18" style="text-align: right;" /></td>
+															</tr>
+
+															<tr>
+																<td>4</td>
+																<td><input type="text"  ng-model="ysa.undrwnCmmtmntsForVntrCptlFnd_Altrnte_Invst_FndsFor_Glbl_Mrkts_OnlyAmntCol1Row14"  name="undrwnCmmtmntsForVntrCptlFnd_Altrnte_Invst_FndsFor_Glbl_Mrkts_OnlyAmntCol1Row14"
+																		
+																		class="form-control decimal-2-places" maxlength="50"
+																		style="text-align: left;" /></td>
+
+
+																<td><input type="text"  ng-model="ysa.undrwnCmmtmntsForVntrCptlFnd_Altrnte_Invst_FndsFor_Glbl_Mrkts_OnlyAmntCol2Row14"  name="undrwnCmmtmntsForVntrCptlFnd_Altrnte_Invst_FndsFor_Glbl_Mrkts_OnlyAmntCol2Row14"
+																	
+																		class="form-control decimal-2-places"
+																		onblur="calculateTotal();checkisNegative('undrwnCmmtmntsForVntrCptlFnd_Altrnte_Invst_FndsFor_Glbl_Mrkts_OnlyAmntCol2Row14');"
+																		maxlength="18" style="text-align: right;" /></td>
+															</tr> -->
+
+
+										<tr>
+											<td>40660</td>
+											<td>TOTAL</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.totalfortbl5AmntCol2Row13"
+												name="totalfortbl5AmntCol2Row13"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right;" readonly="true" /></td>
+										</tr>
+
+
+
+									</table>
+
+
+
+
+									<table id="example5" class="table table-bordered table-hover">
+
+										<tr>
+											<th style="width: 10%"></th>
+											<th style="width: 75%">Part XI Bills For Collection</th>
+											<th style="width: 15%"></th>
+										</tr>
+
+										<tr>
+											<th>Comp Code</th>
+											<th>Particulars</th>
+
+
+											<th style="width: 15%">Amount in Rs.</th>
+
+
+										</tr>
+
+										<tr>
+
+											<td></td>
+											<td colspan="3"><b>I. Payable in India</b></td>
+										<tr>
+											<td>40675</td>
+											<td>For which control entries are passed</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.forWhchInCntrlEntrsrPssdAmntCol2Row12"
+												name="forWhchInCntrlEntrsrPssdAmntCol2Row12"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+										</tr>
+
+										<tr>
+											<td>40680</td>
+											<td>For which no control entries are passed</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.forWhchInNoCntrlEntrsrPssdAmntCol2Row13"
+												name="forWhchInNoCntrlEntrsrPssdAmntCol2Row13"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+										</tr>
+
+										<tr>
+											<td>40685</td>
+											<td><b>Total I </b> <span class="label label-danger"
+												style="font: -webkit-control;"> should match with YSA
+													comp code [20601]</span></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.totalfortbl6IAmntCol2Row14"
+												name="totalfortbl6IAmntCol2Row14"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" readonly="true" /></td>
+
+
+
+
+
+
+
+										</tr>
+
+										<tr>
+											<td></td>
+											<td colspan="3"><b>II. Payable outside India</b></td>
+
+
+										</tr>
+
+										<tr>
+											<td>40695</td>
+											<td>(i) For which control entries are passed</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.forWhchOutCntrlEntrsrPssdAmntCol2Row16"
+												name="forWhchOutCntrlEntrsrPssdAmntCol2Row16"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+										</tr>
+
+										<tr>
+											<td>40700</td>
+											<td>(ii) For which no control entries are passed</td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.forWhchOutNoCntrlEntrsrPssdAmntCol2Row17"
+												name="forWhchOutNoCntrlEntrsrPssdAmntCol2Row17"
+												class="form-control decimal-2-places" maxlength="18"
+												style="text-align: right;" /></td>
+										</tr>
+
+										<tr>
+											<td>40705</td>
+											<td><b>Total II </b> <span class="label label-danger"
+												style="font: -webkit-control;"> should match with YSA
+													comp code [20602]</span></td>
+
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.totalfortbl6IIAmntCol2Row18"
+												name="totalfortbl6IIAmntCol2Row18"
+												class="form-control decimal-2-places"
+												style="text-align: right;" readonly="true" /></td>
+										</tr>
+
+										<tr>
+											<td>40710</td>
+											<td><b>TOTAL [I + II]</b></td>
+
+											<td><input type="text"
+												ng-model="ysa.rowYsaData.totalIandIIAmntCol2Row19"
+												name="totalIandIIAmntCol2Row19"
+												class="form-control decimal-2-places" maxlength="20"
+												style="text-align: right;" readonly="true" /></td>
+
+
+										</tr>
+
+										<!--   <tr>
+                                                        		        <input type="hidden" ng-model="ysa.rowYsaData.forCCode20601" name="forCCode20601">
+																		<input type="hidden" ng-model="ysa.rowYsaData.forCCode20602" name="forCCode20602">
+																		<input type="hidden" ng-model="ysa.rowYsaData.forCCode02301" name="forCCode02301">
+																		<input type="hidden" ng-model="ysa.rowYsaData.forCCode02302" name="forCCode02302">
+																		<input type="hidden" ng-model="ysa.rowYsaData.forCCode02303" name="forCCode02303">
+																		<input type="hidden" ng-model="ysa.rowYsaData.forCCode02842" name="forCCode02842">
+																		<input type="hidden" ng-model="ysa.rowYsaData.forCCode02843" name="forCCode02843">
+																		<input type="hidden" ng-model="ysa.rowYsaData.forCCode01027" name="forCCode01027">
+																		
+																		<input type="hidden" ng-model="ysa.rowYsaData.forCCode20471" name="forCCode20471">
+																		<input type="hidden" ng-model="ysa.rowYsaData.forCCode01867" name="forCCode01867">
+																		<input type="hidden" ng-model="ysa.rowYsaData.forCCode20167" name="forCCode20167">
+																		<input type="hidden" ng-model="ysa.rowYsaData.forCCode20199" name="forCCode20199">
+                                                        
+                                                        
+                                                        </tr>
+
+ -->
+
+
+									</table>
+
+
+
+								</div>
+
+
+
+
+
+
+								<!-- <button class="btn btn-default" ng-click="submitYSA(row);" >Submit</button> -->
+
+								<!-- <button class="btn btn-primary" ng-click="ysa.submitYSA(rowYsaData);" type="submit">Submit</button>
+         
+          <button class="btn btn-primary" ng-click="ysa.validate(rowYsaData);" type="submit">Validate Me</button> -->
+
+								<!-- </form> -->
+
+
+
+
+
+
+
+
+
+
+
+								<!-- 				</div>
+				
+				
+				
+			</div>
+			
+			
+			
+		</div>
+		 -->
+
+
+
+
+
+
+
+
+
+
+
+								<!-- <div ng-show="myvalue1" class="hideByDefault"> -->
+
+								<div class="tab-pane " id="Error">
+
+									<!-- <div ng-show="Error" class="hideByDefault"> -->
+
+
+
+									<section class="content-header">
+										<h3>Click on Validate me and Please, Solve errors before
+											submitting :-</h3>
+
+
+										<div ng-show="myvalue" class="hideByDefault">
+											<table id="example2"
+												class="table table-hover table-responsive no-padding dataTable no-footer"
+												style="width: 100%">
+												<thead>
+													<tr>
+														<th style="width: 100%">Errors-</th>
+												</thead>
+
+												<tr data-ng-repeat="row in validateArray">
+													<td><a ng-click="ysa.GoToValidate(row.BeanName)">{{row.ErrorName}}</a></td>
+												</tr>
+											</table>
+										</div>
+
+									</section>
+
+									<!-- </div> -->
+
+								</div>
+
+								<!-- </div> -->
+
+
+
+							</div>
+			</form>
+		</div>
+
+	</div>
+</div>
+</div>
+
+
+</div>
+</div>
+
+
+
+
+
+
+
+<div class="modal fade" id="myModal2" role="dialog"
+	style="z-index: 1400">
+	<div class="modal-dialog">
+
+		<!-- Modal content-->
+		<div class="modal-content">
+			<div class="modal-header" style="background-color: #E74C3C";>
+				<!--<button type="button" class="close" data-dismiss="modal">�</button> -->
+				<h4 class="modal-title" style="color: white;">Errors!</h4>
+			</div>
+			<div class="modal-body" id="popup">
+				<table id="example2"
+					class="table table-hover table-responsive no-padding dataTable no-footer"
+					style="width: 100%">
+
+					<tr data-ng-repeat="row in validateArray">
+						<td>{{row}}
+					</tr>
+				</table>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default btn-success"
+					data-dismiss="modal">Continue</button>
+			</div>
+
+
+		</div>
+	</div>
+
+
+
+</div>
+
+
+
+
+
+
+
+<div class="modal fade" id="myModal1" role="dialog"
+	style="z-index: 1400">
+	<div class="modal-dialog">
+
+		<!-- Modal content-->
+		<div class="modal-content">
+			<div class="modal-header" style="background-color: #E74C3C";>
+				<!--<button type="button" class="close" data-dismiss="modal">�</button> -->
+				<h4 class="modal-title" style="color: white;">Attention!</h4>
+			</div>
+			<div class="modal-body" id="popup">
+				{{ysa.displayMessage}}
+
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default btn-success"
+					data-dismiss="modal" ng-click="main.redirect();">Continue</button>
+			</div>
+
+
+		</div>
+	</div>
+
+
+
+</div>
+
+
+<div class="modal fade" id="myModal55" role="dialog"
+	style="z-index: 1400">
+	<div class="modal-dialog">
+
+		<!-- Modal content-->
+		<div class="modal-content">
+			<div class="modal-header" style="background-color: #E74C3C";>
+				<!--<button type="button" class="close" data-dismiss="modal">�</button> -->
+				<h4 class="modal-title" style="color: white;">Attention!</h4>
+			</div>
+			<div class="modal-body" id="popup">
+				<table id="example2"
+					class="table table-hover table-responsive no-padding dataTable no-footer"
+					style="width: 100%">
+					<thead>
+						<!-- <tr> -->
+						<th style="width: 100%"></th>
+					</thead>
+					<!-- 	<tr data-ng-repeat="row in ysa.getPreRequiAmount"> -->
+					<th>The values for pre checks of comp codes are as follows:-</th>
+					<tr data-ng-repeat="(key,value) in ysa.getPreRequiAmount ">
+						<!-- <tr>{{row}}</tr> -->
+						<td>{{key}} = {{value}}</td>
+					</tr>
+				</table>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default btn-success"
+					data-dismiss="modal">Continue</button>
+			</div>
+
+
+		</div>
+	</div>
+
+
+
+</div>
+
+
+
+<div class="modal fade" id="myModal33" role="dialog"
+	style="z-index: 1400">
+	<div class="modal-dialog">
+
+		<!-- Modal content-->
+		<div class="modal-content">
+			<div class="modal-header" style="background-color: #E74C3C";>
+				<!--<button type="button" class="close" data-dismiss="modal">�</button> -->
+				<h4 class="modal-title" style="color: white;">Attention!</h4>
+			</div>
+			<div class="modal-body" id="popup">
+				{{ysa.displayMessage111}}
+
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default btn-success"
+					ng-click="ysa.YesSubmitYsa(ysa.rowYsaData);" data-dismiss="modal">YES</button>
+
+				<button type="button" class="btn btn-default btn-success"
+					data-dismiss="modal">No</button>
+			</div>
+
+
+		</div>
+	</div>
+
+
+
+</div>
+
+
+
+
+
+
+
+<div class="modal fade" id="myModal4" role="dialog" style="z-index : 1400">
+	<div class="modal-dialog">
+
+		<!-- Modal content-->
+		<div class="modal-content">
+			<div class="modal-header" style="background-color: #E74C3C";>
+				<!--<button type="button" class="close" data-dismiss="modal">�</button> -->
+				<h4 class="modal-title" style="color: white;">Attention!</h4>
+			</div>
+			<div class="modal-body" id="popup">
+				{{ysa.displayMessage}}
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-success" data-dismiss="modal" >Continue</button>
+			</div>
+
+
+		</div>
+	</div>
+</div>
+
+
+
+
+
+
+
+//Controller code
+
+
+
+app
+    .controller('YSAController', function ($scope, $rootScope, $http, $window, $sessionStorage, $state, $location, adminReportFactory, Idle, Keepalive, $modal, ModalService, userFactory, ysaFactory, refreshFactory, AES256) {
+        if ($rootScope.reportObject == undefined) {
+            refreshFactory.backToState();
+            return;
+        }
+        $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
+
+        var ysa = this;
+
+        ysa.qdate = $scope.sessionUser.quarterEndDate;
+
+
+        var a1 = $scope.sessionUser.quarterEndDate;
+        var quarter_end_date = $scope.sessionUser.quarterEndDate.toString().replace("/", ".");
+        var previousYearEndDate = $scope.sessionUser.previousYearEndDate.toString().replace("/", ".");
+        var quayear = $scope.sessionUser.quarter.toString();
+
+        var b1 = $scope.sessionUser.previousQuarterEndDate.toString();
+
+
+        var a2 = "";
+        var a4 = "";
+        var a5 = "";
+        var a8 = "";
+        var a6 = "";
+        var a7 = "";
+        var prevYear = "";
+        var curYear = quarter_end_date.substring(6, 10);
+
+
+        if (quayear == "Q1") {
+            a2 = a1.replace("06", "th June ").replace("/", "");
+            a4 = "QSA";
+            ysa.a5 = "31st December,";
+            a8 = "June";
+            a6 = previousYearEndDate.substring(6, 10);
+            ysa.a7 = previousYearEndDate.substring(6, 10);
+            prevYear = quarter_end_date.substring(6, 10);
+        }
+
+        if (quayear == "Q2") {
+            a2 = a1.replace("09", "th September ").replace("/", "");
+            a4 = "QSA";
+            ysa.a5 = "31st March,";
+            a8 = "September";
+            a6 = quarter_end_date.substring(6, 10);
+            ysa.a7 = quarter_end_date.substring(6, 10);
+            prevYear = quarter_end_date.substring(6, 10);
+        }
+
+        if (quayear == "Q3") {
+            a2 = a1.replace("12", "st December ").replace("/", "");
+            a4 = "QSA";
+            ysa.a5 = "30th June,";
+            a8 = "December";
+            a6 = quarter_end_date.substring(6, 10);
+            ysa.a7 = quarter_end_date.substring(6, 10);
+            prevYear = quarter_end_date.substring(6, 10);
+        }
+        if (quayear == "Q4") {
+            a2 = a1.replace("03", "st March").replace("/", " ");
+            a4 = "YSA";
+            ysa.a5 = "30th September,";
+            a8 = "March";
+            a6 = previousYearEndDate.substring(6, 10);
+            ysa.a7 = b1.substring(6, 10);
+            prevYear = previousYearEndDate.substring(6, 10);
+        }
+
+
+        var forCCode02301;
+        var forCCode02302;
+        var forCCode02303;
+        var forCCode02842;
+        var forCCode02843;
+        var forCCode20601;
+        var forCCode20602;
+
+        var forCCode01027;
+
+        var forCCode20471;
+        var forCCode01867;
+        var forCCode20167;
+        var forCCode20199;
+
+        $scope.started = false;
+        var reportObject = $rootScope.reportObject;
+        console.log('inside ysacontroller ' + JSON.stringify($rootScope.reportObject));
+
+        ysa.getPreRequiAmount = {};
+
+        var row = {
+            'circleCode': $scope.sessionUser.circleCode, 'quarterEndDate': $scope.sessionUser.quarterEndDate
+        };
+
+        ysaFactory.getPreRequisteHeaderAmount(row).then(function (data) {
+
+            ysa.getPreRequiAmount = data;
+            console.log(data);
+            var a, b, c, d, e, f, g, h, i, j, k, l;
+
+            for (var keyName in data) {
+                var key = keyName;
+                var value = data[keyName];
+                if (key == "02302") {
+                    b = value;
+                }
+                if (key == "02303") {
+                    c = value;
+                }
+
+                if (key == "02301") {
+                    a = value;
+                }
+
+                if (key == "02843") {
+                    e = value;
+                }
+
+                if (key == "02842") {
+                    d = value;
+                }
+
+                if (key == "20601") {
+                    f = value;
+                }
+
+                if (key == "20602") {
+                    g = value;
+                }
+
+                if (key == "01027") {
+                    h = value;
+                }
+
+                if (key == "20471") {
+                    i = value;
+                }
+
+                if (key == "01867") {
+                    j = value;
+                }
+
+                if (key == "20167") {
+                    k = value;
+                }
+
+                if (key == "20199") {
+                    l = value;
+                }
+            }
+
+            forCCode02301 = a;
+            forCCode02302 = b;
+            forCCode02303 = c;
+            forCCode02842 = d;
+            forCCode02843 = e;
+            forCCode20601 = f;
+            forCCode20602 = g;
+
+            forCCode01027 = h;
+
+            forCCode20471 = i;
+            forCCode01867 = j;
+            forCCode20167 = k;
+            forCCode20199 = l;
+
+        }, function (errResponse) {
+            console.error('Error while submit ysa');
+        });
+
+        ysa.PreCheckAmount = function () {
+
+            $('#myModal55').modal({
+                backdrop: 'static', keyboard: false, modal: true
+            });
+
+        }
+
+        ysa.submitYSA = function (rowYsaData, save) {
+
+            console.log("********* for saving data ? " + save);
+            var i = {};
+            i = ysa.rowYsaData;
+            console.log(i);
+            var circleCode = $scope.sessionUser.circleCode;
+            var quarterEndDate = $scope.sessionUser.quarterEndDate;
+            var row1 = {
+                'circleCode': circleCode,
+                'quarterEndDate': quarterEndDate,
+                'userId': $scope.sessionUser.userId,
+                'reportName': reportObject.name,
+                'reportId': reportObject.reportId,
+                'reportMasterId': reportObject.reportMasterId,
+                'status': reportObject.status,
+                'areMocPending': reportObject.areMocPending,
+                'save': save
+            };
+
+            var copy = angular.extend({}, i, row1);
+
+            var validateArray = [];
+            var valid = true;
+
+            // alert(ysa.rowYsaData.intrstFreStf_Advncs);
+
+            if (ysa.rowYsaData.blsRdscntdWthOthrBnks_FIs_IDBI_SIDBI == null || ysa.rowYsaData.blsRdscntdWthOthrBnks_FIs_IDBI_SIDBI == "") {
+                ysa.rowYsaData.blsRdscntdWthOthrBnks_FIs_IDBI_SIDBI = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.intrstFreStf_Advncs == null || ysa.rowYsaData.intrstFreStf_Advncs == "") {
+                ysa.rowYsaData.intrstFreStf_Advncs = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLCCol2Row11 == null || ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLCCol2Row11 == "") {
+                ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLCCol2Row11 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsGrnteCol4Row11 == null || ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsGrnteCol4Row11 == "") {
+                ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsGrnteCol4Row11 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsAcptCol6Row11 == null || ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsAcptCol6Row11 == "") {
+                ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsAcptCol6Row11 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLUCol8Row11 == null || ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLUCol8Row11 == "") {
+                ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLUCol8Row11 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.onAcntofRupTrnscnsLCCol2Row10 == null || ysa.rowYsaData.onAcntofRupTrnscnsLCCol2Row10 == "") {
+                ysa.rowYsaData.onAcntofRupTrnscnsLCCol2Row10 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.onAcntofRupTrnscnsGrnteCol4Row10 == null || ysa.rowYsaData.onAcntofRupTrnscnsGrnteCol4Row10 == "") {
+                ysa.rowYsaData.onAcntofRupTrnscnsGrnteCol4Row10 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.onAcntofRupTrnscnsAcptCol6Row10 == null || ysa.rowYsaData.onAcntofRupTrnscnsAcptCol6Row10 == "") {
+                ysa.rowYsaData.onAcntofRupTrnscnsAcptCol6Row10 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.onAcntofRupTrnscnsLUCol8Row10 == null || ysa.rowYsaData.onAcntofRupTrnscnsLUCol8Row10 == "") {
+                ysa.rowYsaData.onAcntofRupTrnscnsLUCol8Row10 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            //ignoring validations while saving data
+            if (save == false) {
+
+                if (!(parseFloat(ysa.rowYsaData.totalfortbl1) == ysa
+                    .parseFloat(forCCode20471).toFixed(2))) {
+                    validateArray
+                        .push('- Break Up of Out Standings in Suspense Account (40049) should Match with YSA Comp Code (20471)');
+                    valid = false;
+                }
+
+                if (!(parseFloat(ysa.rowYsaData.totalfortbl2a) == ysa
+                    .parseFloat(forCCode01867).toFixed(2))) {
+                    validateArray
+                        .push('- Break Up of Out Standings in Sundry Deposits Account (40119) should Match with YSA Comp Code (01867)');
+                    valid = false;
+                }
+
+                /*if (!(parseFloat(ysa.rowYsaData.intrstFreStf_Advncs) == (ysa
+                        .parseFloat(forCCode20167) + ysa
+                        .parseFloat(forCCode20199)).toFixed(2))) {
+                        validateArray
+                            .push('- Interest free Advance to Staff - Festival Advance (40211) should Match with YSA Comp Code [20167 + 20199]');
+                        valid = false;
+                    }*/
+
+                /*
+                             * if(!(parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabLCCol2Row3)==ysa.parseFloat(forCCode02302).toFixed(2)) ||
+                             * !(ysa.rowYsaData.ttlOutstndng_InlndFrgnabGrnteCol4Row3==ysa.parseFloat(forCCode02301).toFixed(2)) ||
+                             * !(ysa.rowYsaData.ttlOutstndng_InlndFrgnabAcptCol6Row3==ysa.parseFloat(forCCode02303).toFixed(2))) {
+                             * validateArray.push('- Total Outstanding (Inland +
+                             * Foreign) should match from YSA CompCode 02302, 02301,
+                             * 02303'); valid=false; }
+                             */
+
+                // ////////////////
+                if (!(parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabLCCol2Row3) == ysa
+                    .parseFloat(forCCode02302).toFixed(2))) {
+                    validateArray
+                        .push('- Total Outstanding (Inland + Foreign) for column (letter of credit)  should match from YSA CompCode 02302');
+
+                }
+
+                if (!(parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabGrnteCol4Row3) == ysa
+                    .parseFloat(forCCode02301).toFixed(2))) {
+                    validateArray
+                        .push('- Total Outstanding (Inland + Foreign) for column (Guarantees) should match from YSA CompCode 02301');
+
+                }
+
+                if (!(parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabAcptCol6Row3) == ysa
+                    .parseFloat(forCCode02303).toFixed(2))) {
+                    validateArray
+                        .push('- Total Outstanding (Inland + Foreign) for column (Acceptances) should match from YSA CompCode 02303');
+                }
+
+                // ////////////////
+
+                if (!(parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabLUCol8Row3) == (ysa
+                    .parseFloat(forCCode02842) + ysa
+                    .parseFloat(forCCode02843)).toFixed(2))) {
+                    validateArray
+                        .push('- Total Outstanding (Inland + Foreign) for letter of undertaking should match from amount of CompCode (02842+02843)');
+                    valid = false;
+                }
+
+                /*
+                             * if(!(parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLCCol2Row8)==ysa.rowYsaData.ttl_JKLCCol2Row12) ||
+                             * !(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgGrnteCol4Row8==ysa.rowYsaData.ttl_JKGrnteCol4Row12) ||
+                             * !(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgAcptCol6Row8==ysa.rowYsaData.ttl_JKAcptCol6Row12) ||
+                             * !(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLUCol8Row8==ysa.rowYsaData.ttl_JKLUCol8Row12)) {
+                             * validateArray.push('- [H] Total Value of Margin
+                             * Money/Lien held and [L] Total of Break up must be
+                             * match for each column.'); valid=false; }
+                             */
+
+                // ///////////////
+                if (!(parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLCCol2Row8) == parseFloat(ysa.rowYsaData.ttl_JKLCCol2Row12))) {
+                    validateArray
+                        .push('- [H] Total Value of Margin Money/Lien held and [L] Total of Break up must be match for column [LC]');
+
+                }
+
+                if (!(parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgGrnteCol4Row8) == parseFloat(ysa.rowYsaData.ttl_JKGrnteCol4Row12))) {
+                    validateArray
+                        .push('- [H] Total Value of Margin Money/Lien held and [L] Total of Break up must be match for column Guarantees');
+
+                }
+
+                if (!(parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgAcptCol6Row8) == parseFloat(ysa.rowYsaData.ttl_JKAcptCol6Row12))) {
+                    validateArray
+                        .push('- [H] Total Value of Margin Money/Lien held and [L] Total of Break up must be match for column Acceptances.');
+
+                }
+
+                if (!(parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLUCol8Row8) == parseFloat(ysa.rowYsaData.ttl_JKLUCol8Row12))) {
+                    validateArray
+                        .push('- [H] Total Value of Margin Money/Lien held and [L] Total of Break up must be match for column [LOC]');
+
+                }
+
+                // //////////////////
+
+                /*
+                             * if(
+                             * (parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLCCol2Row8)>ysa.rowYsaData.ttlOutstndng_InlndFrgnabLCCol2Row3) ||
+                             * (ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgGrnteCol4Row8>ysa.rowYsaData.ttlOutstndng_InlndFrgnabGrnteCol4Row3) ||
+                             * (ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgAcptCol6Row8>ysa.rowYsaData.ttlOutstndng_InlndFrgnabAcptCol6Row3) ||
+                             * (ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLUCol8Row8>ysa.rowYsaData.ttlOutstndng_InlndFrgnabLUCol8Row3)) {
+                             * validateArray.push('- [H] Total Value of Margin
+                             * Money/Lien held can not exceed [C] Total Outstanding
+                             * (Inland + Foreign) for each column'); valid=false; }
+                             */
+                // //////////////////////////
+                if ((parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLCCol2Row8) > parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabLCCol2Row3))) {
+                    validateArray
+                        .push('- [H] Total Value of Margin Money/Lien held can not exceed [C] Total Outstanding (Inland + Foreign) for column [LC]');
+
+                }
+
+                if ((parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgGrnteCol4Row8) > parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabGrnteCol4Row3))) {
+                    validateArray
+                        .push('- [H] Total Value of Margin Money/Lien held can not exceed [C] Total Outstanding (Inland + Foreign) for column Guarntee');
+
+                }
+
+                if ((parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgAcptCol6Row8) > parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabAcptCol6Row3))) {
+                    validateArray
+                        .push('- [H] Total Value of Margin Money/Lien held can not exceed [C] Total Outstanding (Inland + Foreign) for column Acceptances');
+
+                }
+
+                if ((parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLUCol8Row8) > parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabLUCol8Row3))) {
+                    validateArray
+                        .push('- [H] Total Value of Margin Money/Lien held can not exceed [C] Total Outstanding (Inland + Foreign) for column [LOC]');
+
+                }
+
+                // ////////////////////////
+
+                // ///////// start ///////////////
+                // /////1///////
+
+                /* if (!(parseFloat(ysa.rowYsaData.subTtl_OnToThreForLCCol2Row5) == parseFloat(ysa.rowYsaData.blsRdscntdWthOthrBnks_FIs_IDBI_SIDBI))) {
+                         validateArray
+                             .push('- (40515) Sub-Total (assets-wise) and (40201) Bills Rediscounted  are not matching');
+
+                     }*/
+
+                // /////2///////
+
+                /* if (!(parseFloat(ysa.rowYsaData.subTtl_Six_Svn_EghtLCCol2Row9) == parseFloat(ysa.rowYsaData.blsRdscntdWthOthrBnks_FIs_IDBI_SIDBI))) {
+                         validateArray
+                             .push('- (40535) Sub-Total (assets-wise) and (40201) Bills Rediscounted  are not matching');
+
+                     }*/
+
+                // /////3///////
+
+                /* if (!(parseFloat(ysa.rowYsaData.subTtl_Ten_Elvn_Twlv_ThrtnLCCol2Row14) == parseFloat(ysa.rowYsaData.blsRdscntdWthOthrBnks_FIs_IDBI_SIDBI))) {
+                         validateArray
+                             .push('- (40560) Sub-Total (assets-wise) and (40201) Bills Rediscounted  are not matching');
+
+                     }*/
+
+                // ///////// end ///////////////
+
+                /*
+                             * if(!(parseFloat(ysa.rowYsaData.subTtl_OnToThreForLCCol2Row5)==ysa.parseFloat(forCCode01027).toFixed(2))) {
+                             * validateArray.push('- (40515) Sub-Total (assets-wise)
+                             * and YSA (01027) Bills Rediscounted are not
+                             * matching'); // valid=false; }
+                             *
+                             *
+                             *
+                             *
+                             * if(!(parseFloat(ysa.rowYsaData.subTtl_Six_Svn_EghtLCCol2Row9)==ysa.parseFloat(forCCode01027).toFixed(2))) {
+                             *
+                             * validateArray.push('- (40535) Sub-Total (assets-wise)
+                             * and YSA (01027) Bills Rediscounted are not
+                             * matching'); // valid=false; }
+                             *
+                             *
+                             *
+                             *
+                             * if(!(parseFloat(ysa.rowYsaData.subTtl_Ten_Elvn_Twlv_ThrtnLCCol2Row14)==ysa.parseFloat(forCCode01027).toFixed(2))) {
+                             * validateArray.push('- (40560) Sub-Total (assets-wise)
+                             * and YSA (01027) Bills Rediscounted are not
+                             * matching'); // valid=false; }
+                             */
+
+                /*
+                             * if(!(parseFloat(ysa.rowYsaData.totalfortbl6IAmntCol2Row14)==ysa.parseFloat(forCCode20601).toFixed(2)) ||
+                             * !(ysa.rowYsaData.totalfortbl6IIAmntCol2Row18==ysa.parseFloat(forCCode20602).toFixed(2))) {
+                             * validateArray.push('- In part XI Total 1 (Code 40685)
+                             * and Total 2 (Code 40705) should match from
+                             * Govt.Accounts total YSA CompCode 20601 & 20602');
+                             * valid=false; }
+                             */
+
+                // ///////////////
+                if (!(parseFloat(ysa.rowYsaData.totalfortbl6IAmntCol2Row14) == ysa
+                    .parseFloat(forCCode20601).toFixed(2))) {
+                    validateArray
+                        .push('- In part XI Total 1 (Code 40685) should match from Govt.Accounts total YSA CompCode 20601');
+
+                }
+
+                if (!(parseFloat(ysa.rowYsaData.totalfortbl6IIAmntCol2Row18) == ysa
+                    .parseFloat(forCCode20602).toFixed(2))) {
+                    validateArray
+                        .push('- In part XI  Total 2 (Code 40705) should match from Govt.Accounts total YSA CompCode 20602');
+
+                }
+
+                // //////////////////
+
+                // / internal added on 20122017 ///
+
+                if ((parseFloat(ysa.rowYsaData.ttlOutstndngFrgnLCCol2Row2) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLCCol2Row11) != 0.00) || ((ysa.rowYsaData.ttlOutstndngFrgnLCCol2Row2) == null && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLCCol2Row11) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngFrgnLCCol2Row2) == "" && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLCCol2Row11) != 0.00))) {
+                    validateArray
+                        .push('- LCs - [K] On account of Foreign Currency Transactions should be zero , if [B] Total Outstanding Foreign is zero.');
+
+                }
+
+                if ((parseFloat(ysa.rowYsaData.ttlOutstndngFrgnGrnteCol4Row2) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsGrnteCol4Row11) != 0.00) || ((ysa.rowYsaData.ttlOutstndngFrgnGrnteCol4Row2) == null && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsGrnteCol4Row11) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngFrgnGrnteCol4Row2) == "" && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsGrnteCol4Row11) != 0.00))) {
+                    validateArray
+                        .push('- Guarantees - [K] On account of Foreign Currency Transactions should be zero , if [B] Total Outstanding Foreign is zero.');
+
+                }
+
+                if ((parseFloat(ysa.rowYsaData.ttlOutstndngFrgnAcptCol6Row2) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsAcptCol6Row11) != 0.00) || ((ysa.rowYsaData.ttlOutstndngFrgnAcptCol6Row2) == null && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsAcptCol6Row11) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngFrgnAcptCol6Row2) == "" && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsAcptCol6Row11) != 0.00))) {
+                    validateArray
+                        .push('-Acceptances - [K] On account of Foreign Currency Transactions should be zero , if [B] Total Outstanding Foreign is zero.');
+
+                }
+
+                if ((parseFloat(ysa.rowYsaData.ttlOutstndngFrgnLUCol8Row2) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLUCol8Row11) != 0.00) || ((ysa.rowYsaData.ttlOutstndngFrgnLUCol8Row2) == null && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLUCol8Row11) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngFrgnLUCol8Row2) == "" && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLUCol8Row11) != 0.00))) {
+                    validateArray
+                        .push('LOUs - [K] On account of Foreign Currency Transactions should be zero , if [B] Total Outstanding Foreign is zero');
+
+                }
+
+                // //////////// jjjjjjjjjj /////////////////
+
+                // alert("a
+                // "+(ysa.rowYsaData.ttlOutstndngInlndLCCol2Row1));
+
+                // alert("j
+                // "+parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsLCCol2Row10));
+
+                if ((parseFloat(ysa.rowYsaData.ttlOutstndngInlndLCCol2Row1) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsLCCol2Row10) != 0.00) || ((ysa.rowYsaData.ttlOutstndngInlndLCCol2Row1) == null && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsLCCol2Row10) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngInlndLCCol2Row1) == "" && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsLCCol2Row10) != 0.00))) {
+                    validateArray
+                        .push('LCs - [J] On account of Foreign Currency Transactions should be zero , if [A] Total Outstanding Foreign is zero ');
+
+                }
+
+                if ((parseFloat(ysa.rowYsaData.ttlOutstndngInlndGrnteCol4Row1) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsGrnteCol4Row10) != 0.00) || ((ysa.rowYsaData.ttlOutstndngInlndGrnteCol4Row1) == null && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsGrnteCol4Row10) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngInlndGrnteCol4Row1) == "" && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsGrnteCol4Row10) != 0.00))) {
+                    validateArray
+                        .push('Guarantees - [J] On account of Foreign Currency Transactions should be zero , if [A] Total Outstanding Foreign is zero ');
+
+                }
+
+                if ((parseFloat(ysa.rowYsaData.ttlOutstndngInlndAcptCol6Row1) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsAcptCol6Row10) != 0.00) || ((ysa.rowYsaData.ttlOutstndngInlndAcptCol6Row1) == null && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsAcptCol6Row10) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngInlndAcptCol6Row1) == "" && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsAcptCol6Row10) != 0.00))) {
+                    validateArray
+                        .push('Acceptances - [J] On account of Foreign Currency Transactions should be zero , if [A] Total Outstanding Foreign is zero. ');
+
+                }
+
+                if ((parseFloat(ysa.rowYsaData.ttlOutstndngInlndLUCol8Row1) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsLUCol8Row10) != 0.00) || ((ysa.rowYsaData.ttlOutstndngInlndLUCol8Row1) == null && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsLUCol8Row10) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngInlndLUCol8Row1) == "" && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsLUCol8Row10) != 0.00))) {
+                    validateArray
+                        .push('LOUs - [J] On account of Foreign Currency Transactions should be zero , if [A] Total Outstanding Foreign is zero .');
+
+                }
+
+            }
+            // //////////////////////////////////
+
+            $scope.validateArray = validateArray;
+
+            if (validateArray.length == 0) {
+
+                // alert("flag "+$scope.ysaForm.$dirty);
+
+                if ($scope.ysaForm.$dirty == true) {
+                    ysaFactory
+                        .submitYSA(copy)
+                        .then(function (data) {
+
+                            ysa.displayMessage = null;
+                            console.log("result is  flag  ~ Sequence(reportId) ~ reportStatus * " + data);
+                            var result = [];
+                            result = data.split('~');
+                            if (result[0] == 0) {
+
+                                $rootScope.reportObject.reportId = result[1];
+                                $rootScope.reportObject.status = result[2];
+                                console.log("# reportId " + $rootScope.reportObject.reportId);
+                                console.log("# status " + $rootScope.reportObject.status);
+
+                                if (save == true) {
+                                    ysa.displayMessage = "Report saved Successfully";
+                                    if (ysa.displayMessage) {
+
+
+                                        $('#myModal4').modal({
+                                            backdrop: 'static', keyboard: false, modal: true
+                                        });
+                                        $('#myModal4').on('shown.bs.modal', function () {
+                                            $('#myModal4')
+                                                .trigger('focus');
+                                        });
+
+                                    }
+                                }
+                                if (save == false) {
+                                    ysa.displayMessage = "Report Submitted Successfully";
+                                    if ($rootScope.reportObject.areMocPending == true) {
+                                        ysa.displayMessage = "Report was not submitted because of pending MOC.";
+                                    }
+                                    if (ysa.displayMessage) {
+
+                                        $('#myModal1')
+                                            .modal({
+                                                backdrop: 'static', keyboard: false, modal: true
+                                            });
+
+                                    }
+                                }
+
+                            }
+
+                            // console.log(data);
+                        }, function (errResponse) {
+                            console
+                                .error('Error while submit ysa');
+                        });
+                }
+
+                if ($scope.ysaForm.$dirty == false) {
+
+
+                    if (save == false) {
+                        ysa.displayMessage111 = "Would you like to submit report without changing data ?";
+                    }
+
+                    if (save == true) {
+                        ysa.displayMessage111 = "Would you like to save report without changing data ?";
+                    }
+
+
+                    if (ysa.displayMessage111) {
+
+                        $('#myModal33').modal({
+                            backdrop: 'static', keyboard: false, modal: true
+                        });
+                        $('#myModal33').on('shown.bs.modal', function () {
+                            $('#myModal33')
+                                .trigger('focus');
+                        });
+                    }
+
+                }
+
+                ysa.YesSubmitYsa = function (rowYsaData) {
+                    console.log("************************* MOC from YSA submit " + $rootScope.reportObject.areMocPending + "  ** " + reportObject.areMocPending);
+                    var i = {};
+                    i = ysa.rowYsaData;
+                    console.log(i);
+                    var circleCode = $scope.sessionUser.circleCode;
+                    var quarterEndDate = $scope.sessionUser.quarterEndDate;
+                    var row1 = {
+                        'circleCode': circleCode,
+                        'quarterEndDate': quarterEndDate,
+                        'userId': $scope.sessionUser.userId,
+                        'reportName': reportObject.name,
+                        'reportId': reportObject.reportId,
+                        'reportMasterId': reportObject.reportMasterId,
+                        'status': reportObject.status,
+                        'areMocPending': $rootScope.reportObject.areMocPending,
+                        'save': save
+                    };
+
+                    var copy = angular.extend({}, i, row1);
+
+                    ysaFactory
+                        .submitYSA(copy)
+                        .then(function (data) {
+                            ysa.displayMessage = null;
+
+                            console.log("result is  flag  ~ Sequence(reportId) ~ reportStatus * " + data);
+                            var result = [];
+                            result = data.split('~');
+                            if (result[0] == 0) {
+
+                                $rootScope.reportObject.reportId = result[1];
+                                $rootScope.reportObject.status = result[2];
+                                console.log("# reportId " + $rootScope.reportObject.reportId);
+                                console.log("# status " + $rootScope.reportObject.status);
+
+                                if (save == true) {
+                                    ysa.displayMessage = "Report saved Successfully";
+                                    if (ysa.displayMessage) {
+
+
+                                        $('#myModal4').modal({
+                                            backdrop: 'static', keyboard: false, modal: true
+                                        });
+                                        $('#myModal4').on('shown.bs.modal', function () {
+                                            $('#myModal4')
+                                                .trigger('focus');
+                                        });
+
+                                    }
+                                }
+
+                                if (save == false) {
+                                    ysa.displayMessage = "Report Submitted Successfully";
+                                    if ($rootScope.reportObject.areMocPending == true) {
+                                        ysa.displayMessage = "Report was not submitted because of pending MOC.";
+                                    }
+                                    if (ysa.displayMessage) {
+
+                                        $('#myModal1')
+                                            .modal({
+                                                backdrop: 'static', keyboard: false, modal: true
+                                            });
+
+                                    }
+                                }
+                            }
+
+                            //console.log(data);
+                        }, function (errResponse) {
+                            console
+                                .error('Error while submit ysa');
+                        });
+
+                }
+
+            } else {
+                $('#myModal2').modal({
+                    backdrop: 'static', keyboard: false, modal: true
+                });
+            }
+
+        }
+
+        // ////////////////////////////////// validate
+        // ///////////////////
+
+        ysa.validate = function (rowYsaData) {
+            document.getElementsByName('totalfortbl1')[0].style.border = '';
+            document.getElementsByName('totalfortbl2a')[0].style.border = '';
+            document.getElementsByName('intrstFreStf_Advncs')[0].style.border = '';
+            document
+                .getElementsByName('ttlOutstndng_InlndFrgnabLCCol2Row3')[0].style.border = '';
+            document
+                .getElementsByName('ttlOutstndng_InlndFrgnabGrnteCol4Row3')[0].style.border = '';
+            document
+                .getElementsByName('ttlOutstndng_InlndFrgnabAcptCol6Row3')[0].style.border = '';
+            document
+                .getElementsByName('ttlOutstndng_InlndFrgnabLUCol8Row3')[0].style.border = '';
+            document
+                .getElementsByName('ttlValueofMrgnMny_Lien_Hld_defgLCCol2Row8')[0].style.border = '';
+            document
+                .getElementsByName('ttlValueofMrgnMny_Lien_Hld_defgGrnteCol4Row8')[0].style.border = '';
+            document
+                .getElementsByName('ttlValueofMrgnMny_Lien_Hld_defgAcptCol6Row8')[0].style.border = '';
+            document
+                .getElementsByName('ttlValueofMrgnMny_Lien_Hld_defgLUCol8Row8')[0].style.border = '';
+            document
+                .getElementsByName('ttlValueofMrgnMny_Lien_Hld_defgLCCol2Row8')[0].style.border = '';
+            document
+                .getElementsByName('ttlValueofMrgnMny_Lien_Hld_defgGrnteCol4Row8')[0].style.border = '';
+            document
+                .getElementsByName('ttlValueofMrgnMny_Lien_Hld_defgAcptCol6Row8')[0].style.border = '';
+            document
+                .getElementsByName('ttlValueofMrgnMny_Lien_Hld_defgLUCol8Row8')[0].style.border = '';
+            document
+                .getElementsByName('subTtl_OnToThreForLCCol2Row5')[0].style.border = '';
+            document
+                .getElementsByName('subTtl_Six_Svn_EghtLCCol2Row9')[0].style.border = '';
+            document
+                .getElementsByName('subTtl_Ten_Elvn_Twlv_ThrtnLCCol2Row14')[0].style.border = '';
+            document
+                .getElementsByName('totalfortbl6IAmntCol2Row14')[0].style.border = '';
+            document
+                .getElementsByName('totalfortbl6IIAmntCol2Row18')[0].style.border = '';
+            document
+                .getElementsByName('onAcntofFrnCrrcyTrnscnsLCCol2Row11')[0].style.border = '';
+            document
+                .getElementsByName('onAcntofFrnCrrcyTrnscnsGrnteCol4Row11')[0].style.border = '';
+            document
+                .getElementsByName('onAcntofFrnCrrcyTrnscnsAcptCol6Row11')[0].style.border = '';
+            document
+                .getElementsByName('onAcntofFrnCrrcyTrnscnsLUCol8Row11')[0].style.border = '';
+            document
+                .getElementsByName('onAcntofRupTrnscnsLCCol2Row10')[0].style.border = '';
+            document
+                .getElementsByName('onAcntofRupTrnscnsGrnteCol4Row10')[0].style.border = '';
+            document
+                .getElementsByName('onAcntofRupTrnscnsAcptCol6Row10')[0].style.border = '';
+            document
+                .getElementsByName('onAcntofRupTrnscnsLUCol8Row10')[0].style.border = '';
+
+            var name = document
+                .getElementsByClassName("validateColor");
+
+            console.log("name+++++++" + name);
+
+            $("#xyz a:last").tab('show');
+
+            var i = {};
+            i = ysa.rowYsaData;
+            console.log(i);
+            var circleCode = $scope.sessionUser.circleCode;
+            var quarterEndDate = $scope.sessionUser.quarterEndDate;
+            var row1 = {
+                'circleCode': circleCode, 'quarterEndDate': quarterEndDate
+            };
+            var copy = angular.extend({}, i, row1);
+
+            // console.log("aaa" +app.rowYsaData);
+            var validateArray = [];
+
+            var validateData = {};
+            validateData.ErrorName = "";
+            validateData.BeanName = "";
+
+            // alert(ysa.rowYsaData.intrstFreStf_Advncs);
+
+            // alert("j
+            // acc"+ysa.rowYsaData.onAcntofRupTrnscnsAcptCol6Row10);
+
+            if (ysa.rowYsaData.blsRdscntdWthOthrBnks_FIs_IDBI_SIDBI == null || ysa.rowYsaData.blsRdscntdWthOthrBnks_FIs_IDBI_SIDBI == "") {
+                ysa.rowYsaData.blsRdscntdWthOthrBnks_FIs_IDBI_SIDBI = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.intrstFreStf_Advncs == null || ysa.rowYsaData.intrstFreStf_Advncs == "") {
+                // alert("in condition");
+                ysa.rowYsaData.intrstFreStf_Advncs = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLCCol2Row11 == null || ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLCCol2Row11 == "") {
+                ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLCCol2Row11 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsGrnteCol4Row11 == null || ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsGrnteCol4Row11 == "") {
+                ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsGrnteCol4Row11 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsAcptCol6Row11 == null || ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsAcptCol6Row11 == "") {
+                ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsAcptCol6Row11 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLUCol8Row11 == null || ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLUCol8Row11 == "") {
+                ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLUCol8Row11 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.onAcntofRupTrnscnsLCCol2Row10 == null || ysa.rowYsaData.onAcntofRupTrnscnsLCCol2Row10 == "") {
+                ysa.rowYsaData.onAcntofRupTrnscnsLCCol2Row10 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            // alert("aaaa
+            // "+ysa.rowYsaData.onAcntofRupTrnscnsGrnteCol4Row10);
+
+            if (ysa.rowYsaData.onAcntofRupTrnscnsGrnteCol4Row10 == null || ysa.rowYsaData.onAcntofRupTrnscnsGrnteCol4Row10 == "") {
+                // alert("innnnn");
+                ysa.rowYsaData.onAcntofRupTrnscnsGrnteCol4Row10 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.onAcntofRupTrnscnsAcptCol6Row10 == null || ysa.rowYsaData.onAcntofRupTrnscnsAcptCol6Row10 == "") {
+                ysa.rowYsaData.onAcntofRupTrnscnsAcptCol6Row10 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            if (ysa.rowYsaData.onAcntofRupTrnscnsLUCol8Row10 == null || ysa.rowYsaData.onAcntofRupTrnscnsLUCol8Row10 == "") {
+                ysa.rowYsaData.onAcntofRupTrnscnsLUCol8Row10 = (0.00)
+                    .toFixed(2);
+
+            }
+
+            // alert("after set
+            // "+ysa.rowYsaData.intrstFreStf_Advncs);
+
+            if (!(parseFloat(ysa.rowYsaData.totalfortbl1) == ysa
+                .parseFloat(forCCode20471).toFixed(2))) {
+                validateArray
+                    .push({
+                        'ErrorName': "- Break Up of Out Standings in Suspense Account (40049) should Match with YSA Comp Code (20471)",
+                        'BeanName': "totalfortbl1"
+                    });
+            }
+
+            // console.log(JSON.stringify($scope.validateData));
+
+            if (!(parseFloat(ysa.rowYsaData.totalfortbl2a) == ysa
+                .parseFloat(forCCode01867).toFixed(2))) {
+                validateArray
+                    .push({
+                        'ErrorName': "- Break Up of Out Standings in Sundry Deposits Account (40119) should Match with YSA Comp Code (01867)",
+                        'BeanName': "totalfortbl2a"
+                    });
+
+            }
+
+            // alert("value 20602
+            // "+parseFloat(ysa.rowYsaData.intrstFreStf_Advncs));
+
+            // alert("value "+ (0.00).toFixed(2));
+
+            /* if (!(parseFloat(ysa.rowYsaData.intrstFreStf_Advncs) == (ysa
+                     .parseFloat(forCCode20167) + ysa
+                     .parseFloat(forCCode20199)).toFixed(2))) {
+
+                     validateArray
+                         .push({
+                             'ErrorName': "- Interest free Advance to Staff - Festival Advance (40211) should Match with YSA Comp Code [20167 + 20199]",
+                             'BeanName': "intrstFreStf_Advncs"
+                         });
+
+                 }*/
+
+            if (!(parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabLCCol2Row3) == ysa
+                .parseFloat(forCCode02302).toFixed(2))) {
+
+                validateArray
+                    .push({
+                        'ErrorName': "- Total Outstanding (Inland + Foreign) for column (letter of credit)  should match from YSA CompCode 02302",
+                        'BeanName': "ttlOutstndng_InlndFrgnabLCCol2Row3"
+                    });
+
+            }
+
+            if (!(parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabGrnteCol4Row3) == ysa
+                .parseFloat(forCCode02301).toFixed(2))) {
+
+                validateArray
+                    .push({
+                        'ErrorName': "- Total Outstanding (Inland + Foreign) for column (Guarantees) should match from YSA CompCode 02301 ",
+                        'BeanName': "ttlOutstndng_InlndFrgnabGrnteCol4Row3"
+                    });
+
+            }
+
+            if (!(parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabAcptCol6Row3) == ysa
+                .parseFloat(forCCode02303).toFixed(2))) {
+                validateArray
+                    .push({
+                        'ErrorName': "- Total Outstanding (Inland + Foreign) for column (Acceptances) should match from YSA CompCode 02303",
+                        'BeanName': "ttlOutstndng_InlndFrgnabAcptCol6Row3"
+                    });
+
+            }
+
+            if (!(parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabLUCol8Row3) == (ysa
+                .parseFloat(forCCode02842) + ysa
+                .parseFloat(forCCode02843)).toFixed(2))) {
+                validateArray
+                    .push({
+                        'ErrorName': "- Total Outstanding (Inland + Foreign) for letter of undertaking should match from amount of CompCode (02842+02843)",
+                        'BeanName': "ttlOutstndng_InlndFrgnabLUCol8Row3"
+                    });
+
+            }
+
+            if (!(parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLCCol2Row8) == parseFloat(ysa.rowYsaData.ttl_JKLCCol2Row12))) {
+                validateArray
+                    .push({
+                        'ErrorName': "- [H] Total Value of Margin Money/Lien held and [L] Total of Break up must be match for column [LC]",
+                        'BeanName': "ttlValueofMrgnMny_Lien_Hld_defgLCCol2Row8"
+                    });
+
+            }
+
+            if (!(parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgGrnteCol4Row8) == parseFloat(ysa.rowYsaData.ttl_JKGrnteCol4Row12))) {
+
+                validateArray
+                    .push({
+                        'ErrorName': "- [H] Total Value of Margin Money/Lien held and [L] Total of Break up must be match for column Guarantees",
+                        'BeanName': "ttlValueofMrgnMny_Lien_Hld_defgGrnteCol4Row8"
+                    });
+
+            }
+
+            if (!(parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgAcptCol6Row8) == parseFloat(ysa.rowYsaData.ttl_JKAcptCol6Row12))) {
+
+                validateArray
+                    .push({
+                        'ErrorName': "- [H] Total Value of Margin Money/Lien held and [L] Total of Break up must be match for column Acceptances.",
+                        'BeanName': "ttlValueofMrgnMny_Lien_Hld_defgAcptCol6Row8"
+                    });
+
+            }
+
+            if (!(parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLUCol8Row8) == parseFloat(ysa.rowYsaData.ttl_JKLUCol8Row12))) {
+
+                validateArray
+                    .push({
+                        'ErrorName': "- [H] Total Value of Margin Money/Lien held and [L] Total of Break up must be match for column [LOC]",
+                        'BeanName': "ttlValueofMrgnMny_Lien_Hld_defgLUCol8Row8"
+                    });
+
+            }
+
+            if ((parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLCCol2Row8) > parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabLCCol2Row3))) {
+                validateArray
+                    .push({
+                        'ErrorName': "- [H] Total Value of Margin Money/Lien held can not exceed [C] Total Outstanding (Inland + Foreign) for column [LC]",
+                        'BeanName': "ttlValueofMrgnMny_Lien_Hld_defgLCCol2Row8"
+                    });
+            }
+
+            if ((parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgGrnteCol4Row8) > parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabGrnteCol4Row3))) {
+                validateArray
+                    .push({
+                        'ErrorName': "- [H] Total Value of Margin Money/Lien held can not exceed [C] Total Outstanding (Inland + Foreign) for column Guarntee",
+                        'BeanName': "ttlValueofMrgnMny_Lien_Hld_defgGrnteCol4Row8"
+                    });
+            }
+
+            if ((parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgAcptCol6Row8) > parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabAcptCol6Row3))) {
+                validateArray
+                    .push({
+                        'ErrorName': "- [H] Total Value of Margin Money/Lien held can not exceed [C] Total Outstanding (Inland + Foreign) for column Acceptances",
+                        'BeanName': "ttlValueofMrgnMny_Lien_Hld_defgAcptCol6Row8"
+                    });
+            }
+
+            if ((parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLUCol8Row8) > parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabLUCol8Row3))) {
+                validateArray
+                    .push({
+                        'ErrorName': "- [H] Total Value of Margin Money/Lien held can not exceed [C] Total Outstanding (Inland + Foreign) for column [LOC]",
+                        'BeanName': "ttlValueofMrgnMny_Lien_Hld_defgLUCol8Row8"
+                    });
+            }
+
+            // ///////// start ///////////////
+            // /////1///////
+
+            /*if (!(parseFloat(ysa.rowYsaData.subTtl_OnToThreForLCCol2Row5) == parseFloat(ysa.rowYsaData.blsRdscntdWthOthrBnks_FIs_IDBI_SIDBI))) {
+
+                    validateArray
+                        .push({
+                            'ErrorName': "- (40515) Sub-Total (assets-wise) and (40201) Bills Rediscounted  are not matching",
+                            'BeanName': "subTtl_OnToThreForLCCol2Row5"
+                        });
+
+                }*/
+
+            // /////2///////
+
+            /* if (!(parseFloat(ysa.rowYsaData.subTtl_Six_Svn_EghtLCCol2Row9) == parseFloat(ysa.rowYsaData.blsRdscntdWthOthrBnks_FIs_IDBI_SIDBI))) {
+
+                     validateArray
+                         .push({
+                             'ErrorName': "- (40535) Sub-Total (assets-wise) and (40201) Bills Rediscounted  are not matching",
+                             'BeanName': "subTtl_Six_Svn_EghtLCCol2Row9"
+                         });
+
+                 }*/
+
+            // /////3///////
+
+            /*if (!(parseFloat(ysa.rowYsaData.subTtl_Ten_Elvn_Twlv_ThrtnLCCol2Row14) == parseFloat(ysa.rowYsaData.blsRdscntdWthOthrBnks_FIs_IDBI_SIDBI))) {
+
+                    validateArray
+                        .push({
+                            'ErrorName': "- (40560) Sub-Total (assets-wise) and (40201) Bills Rediscounted  are not matching",
+                            'BeanName': "subTtl_Ten_Elvn_Twlv_ThrtnLCCol2Row14"
+                        });
+
+                }*/
+
+            // ///////// end ///////////////
+
+            /*
+						 * if(!(parseFloat(ysa.rowYsaData.subTtl_OnToThreForLCCol2Row5)==ysa.parseFloat(forCCode01027).toFixed(2))) {
+						 * validateArray.push({ 'ErrorName': "- (40515)
+						 * Sub-Total (assets-wise) and YSA (01027) Bills
+						 * Rediscounted are not matching", 'BeanName':
+						 * "subTtl_OnToThreForLCCol2Row5" }); }
+						 *
+						 *
+						 *
+						 * if(!(parseFloat(ysa.rowYsaData.subTtl_Six_Svn_EghtLCCol2Row9)==ysa.parseFloat(forCCode01027).toFixed(2))) {
+						 * validateArray.push({ 'ErrorName': "- (40535)
+						 * Sub-Total (assets-wise) and YSA (01027) Bills
+						 * Rediscounted are not matching", 'BeanName':
+						 * "subTtl_Six_Svn_EghtLCCol2Row9" }); }
+						 *
+						 *
+						 *
+						 * if(!(parseFloat(ysa.rowYsaData.subTtl_Ten_Elvn_Twlv_ThrtnLCCol2Row14)==ysa.parseFloat(forCCode01027).toFixed(2))) {
+						 *
+						 * validateArray.push({ 'ErrorName': "- (40560)
+						 * Sub-Total (assets-wise) and YSA (01027) Bills
+						 * Rediscounted are not matching", 'BeanName':
+						 * "subTtl_Ten_Elvn_Twlv_ThrtnLCCol2Row14" }); }
+						 */
+
+            if (!(parseFloat(ysa.rowYsaData.totalfortbl6IAmntCol2Row14) == ysa
+                .parseFloat(forCCode20601).toFixed(2))) {
+                validateArray
+                    .push({
+                        'ErrorName': "- In part XI Total 1 (Code 40685)  should match from Govt.Accounts total YSA CompCode 20601",
+                        'BeanName': "totalfortbl6IAmntCol2Row14"
+                    });
+            }
+
+            if (!(parseFloat(ysa.rowYsaData.totalfortbl6IIAmntCol2Row18) == ysa
+                .parseFloat(forCCode20602).toFixed(2))) {
+                validateArray
+                    .push({
+                        'ErrorName': "- In part XI  Total 2 (Code 40705) should match from Govt.Accounts total YSA CompCode 20602",
+                        'BeanName': "totalfortbl6IIAmntCol2Row18"
+                    });
+            }
+
+            // /////////////// internal added on
+            // 20122017//////////////
+
+            // alert("b
+            // "+ysa.rowYsaData.ttlOutstndngFrgnLCCol2Row2);
+
+            // alert("k
+            // "+ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLCCol2Row11);
+
+            if ((parseFloat(ysa.rowYsaData.ttlOutstndngFrgnLCCol2Row2) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLCCol2Row11) != 0.00) || ((ysa.rowYsaData.ttlOutstndngFrgnLCCol2Row2) == null && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLCCol2Row11) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngFrgnLCCol2Row2) == "" && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLCCol2Row11) != 0.00))) {
+                validateArray
+                    .push({
+                        'ErrorName': "- LCs - [K] On account of Foreign Currency Transactions should be zero , if [B] Total Outstanding Foreign is zero.",
+                        'BeanName': "onAcntofFrnCrrcyTrnscnsLCCol2Row11"
+                    });
+            }
+
+            if ((parseFloat(ysa.rowYsaData.ttlOutstndngFrgnGrnteCol4Row2) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsGrnteCol4Row11) != 0.00) || ((ysa.rowYsaData.ttlOutstndngFrgnGrnteCol4Row2) == null && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsGrnteCol4Row11) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngFrgnGrnteCol4Row2) == "" && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsGrnteCol4Row11) != 0.00))) {
+                validateArray
+                    .push({
+                        'ErrorName': "- Guarantees - [K] On account of Foreign Currency Transactions should be zero , if [B] Total Outstanding Foreign is zero.",
+                        'BeanName': "onAcntofFrnCrrcyTrnscnsGrnteCol4Row11"
+                    });
+            }
+
+            if ((parseFloat(ysa.rowYsaData.ttlOutstndngFrgnAcptCol6Row2) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsAcptCol6Row11) != 0.00) || ((ysa.rowYsaData.ttlOutstndngFrgnAcptCol6Row2) == null && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsAcptCol6Row11) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngFrgnAcptCol6Row2) == "" && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsAcptCol6Row11) != 0.00))) {
+                validateArray
+                    .push({
+                        'ErrorName': "-Acceptances - [K] On account of Foreign Currency Transactions should be zero , if [B] Total Outstanding Foreign is zero.",
+                        'BeanName': "onAcntofFrnCrrcyTrnscnsAcptCol6Row11"
+                    });
+            }
+
+            if ((parseFloat(ysa.rowYsaData.ttlOutstndngFrgnLUCol8Row2) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLUCol8Row11) != 0.00) || ((ysa.rowYsaData.ttlOutstndngFrgnLUCol8Row2) == null && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLUCol8Row11) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngFrgnLUCol8Row2) == "" && (parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLUCol8Row11) != 0.00))) {
+                validateArray
+                    .push({
+                        'ErrorName': "LOUs - [K] On account of Foreign Currency Transactions should be zero , if [B] Total Outstanding Foreign is zero ",
+                        'BeanName': "onAcntofFrnCrrcyTrnscnsLUCol8Row11"
+                    });
+            }
+
+            // alert("a
+            // "+(ysa.rowYsaData.ttlOutstndngInlndLCCol2Row1));
+
+            if ((parseFloat(ysa.rowYsaData.ttlOutstndngInlndLCCol2Row1) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsLCCol2Row10) != 0.00) || ((ysa.rowYsaData.ttlOutstndngInlndLCCol2Row1) == null && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsLCCol2Row10) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngInlndLCCol2Row1) == "" && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsLCCol2Row10) != 0.00))) {
+                validateArray
+                    .push({
+                        'ErrorName': "LCs - [J] On account of Foreign Currency Transactions should be zero , if [A] Total Outstanding Foreign is zero  ",
+                        'BeanName': "onAcntofRupTrnscnsLCCol2Row10"
+                    });
+            }
+
+            if ((parseFloat(ysa.rowYsaData.ttlOutstndngInlndGrnteCol4Row1) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsGrnteCol4Row10) != 0.00) || ((ysa.rowYsaData.ttlOutstndngInlndGrnteCol4Row1) == null && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsGrnteCol4Row10) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngInlndGrnteCol4Row1) == "" && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsGrnteCol4Row10) != 0.00))) {
+                validateArray
+                    .push({
+                        'ErrorName': "Guarantees - [J] On account of Foreign Currency Transactions should be zero , if [A] Total Outstanding Foreign is zero  ",
+                        'BeanName': "onAcntofRupTrnscnsGrnteCol4Row10"
+                    });
+            }
+
+            if ((parseFloat(ysa.rowYsaData.ttlOutstndngInlndAcptCol6Row1) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsAcptCol6Row10) != 0.00) || ((ysa.rowYsaData.ttlOutstndngInlndAcptCol6Row1) == null && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsAcptCol6Row10) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngInlndAcptCol6Row1) == "" && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsAcptCol6Row10) != 0.00))) {
+                validateArray
+                    .push({
+                        'ErrorName': "Acceptances - [J] On account of Foreign Currency Transactions should be zero , if [A] Total Outstanding Foreign is zero. ",
+                        'BeanName': "onAcntofRupTrnscnsAcptCol6Row10"
+                    });
+            }
+
+            if ((parseFloat(ysa.rowYsaData.ttlOutstndngInlndLUCol8Row1) == 0.00 && parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsLUCol8Row10) != 0.00) || ((ysa.rowYsaData.ttlOutstndngInlndLUCol8Row1) == null && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsLUCol8Row10) != 0.00)) || ((ysa.rowYsaData.ttlOutstndngInlndLUCol8Row1) == "" && (parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsLUCol8Row10) != 0.00))) {
+                validateArray
+                    .push({
+                        'ErrorName': "LOUs - [J] On account of Foreign Currency Transactions should be zero , if [A] Total Outstanding Foreign is zero .",
+                        'BeanName': "onAcntofRupTrnscnsLUCol8Row10"
+                    });
+            }
+
+            $scope.validateArray = validateArray;
+
+            if (validateArray.length == 0) {
+                alert("No Errors, You can submit report");
+            } else {
+
+                $scope.myvalue = true;
+
+            }
+
+        }
+
+        ysa.GoToValidate = function (value) {
+
+            var abc = document.getElementsByName(value)[0];
+
+            $("#xyz a:first").tab('show');
+            abc.focus();
+            abc.style.border = "2px solid red";
+            // abc.addClass("validateColor");
+            // abc.select();
+        }
+
+        // var app =this;
+        // $scope.row={};
+
+        var params = {
+            'circleCode': $scope.sessionUser.circleCode, 'quarterEndDate': $scope.sessionUser.quarterEndDate
+        };
+
+        // alert("params "+JSON.stringify(params));
+
+        ysaFactory.getYsaSuplData(params).then(function (data) {
+            // alert("in ysa data get controller");
+            // alert("data" +JSON.stringify(data));
+            // $scope.row=data;
+            // alert($scope.sessionUser.circleCode);
+            ysa.rowYsaData = data;
+
+            /*
+						 * for(var i=0;i<data.length;i++) {
+						 *
+						 *
+						 * $scope.row.dmandDep=data[i].dmandDep;
+						 * $scope.row.timeDep=data[i].timeDep;
+						 * $scope.row.entrsOutstndPriortoSweepinginSysSusAcnt98724=data[i].entrsOutstndPriortoSweepinginSysSusAcnt98724; }
+						 */
+
+            // $scope.row=data;
+            console.log("data  " + data);
+
+        }, function (errResponse) {
+            console.error('Error while login');
+        });
+
+        // var ysa=this;
+        $scope.$watchCollection('ysa.rowYsaData', function (newValues, oldValues) {
+            // alert("abcd");
+            // alert(ysa.rowYsaData);
+            if (ysa.rowYsaData != undefined) {
+                ysa.calculateTotal();
+            }
+        });
+
+        ysa.calculateTotal = function () {
+            // alert("qwq "+ysa.rowYsaData.dmandDep);
+
+            // part 1 //
+            ysa.rowYsaData.ttlforstaffsecrty = (ysa
+                .parseFloat(ysa.rowYsaData.dmandDep) + ysa
+                .parseFloat(ysa.rowYsaData.timeDep)).toFixed(2);
+
+            // part 2 //
+
+            ysa.rowYsaData.advancesToStaffTA_HA_Medicalab = (ysa
+                .parseFloat(ysa.rowYsaData.jrny_trtmentCompltdOnorBefore_thirtyfirst_March_fifteen) + ysa
+                .parseFloat(ysa.rowYsaData.jrny_trtmentNotCompltdOn_thirtyfirst_March_fifteen))
+                .toFixed(2);
+
+            ysa.rowYsaData.totalfortbl1 = (ysa
+                .parseFloat(ysa.rowYsaData.bonusPaidtoStaff_No_Outstandings) + ysa
+                .parseFloat(ysa.rowYsaData.clearngEntriesOutstandings_Clear_Chq_Rtrnd) + ysa
+                .parseFloat(ysa.rowYsaData.clearngDiffrncsPrkedinSuspenseAcnt_upto_Thirtyth_Sept_Fortn) + ysa
+                .parseFloat(ysa.rowYsaData.clearngDiffrncsPrkedinSuspenseAcnt_after_Thirtyth_Sept_Fortn) + ysa
+                .parseFloat(ysa.rowYsaData.entrsOutstndPriortoSweepinginSysSusAcnt98724) + ysa
+                .parseFloat(ysa.rowYsaData.subsidyRecvbleUnderPMRYSchm) + ysa
+                .parseFloat(ysa.rowYsaData.advcPymntsMadeforFixedAssts) + ysa
+                .parseFloat(ysa.rowYsaData.dbtOnAccntofFraudOthrLos) + ysa.parseFloat(ysa.rowYsaData.lawCharges) + ysa.parseFloat(ysa.rowYsaData.courtFees) + ysa.parseFloat(ysa.rowYsaData.othersfrtbl1) + ysa
+                .parseFloat(ysa.rowYsaData.advancesToStaffTA_HA_Medicalab))
+                .toFixed(2);
+
+            // part 4 //
+
+            ysa.rowYsaData.totalfortbl2a = (ysa
+                .parseFloat(ysa.rowYsaData.excsFndinCashbal) + ysa
+                .parseFloat(ysa.rowYsaData.clearngEntrsOutstndngforChqsPrsntinClron_thrtyFrst_Mar_Fftn_Prv_wrkdy) + ysa
+                .parseFloat(ysa.rowYsaData.clearngDiffrncsPrkdinSndryDepAcnt_Upto_Thrtyth_Sept_Fortn) + ysa
+                .parseFloat(ysa.rowYsaData.clearngDiffrncsPrkdinSndryDepAcnt_after_Thrtyth_Sept_Fortn) + ysa
+                .parseFloat(ysa.rowYsaData.amntHldinRspctofCnstntsAcntforWntofFullPrtclrs) + ysa
+                .parseFloat(ysa.rowYsaData.othersfrtbl2a))
+                .toFixed(2);
+
+            // part 5 //
+
+            ysa.rowYsaData.totalfortbl2b = (ysa
+                .parseFloat(ysa.rowYsaData.blsRdscntdWthOthrBnks_FIs_IDBI_SIDBI) + ysa
+                .parseFloat(ysa.rowYsaData.othrs_If_Any_Pvd))
+                .toFixed(2);
+
+            // part 6 //
+
+            ysa.rowYsaData.ttlStf_Advncs = (ysa
+                .parseFloat(ysa.rowYsaData.intrstFreStf_Advncs) + ysa
+                .parseFloat(ysa.rowYsaData.intrstBerngStf_Advncs))
+                .toFixed(2);
+
+            // part 7 //
+
+            ysa.rowYsaData.ttlOutstndng_InlndFrgnabLCCol2Row3 = (ysa
+                .parseFloat(ysa.rowYsaData.ttlOutstndngInlndLCCol2Row1) + ysa
+                .parseFloat(ysa.rowYsaData.ttlOutstndngFrgnLCCol2Row2))
+                .toFixed(2);
+
+            ysa.rowYsaData.ttlOutstndng_InlndFrgnabGrnteCol4Row3 = (ysa
+                .parseFloat(ysa.rowYsaData.ttlOutstndngInlndGrnteCol4Row1) + ysa
+                .parseFloat(ysa.rowYsaData.ttlOutstndngFrgnGrnteCol4Row2))
+                .toFixed(2);
+
+            ysa.rowYsaData.ttlOutstndng_InlndFrgnabAcptCol6Row3 = (ysa
+                .parseFloat(ysa.rowYsaData.ttlOutstndngInlndAcptCol6Row1) + ysa
+                .parseFloat(ysa.rowYsaData.ttlOutstndngFrgnAcptCol6Row2))
+                .toFixed(2);
+
+            ysa.rowYsaData.ttlOutstndng_InlndFrgnabLUCol8Row3 = (ysa
+                .parseFloat(ysa.rowYsaData.ttlOutstndngInlndLUCol8Row1) + ysa
+                .parseFloat(ysa.rowYsaData.ttlOutstndngFrgnLUCol8Row2))
+                .toFixed(2);
+
+            ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLCCol2Row8 = (ysa
+                .parseFloat(ysa.rowYsaData.mrgnMnyHldinSplCurntAcntLCCol2Row4) + ysa
+                .parseFloat(ysa.rowYsaData.mrgnMnyHldinSplTrmDepAcntLCCol2Row5) + ysa
+                .parseFloat(ysa.rowYsaData.mrgnMnyHldinTrmDepAcntLCCol2Row6) + ysa
+                .parseFloat(ysa.rowYsaData.lnOnDep_Crnt_Acnt_SB_TDRLCCol2Row7))
+                .toFixed(2);
+
+            ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgGrnteCol4Row8 = (ysa
+                .parseFloat(ysa.rowYsaData.mrgnMnyHldinSplCurntAcntGrnteCol4Row4) + ysa
+                .parseFloat(ysa.rowYsaData.mrgnMnyHldinSplTrmDepAcntGrnteCol4Row5) + ysa
+                .parseFloat(ysa.rowYsaData.mrgnMnyHldinTrmDepAcntGrnteCol4Row6) + ysa
+                .parseFloat(ysa.rowYsaData.lnOnDep_Crnt_Acnt_SB_TDRGrnteCol4Row7))
+                .toFixed(2);
+
+            ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgAcptCol6Row8 = (ysa
+                .parseFloat(ysa.rowYsaData.mrgnMnyHldinSplCurntAcntAcptCol6Row4) + ysa
+                .parseFloat(ysa.rowYsaData.mrgnMnyHldinSplTrmDepAcntAcptCol6Row5) + ysa
+                .parseFloat(ysa.rowYsaData.mrgnMnyHldinTrmDepAcntAcptCol6Row6) + ysa
+                .parseFloat(ysa.rowYsaData.lnOnDep_Crnt_Acnt_SB_TDRAcptCol6Row7))
+                .toFixed(2);
+
+            ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLUCol8Row8 = (ysa
+                .parseFloat(ysa.rowYsaData.mrgnMnyHldinSplCurntAcntLUCol8Row4) + ysa
+                .parseFloat(ysa.rowYsaData.mrgnMnyHldinSplTrmDepAcntLUCol8Row5) + ysa
+                .parseFloat(ysa.rowYsaData.mrgnMnyHldinTrmDepAcntLUCol8Row6) + ysa
+                .parseFloat(ysa.rowYsaData.lnOnDep_Crnt_Acnt_SB_TDRLUCol8Row7))
+                .toFixed(2);
+
+            ysa.rowYsaData.ttl_JKLCCol2Row12 = (ysa
+                .parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsLCCol2Row10) + ysa
+                .parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLCCol2Row11))
+                .toFixed(2);
+
+            ysa.rowYsaData.ttl_JKGrnteCol4Row12 = (ysa
+                .parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsGrnteCol4Row10) + ysa
+                .parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsGrnteCol4Row11))
+                .toFixed(2);
+
+            ysa.rowYsaData.ttl_JKAcptCol6Row12 = (ysa
+                .parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsAcptCol6Row10) + ysa
+                .parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsAcptCol6Row11))
+                .toFixed(2);
+
+            ysa.rowYsaData.ttl_JKLUCol8Row12 = (ysa
+                .parseFloat(ysa.rowYsaData.onAcntofRupTrnscnsLUCol8Row10) + ysa
+                .parseFloat(ysa.rowYsaData.onAcntofFrnCrrcyTrnscnsLUCol8Row11))
+                .toFixed(2);
+
+            ysa.rowYsaData.ntLiblty_CHLCCol2Row13 = (ysa
+                .parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabLCCol2Row3) - ysa
+                .parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLCCol2Row8))
+                .toFixed(2);
+
+            ysa.rowYsaData.ntLiblty_CHGrnteCol4Row13 = (ysa
+                .parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabGrnteCol4Row3) - ysa
+                .parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgGrnteCol4Row8))
+                .toFixed(2);
+
+            ysa.rowYsaData.ntLiblty_CHAcptCol6Row13 = (ysa
+                .parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabAcptCol6Row3) - ysa
+                .parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgAcptCol6Row8))
+                .toFixed(2);
+
+            ysa.rowYsaData.ntLiblty_CHLUCol8Row13 = (ysa
+                .parseFloat(ysa.rowYsaData.ttlOutstndng_InlndFrgnabLUCol8Row3) - ysa
+                .parseFloat(ysa.rowYsaData.ttlValueofMrgnMny_Lien_Hld_defgLUCol8Row8))
+                .toFixed(2);
+
+            // part 8 //
+
+            ysa.rowYsaData.subTtl_OnToThreForLCCol2Row5 = (ysa
+                .parseFloat(ysa.rowYsaData.stndrdAsstLCCol2Row1) + ysa
+                .parseFloat(ysa.rowYsaData.subStndrdAsstLCCol2Row2) + ysa
+                .parseFloat(ysa.rowYsaData.dubtflAsstLCCol2Row3) + ysa
+                .parseFloat(ysa.rowYsaData.lsAsstLCCol2Row4))
+                .toFixed(2);
+
+            ysa.rowYsaData.subTtl_Six_Svn_EghtLCCol2Row9 = (ysa
+                .parseFloat(ysa.rowYsaData.scrdbyTngblAsstLCCol2Row6) + ysa
+                .parseFloat(ysa.rowYsaData.scrdbyBnkGrnteLCCol2Row7) + ysa
+                .parseFloat(ysa.rowYsaData.unSecrdLCCol2Row8))
+                .toFixed(2);
+
+            ysa.rowYsaData.subTtl_Ten_Elvn_Twlv_ThrtnLCCol2Row14 = (ysa
+                .parseFloat(ysa.rowYsaData.prirtySectLCCol2Row10) + ysa
+                .parseFloat(ysa.rowYsaData.publcSectLCCol2Row11) + ysa
+                .parseFloat(ysa.rowYsaData.bnksfrtbl3LCCol2Row12) + ysa
+                .parseFloat(ysa.rowYsaData.othersfrtbl3LCCol2Row13))
+                .toFixed(2);
+
+            // part 9 //
+
+            ysa.rowYsaData.totalfortbl4NoCol2Row14 = ysa
+                .parseFloat(ysa.rowYsaData.cntrSutsFldByBrwrsAgnstWhmBnkIntLglActnNoCol2Row1) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgntBnkInCustServCrtsForDefcncyInServcNoCol2Row2) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgnstBnkforNonSnctnofAdvncNonIsseofLCBGNoCol2Row3) + ysa
+                .parseFloat(ysa.rowYsaData.dlydPrdIntrstClmsInGovrnBusnsLCBGNoCol2Row4) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgnstBnkByLndlrdforRcvryofRentNoCol2Row5) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgnstBnkforMsplcmntlssofdocsSntforClctnNoCol2Row6) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgnstBnkforFlreofBnktoRtrnFrgdBllsNoCol2Row7) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgnstBnkforExcsChrgofIntrst_CmmssnExchgeNoCol2Row8) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgnstBnkforMsfescebytheBnkStfNoCol2Row9) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgnstBnkAgnsttheBnksRgtofSetOfsNoCol2Row10) + ysa
+                .parseFloat(ysa.rowYsaData.dmndNotcU_S201ofIncmeTxAct_ReltngTDS_fromIncmeTaxDepmntNoCol2Row11) + ysa
+                .parseFloat(ysa.rowYsaData.demnd_Cum_ShowCauseNotcRcvdfromSrvceTaxDepmnt_OnlforCAONoCol2Row12) + ysa
+                .parseFloat(ysa.rowYsaData.anyOthrClamNotAcknwldgasDebt_DtlsblwFldRecCol1Row12NoCol2Row13);
+
+            ysa.rowYsaData.totalfortbl4AmntCol4Row14 = (ysa
+                .parseFloat(ysa.rowYsaData.cntrSutsFldByBrwrsAgnstWhmBnkIntLglActnAmntCol4Row1) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgntBnkInCustServCrtsForDefcncyInServcAmntCol4Row2) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgnstBnkforNonSnctnofAdvncNonIsseofLCBGAmntCol4Row3) + ysa
+                .parseFloat(ysa.rowYsaData.dlydPrdIntrstClmsInGovrnBusnsAmntCol4Row4) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgnstBnkByLndlrdforRcvryofRentAmntCol4Row5) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgnstBnkforMsplcmntlssofdocsSntforClctnAmntCol4Row6) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgnstBnkforFlreofBnktoRtrnFrgdBllsAmntCol4Row7) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgnstBnkforExcsChrgofIntrst_CmmssnExchgeAmntCol4Row8) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgnstBnkforMsfescebytheBnkStfAmntCol4Row9) + ysa
+                .parseFloat(ysa.rowYsaData.sutsFldAgnstBnkAgnsttheBnksRgtofSetOfsAmntCol4Row10) + ysa
+                .parseFloat(ysa.rowYsaData.dmndNotcU_S201ofIncmeTxAct_ReltngTDS_fromIncmeTaxDepmntAmntCol4Row11) + ysa
+                .parseFloat(ysa.rowYsaData.demnd_Cum_ShowCauseNotcRcvdfromSrvceTaxDepmnt_OnlforCAOAmntCol4Row12) + ysa
+                .parseFloat(ysa.rowYsaData.anyOthrClamNotAcknwldgasDebt_DtlsblwFldRecCol1Row12AmntCol4Row13))
+                .toFixed(2);
+
+            // part 10 //
+
+            ysa.rowYsaData.totalfortbl5AmntCol2Row13 = (ysa
+                .parseFloat(ysa.rowYsaData.prtlyPadInvstmnt_For_Glbl_Mrkts_OnlyAmntCol2Row11) + ysa
+                .parseFloat(ysa.rowYsaData.undrwnCmmtmntsForVntrCptlFnd_Altrnte_Invst_FndsFor_Glbl_Mrkts_OnlyAmntCol2Row12))
+                .toFixed(2);
+
+            // part 11 //
+
+            ysa.rowYsaData.totalfortbl6IAmntCol2Row14 = (ysa
+                .parseFloat(ysa.rowYsaData.forWhchInCntrlEntrsrPssdAmntCol2Row12) + ysa
+                .parseFloat(ysa.rowYsaData.forWhchInNoCntrlEntrsrPssdAmntCol2Row13))
+                .toFixed(2);
+
+            ysa.rowYsaData.totalfortbl6IIAmntCol2Row18 = (ysa
+                .parseFloat(ysa.rowYsaData.forWhchOutCntrlEntrsrPssdAmntCol2Row16) + ysa
+                .parseFloat(ysa.rowYsaData.forWhchOutNoCntrlEntrsrPssdAmntCol2Row17))
+                .toFixed(2);
+
+            ysa.rowYsaData.totalIandIIAmntCol2Row19 = (ysa
+                .parseFloat(ysa.rowYsaData.totalfortbl6IAmntCol2Row14) + ysa
+                .parseFloat(ysa.rowYsaData.totalfortbl6IIAmntCol2Row18))
+                .toFixed(2);
+
+        }
+
+        ysa.parseFloat = function (value) {
+
+            if (isNaN(value)) {
+                value = 0;
+            }
+
+            var val = value * 1;
+            val = val.toFixed(2);
+
+            return parseFloat(val);
+        }
+
+    });
+
+
