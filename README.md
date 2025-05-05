@@ -10,7 +10,6 @@ const getFieldName = (id, key) => {
     loss: 'Loss',
     adjustment: 'Adj',
   };
-
   const suffix = suffixMap[key] || 'Total';
 
   let idx;
@@ -23,6 +22,5 @@ const getFieldName = (id, key) => {
   else idx = id.replace(/\D/g, '');
 
   const fieldName = `${base}_${suffix}_${idx}`;
-  console.log('Field Name:', fieldName);
   return fieldName;
 };
