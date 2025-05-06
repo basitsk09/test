@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios'; // You'll need to configure this for your API
 import {
   Table,
@@ -16,10 +16,8 @@ import {
   Checkbox,
   TableCell,
   Radio,
-  CircularProgress,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { FixedSizeList } from 'react-window';
 import { CustomButton } from '../../../../common/components/ui/Buttons'; // Assuming this is your custom button component
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
@@ -35,12 +33,40 @@ const alphanumericRegex = /^[A-Za-z0-9\s]*$/;
 
 const columns = [
   { key: 'isDelete', label: 'Select', type: 'checkbox', editable: false, align: 'center' },
-  { key: 'borrowerName', label: "Branch & Borrower's Name", type: 'text', editable: true, align: 'left', pattern: alphanumericRegex },
-  { key: 'aggOutStand', label: 'Aggregate outstanding', type: 'number', editable: true, align: 'right', pattern: numericRegex },
-  { key: 'aggSecurities', label: 'Aggregate value of realisable securities', type: 'number', editable: true, align: 'right', pattern: numericRegex },
+  {
+    key: 'borrowerName',
+    label: "Branch & Borrower's Name",
+    type: 'text',
+    editable: true,
+    align: 'left',
+    pattern: alphanumericRegex,
+  },
+  {
+    key: 'aggOutStand',
+    label: 'Aggregate outstanding',
+    type: 'number',
+    editable: true,
+    align: 'right',
+    pattern: numericRegex,
+  },
+  {
+    key: 'aggSecurities',
+    label: 'Aggregate value of realisable securities',
+    type: 'number',
+    editable: true,
+    align: 'right',
+    pattern: numericRegex,
+  },
   { key: 'netShortfall', label: 'Net Shortfall', type: 'number', editable: false, align: 'right' },
   { key: 'provision', label: 'Provision', type: 'number', editable: true, align: 'right', pattern: numericRegex },
-  { key: 'balInterestSuspenseAcc', label: 'Balance in Interest Suspense Account', type: 'number', editable: true, align: 'right', pattern: numericRegex },
+  {
+    key: 'balInterestSuspenseAcc',
+    label: 'Balance in Interest Suspense Account',
+    type: 'number',
+    editable: true,
+    align: 'right',
+    pattern: numericRegex,
+  },
 ];
 
 const initialRow = {
@@ -53,9 +79,6 @@ const initialRow = {
   balInterestSuspenseAcc: '',
 };
 
-const ROW_HEIGHT = 50;
-const MAX_ROWS = 1000; // Example limit on total rows
-
 export default function Schedule9ATable() {
   const [rows, setRows] = useState([]);
   const [totals, setTotals] = useState({
@@ -67,8 +90,22 @@ export default function Schedule9ATable() {
   });
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [saveStatus, setSaveStatus] = useState(null);
-  const [submitStatus, setSubmitStatus] = useState(null);
+  const [saveStatus, setSaveStatus] = useState(null); // 'success', 'error', null
+  const [submitStatus, setSubmitStatus] = useState(null); // 'success', 'error', null
+
+  // Simulate fetching saved data (replace with your actual API call)
+  useEffect(() => {
+    // Example:
+    // axios.get('/api/schedule9a')
+    //   .then(response => {
+    //     setRows(response.data);
+    //   })
+    //   .catch(error => {
+    //     console.error("Error fetching saved data:", error);
+    //     setSnackbarMessage('Error loading saved data.');
+    //     setSnackbarOpen(true);
+    //   });
+  }, []);
 
   const calculateTotals = useCallback(() => {
     let aggOutStandTotal = 0;
@@ -77,7 +114,8 @@ export default function Schedule9ATable() {
     let provisionTotal = 0;
     let balInterestSuspenseAccTotal = 0;
     let hasNetShortfallChanged = false;
-    const updatedRows = rows.map(row => {
+
+    const updatedRows = rows.map((row) => {
       const aggOut = parseFloat(row.aggOutStand) || 0;
       const aggSec = parseFloat(row.aggSecurities) || 0;
       const newNetShort = (aggOut - aggSec).toFixed(2);
@@ -92,7 +130,7 @@ export default function Schedule9ATable() {
       setRows(updatedRows);
     }
 
-    updatedRows.forEach(row => {
+    updatedRows.forEach((row) => {
       aggOutStandTotal += parseFloat(row.aggOutStand) || 0;
       aggSecuritiesTotal += parseFloat(row.aggSecurities) || 0;
       netShortfallTotal += parseFloat(row.netShortfall) || 0;
@@ -113,36 +151,35 @@ export default function Schedule9ATable() {
     calculateTotals();
   }, [rows, calculateTotals]);
 
+  useEffect(() => {
+    calculateTotals();
+  }, [rows, calculateTotals]);
+
   const handleInputChange = (event, index, columnKey) => {
     const { value } = event.target;
     const updatedRows = [...rows];
-    const column = columns.find(col => col.key === columnKey);
+    const column = columns.find((col) => col.key === columnKey);
 
     if (column?.pattern && !column.pattern.test(value)) {
-      return;
+      return; // Prevent updating state if the pattern doesn't match
     }
 
-    updatedRows[index] = { ...updatedRows[index], [columnKey]: value };
+    updatedRows[index][columnKey] = value;
     setRows(updatedRows);
   };
 
   const handleCheckboxChange = (event, index) => {
     const updatedRows = [...rows];
-    updatedRows[index] = { ...updatedRows[index], isDelete: event.target.checked };
+    updatedRows[index].isDelete = event.target.checked;
     setRows(updatedRows);
   };
 
   const addRow = () => {
-    if (rows.length >= MAX_ROWS) {
-      setSnackbarMessage(`Maximum number of rows (${MAX_ROWS}) reached.`);
-      setSnackbarOpen(true);
-      return;
-    }
     setRows([...rows, { ...initialRow }]);
   };
 
   const deleteSelectedRows = () => {
-    const newRows = rows.filter(row => !row.isDelete);
+    const newRows = rows.filter((row) => !row.isDelete);
     setRows(newRows);
     setSnackbarMessage('Selected rows deleted.');
     setSnackbarOpen(true);
@@ -151,14 +188,22 @@ export default function Schedule9ATable() {
   const validateRows = () => {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      const hasData = Object.keys(initialRow).some(key => key !== 'isDelete' && row[key] !== '');
+      const hasData = Object.keys(initialRow).some((key) => key !== 'isDelete' && row[key] !== '');
       if (hasData && !row.borrowerName) {
-        setSnackbarMessage('Please enter Branch & Borrower\'s Name for all filled rows.');
+        setSnackbarMessage("Please enter Branch & Borrower's Name for all filled rows.");
         setSnackbarOpen(true);
         return false;
       }
-      if (hasData && (isNaN(parseFloat(row.aggOutStand)) || isNaN(parseFloat(row.aggSecurities)) || isNaN(parseFloat(row.provision)) || isNaN(parseFloat(row.balInterestSuspenseAcc)))) {
-        setSnackbarMessage('Please enter valid numeric values for Aggregate outstanding, Aggregate value of realisable securities, Provision, and Balance in Interest Suspense Account.');
+      if (
+        hasData &&
+        (isNaN(parseFloat(row.aggOutStand)) ||
+          isNaN(parseFloat(row.aggSecurities)) ||
+          isNaN(parseFloat(row.provision)) ||
+          isNaN(parseFloat(row.balInterestSuspenseAcc)))
+      ) {
+        setSnackbarMessage(
+          'Please enter valid numeric values for Aggregate outstanding, Aggregate value of realisable securities, Provision, and Balance in Interest Suspense Account.'
+        );
         setSnackbarOpen(true);
         return false;
       }
@@ -170,11 +215,14 @@ export default function Schedule9ATable() {
     if (!validateRows()) {
       return;
     }
+    // Simulate API call for saving data
     try {
+      // const response = await axios.post('/api/schedule9a/save', rows);
       console.log('Data saved:', rows);
       setSaveStatus('success');
       setSnackbarMessage('Report saved successfully.');
       setSnackbarOpen(true);
+      // Handle response if needed
     } catch (error) {
       console.error('Error saving data:', error);
       setSaveStatus('error');
@@ -187,11 +235,14 @@ export default function Schedule9ATable() {
     if (!validateRows()) {
       return;
     }
+    // Simulate API call for submitting data
     try {
+      // const response = await axios.post('/api/schedule9a/submit', rows);
       console.log('Data submitted:', rows);
       setSubmitStatus('success');
       setSnackbarMessage('Report submitted successfully.');
       setSnackbarOpen(true);
+      // Handle response and redirection if needed
     } catch (error) {
       console.error('Error submitting data:', error);
       setSubmitStatus('error');
@@ -232,84 +283,85 @@ export default function Schedule9ATable() {
             </TableRow>
           </TableHead>
           <TableBody>
-            <FixedSizeList
-              height={Math.min(rows.length * ROW_HEIGHT, 500)}
-              itemCount={rows.length}
-              itemSize={ROW_HEIGHT}
-              style={{ width: '100%' }}
-            >
-              {({ index, style }) => {
-                const row = rows[index];
-                if (!row) return null;
-                return (
-                  <TableRow key={index} style={style}>
-                    {columns.map((column) => (
-                      <StyledTableCell key={`${index}-${column.key}`} align={column.align || 'left'}>
-                        {column.type === 'checkbox' ? (
-                          <Checkbox
-                            checked={row.isDelete}
-                            onChange={(event) => handleCheckboxChange(event, index)}
-                          />
-                        ) : column.editable ? (
-                          <TextField
-                            value={row[column.key] || ''}
-                            onChange={(event) => handleInputChange(event, index, column.key)}
-                            inputProps={{
-                              style: { textAlign: column.align },
-                              maxLength: column.key === 'borrowerName' ? 255 : 18,
-                            }}
-                            size="small"
-                          />
-                        ) : (
-                          <span>{row[column.key]}</span>
-                        )}
-                      </StyledTableCell>
-                    ))}
-                  </TableRow>
-                );
-              }}
-            </FixedSizeList>
+            {rows.map((row, index) => (
+              <TableRow key={index}>
+                {columns.map((column) => (
+                  <StyledTableCell key={`${index}-${column.key}`} align={column.align || 'left'}>
+                    {column.type === 'checkbox' ? (
+                      <Checkbox checked={row.isDelete} onChange={(event) => handleCheckboxChange(event, index)} />
+                    ) : column.editable ? (
+                      <TextField
+                        value={row[column.key]}
+                        onChange={(event) => handleInputChange(event, index, column.key)}
+                        inputProps={{
+                          style: { textAlign: column.align },
+                          maxLength: column.key === 'borrowerName' ? 255 : 18, // Example max length
+                        }}
+                        size="small"
+                      />
+                    ) : (
+                      <span>{row[column.key]}</span>
+                    )}
+                  </StyledTableCell>
+                ))}
+              </TableRow>
+            ))}
+            <TableRow>
+              <StyledTableCell colSpan={2} align="center">
+                <b>Total</b>
+              </StyledTableCell>
+              <StyledTableCell align="right">
+                <TextField
+                  value={totals.aggOutStandTotal}
+                  InputProps={{ readOnly: true, style: { textAlign: 'right' } }}
+                  size="small"
+                />
+              </StyledTableCell>
+              <StyledTableCell align="right">
+                <TextField
+                  value={totals.aggSecuritiesTotal}
+                  InputProps={{ readOnly: true, style: { textAlign: 'right' } }}
+                  size="small"
+                />
+              </StyledTableCell>
+              <StyledTableCell align="right">
+                <TextField
+                  value={totals.netShortfallTotal}
+                  InputProps={{ readOnly: true, style: { textAlign: 'right' } }}
+                  size="small"
+                />
+              </StyledTableCell>
+              <StyledTableCell align="right">
+                <TextField
+                  value={totals.provisionTotal}
+                  InputProps={{ readOnly: true, style: { textAlign: 'right' } }}
+                  size="small"
+                />
+              </StyledTableCell>
+              <StyledTableCell align="right">
+                <TextField
+                  value={totals.balInterestSuspenseAccTotal}
+                  InputProps={{ readOnly: true, style: { textAlign: 'right' } }}
+                  size="small"
+                />
+              </StyledTableCell>
+            </TableRow>
           </TableBody>
-          <TableRow>
-            <StyledTableCell colSpan={2} align="center">
-              <b>Total</b>
-            </StyledTableCell>
-            <StyledTableCell align="right">
-              <TextField value={totals.aggOutStandTotal} InputProps={{ readOnly: true, style: { textAlign: 'right' } }} size="small" />
-            </StyledTableCell>
-            <StyledTableCell align="right">
-              <TextField value={totals.aggSecuritiesTotal} InputProps={{ readOnly: true, style: { textAlign: 'right' } }} size="small" />
-            </StyledTableCell>
-            <StyledTableCell align="right">
-              <TextField value={totals.netShortfallTotal} InputProps={{ readOnly: true, style: { textAlign: 'right' } }} size="small" />
-            </StyledTableCell>
-            <StyledTableCell align="right">
-              <TextField value={totals.provisionTotal} InputProps={{ readOnly: true, style: { textAlign: 'right' } }} size="small" />
-            </StyledTableCell>
-            <StyledTableCell align="right">
-              <TextField value={totals.balInterestSuspenseAccTotal} InputProps={{ readOnly: true, style: { textAlign: 'right' } }} size="small" />
-            </StyledTableCell>
-          </TableRow>
         </Table>
       </TableContainer>
       <Stack direction="row" spacing={2} mt={2}>
-        <CustomButton label={'Add Row'} buttonType={'create'} onClick={addRow} disabled={rows.length >= MAX_ROWS} />
+        <CustomButton label={'Add Row'} buttonType={'create'} onClickHandler={addRow} />
         <CustomButton
           label={'Delete Row'}
           buttonType={'delete'}
-          onClick={deleteSelectedRows}
+          onClickHandler={deleteSelectedRows}
           disabled={rows.length === 0}
         />
-        <CustomButton
-          label={'Save'}
-          buttonType={'save'}
-          onClick={handleSave}
-          disabled={rows.length === 0}
-        />
+        <CustomButton label={'Save'} buttonType={'save'} onClickHandler={handleSave} disabled={rows.length === 0} />
         <CustomButton
           label={'Submit'}
           buttonType={'submit'}
-          onClick={handleSubmit}
+          onClickHandler={handleSubmit}
           disabled={rows.length === 0}
         />
       </Stack>
@@ -320,13 +372,22 @@ export default function Schedule9ATable() {
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert onClose={handleCloseSnackbar} severity={saveStatus === 'error' || submitStatus === 'error' ? 'error' : 'info'} sx={{ width: '100%' }}>
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={saveStatus === 'error' || submitStatus === 'error' ? 'error' : 'info'}
+          sx={{ width: '100%' }}
+        >
           {snackbarMessage}
         </Alert>
       </Snackbar>
 
       {saveStatus === 'success' && (
-        <Snackbar open={true} autoHideDuration={3000} onClose={handleCloseSnackbar} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+        <Snackbar
+          open={true}
+          autoHideDuration={3000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
           <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: '100%' }}>
             Report saved successfully.
           </Alert>
@@ -334,7 +395,12 @@ export default function Schedule9ATable() {
       )}
 
       {submitStatus === 'success' && (
-        <Snackbar open={true} autoHideDuration={3000} onClose={handleCloseSnackbar} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+        <Snackbar
+          open={true}
+          autoHideDuration={3000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
           <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: '100%' }}>
             Report submitted successfully.
           </Alert>
