@@ -1,723 +1,453 @@
-app
-    .controller('SC9Acontroller', function ($scope, $rootScope, $http, $window, $sessionStorage, $state, $timeout, $location, adminReportFactory, Idle, Keepalive, $modal, sc9aFactory, ModalService, blockUI, userFactory, refreshFactory, AES256) {
-
-        if ($rootScope.reportObject == undefined) {
-            refreshFactory.backToState();
-            return;
-        }
-
-        $scope.sessionUser = JSON.parse(window.sessionStorage
-            .getItem("user"));
-
-        $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
-        var SC9A = this;
-        $scope.started = false;
-        SC9A.listOfRows = [];
-        console.log("Report status is " + $rootScope.reportObject.status);
-
-        if ($rootScope.reportObject.status != null || $rootScope.reportObject.status != undefined) {
-
-            var circleCode = $scope.sessionUser.circleCode;
-            var quarterEndDate = $scope.sessionUser.quarterEndDate;
-
-            var row1 = {
-                'circleCode': circleCode,
-                'quarterEndDate': quarterEndDate,
-                'userId': $scope.sessionUser.userId,
-                'reportName': $rootScope.reportObject.name,
-                'reportId': $rootScope.reportObject.reportId,
-                'reportMasterId': $rootScope.reportObject.reportMasterId,
-                'status': $rootScope.reportObject.status,
-                'areMocPending': $rootScope.reportObject.areMocPending
-            };
-
-            sc9aFactory
-                .getSavedDataNineA(row1)
-                .then(function (data) {
-                    console.log("editing");
-                    var list = [];
-                    list = data;
-                    SC9A.listOfRows = data;
-
-                    //console.log(SC9A.listOfRows);
-
-
-                }, function (errResponse) {
-                    console
-                        .error('Error getting saved data in schedule 9A');
-                });
-
-        }
-
-        // //////////////////////submit
-
-        SC9A.submitNineA = function (saveVal) {
-
-            var valid = true;
-
-            SC9A.save = saveVal;
-            console.log("**********is for saving data ? " + SC9A.save);
-
-
-            for (var i = 0; i < SC9A.listOfRows.length; i++) {
-                var borrowerName = SC9A.listOfRows[i].borrowerName;
-                var aggOutStand = SC9A.listOfRows[i].aggOutStand;
-                var aggSecurities = SC9A.listOfRows[i].aggSecurities;
-                var netShortfall = SC9A.listOfRows[i].netShortfall;
-                var provision = SC9A.listOfRows[i].provision;
-                var balInterestSuspenseAcc = SC9A.listOfRows[i].balInterestSuspenseAcc;
-
-                /*console.log("borrowerName "+borrowerName);
-                    console.log("aggOutStand "+SC9A.parseFloat(aggOutStand));
-                    console.log("aggSecurities "+SC9A.parseFloat(aggSecurities));
-                    console.log("netShortfall "+SC9A.parseFloat(netShortfall));
-                    console.log("provision "+SC9A.parseFloat(provision));
-                    console.log("balInterestSuspenseAcc "+SC9A.parseFloat(balInterestSuspenseAcc));*/
-
-                /*if (SC9A.save==true){
-                        if ((borrowerName == ''||borrowerName == undefined) && (aggOutStand == '' ||aggOutStand == undefined)
-                            && (aggSecurities == '' || aggSecurities == undefined)
-                            && (netShortfall == '' || netShortfall == undefined)
-                            && (provision == '' || provision == undefined)
-                            && (balInterestSuspenseAcc == '' || balInterestSuspenseAcc == undefined)) {
-
-                            console.log('validation condition  failed while save');
-                            valid = false;
-
-                        }
-                    }
-                    if (SC9A.save==false){
-
-                        if (borrowerName == '' && SC9A.parseFloat(aggOutStand) == 0
-                            && SC9A.parseFloat(aggSecurities) == 0
-                            && SC9A.parseFloat(netShortfall) == 0
-                            && SC9A.parseFloat(provision) == 0
-                            && SC9A.parseFloat(balInterestSuspenseAcc) == 0) {
-
-                            console.log('validation condition  failed while submit');
-                            valid = false;
-
-                        }
-
-                    }*/
-                if ((borrowerName == '' || borrowerName == null) && SC9A.parseFloat(aggOutStand) == 0 && SC9A.parseFloat(aggSecurities) == 0 && SC9A.parseFloat(netShortfall) == 0 && SC9A.parseFloat(provision) == 0 && SC9A.parseFloat(balInterestSuspenseAcc) == 0) {
-
-                    console.log('validation condition  failed while submit/save');
-                    valid = false;
-
-                }
-
-
-            }
-
-            console.log("valid ? " + valid);
-
-            if (valid == true) {
-                if ($scope.sc9AForm.$dirty == false) {
-
-                    if (SC9A.save == false) {
-                        SC9A.displayMessage111 = "Would you like to submit report without changing data ?";
-                    }
-                    if (SC9A.save == true) {
-                        SC9A.displayMessage111 = "Would you like to save report without changing data ?";
-                    }
-
-                    if (SC9A.displayMessage111) {
-
-                        $('#myModal3').modal({
-                            backdrop: 'static', keyboard: false, modal: true
-                        });
-                        $('#myModal3')
-                            .on('shown.bs.modal', function () {
-                                $('#myModal3').trigger('focus');
-                            });
-                    }
-
-                }
-
-                SC9A.YesSubmitSC9A = function () {
-
-                    var circleCode = $scope.sessionUser.circleCode;
-                    var quarterEndDate = $scope.sessionUser.quarterEndDate;
-                    var listOfSC9A = SC9A.listOfRows;
-                    var listToBeSent = [];
-
-                    listOfSC9A
-                        .forEach(function (s) {
-
-                            var sc9aObject = {
-
-                                'borrowerName': s.borrowerName,
-                                'aggOutStand': s.aggOutStand,
-                                'aggSecurities': s.aggSecurities,
-                                'netShortfall': s.netShortfall,
-                                'provision': s.provision,
-                                'balInterestSuspenseAcc': s.balInterestSuspenseAcc
-
-                            };
-                            listToBeSent.push(sc9aObject);
-                        });
-
-                    var rowSubmit = {
-                        'listToBeSent': listToBeSent,
-                        'circleCode': circleCode,
-                        'quarterEndDate': quarterEndDate,
-                        'userId': $scope.sessionUser.userId,
-                        'reportName': $rootScope.reportObject.name,
-                        'reportId': $rootScope.reportObject.reportId,
-                        'reportMasterId': $rootScope.reportObject.reportMasterId,
-                        'status': $rootScope.reportObject.status,
-                        'save': SC9A.save
-                    };
-
-                    // var
-                    // params={'listToBeSent':listToBeSent,'circleCode':$scope.sessionUser.circleCode,'quarterEndDate':$scope.sessionUser.quarterEndDate,'level':$scope.level,'userId':$scope.sessionUser.userId};
-                    console.log('params ' + rowSubmit);
-
-                    console.log("************** SC 9A ********* save ? " + SC9A.save);
-                    sc9aFactory
-                        .submitNineA(rowSubmit)
-                        .then(function (data) {
-
-
-                            console.log("************** submitStatus ~ Sequence (reportId) ~ reportStatus : " + data);
-                            var result = [];
-                            result = data.split('~');
-
-
-                            if (result[0] >= 0) {
-
-                                $rootScope.reportObject.reportId = result[1];
-                                $rootScope.reportObject.status = result[2];
-                                console.log("# reportId " + $rootScope.reportObject.reportId);
-                                console.log("# status " + $rootScope.reportObject.status);
-
-
-                                if (SC9A.save == false) {
-                                    SC9A.displayMessage = "Report Submitted Successfully";
-                                    if (SC9A.displayMessage) {
-
-                                        $('#myModal1')
-                                            .modal({
-                                                backdrop: 'static', keyboard: false, modal: true
-                                            });
-                                        $('#myModal1')
-                                            .on('shown.bs.modal', function () {
-                                                $('#myModal1')
-                                                    .trigger('focus');
-                                            });
-                                    }
-                                }
-                                if (SC9A.save == true) {
-                                    SC9A.displayMessage = "Report Saved Successfully";
-                                    if (SC9A.displayMessage) {
-
-                                        $('#myModal4')
-                                            .modal({
-                                                backdrop: 'static', keyboard: false, modal: true
-                                            });
-                                        $('#myModal4')
-                                            .on('shown.bs.modal', function () {
-                                                $('#myModal4')
-                                                    .trigger('focus');
-                                            });
-                                    }
-                                }
-
-
-                            }
-                        }, function (errResponse) {
-                            console
-                                .error('Error while submitting schedule 9A');
-                        });
-
-                }
-                // ///////////////////////////////////////////////////
-
-                if ($scope.sc9AForm.$dirty == true) {
-
-                    // /////////////////////////old
-                    console.log(SC9A.listOfRows);
-                    var circleCode = $scope.sessionUser.circleCode;
-                    var quarterEndDate = $scope.sessionUser.quarterEndDate;
-                    var listOfSC9A = SC9A.listOfRows;
-                    var listToBeSent = [];
-
-                    listOfSC9A
-                        .forEach(function (s) {
-                            console.log(s);
-
-                            var sc9aObject = {
-
-                                'borrowerName': s.borrowerName,
-                                'aggOutStand': s.aggOutStand,
-                                'aggSecurities': s.aggSecurities,
-                                'netShortfall': s.netShortfall,
-                                'provision': s.provision,
-                                'balInterestSuspenseAcc': s.balInterestSuspenseAcc
-
-                            };
-                            listToBeSent.push(sc9aObject);
-                        });
-
-                    var rowSubmit = {
-                        'listToBeSent': listToBeSent,
-                        'circleCode': circleCode,
-                        'quarterEndDate': quarterEndDate,
-                        'userId': $scope.sessionUser.userId,
-                        'reportName': $rootScope.reportObject.name,
-                        'reportId': $rootScope.reportObject.reportId,
-                        'reportMasterId': $rootScope.reportObject.reportMasterId,
-                        'status': $rootScope.reportObject.status,
-                        'save': SC9A.save
-                    };
-
-                    console.log("*********************** is save ?" + SC9A.save);
-                    // var
-                    // params={'listToBeSent':listToBeSent,'circleCode':$scope.sessionUser.circleCode,'quarterEndDate':$scope.sessionUser.quarterEndDate,'level':$scope.level,'userId':$scope.sessionUser.userId};
-                    console.log('params ' + rowSubmit);
-
-                    sc9aFactory
-                        .submitNineA(rowSubmit)
-                        .then(function (data) {
-
-                            console.log("************** submitStatus ~ Sequence (reportId) ~ reportStatus : " + data);
-                            var result = [];
-                            result = data.split('~');
-
-
-                            if (result[0] >= 0) {
-
-                                $rootScope.reportObject.reportId = result[1];
-                                $rootScope.reportObject.status = result[2];
-                                console.log("# reportId " + $rootScope.reportObject.reportId);
-                                console.log("# status " + $rootScope.reportObject.status);
-
-
-                                if (SC9A.save == false) {
-                                    SC9A.displayMessage = "Report Submitted Successfully";
-                                    if (SC9A.displayMessage) {
-
-                                        $('#myModal1')
-                                            .modal({
-                                                backdrop: 'static', keyboard: false, modal: true
-                                            });
-                                        $('#myModal1')
-                                            .on('shown.bs.modal', function () {
-                                                $('#myModal1')
-                                                    .trigger('focus');
-                                            });
-                                    }
-                                }
-                                if (SC9A.save == true) {
-                                    SC9A.displayMessage = "Report Saved Successfully";
-                                    if (SC9A.displayMessage) {
-
-                                        $('#myModal4')
-                                            .modal({
-                                                backdrop: 'static', keyboard: false, modal: true
-                                            });
-                                        $('#myModal4')
-                                            .on('shown.bs.modal', function () {
-                                                $('#myModal4')
-                                                    .trigger('focus');
-                                            });
-                                    }
-                                }
-
-                            }
-                            console.log(data);
-                        }, function (errResponse) {
-                            console
-                                .error('Error while submtting sc 9A');
-                        });
-                    // //////////old
-
-                }
-
-                // ///////valid if end
-            } else {
-                SC9A.displayMessage = "please enter data, Empty rows can't be submitted.";
-
-                if (SC9A.save == true) {
-                    SC9A.displayMessage = "please enter data, Empty rows can't be saved.";
-                }
-
-                if (SC9A.displayMessage) {
-
-                    $('#myModal4').modal({
-                        backdrop: 'static', keyboard: false, modal: true
-                    });
-                    $('#myModal4').on('shown.bs.modal', function () {
-                        $('#myModal4').trigger('focus');
-                    });
-                }
-            }
-
-        }
-
-        SC9A.redirect = function () {
-            $timeout(function () {
-                $state.go('circle_maker.worklist');
-            }, 500);
-        }
-
-        SC9A.parseFloat = function (value) {
-            if (isNaN(value)) {
-                value = 0;
-            }
-            return parseFloat(value * 1);
-        }
-
-        $scope.$watch('SC9A.listOfRows', function (newVal) {
-
-
-            SC9A.aggOutStandTotal = 0;
-            SC9A.aggSecuritiesTotal = 0;
-            SC9A.netShortfallTotal = 0;
-            SC9A.provisionTotal = 0;
-            SC9A.balInterestSuspenseAccTotal = 0;
-
-            if (newVal != undefined) {
-
-                newVal.forEach(function (s) {
-
-                    //console.log("QQQQQQQQQQQQQQQQQQQ "+JSON.stringify(newVal));
-                    //console.log("******aggOutStand "+s.aggOutStand+" ********aggSecurities "+s.aggSecurities);
-
-
-                    if (s.aggOutStand == '' || s.aggOutStand == undefined) {
-                        s.aggOutStand = 0;
-                    }
-
-                    if (s.aggSecurities == '' || s.aggSecurities == undefined) {
-                        s.aggSecurities = 0;
-                    }
-
-
-                    if (s.aggOutStand == '-' && s.aggOutStand.length == 1) {
-                        s.netShortfall = (-1 * (SC9A.parseFloat(s.aggSecurities)).toFixed(2)).toString();
-                    } else if (s.aggSecurities == '-' && s.aggSecurities.length == 1) {
-                        s.netShortfall = ((SC9A.parseFloat(s.aggOutStand)).toFixed(2)).toString();
-                    } else {
-                        s.netShortfall = (SC9A.parseFloat(s.aggOutStand)).toFixed(2) - (SC9A.parseFloat(s.aggSecurities)).toFixed(2);
-
-                        s.netShortfall = ((SC9A.parseFloat(s.netShortfall)).toFixed(2)).toString();
-
-                    }
-
-                    SC9A.aggOutStandTotal = (SC9A.parseFloat(SC9A.aggOutStandTotal) + SC9A.parseFloat(s.aggOutStand)).toFixed(2);
-                    SC9A.aggSecuritiesTotal = (SC9A.parseFloat(SC9A.aggSecuritiesTotal) + SC9A.parseFloat(s.aggSecurities)).toFixed(2);
-                    SC9A.netShortfallTotal = (SC9A.parseFloat(SC9A.netShortfallTotal) + SC9A.parseFloat(s.netShortfall)).toFixed(2);
-                    SC9A.provisionTotal = (SC9A.parseFloat(SC9A.provisionTotal) + SC9A.parseFloat(s.provision)).toFixed(2);
-                    SC9A.balInterestSuspenseAccTotal = (SC9A.parseFloat(SC9A.balInterestSuspenseAccTotal) + SC9A.parseFloat(s.balInterestSuspenseAcc)).toFixed(2);
-
-
-                    s.aggOutStand = (s.aggOutStand).toString();
-                    s.aggSecurities = (s.aggSecurities).toString();
-
-                });
-
-
-            }
-
-
-        }, true);
-
-        SC9A.addRow = function () {
-            blockUI.start();
-            SC9A.listOfRows.push({
-                'isDelete': '',
-                'borrowerName': "",
-                'aggOutStand': SC9A.aggOutStand,
-                'aggSecurities': SC9A.aggSecurities,
-                'netShortfall': SC9A.netShortfall,
-                'provision': "",
-                'balInterestSuspenseAcc': ""
-            });
-            blockUI.stop();
-        };
-
-        SC9A.deleteRow = function () {
-            var listOfRows = SC9A.listOfRows;
-            SC9A.listOfRows.forEach(function (s) {
-                if (s.isDelete == true) {
-                    var index = SC9A.listOfRows.indexOf(s);
-                    //console.log(index);
-                    SC9A.listOfRows.splice(index, 1);
-                    // /added on 15062018
-                    SC9A.deleteRow();
-                    SC9A.displayMessage = "Row deleted successfully, Deletion of row will refelect in the report after submitting the report.";
-
-                    if (SC9A.displayMessage) {
-
-                        $('#myModal4')
-                            .modal({
-                                backdrop: 'static', keyboard: false, modal: true
-                            });
-                        $('#myModal4')
-                            .on('shown.bs.modal', function () {
-                                $('#myModal4')
-                                    .trigger('focus');
-                            });
-                    }
-                    return;
-                    // /added on 15062018 End
-                }
-            });
-        }
-
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import axios from 'axios';
+import {
+  Table,
+  TableBody,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  TextField,
+  Button,
+  Alert,
+  Stack,
+  Box,
+  Snackbar,
+  Checkbox,
+  TableCell,
+  Radio,
+} from '@mui/material';
+import { styled } from '@mui/material/styles';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import useApi from '../../../../common/hooks/useApi';
+
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  fontSize: '1rem',
+  [`&.MuiTableCell-head`]: {
+    backgroundColor: theme.palette.common.black,
+    color: theme.palette.common.white,
+  },
+}));
+
+const numericRegex = /^-?\d*(\.\d{0,2})?$/;
+const alphanumericRegex = /^[A-Za-z0-9\s]*$/;
+
+const columns = [
+  { key: 'isDelete', label: 'Select', type: 'checkbox', editable: false, align: 'center', subHeading: '' },
+  {
+    key: 'borrowerName',
+    label: "Branch & Borrower's Name",
+    type: 'text',
+    editable: true,
+    align: 'center',
+    pattern: alphanumericRegex,
+    subHeading: '',
+  },
+  {
+    key: 'aggOutStand',
+    label: 'Aggregate outstanding',
+    type: 'number',
+    editable: true,
+    align: 'center',
+    pattern: numericRegex,
+    subHeading: '( 1 )',
+  },
+  {
+    key: 'aggSecurities',
+    label: 'Aggregate value of realisable securities',
+    type: 'number',
+    editable: true,
+    align: 'center',
+    pattern: numericRegex,
+    subHeading: '( 2 )',
+  },
+  {
+    key: 'netShortfall',
+    label: 'Net Shortfall',
+    type: 'number',
+    editable: false,
+    align: 'center',
+    subHeading: '( 3 = 1 - 2 )',
+  },
+  {
+    key: 'provision',
+    label: 'Provision',
+    type: 'number',
+    editable: true,
+    align: 'center',
+    pattern: numericRegex,
+    subHeading: '( 4 )',
+  },
+  {
+    key: 'balInterestSuspenseAcc',
+    label: 'Balance in Interest Suspense Account',
+    type: 'number',
+    editable: true,
+    align: 'center',
+    pattern: numericRegex,
+    subHeading: '( 5 )',
+  },
+];
+
+const initialRow = {
+  isDelete: false,
+  borrowerName: '',
+  aggOutStand: '',
+  aggSecurities: '',
+  netShortfall: '',
+  provision: '',
+  balInterestSuspenseAcc: '',
+};
+
+export default function Schedule9ATable() {
+  const { callApi } = useApi();
+  const [rows, setRows] = useState([]);
+  const [totals, setTotals] = useState({
+    aggOutStandTotal: 0,
+    aggSecuritiesTotal: 0,
+    netShortfallTotal: 0,
+    provisionTotal: 0,
+    balInterestSuspenseAccTotal: 0,
+  });
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [saveStatus, setSaveStatus] = useState(null); // 'success', 'error', null
+  const [submitStatus, setSubmitStatus] = useState(null); // 'success', 'error', null
+
+  useEffect(() => {
+    const payload = {
+      circleCode: '021',
+      quarterEndDate: '31/03/2025',
+    };
+    const fetchData = async () => {
+      try {
+        const response = await callApi('/Maker/getSavedDataNineA', payload, 'POST');
+        setRows(response);
+      } catch (error) {
+        console.error('Error fetching saved data:', error);
+        setSnackbarMessage('Error loading saved data.');
+        setSnackbarOpen(true);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const calculateTotals = useCallback(() => {
+    let aggOutStandTotal = 0;
+    let aggSecuritiesTotal = 0;
+    let netShortfallTotal = 0;
+    let provisionTotal = 0;
+    let balInterestSuspenseAccTotal = 0;
+    let hasNetShortfallChanged = false;
+
+    const updatedRows = rows.map((row) => {
+      const aggOut = parseFloat(row.aggOutStand) || 0;
+      const aggSec = parseFloat(row.aggSecurities) || 0;
+      const newNetShort = (aggOut - aggSec).toFixed(2);
+      if (row.netShortfall !== newNetShort) {
+        hasNetShortfallChanged = true;
+        return { ...row, netShortfall: newNetShort };
+      }
+      return row;
     });
-////////////////////////////////////////////
 
-<style>
-    .checkbox {
-
-        margin-top: 0px;
-        margin-bottom: 0px;
+    if (hasNetShortfallChanged) {
+      setRows(updatedRows);
     }
-</style>
-<div class="wrapper">
-<div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
-		<div class="container">
-			<div class="row tim-row">
-				<div class="col-md-8 col-md-offset-2">
-					<div class="brand">
-						<h3 style="color: white;">Schedule 9A</h3>
-					</div>
-				</div>
-			</div>
 
-		</div>
-		
-	</div>
-	
-	<div class="main main-raised">
-		<div class="section">
-		
-		<div class="container table-responsive" >
-		
-		
+    updatedRows.forEach((row) => {
+      aggOutStandTotal += parseFloat(row.aggOutStand) || 0;
+      aggSecuritiesTotal += parseFloat(row.aggSecurities) || 0;
+      netShortfallTotal += parseFloat(row.netShortfall) || 0;
+      provisionTotal += parseFloat(row.provision) || 0;
+      balInterestSuspenseAccTotal += parseFloat(row.balInterestSuspenseAcc) || 0;
+    });
 
-<div class="row">
-<div class="col-md-12" >
+    setTotals({
+      aggOutStandTotal: aggOutStandTotal.toFixed(2),
+      aggSecuritiesTotal: aggSecuritiesTotal.toFixed(2),
+      netShortfallTotal: netShortfallTotal.toFixed(2),
+      provisionTotal: provisionTotal.toFixed(2),
+      balInterestSuspenseAccTotal: balInterestSuspenseAccTotal.toFixed(2),
+    });
+  }, [rows, setRows, setTotals]);
 
-	
+  useEffect(() => {
+    calculateTotals();
+  }, [rows, calculateTotals]);
 
+  const handleInputChange = (event, index, columnKey) => {
+    const { value } = event.target;
+    const updatedRows = [...rows];
+    const column = columns.find((col) => col.key === columnKey);
 
+    if (column?.pattern && !column.pattern.test(value)) {
+      return; // Prevent updating state if the pattern doesn't match
+    }
 
-<%--<div class="modal-header">
-    <button class="btn  btn-success" data-dismiss="modal" type="submit" ng-click="addRow();">Add Row</button>
-	 <button class="btn  btn-danger" data-dismiss="modal" type="submit" ng-click="deleteRow();" ng-disabled="SC9A.listOfRows.length==0">Delete Row</button>
+    updatedRows[index][columnKey] = value;
+    setRows(updatedRows);
+  };
 
-</div>  data-ng-submit="SC9A.submitNineA()"--%>
+  const handleCheckboxChange = (event, index) => {
+    const updatedRows = [...rows];
+    updatedRows[index].isDelete = event.target.checked;
+    setRows(updatedRows);
+  };
 
-<form name="sc9AForm" ng-submit="" ng-init=""  >
-    <input type="hidden" id="csrfPreventionSalt" value="${csrfPreventionSalt}"/>
+  const addRow = () => {
+    setRows([...rows, { ...initialRow }]);
+  };
 
-	<table  id="example1"class="table table-hover table-bordered table-responsive no-padding dataTable no-footer" >
-		<thead>
-			<tr>
-			 <th style="text-align:Center"><b>Select</b></th>
-			 <th style="text-align:Center"><b>BRANCH & BORROWER'S NAME</b></th>
-			 <th style="text-align:Center"><b>Aggregate outstanding</b></th>
-	         <th style="text-align:Center"><b>Aggregate value of realisable securities</b></th>
-             <th style="text-align:Center"><b>Net Shortfall</b></th>
-              <th style="text-align:Center"><b>Provision</b></th>
-               <th style="text-align:Center"><b>Balance in Interest Suspense Account</b></th>
-			</tr>
+  const deleteSelectedRows = () => {
+    const newRows = rows.filter((row) => !row.isDelete);
+    setRows(newRows);
+    setSnackbarMessage('Selected rows deleted.');
+    setSnackbarOpen(true);
+  };
 
-        <tr>
-            <td></td>
-            <td></td>
-            <td style="text-align:Center"><b>(1)</b></td>
-            <td style="text-align:Center"><b>(2)</b></td>
-            <td style="text-align:Center"><b>(3=1-2)</b></td>
-            <td style="text-align:Center"><b>(4)</b></td>
-            <td style="text-align:Center"><b>(5)</b></td>
-        </tr>
-			</thead>
+  const validateRows = () => {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const hasData = Object.keys(initialRow).some((key) => key !== 'isDelete' && row[key] !== '');
+      if (hasData && !row.borrowerName) {
+        setSnackbarMessage("Please enter Branch & Borrower's Name for all filled rows.");
+        setSnackbarOpen(true);
+        return false;
+      }
+      if (
+        hasData &&
+        (isNaN(parseFloat(row.aggOutStand)) ||
+          isNaN(parseFloat(row.aggSecurities)) ||
+          isNaN(parseFloat(row.provision)) ||
+          isNaN(parseFloat(row.balInterestSuspenseAcc)))
+      ) {
+        setSnackbarMessage(
+          'Please enter valid numeric values for Aggregate outstanding, Aggregate value of realisable securities, Provision, and Balance in Interest Suspense Account.'
+        );
+        setSnackbarOpen(true);
+        return false;
+      }
+    }
+    return true;
+  };
 
+  const buildPayload = (saveFlag) => {
+    return {
+      listToBeSent: rows.map(({ isDelete, ...rest }) => rest),
+      circleCode: '021',
+      quarterEndDate: '31/03/2025',
+      userId: '1111111',
+      reportName: 'Schedule 9A',
+      reportId: null, // or existing if editing
+      reportMasterId: '310023',
+      status: null,
+      save: saveFlag,
+    };
+  };
 
-			 <tbody>
-			 <tr data-ng-repeat="row in SC9A.listOfRows track by $index" >
+  const handleSave = async () => {
+    if (!validateRows()) {
+      return;
+    }
+    // Simulate API call for saving data
+    const payload = buildPayload(true);
+    try {
+      //const response = await axios.post('http://localhost:7001/BS/Maker/submitNineA', payload);
 
-			<script type="text/javascript">
-            $(".decimal-2-places").numeric({ decimalPlaces: 2 });
-			</script>
+      const response = await callApi('/Maker/submitNineA', payload, 'POST');
+      console.log('Save response:', response.data);
+      console.log('Data saved:', rows);
+      setSaveStatus('success');
+      setSnackbarMessage('Report saved successfully.');
+      setSnackbarOpen(true);
+      // Handle response if needed
+    } catch (error) {
+      console.error('Error saving data:', error);
+      setSaveStatus('error');
+      setSnackbarMessage('Error saving report.');
+      setSnackbarOpen(true);
+    }
+  };
 
-			<td style="text-align:Center">
+  const handleSubmit = async () => {
+    if (!validateRows()) {
+      return;
+    }
+    const payload = buildPayload(false);
+    try {
+      //const response = await axios.post('http://localhost:7001/BS/Maker/submitNineA', payload);
+      const response = await callApi('/Maker/submitNineA', payload, 'POST');
+      console.log('Submit response:', response.data);
+      console.log('Data submitted:', rows);
+      setSubmitStatus('success');
+      setSnackbarMessage('Report submitted successfully.');
+      setSnackbarOpen(true);
+      // Handle response and redirection if needed
+    } catch (error) {
+      console.error('Error submitting data:', error);
+      setSubmitStatus('error');
+      setSnackbarMessage('Error submitting report.');
+      setSnackbarOpen(true);
+    }
+  };
 
-                    <%--FOR amount ng-pattern-restrict="^[\-]{0,1}[0-9]{0,15}(\.[0-9]{0,2})?$"--%>
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
+    setSaveStatus(null);
+    setSubmitStatus(null);
+  };
 
-                <div class="checkbox">
-                    <label> <input type="checkbox" ng-model="row.isDelete" name="isDelete"/>
-                        <span class="checkbox-material"><span class="check"></span></span>
-                    </label>
-                </div>
-            </td>
-            <td><input type="text" ng-model="row.borrowerName"style="text-align:left;" name="borrowerName"  ng-disabled="row.isDisabled == 'true'" class="form-control" ng-pattern-restrict="^[A-Za-z0-9\s]*$" /></td>
-            <td><input type="text"  ng-model="row.aggOutStand" style="text-align:right;" name="aggOutStand" class="form-control decimal-2-places" maxlength="18"  /></td>
-            <td><input type="text"  ng-model="row.aggSecurities" style="text-align:right" name="aggSecurities" class="form-control decimal-2-places" maxlength="18" /></td>
-            <td><input type="text"  ng-model="row.netShortfall" readonly="readonly"style="text-align:right" name="netShortfall" class="form-control decimal-2-places" maxlength="18"  /></td>
-            <td><input type="text"  ng-model="row.provision" style="text-align:right" name="provision" class="form-control decimal-2-places" maxlength="18"  /></td>
-            <td><input type="text"  ng-model="row.balInterestSuspenseAcc" style="text-align:right" name="balInterestSuspenseAcc" class="form-control decimal-2-places" maxlength="18" /></td>
+  return (
+    <Box>
+      <TableContainer component={Paper} sx={{ width: '100%' }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              {columns.map((col) => (
+                <StyledTableCell key={col.key} align={col.align || 'center'}>
+                  {col.label}
+                </StyledTableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableHead>
+            <TableRow>
+              {columns.map((col) => (
+                <StyledTableCell key={col.key} align={col.align || 'center'}>
+                  {col.subHeading}
+                </StyledTableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((row, index) => (
+              <TableRow key={index}>
+                {columns.map((column) => (
+                  <StyledTableCell key={`${index}-${column.key}`} align={column.align || 'left'}>
+                    {column.type === 'checkbox' ? (
+                      <Checkbox checked={row.isDelete} onChange={(event) => handleCheckboxChange(event, index)} />
+                    ) : column.editable ? (
+                      <TextField
+                        defaultValue={row[column.key] || ''}
+                        // onChange={(event) => handleInputChange(event, index, column.key)}
+                        onBlur={(event) => handleInputChange(event, index, column.key)}
+                        inputProps={{
+                          style: { textAlign: 'right' },
+                          maxLength: column.key === 'borrowerName' ? 255 : 18, // Example max length
+                        }}
+                        size="small"
+                      />
+                    ) : (
+                      <span>{row[column.key]}</span>
+                    )}
+                  </StyledTableCell>
+                ))}
+              </TableRow>
+            ))}
+            <TableRow>
+              <StyledTableCell colSpan={2} align="center">
+                <b>Total</b>
+              </StyledTableCell>
+              <StyledTableCell align="center">
+                <TextField
+                  value={totals.aggOutStandTotal}
+                  InputProps={{ readOnly: true, style: { textAlign: 'right' } }}
+                  size="small"
+                />
+              </StyledTableCell>
+              <StyledTableCell align="center">
+                <TextField
+                  value={totals.aggSecuritiesTotal}
+                  InputProps={{ readOnly: true, style: { textAlign: 'right' } }}
+                  size="small"
+                />
+              </StyledTableCell>
+              <StyledTableCell align="center">
+                <TextField
+                  value={totals.netShortfallTotal}
+                  InputProps={{ readOnly: true, style: { textAlign: 'right' } }}
+                  size="small"
+                />
+              </StyledTableCell>
+              <StyledTableCell align="center">
+                <TextField
+                  value={totals.provisionTotal}
+                  InputProps={{ readOnly: true, style: { textAlign: 'right' } }}
+                  size="small"
+                />
+              </StyledTableCell>
+              <StyledTableCell align="center">
+                <TextField
+                  value={totals.balInterestSuspenseAccTotal}
+                  InputProps={{ readOnly: true, style: { textAlign: 'right' } }}
+                  size="small"
+                />
+              </StyledTableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </TableContainer>
+      <Stack direction="row" spacing={2} mt={2}>
+        <CustomButton label={'Add Row'} buttonType={'create'} onClickHandler={addRow} />
+        <CustomButton
+          label={'Delete Row'}
+          buttonType={'delete'}
+          onClickHandler={deleteSelectedRows}
+          disabled={rows.length === 0}
+        />
+        <CustomButton label={'Save'} buttonType={'save'} onClickHandler={handleSave} disabled={rows.length === 0} />
+        <CustomButton
+          label={'Submit'}
+          buttonType={'submit'}
+          onClickHandler={handleSubmit}
+          disabled={rows.length === 0}
+        />
+      </Stack>
 
-            </tr>
-             <tr>
-                 <td></td>
-                 <td style="text-align:center;"><b>Total</b></td>
-                 <td><input type="text"  ng-model="SC9A.aggOutStandTotal"  readonly="readonly" style="text-align:right;" name="aggOutStandTotal" class="form-control decimal-2-places" maxlength="18"  /></td>
-                 <td><input type="text"  ng-model="SC9A.aggSecuritiesTotal" readonly="readonly" style="text-align:right" name="aggSecuritiesTotal" class="form-control decimal-2-places" maxlength="18" /></td>
-                 <td><input type="text"  ng-model="SC9A.netShortfallTotal" readonly="readonly"style="text-align:right" name="netShortfallTotal" class="form-control decimal-2-places" maxlength="18"  /></td>
-                 <td><input type="text"  ng-model="SC9A.provisionTotal" readonly="readonly" style="text-align:right" name="provisionTotal" class="form-control decimal-2-places" maxlength="18" /></td>
-                 <td><input type="text"  ng-model="SC9A.balInterestSuspenseAccTotal" readonly="readonly" style="text-align:right" name="balInterestSuspenseAccTotal" class="form-control decimal-2-places" maxlength="18" /></td>
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={saveStatus === 'error' || submitStatus === 'error' ? 'error' : 'info'}
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
 
+      {saveStatus === 'success' && (
+        <Snackbar
+          open={true}
+          autoHideDuration={3000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
+          <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: '100%' }}>
+            Report saved successfully.
+          </Alert>
+        </Snackbar>
+      )}
 
-
-             </tr>
-			</tbody>
-	</table>
-
-
-
-
-    <div class="modal-footer">
-
-        <div class="row">
-            <div class="col-md-2" style="margin-bottom: 10px">
-                <button class="btn  btn-info" data-dismiss="modal" type="submit" ng-click="SC9A.addRow();">Add Row</button>
-            </div>
-            <div class="col-md-2" style="margin-bottom: 10px">
-                <button class="btn  btn-danger" data-dismiss="modal" type="submit" ng-click="SC9A.deleteRow();" ng-disabled="SC9A.listOfRows.length==0">Delete Row</button>
-            </div>
-            <div class="col-md-2" style="margin-bottom: 10px">
-                <button class="btn btn-warning"  data-dismiss="modal" type="submit"  ng-disabled="SC9A.listOfRows.length==0" ng-click="SC9A.submitNineA(true)" >Save</button>
-            </div>
-
-            <div class="col-md-2" style="margin-bottom: 10px">
-                <button class="btn btn-success" data-dismiss="modal" type="submit"  ng-disabled="SC9A.listOfRows.length==0" ng-click="SC9A.submitNineA(false)" >Submit</button>
-            </div>
-
-            <div class="col-md-6"></div>
-        </div>
-		<%--<button class="btn btn-warning"  data-dismiss="modal" type="submit"  ng-disabled="SC9A.listOfRows.length==0" ng-click="SC9A.save = true">Save</button>
-		<button class="btn btn-success" data-dismiss="modal" type="submit"  ng-disabled="SC9A.listOfRows.length==0" ng-click="SC9A.save = false">Submit</button>--%>
-	</div>
-
- 
-</form>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-
-
-
-
-
-<div class="modal fade" id="myModal2" role="dialog" style="z-index : 1400">  
-    <div class="modal-dialog">  
-		<!-- Modal content-->
-      <div class="modal-content">  
-        <div class="modal-header" style="background-color: #E74C3C";>  
-          <!--<button type="button" class="close" data-dismiss="modal">?</button> -->  
-          <h4 class="modal-title" style="color: white;">Attention!</h4>  
-        </div>  
-        <div class="modal-body" id="popup">  
-        <table id="example2" class="table table-hover table-responsive no-padding dataTable no-footer" style="width: 100%">
-		<thead>
-		<tr>
-		<th style="width: 100%"></th>
-		</thead>
-		
-		<td>{{SC9A.displayMessage}}</td>
-		</table>
-       	</div>
-		<div class="modal-footer">  
-          <button type="button" class="btn btn-success" data-dismiss="modal" ng-click="main.redirect();">Continue</button>
-        </div>  
-	  </div>
-	</div>
-</div>
-
-
-
-
-
-<div class="modal fade" id="myModal1" role="dialog" style="z-index : 1400">  
-    <div class="modal-dialog">  
-      
-      <!-- Modal content-->  
-      <div class="modal-content">  
-        <div class="modal-header" style="background-color: #E74C3C";>  
-          <!--<button type="button" class="close" data-dismiss="modal">?</button> -->  
-          <h4 class="modal-title" style="color: white;">Attention!</h4>  
-        </div>  
-        <div class="modal-body" id="popup">  
-        {{SC9A.displayMessage}}
-       	</div>
-		<div class="modal-footer">  
-          <button type="button" class="btn btn-success" data-dismiss="modal" ng-click="main.redirect();">Continue</button>
-        </div>  
-
-
- 		 </div>
-	</div>
-</div>
-
-
-
-<div class="modal fade" id="myModal4" role="dialog" style="z-index : 1400">  
-    <div class="modal-dialog">  
-      
-      <!-- Modal content-->  
-      <div class="modal-content">  
-        <div class="modal-header" style="background-color: #E74C3C";>  
-          <!--<button type="button" class="close" data-dismiss="modal">?</button> -->  
-          <h4 class="modal-title" style="color: white;">Attention!</h4>  
-        </div>  
-        <div class="modal-body" id="popup">  
-        {{SC9A.displayMessage}}
-       	</div>
-		<div class="modal-footer">  
-          <button type="button" class="btn btn-success" data-dismiss="modal" >Continue</button>
-        </div>  
-
-
- 		 </div>
-	</div>
-</div>
-
-
-<div class="modal fade" id="myModal3" role="dialog" style="z-index : 1400">  
-    <div class="modal-dialog">  
-      
-      <!-- Modal content-->  
-      <div class="modal-content">  
-        <div class="modal-header" style="background-color: #E74C3C";>  
-          <!--<button type="button" class="close" data-dismiss="modal">?</button> -->  
-          <h4 class="modal-title" style="color: white;">Attention!</h4>  
-        </div>  
-        <div class="modal-body" id="popup">  
-        {{SC9A.displayMessage111}}
-       	</div>
-		<div class="modal-footer">  
-          <button type="button" class="btn btn-success" ng-click="SC9A.YesSubmitSC9A();" data-dismiss="modal">YES</button>
-          
-          <button type="button" class="btn btn-success"  data-dismiss="modal">No</button>
-        </div>  
-
- 		 </div>
-	</div>
-</div>
-
-
-
-
-
-
-
-
+      {submitStatus === 'success' && (
+        <Snackbar
+          open={true}
+          autoHideDuration={3000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
+          <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: '100%' }}>
+            Report submitted successfully.
+          </Alert>
+        </Snackbar>
+      )}
+    </Box>
+  );
+}
