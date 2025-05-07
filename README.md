@@ -1,4 +1,4 @@
-//working code
+Working below code:
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
@@ -289,8 +289,9 @@ export default function Schedule9ATable() {
                       <Checkbox checked={row.isDelete} onChange={(event) => handleCheckboxChange(event, index)} />
                     ) : column.editable ? (
                       <TextField
-                        value={row[column.key]}
-                        onChange={(event) => handleInputChange(event, index, column.key)}
+                        defaultValue={row[column.key] || ''}
+                        // onChange={(event) => handleInputChange(event, index, column.key)}
+                        onBlur={(event) => handleInputChange(event, index, column.key)}
                         inputProps={{
                           style: { textAlign: column.align },
                           maxLength: column.key === 'borrowerName' ? 255 : 18, // Example max length
@@ -407,3 +408,164 @@ export default function Schedule9ATable() {
     </Box>
   );
 }
+
+
+
+
+
+----------------------------------------------------------------------------------------------------------------
+Payload for save method:
+
+{
+    "listToBeSent": [
+        {
+            "borrowerName": "",
+            "aggOutStand": "01.00",
+            "aggSecurities": "10",
+            "netShortfall": "-9.00",
+            "provision": "1",
+            "balInterestSuspenseAcc": "1"
+        },
+        {
+            "borrowerName": "",
+            "aggOutStand": "10",
+            "aggSecurities": "10",
+            "netShortfall": "0.00",
+            "provision": "1",
+            "balInterestSuspenseAcc": "1"
+        }
+    ],
+    "circleCode": "021",
+    "quarterEndDate": "31/03/2025",
+    "userId": "1111111",
+    "reportName": "Schedule 9A",
+    "reportId": null,
+    "reportMasterId": "310023",
+    "status": null,
+    "save": true
+}
+-----------------------------------------------------------------------------------------------------------------
+
+Dao Implementation
+
+
+
+public String submitNineA(List listToBeSent, String circleCode, String quarterEndDate, String userId, String reportId,
+                              String reportMasterId, String reportName, String status, boolean save){
+
+
+        String result = "";
+        String insertStatus = "";
+
+        String noncrPkId = "";
+
+        HashMap<String, String> branchCount = new HashMap<String, String>();
+        int counter = -1;
+        String sequence = makerDao.generateSequence();
+        int count = 0;
+        String queryD = "DELETE FROM BS_SC09A where SC09A_CIRCLE=? and SC09A_DATE=to_date(?,'dd/mm/yyyy')";
+        count = jdbcTemplate.update(queryD, new Object[]{circleCode, quarterEndDate});
+        log.info("***** is for saving data ? " + save);
+        log.info("** deleted entries count from BS_SC09A  " + count);
+
+        //if already data inserted, sending the existing noncrPkId value otherwise sending new sequence
+        if (count == 0) {
+
+            noncrPkId = sequence;
+        }
+
+        if (count > 0) {
+
+            noncrPkId = reportId;
+        }
+
+
+        log.info("*****$$$ " + noncrPkId);
+
+        String query = "insert into BS_SC09A(SC09A_ID,SC09A_FK,SC09A_DATE,SC09A_CIRCLE,SC09A_DESC,SC09A_AGOS,SC09A_REALI,SC09A_SHORT,SC09A_PROV,SC09A_BAL) VALUES(?,?,to_date(?,'dd/mm/yyyy'),?,?,?,?,?,?,?)";
+        int flag = 1;
+        // int counter=-1;
+        for (Object object : listToBeSent) {
+            LinkedHashMap map = (LinkedHashMap) object;
+            String borrowerName = (String) map.get("borrowerName");
+            String aggOutStand = (String) map.get("aggOutStand");
+            String aggSecurities = (String) map.get("aggSecurities");
+            String netShortfall = (String) map.get("netShortfall");
+            String provision = (String) map.get("provision");
+            String balInterestSuspenseAcc = (String) map.get("balInterestSuspenseAcc");
+
+
+            String generatedSequence = null;
+            /// int status=-1;
+
+            String sequenceid = "select BS_AUDIT_LOG.nextVal from dual ";
+
+            // JdbcTemplate jdbcTemplateObject=new JdbcTemplate(dataSource);
+
+            generatedSequence = jdbcTemplate.query(sequenceid, new ResultSetExtractor<String>() {
+
+                @Override
+                public String extractData(ResultSet rs) throws SQLException, DataAccessException {
+                    String generatedSequence = "";
+                    if (rs.next()) {
+                        generatedSequence = rs.getString(1);
+                    }
+                    return generatedSequence;
+                }
+
+            });
+
+
+            flag = jdbcTemplate.update(query, new Object[]{generatedSequence, noncrPkId, quarterEndDate, circleCode,
+                    borrowerName, aggOutStand, aggSecurities, netShortfall, provision, balInterestSuspenseAcc});
+			/*flag = jdbcTemplate.update(query, new Object[] { generatedSequence, sequence, quarterEndDate, circleCode,
+					borrowerName, aggOutStand, aggSecurities, netShortfall, provision, balInterestSuspenseAcc });*/
+            counter = counter + flag;
+        }
+
+
+        if (save == true) {
+
+            if (count == 0) {
+
+
+                log.info("********************$$$ inside save SC9A count 0 " + sequence + "  *  " + noncrPkId);
+                makerDao.reportEntryInMasterTable(sequence, reportMasterId, circleCode, quarterEndDate, reportName, userId,
+                        "11", "I");
+                insertStatus = sequence + "~" + "11";
+
+            }
+            if (count > 0) {
+
+
+                log.info("********************$$$ inside save SC9A count > 0 " + reportId + "  *  " + noncrPkId);
+                makerDao.reportEntryInMasterTable(reportId, reportMasterId, circleCode, quarterEndDate, reportName, userId,
+                        "11", "U");
+                insertStatus = reportId + "~" + "11";
+
+            }
+        }
+        if (save == false) {
+            if (count == 0) {
+
+                log.info("********************$$$ inside submit SC9A count 0 " + sequence + "  *  " + noncrPkId);
+
+                makerDao.reportEntryInMasterTable(sequence, reportMasterId, circleCode, quarterEndDate, reportName, userId,
+                        "20", "I");
+                insertStatus = sequence + "~" + "20";
+
+            } else if (count > 0) {
+                log.info("********************$$$ inside submit SC9A count > 0 " + reportId + "  *  " + noncrPkId);
+
+                makerDao.reportEntryInMasterTable(reportId, reportMasterId, circleCode, quarterEndDate, reportName, userId,
+                        "21", "U");
+                insertStatus = reportId + "~" + "21";
+
+            }
+        }
+
+        result = counter + "~" + insertStatus;
+
+
+        return result;
+    }
