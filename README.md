@@ -1,4 +1,7 @@
 const getFieldName = (id, key) => {
+  // Skip non-entry types
+  if (id.startsWith('header')) return null;
+
   let base = id.startsWith('fac') ? 'facility' : id.startsWith('sec') ? 'security' : 'sector';
 
   const suffix =
@@ -20,7 +23,7 @@ const getFieldName = (id, key) => {
   else if (id.endsWith('Total')) idx = 'Total';
   else {
     const numeric = id.replace(/\D/g, '');
-    idx = numeric || '1';  // fallback to '1' if empty to avoid trailing underscore
+    idx = numeric || '1';  // fallback to avoid blank
   }
 
   return `${base}_${suffix}_${idx}`;
