@@ -120,3 +120,280 @@ java.lang.IllegalArgumentException: Unrecognized field "sector_Standard_" (class
 	at javax.servlet.http.HttpServlet.service(HttpServlet.java:665)
 	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:846)
 	at javax.servlet.http.HttpServlet.service(HttpServlet.java:750)
+
+
+ ////
+ original paylaod should be this
+ {
+    "circleCode": "021",
+    "quarterEndDate": "31/03/2025",
+    "reportId": "125731",
+    "userId": "1111111",
+    "reportName": "Schedule 9",
+    "reportMasterId": "310009",
+    "status": "11",
+    "areMocPending": true,
+    "role": "51",
+    "save": true,
+    "facility_Adj_1": null,
+    "facility_Adj_2": null,
+    "facility_Adj_3": null,
+    "facility_Adj_Total": "0.00",
+    "security_Adj_1": null,
+    "security_Adj_2": null,
+    "security_Adj_3": null,
+    "security_Adj_Total": "0.00",
+    "sector_Adj_a1": null,
+    "sector_Adj_a2": null,
+    "sector_Adj_a3": null,
+    "sector_Adj_a4": null,
+    "sector_Adj_a_Total": "0.00",
+    "sector_Adj_b1": null,
+    "sector_Adj_1": null,
+    "sector_Adj_2": null,
+    "sector_Adj_3": null,
+    "sector_Adj_b_Total": "0.00",
+    "sector_Adj_ab_Total": "0.00",
+    "facility_Standard_1": "0",
+    "facility_SubStandard_1": "0",
+    "facility_Doubtful_1": "0",
+    "facility_Loss_1": "1589085221150.91",
+    "facility_Total_1": "1589085221150.91",
+    "security_Standard_1": "0",
+    "security_SubStandard_1": "0",
+    "security_Doubtful_1": "0",
+    "security_Loss_1": "5881868903098.4",
+    "security_Total_1": "5881868903098.40",
+    "sector_Standard_1": "0",
+    "sector_SubStandard_1": "0",
+    "sector_Doubtful_1": "0",
+    "sector_Loss_1": "0",
+    "sector_Total_1": "0.00",
+    "facility_Standard_2": "0",
+    "facility_SubStandard_2": "0",
+    "facility_Doubtful_2": "0",
+    "facility_Loss_2": "318556021227.78",
+    "facility_Total_2": "318556021227.78",
+    "security_Standard_2": "0",
+    "security_SubStandard_2": "0",
+    "security_Doubtful_2": "0",
+    "security_Loss_2": "1212121210",
+    "security_Total_2": "1212121210.00",
+    "facility_Standard_3": "0",
+    "facility_SubStandard_3": "0",
+    "facility_Doubtful_3": "0",
+    "facility_Loss_3": "3974227660719.71",
+    "facility_Total_3": "3974227660719.71",
+    "security_Standard_3": "0",
+    "security_SubStandard_3": "0",
+    "security_Doubtful_3": "0",
+    "security_Loss_3": "0",
+    "security_Total_3": "0.00",
+    "facility_Standard_Total": "0.00",
+    "facility_SubStandard_Total": "0.00",
+    "facility_Doubtful_Total": "0.00",
+    "facility_Loss_Total": "5881868903098.40",
+    "facility_Total_Total": "5881868903098.40",
+    "security_Standard_Total": "0.00",
+    "security_SubStandard_Total": "0.00",
+    "security_Doubtful_Total": "0.00",
+    "security_Loss_Total": "5883081024308.40",
+    "security_Total_Total": "5883081024308.40",
+    "sector_Standard_a1": "0",
+    "sector_SubStandard_a1": "0",
+    "sector_Doubtful_a1": "0",
+    "sector_Loss_a1": "0",
+    "sector_Total_a1": "0.00",
+    "sector_Standard_a2": "0",
+    "sector_SubStandard_a2": "0",
+    "sector_Doubtful_a2": "0",
+    "sector_Loss_a2": "0",
+    "sector_Total_a2": "0.00",
+    "sector_Standard_a3": "0",
+    "sector_SubStandard_a3": "0",
+    "sector_Doubtful_a3": "0",
+    "sector_Loss_a3": "0",
+    "sector_Total_a3": "0.00",
+    "sector_Standard_a4": "0",
+    "sector_SubStandard_a4": "0",
+    "sector_Doubtful_a4": "0",
+    "sector_Loss_a4": "0",
+    "sector_Total_a4": "0.00",
+    "sector_Standard_a_Total": "0.00",
+    "sector_SubStandard_a_Total": "0.00",
+    "sector_Doubtful_a_Total": "0.00",
+    "sector_Loss_a_Total": "0.00",
+    "sector_Total_a_total": null,
+    "sector_Standard_b1": "0",
+    "sector_SubStandard_b1": "0",
+    "sector_Doubtful_b1": "0",
+    "sector_Loss_b1": "5881868903098.4",
+    "sector_Total_b1": "5881868903098.40",
+    "sector_Standard_b_Total": "0.00",
+    "sector_SubStandard_b_Total": "0.00",
+    "sector_Doubtful_b_Total": "0.00",
+    "sector_Loss_b_Total": "5881868903098.40",
+    "sector_Total_b_total": null,
+    "sector_Standard_2": "0",
+    "sector_SubStandard_2": "0",
+    "sector_Doubtful_2": "0",
+    "sector_Loss_2": "0",
+    "sector_Total_2": "0.00",
+    "sector_Standard_3": "0",
+    "sector_SubStandard_3": "0",
+    "sector_Doubtful_3": "0",
+    "sector_Loss_3": "0",
+    "sector_Total_3": "0.00",
+    "sector_Standard_ab_Total": "0.00",
+    "sector_SubStandard_ab_Total": "0.00",
+    "sector_Doubtful_ab_Total": "0.00",
+    "sector_Loss_ab_Total": "5881868903098.40",
+    "sector_Total_ab_Total": null,
+    "ccdpFiletimeStamp": null,
+    "facility_Total_Display1_SUM": 1589085221150.91,
+    "facility_Total_Display2_SUM": 318556021227.78,
+    "facility_Total_Display3_SUM": 3974227660719.71,
+    "facility_Total_TotalDisplay_SUM": 5881868903098.4,
+    "sector_a_Total_a_Total": "0.00",
+    "sector_b_Total_b_Total": "5881868903098.40",
+    "sector_ab_Total_ab_Total": "5881868903098.40",
+    "facility_Total_Display1": "0.00",
+    "facility_Total_Display2": "0.00",
+    "facility_Total_Display3": "0.00",
+    "facility_Total_TotalDisplay": "0.00",
+    "FirstTotal": "0",
+    "SecondTotal": "0",
+    "ThirdTotal": "0"
+}
+
+
+//////////////////
+
+getting this payload
+
+
+ circleCode = "021"
+ quarterEndDate = "31/03/2025"
+ reportId = null
+ userId = null
+ reportName = "SC9"
+ reportMasterId = null
+ status = "11"
+ areMocPending = null
+ role = "51"
+ save = true
+ facility_Adj_1 = "0"
+ facility_Adj_2 = "0"
+ facility_Adj_3 = "0"
+ facility_Adj_Total = "0"
+ security_Adj_1 = "0"
+ security_Adj_2 = "0"
+ security_Adj_3 = "0"
+ security_Adj_Total = "0"
+ sector_Adj_a1 = "0"
+ sector_Adj_a2 = "0"
+ sector_Adj_a3 = "0"
+ sector_Adj_a4 = "0"
+ sector_Adj_a_Total = "0"
+ sector_Adj_b1 = "0"
+ sector_Adj_1 = "0"
+ sector_Adj_2 = "0"
+ sector_Adj_3 = "0"
+ sector_Adj_b_Total = "0"
+ sector_Adj_ab_Total = "0"
+ facility_Standard_1 = "0"
+ facility_SubStandard_1 = "0"
+ facility_Doubtful_1 = "0"
+ facility_Loss_1 = "1589085221150.91"
+ facility_Total_1 = null
+ security_Standard_1 = "0"
+ security_SubStandard_1 = "0"
+ security_Doubtful_1 = "0"
+ security_Loss_1 = "5881868903098.4"
+ security_Total_1 = null
+ sector_Standard_1 = "0"
+ sector_SubStandard_1 = "0"
+ sector_Doubtful_1 = "0"
+ sector_Loss_1 = "0"
+ sector_Total_1 = null
+ facility_Standard_2 = "0"
+ facility_SubStandard_2 = "0"
+ facility_Doubtful_2 = "0"
+ facility_Loss_2 = "318556021227.78"
+ facility_Total_2 = null
+ security_Standard_2 = "0"
+ security_SubStandard_2 = "0"
+ security_Doubtful_2 = "0"
+ security_Loss_2 = "1212121210"
+ security_Total_2 = null
+ facility_Standard_3 = "0"
+ facility_SubStandard_3 = "0"
+ facility_Doubtful_3 = "0"
+ facility_Loss_3 = "3974227660719.71"
+ facility_Total_3 = null
+ security_Standard_3 = "0"
+ security_SubStandard_3 = "0"
+ security_Doubtful_3 = "0"
+ security_Loss_3 = "0"
+ security_Total_3 = null
+ facility_Standard_Total = "0"
+ facility_SubStandard_Total = "0"
+ facility_Doubtful_Total = "0"
+ facility_Loss_Total = "0"
+ facility_Total_Total = null
+ security_Standard_Total = "0"
+ security_SubStandard_Total = "0"
+ security_Doubtful_Total = "0"
+ security_Loss_Total = "0"
+ security_Total_Total = null
+ sector_Standard_a1 = "0"
+ sector_SubStandard_a1 = "0"
+ sector_Doubtful_a1 = "0"
+ sector_Loss_a1 = "0"
+ sector_Total_a1 = null
+ sector_Standard_a2 = "0"
+ sector_SubStandard_a2 = "0"
+ sector_Doubtful_a2 = "0"
+ sector_Loss_a2 = "0"
+ sector_Total_a2 = null
+ sector_Standard_a3 = "0"
+ sector_SubStandard_a3 = "0"
+ sector_Doubtful_a3 = "0"
+ sector_Loss_a3 = "0"
+ sector_Total_a3 = null
+ sector_Standard_a4 = "0"
+ sector_SubStandard_a4 = "0"
+ sector_Doubtful_a4 = "0"
+ sector_Loss_a4 = "0"
+ sector_Total_a4 = null
+ sector_Standard_a_Total = "0"
+ sector_SubStandard_a_Total = "0"
+ sector_Doubtful_a_Total = "0"
+ sector_Loss_a_Total = "0"
+ sector_Total_a_total = null
+ sector_Standard_b1 = "0"
+ sector_SubStandard_b1 = "0"
+ sector_Doubtful_b1 = "0"
+ sector_Loss_b1 = "5881868903098.4"
+ sector_Total_b1 = null
+ sector_Standard_b_Total = "0"
+ sector_SubStandard_b_Total = "0"
+ sector_Doubtful_b_Total = "0"
+ sector_Loss_b_Total = "0"
+ sector_Total_b_total = null
+ sector_Standard_2 = "0"
+ sector_SubStandard_2 = "0"
+ sector_Doubtful_2 = "0"
+ sector_Loss_2 = "0"
+ sector_Total_2 = null
+ sector_Standard_3 = "0"
+ sector_SubStandard_3 = "0"
+ sector_Doubtful_3 = "0"
+ sector_Loss_3 = "0"
+ sector_Total_3 = null
+ sector_Standard_ab_Total = "0"
+ sector_SubStandard_ab_Total = "0"
+ sector_Doubtful_ab_Total = "0"
+ sector_Loss_ab_Total = "0"
+ sector_Total_ab_Total = null
+ ccdpFiletimeStamp = null
