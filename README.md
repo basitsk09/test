@@ -10,12 +10,13 @@ import {
   Button,
   Alert,
   Box,
-  Stack, // Removed Snackbar for brevity, use your own
+  Stack,
   Typography,
 } from '@mui/material';
 import TableCell, { tableCellClasses } from '@mui/material/TableCell';
-import { styled } from '@mui/material/styles';
-import debounce from 'lodash/debounce';
+import { styled, useTheme } from '@mui/material/styles'; // Import useTheme
+// Debounce is not used for primary state update anymore
+// import debounce from 'lodash/debounce';
 
 // Assuming these hooks are in your project if you uncomment them
 // import useApi from '../../../../common/hooks/useApi';
@@ -23,14 +24,15 @@ import debounce from 'lodash/debounce';
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontSize: '0.875rem',
-  padding: '8px',
-  border: '1px solid #e0e0e0', // Lighter border
+  padding: '6px 8px', // Slightly reduced padding
+  border: '1px solid #e0e0e0',
   whiteSpace: 'nowrap',
   [`&.${tableCellClasses.head}`]: {
-    // backgroundColor: theme.palette.background.default, // More neutral
-    // color: theme.palette.text.primary, // More neutral
+    backgroundColor: theme.palette.grey[200], // Light grey for headers like in image.png
+    color: theme.palette.common.black,
     fontWeight: 'bold',
     textAlign: 'center',
+    zIndex: 1050, // zIndex for sticky header cells
   },
   [`&.${tableCellClasses.body}`]: {
     textAlign: 'right',
@@ -38,19 +40,19 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 }));
 
 const StyledTableRow = styled(TableRow)(({ theme, isTotalRow, isSectionHeader, isSubSectionHeader }) => ({
-  // backgroundColor: theme.palette.background.paper, // Default background
+  backgroundColor: theme.palette.background.paper, // Default white
   '&:nth-of-type(odd)': {
-    // backgroundColor: theme.palette.action.hover, // Kept for slight differentiation if desired, can be removed
+    // backgroundColor: theme.palette.action.hover, // Optional: can be restored if subtle alternating is desired
   },
   ...(isSectionHeader && {
-    // backgroundColor: theme.palette.grey[100], // Very light grey
+    backgroundColor: theme.palette.grey[100], // Lightest grey for section headers
     '& > td': {
         fontWeight: 'bold',
-        textAlign: 'left',
+        textAlign: 'left', // Ensure section header text is left aligned
     }
   }),
   ...(isSubSectionHeader && {
-    // backgroundColor: theme.palette.grey[50], // Even lighter
+    backgroundColor: theme.palette.grey[50], // Even lighter or could be same as section
     '& > td': {
         fontWeight: 'bold',
         fontStyle: 'italic',
@@ -58,7 +60,8 @@ const StyledTableRow = styled(TableRow)(({ theme, isTotalRow, isSectionHeader, i
     }
   }),
    ...(isTotalRow && {
-    '& > td': {
+    backgroundColor: theme.palette.grey[100], // Light grey for total rows
+    '& > td': { // Apply bold to all cells in a total row
         fontWeight: 'bold',
     }
   }),
@@ -102,7 +105,7 @@ const rowDefinitionsConfig = [
   { id: 'A4_total', modelSuffix: '30', label: 'Total of Assets-wise Classification', type: 'total', subItemIds: ['A4_i', 'A4_ii', 'A4_iii', 'A4_iv'] },
 ];
 
-const columnFieldKeys = { // Maps colKey (e.g. 'col1') to actual field key in formData
+const columnFieldKeys = {
   col1: 'opBalCurYearProvision', col2: 'writOffCurProvision', col3: 'addRedFlucProvision',
   col5: 'addCurYearProvision', col6: 'addCurDepreciProvision',
   col8: 'opBalCurYearAccount', col9: 'addRedFlucAccount',
@@ -110,7 +113,7 @@ const columnFieldKeys = { // Maps colKey (e.g. 'col1') to actual field key in fo
   col14: 'intSuspEndOfCurrYearAccount',
   col16: 'diAndCgcTotalPro', col17: 'standardAssetsTotalPro', col18: 'licraTotalPro',
 };
-const allColumnKeys = [ // Represents all data columns in display order
+const allColumnKeys = [
     'col1', 'col2', 'col3', 'col4', 'col5', 'col6', 'col7', 'col8', 'col9', 'col10', 'col11', 'col12', 'col13', 'col14', 'col15', 'col16', 'col17', 'col18'
 ];
 const calculatedColKeys = ['col4', 'col7', 'col10', 'col13', 'col15'];
@@ -121,6 +124,7 @@ const Schedule9ProvisionTable = ({
   previousYear = '2024', displayQuarterDate = '31/03/2025',
   initialDataFromApi = null,
 }) => {
+  const theme = useTheme(); // Get theme for palette access
   const showSnackbar = (message, severity) => console.log(`Snackbar: ${message} (${severity})`);
   const callApi = async (url, payload, method) => { console.log('API call:', url, payload, method); return {success: true, data: {}};};
 
@@ -129,7 +133,7 @@ const Schedule9ProvisionTable = ({
     rowDefinitionsConfig.forEach(row => {
       if (row.type === 'entry') {
         initial[row.id] = {};
-        Object.values(columnFieldKeys).forEach(fieldKey => { // Use fieldKey from columnFieldKeys
+        Object.values(columnFieldKeys).forEach(fieldKey => {
           initial[row.id][fieldKey] = '';
         });
       }
@@ -144,7 +148,7 @@ const Schedule9ProvisionTable = ({
       const newFormData = {};
       rowDefinitionsConfig.forEach(row => {
         if (row.type === 'entry') {
-            newFormData[row.id] = {}; // Ensure object exists
+            newFormData[row.id] = {};
             const apiRowData = initialDataFromApi[row.id] || {};
             Object.values(columnFieldKeys).forEach(fieldKey => {
                 newFormData[row.id][fieldKey] = apiRowData[fieldKey] ?? '';
@@ -155,19 +159,13 @@ const Schedule9ProvisionTable = ({
     }
   }, [initialDataFromApi]);
 
-  const debouncedSetFormData = useCallback(
-    debounce((rowId, fieldKey, value) => {
-      setFormData(prev => ({
-        ...prev,
-        [rowId]: { ...prev[rowId], [fieldKey]: value },
-      }));
-    }, 150), // Reduced debounce time slightly for better perceived responsiveness
-    []
-  );
-
+  // Synchronous handleChange for immediate input feedback
   const handleChange = (rowId, fieldKey, value) => {
-    if (value === '' || /^-?\d*\.?\d{0,2}$/.test(value) || (value === '-' && !(formData[rowId]?.[fieldKey]?.length > 0))) {
-        debouncedSetFormData(rowId, fieldKey, value);
+    if (value === '' || /^-?\d*\.?\d{0,2}$/.test(value) || (value === '-' && !(formData[row.id]?.[fieldKey]?.length > 0))) {
+        setFormData(prev => ({
+            ...prev,
+            [rowId]: { ...(prev[row.id] || {}), [fieldKey]: value },
+        }));
     }
   };
   
@@ -175,18 +173,16 @@ const Schedule9ProvisionTable = ({
 
   const calculatedData = useMemo(() => {
     const newCalculatedData = {};
-
     rowDefinitionsConfig.forEach(row => {
       if (row.type === 'entry' || row.type === 'total') {
         newCalculatedData[row.id] = {};
-        const currentRowFormData = formData[row.id] || {}; // Data from state for 'entry' rows
+        const currentRowFormData = formData[row.id] || {};
 
         if (row.type === 'entry') {
-          // Step 1: Populate newCalculatedData with direct input values using colX keys
           Object.entries(columnFieldKeys).forEach(([colKeyAlias, fieldKeyInFormData]) => {
             newCalculatedData[row.id][colKeyAlias] = currentRowFormData[fieldKeyInFormData] ?? '';
           });
-          // Step 2: Calculate derived columns (col4, col7, etc.)
+          
           const col1 = getNum(newCalculatedData[row.id].col1);
           const col2 = getNum(newCalculatedData[row.id].col2);
           const col3 = getNum(newCalculatedData[row.id].col3);
@@ -208,7 +204,6 @@ const Schedule9ProvisionTable = ({
           newCalculatedData[row.id].col15 = (getNum(newCalculatedData[row.id].col7) + getNum(newCalculatedData[row.id].col13) + col14).toFixed(2);
         
         } else if (row.type === 'total') {
-          // Calculate for total rows by summing corresponding colX keys from subItemIds
           allColumnKeys.forEach(colKeyToSum => {
             let sum = 0;
             row.subItemIds.forEach(subItemId => {
@@ -216,8 +211,6 @@ const Schedule9ProvisionTable = ({
             });
             newCalculatedData[row.id][colKeyToSum] = sum.toFixed(2);
           });
-           // For total rows, re-calculate derived columns based on their summed components
-           // This ensures consistency if summed inputs lead to different derived totals
             const t_col1 = getNum(newCalculatedData[row.id].col1);
             const t_col2 = getNum(newCalculatedData[row.id].col2);
             const t_col3 = getNum(newCalculatedData[row.id].col3);
@@ -244,6 +237,7 @@ const Schedule9ProvisionTable = ({
   }, [formData]);
 
   useEffect(() => {
+    // Validation logic remains the same
     const errors = [];
     const totalsA1 = calculatedData['A1_total'];
     const totalsA2 = calculatedData['A2_total'];
@@ -257,7 +251,6 @@ const Schedule9ProvisionTable = ({
             const valA2 = getNum(totalsA2[colKey]);
             const valA3 = getNum(totalsA3[colKey]);
             const valA4 = getNum(totalsA4[colKey]);
-            // Check with a small tolerance for floating point issues
             const tolerance = 0.001; 
             if (!(Math.abs(valA1 - valA2) < tolerance && Math.abs(valA2 - valA3) < tolerance && Math.abs(valA3 - valA4) < tolerance )) {
              errors.push(`Mismatch in totals for Column ${colKey.replace('col','')}: A-1 (${valA1.toFixed(2)}), A-2 (${valA2.toFixed(2)}), A-3 (${valA3.toFixed(2)}), A-4 (${valA4.toFixed(2)}) must be equal.`);
@@ -267,7 +260,7 @@ const Schedule9ProvisionTable = ({
     setValidationErrors(errors);
   }, [calculatedData]);
 
-  const buildPayload = (isSaveOperation) => {
+  const buildPayload = (isSaveOperation) => { /* ... as before ... */ 
     const payload = {
       circleCode, quarterEndDate, role,
       save: isSaveOperation, status: isSaveOperation ? 'SAVED' : 'SUBMITTED',
@@ -284,11 +277,9 @@ const Schedule9ProvisionTable = ({
     console.log("Built payload:", payload);
     return payload;
   };
-
   const handleSave = async () => { /* ... as before ... */ 
     const payload = buildPayload(true);
     showSnackbar('Save initiated (see console for payload).', 'info');
-    // Actual API call would go here
   };
   const handleSubmit = async () => { /* ... as before ... */ 
     if (validationErrors.length > 0) {
@@ -297,7 +288,6 @@ const Schedule9ProvisionTable = ({
     }
     const payload = buildPayload(false);
     showSnackbar('Submit initiated (see console for payload).', 'info');
-     // Actual API call would go here
   };
   
   const columnHeaders = [
@@ -337,7 +327,11 @@ const Schedule9ProvisionTable = ({
         <Table stickyHeader sx={{ minWidth: 3000 }}>
           <TableHead>
             <TableRow>
-              <StyledTableCell rowSpan={3} sx={{ minWidth: '450px', position: 'sticky', left: 0, zIndex: 1101, backgroundColor: '#f5f5f5' /* theme.palette.background.default or similar */ }}>
+              <StyledTableCell rowSpan={3} sx={{ 
+                minWidth: '450px', position: 'sticky', left: 0, zIndex: 1051, 
+                backgroundColor: theme.palette.grey[200], // Opaque bg for main sticky header
+                verticalAlign: 'top', textAlign:'center'
+                }}>
                 <b>Classification of PROVISION</b><br/>
                 (Excluding provision relating to : non-advance <br/>
                 related items debited to Recalled Assets and interest free Staff Advances ) <br/>
@@ -359,29 +353,42 @@ const Schedule9ProvisionTable = ({
           <TableBody>
             {rowDefinitionsConfig.map(row => {
               const displayRowData = calculatedData[row.id] || {};
-              const isTotalOrHeader = row.type === 'total' || row.type === 'sectionHeader' || row.type === 'subSectionHeader';
+              // const isTotalOrHeader = row.type === 'total' || row.type === 'sectionHeader' || row.type === 'subSectionHeader';
 
               if (row.type === 'sectionHeader' || row.type === 'subSectionHeader') {
                 return (
                   <StyledTableRow key={row.id} isSectionHeader={row.type === 'sectionHeader'} isSubSectionHeader={row.type === 'subSectionHeader'}>
-                    <StyledTableCell colSpan={allColumnKeys.length + 1} sx={{ textAlign: 'left', position: 'sticky', left: 0, zIndex: 99, backgroundColor: row.type==='sectionHeader' ? '#e0e0e0' : '#f0f0f0' }}>
+                    <StyledTableCell colSpan={allColumnKeys.length + 1} sx={{ textAlign: 'left' }}> {/* Removed sticky from this cell */}
                       {row.label}
                     </StyledTableCell>
                   </StyledTableRow>
                 );
               }
               
+              let rowSpecificBackgroundColor = theme.palette.background.paper; // Default white
+              if (row.type === 'total') {
+                rowSpecificBackgroundColor = theme.palette.grey[100]; // Light grey for total rows
+              }
+
               return (
                 <StyledTableRow key={row.id} isTotalRow={row.type === 'total'}>
-                  <StyledTableCell sx={{ textAlign: 'left', position: 'sticky', left: 0, zIndex: 99, backgroundColor: row.type === 'total' ? '#f5f5f5' : 'white'  }}>
-                    {row.type === 'total' ? <b>{row.label}</b> : row.label}
+                  <StyledTableCell sx={{ 
+                      textAlign: 'left', position: 'sticky', left: 0, zIndex: 100, 
+                      backgroundColor: rowSpecificBackgroundColor // Dynamic background for opacity
+                    }}>
+                    {/* Bolding for total row labels is handled by StyledTableRow's isTotalRow variant */}
+                    {row.label}
                   </StyledTableCell>
                   {allColumnKeys.map(colKey => {
                     const isCalculatedField = calculatedColKeys.includes(colKey);
                     const isEditableField = row.type === 'entry' && !isCalculatedField;
-                    const fieldKeyInFormData = columnFieldKeys[colKey]; // This is undefined for calculated columns
+                    const fieldKeyInFormData = columnFieldKeys[colKey];
 
-                    const valueToDisplayInTextField = displayRowData[colKey] ?? '';
+                    // For editable fields, value comes from formData directly for responsiveness
+                    // For calculated/disabled fields, value comes from calculatedData
+                    const valueToDisplayInTextField = isEditableField 
+                                                        ? (formData[row.id]?.[fieldKeyInFormData] ?? '') 
+                                                        : (displayRowData[colKey] ?? '');
                     
                     return (
                       <StyledTableCell key={`${row.id}-${colKey}`}>
@@ -395,7 +402,7 @@ const Schedule9ProvisionTable = ({
                             sx: { 
                                 textAlign: 'right', 
                                 '& input': { textAlign: 'right', padding: '6px 8px' },
-                                backgroundColor: !isEditableField ? '#f0f0f0' : 'white' // Lighter grey for disabled
+                                backgroundColor: !isEditableField ? theme.palette.grey[50] : theme.palette.background.paper,
                             },
                           }}
                           sx={{ width: '130px' }}
@@ -418,3 +425,4 @@ const Schedule9ProvisionTable = ({
 };
 
 export default Schedule9ProvisionTable;
+
