@@ -10,54 +10,60 @@ import {
   Button,
   Alert,
   Box,
-  Snackbar,
-  Stack,
+  Stack, // Removed Snackbar for brevity, use your own
   Typography,
 } from '@mui/material';
 import TableCell, { tableCellClasses } from '@mui/material/TableCell';
 import { styled } from '@mui/material/styles';
 import debounce from 'lodash/debounce';
-// Assuming these hooks are in your project
-// import useApi from '../../../../common/hooks/useApi'; // Placeholder
-// import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar'; // Placeholder
+
+// Assuming these hooks are in your project if you uncomment them
+// import useApi from '../../../../common/hooks/useApi';
+// import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontSize: '0.875rem', // Adjusted for potentially more dense table
+  fontSize: '0.875rem',
   padding: '8px',
-  border: '1px solid #ddd',
+  border: '1px solid #e0e0e0', // Lighter border
   whiteSpace: 'nowrap',
   [`&.${tableCellClasses.head}`]: {
-    backgroundColor: theme.palette.grey[200], // Light grey for header
-    color: theme.palette.common.black,
+    // backgroundColor: theme.palette.background.default, // More neutral
+    // color: theme.palette.text.primary, // More neutral
     fontWeight: 'bold',
     textAlign: 'center',
   },
   [`&.${tableCellClasses.body}`]: {
-    textAlign: 'right', // Default right align for body cells
+    textAlign: 'right',
   },
 }));
 
 const StyledTableRow = styled(TableRow)(({ theme, isTotalRow, isSectionHeader, isSubSectionHeader }) => ({
-  backgroundColor: isTotalRow ? theme.palette.grey[100] : theme.palette.common.white,
+  // backgroundColor: theme.palette.background.paper, // Default background
   '&:nth-of-type(odd)': {
-    // backgroundColor: theme.palette.action.hover, // Optional for odd rows
+    // backgroundColor: theme.palette.action.hover, // Kept for slight differentiation if desired, can be removed
   },
   ...(isSectionHeader && {
-    backgroundColor: theme.palette.grey[300], // Darker grey for main section headers
+    // backgroundColor: theme.palette.grey[100], // Very light grey
     '& > td': {
         fontWeight: 'bold',
         textAlign: 'left',
     }
   }),
   ...(isSubSectionHeader && {
-    backgroundColor: theme.palette.grey[200], // Slightly lighter for subsections
+    // backgroundColor: theme.palette.grey[50], // Even lighter
     '& > td': {
         fontWeight: 'bold',
         fontStyle: 'italic',
         textAlign: 'left',
     }
   }),
+   ...(isTotalRow && {
+    '& > td': {
+        fontWeight: 'bold',
+    }
+  }),
 }));
+
 
 const rowDefinitionsConfig = [
   { id: 'A1_header', label: 'A-1. Facility Wise Classification', type: 'sectionHeader' },
@@ -96,53 +102,35 @@ const rowDefinitionsConfig = [
   { id: 'A4_total', modelSuffix: '30', label: 'Total of Assets-wise Classification', type: 'total', subItemIds: ['A4_i', 'A4_ii', 'A4_iii', 'A4_iv'] },
 ];
 
-// These keys correspond to the ng-model prefixes found in the HTML
-const columnFieldKeys = {
-  col1: 'opBalCurYearProvision',
-  col2: 'writOffCurProvision',
-  col3: 'addRedFlucProvision',
-  // col4: 'netAdjOpBalProvision', // Calculated
-  col5: 'addCurYearProvision',
-  col6: 'addCurDepreciProvision',
-  // col7: 'closBalCurYearProvision', // Calculated
-  col8: 'opBalCurYearAccount',
-  col9: 'addRedFlucAccount',
-  // col10: 'netAdjOpBalAccount', // Calculated
-  col11: 'addCurYearAccount',
-  col12: 'dedRevCurYearAccount',
-  // col13: 'closBalCurYearAccount', // Calculated
+const columnFieldKeys = { // Maps colKey (e.g. 'col1') to actual field key in formData
+  col1: 'opBalCurYearProvision', col2: 'writOffCurProvision', col3: 'addRedFlucProvision',
+  col5: 'addCurYearProvision', col6: 'addCurDepreciProvision',
+  col8: 'opBalCurYearAccount', col9: 'addRedFlucAccount',
+  col11: 'addCurYearAccount', col12: 'dedRevCurYearAccount',
   col14: 'intSuspEndOfCurrYearAccount',
-  // col15: 'closBalProvAccount', // Calculated
-  col16: 'diAndCgcTotalPro',
-  col17: 'standardAssetsTotalPro',
-  col18: 'licraTotalPro',
+  col16: 'diAndCgcTotalPro', col17: 'standardAssetsTotalPro', col18: 'licraTotalPro',
 };
-const allColumnKeys = [
+const allColumnKeys = [ // Represents all data columns in display order
     'col1', 'col2', 'col3', 'col4', 'col5', 'col6', 'col7', 'col8', 'col9', 'col10', 'col11', 'col12', 'col13', 'col14', 'col15', 'col16', 'col17', 'col18'
 ];
+const calculatedColKeys = ['col4', 'col7', 'col10', 'col13', 'col15'];
 
 
 const Schedule9ProvisionTable = ({
-  circleCode = '001', // example
-  quarterEndDate = '31/03/2025', // example
-  role = 'Maker', // example
-  previousYear = '2024', // example prop
-  displayQuarterDate = '31/03/2025', // example prop
-  initialDataFromApi = null, // Prop to pass data fetched from API
+  circleCode = '001', quarterEndDate = '31/03/2025', role = 'Maker',
+  previousYear = '2024', displayQuarterDate = '31/03/2025',
+  initialDataFromApi = null,
 }) => {
-  // const { callApi } = useApi(); // Placeholder
-  // const showSnackbar = useCustomSnackbar(); // Placeholder
-  const showSnackbar = (message, severity) => console.log(`Snackbar: ${message} (${severity})`); // Mock
-  const callApi = async (url, payload, method) => { console.log('API call:', url, payload, method); return {success: true, data: {}};}; // Mock
-
+  const showSnackbar = (message, severity) => console.log(`Snackbar: ${message} (${severity})`);
+  const callApi = async (url, payload, method) => { console.log('API call:', url, payload, method); return {success: true, data: {}};};
 
   const [formData, setFormData] = useState(() => {
     const initial = {};
     rowDefinitionsConfig.forEach(row => {
       if (row.type === 'entry') {
         initial[row.id] = {};
-        Object.keys(columnFieldKeys).forEach(colKey => {
-          initial[row.id][columnFieldKeys[colKey]] = '';
+        Object.values(columnFieldKeys).forEach(fieldKey => { // Use fieldKey from columnFieldKeys
+          initial[row.id][fieldKey] = '';
         });
       }
     });
@@ -151,17 +139,15 @@ const Schedule9ProvisionTable = ({
   
   const [validationErrors, setValidationErrors] = useState([]);
 
-  // Populate formData if initialDataFromApi is provided (e.g., on component mount after API fetch)
   useEffect(() => {
     if (initialDataFromApi) {
       const newFormData = {};
       rowDefinitionsConfig.forEach(row => {
-        if (row.type === 'entry' && initialDataFromApi[row.id]) {
-          newFormData[row.id] = { ...initialDataFromApi[row.id] };
-        } else if (row.type === 'entry') { // Ensure all entry rows are initialized
-            newFormData[row.id] = {};
+        if (row.type === 'entry') {
+            newFormData[row.id] = {}; // Ensure object exists
+            const apiRowData = initialDataFromApi[row.id] || {};
             Object.values(columnFieldKeys).forEach(fieldKey => {
-                newFormData[row.id][fieldKey] = '';
+                newFormData[row.id][fieldKey] = apiRowData[fieldKey] ?? '';
             });
         }
       });
@@ -169,20 +155,18 @@ const Schedule9ProvisionTable = ({
     }
   }, [initialDataFromApi]);
 
-
   const debouncedSetFormData = useCallback(
     debounce((rowId, fieldKey, value) => {
-      setFormData(prev => {
-        const updatedRow = { ...prev[rowId], [fieldKey]: value };
-        return { ...prev, [rowId]: updatedRow };
-      });
-    }, 300),
+      setFormData(prev => ({
+        ...prev,
+        [rowId]: { ...prev[rowId], [fieldKey]: value },
+      }));
+    }, 150), // Reduced debounce time slightly for better perceived responsiveness
     []
   );
 
   const handleChange = (rowId, fieldKey, value) => {
-    // Allow only numbers and a single decimal point, and up to 2 decimal places
-    if (value === '' || /^-?\d*\.?\d{0,2}$/.test(value) || (value === '-' && !formData[rowId]?.[fieldKey])) {
+    if (value === '' || /^-?\d*\.?\d{0,2}$/.test(value) || (value === '-' && !(formData[rowId]?.[fieldKey]?.length > 0))) {
         debouncedSetFormData(rowId, fieldKey, value);
     }
   };
@@ -195,92 +179,69 @@ const Schedule9ProvisionTable = ({
     rowDefinitionsConfig.forEach(row => {
       if (row.type === 'entry' || row.type === 'total') {
         newCalculatedData[row.id] = {};
-        const currentRowDataInput = formData[row.id] || {};
+        const currentRowFormData = formData[row.id] || {}; // Data from state for 'entry' rows
 
         if (row.type === 'entry') {
-            // Copy direct inputs
-            Object.values(columnFieldKeys).forEach(fieldKey => {
-                 newCalculatedData[row.id][fieldKey] = currentRowDataInput[fieldKey] ?? '';
-            });
-
-          // Calculations for an entry row
-          const col1 = getNum(currentRowDataInput[columnFieldKeys.col1]);
-          const col2 = getNum(currentRowDataInput[columnFieldKeys.col2]);
-          const col3 = getNum(currentRowDataInput[columnFieldKeys.col3]);
+          // Step 1: Populate newCalculatedData with direct input values using colX keys
+          Object.entries(columnFieldKeys).forEach(([colKeyAlias, fieldKeyInFormData]) => {
+            newCalculatedData[row.id][colKeyAlias] = currentRowFormData[fieldKeyInFormData] ?? '';
+          });
+          // Step 2: Calculate derived columns (col4, col7, etc.)
+          const col1 = getNum(newCalculatedData[row.id].col1);
+          const col2 = getNum(newCalculatedData[row.id].col2);
+          const col3 = getNum(newCalculatedData[row.id].col3);
           newCalculatedData[row.id].col4 = (col1 - col2 + col3).toFixed(2);
 
-          const col5 = getNum(currentRowDataInput[columnFieldKeys.col5]);
-          const col6 = getNum(currentRowDataInput[columnFieldKeys.col6]);
+          const col5 = getNum(newCalculatedData[row.id].col5);
+          const col6 = getNum(newCalculatedData[row.id].col6);
           newCalculatedData[row.id].col7 = (getNum(newCalculatedData[row.id].col4) + col5 + col6).toFixed(2);
           
-          const col8 = getNum(currentRowDataInput[columnFieldKeys.col8]);
-          const col9 = getNum(currentRowDataInput[columnFieldKeys.col9]);
+          const col8 = getNum(newCalculatedData[row.id].col8);
+          const col9 = getNum(newCalculatedData[row.id].col9);
           newCalculatedData[row.id].col10 = (col8 + col9).toFixed(2);
 
-          const col11 = getNum(currentRowDataInput[columnFieldKeys.col11]);
-          const col12 = getNum(currentRowDataInput[columnFieldKeys.col12]);
+          const col11 = getNum(newCalculatedData[row.id].col11);
+          const col12 = getNum(newCalculatedData[row.id].col12);
           newCalculatedData[row.id].col13 = (getNum(newCalculatedData[row.id].col10) + col11 - col12).toFixed(2);
 
-          const col14 = getNum(currentRowDataInput[columnFieldKeys.col14]);
+          const col14 = getNum(newCalculatedData[row.id].col14);
           newCalculatedData[row.id].col15 = (getNum(newCalculatedData[row.id].col7) + getNum(newCalculatedData[row.id].col13) + col14).toFixed(2);
-            
-            // For non-calculated input fields (col16, col17, col18)
-            newCalculatedData[row.id].col16 = currentRowDataInput[columnFieldKeys.col16] ?? '';
-            newCalculatedData[row.id].col17 = currentRowDataInput[columnFieldKeys.col17] ?? '';
-            newCalculatedData[row.id].col18 = currentRowDataInput[columnFieldKeys.col18] ?? '';
-
-
+        
         } else if (row.type === 'total') {
-          // Calculations for a total row
+          // Calculate for total rows by summing corresponding colX keys from subItemIds
           allColumnKeys.forEach(colKeyToSum => {
             let sum = 0;
             row.subItemIds.forEach(subItemId => {
-              // newCalculatedData should already have subItemIds processed if they are 'entry' or 'total'
-              // It's important that rowDefinitionsConfig is ordered correctly (dependencies first)
-              // or this needs to be recursive / multi-pass. Assuming correct order for simplicity.
               sum += getNum(newCalculatedData[subItemId]?.[colKeyToSum]);
             });
-            if (['col4', 'col7', 'col10', 'col13', 'col15'].includes(colKeyToSum)) {
-                 // These are already calculated sums of their components for total rows
-                 // For example, A1_total.col4 = A1_i.col4 + A1_ii.col4 + A1_iii.col4
-                 // and A1_i.col4 itself is (A1_i.col1 - A1_i.col2 + A1_i.col3)
-                 // So, summing the calculated columns is correct.
-                 newCalculatedData[row.id][colKeyToSum] = sum.toFixed(2);
-            } else if (columnFieldKeys[colKeyToSum]) { // Summing input columns for totals
-                 newCalculatedData[row.id][colKeyToSum] = sum.toFixed(2);
-                 // Re-calculate the derived columns for the total row based on its summed inputs
-                if(row.id === 'A1_total' || row.id === 'A2_total' || row.id === 'A3_grand_total' || row.id === 'A4_total') {
-                    // Special recalculation for main total rows based on summed components
-                    const t_col1 = getNum(newCalculatedData[row.id]?.col1);
-                    const t_col2 = getNum(newCalculatedData[row.id]?.col2);
-                    const t_col3 = getNum(newCalculatedData[row.id]?.col3);
-                    newCalculatedData[row.id].col4 = (t_col1 - t_col2 + t_col3).toFixed(2);
-
-                    const t_col5 = getNum(newCalculatedData[row.id]?.col5);
-                    const t_col6 = getNum(newCalculatedData[row.id]?.col6);
-                    newCalculatedData[row.id].col7 = (getNum(newCalculatedData[row.id].col4) + t_col5 + t_col6).toFixed(2);
-                    
-                    const t_col8 = getNum(newCalculatedData[row.id]?.col8);
-                    const t_col9 = getNum(newCalculatedData[row.id]?.col9);
-                    newCalculatedData[row.id].col10 = (t_col8 + t_col9).toFixed(2);
-
-                    const t_col11 = getNum(newCalculatedData[row.id]?.col11);
-                    const t_col12 = getNum(newCalculatedData[row.id]?.col12);
-                    newCalculatedData[row.id].col13 = (getNum(newCalculatedData[row.id].col10) + t_col11 - t_col12).toFixed(2);
-
-                    const t_col14 = getNum(newCalculatedData[row.id]?.col14);
-                    newCalculatedData[row.id].col15 = (getNum(newCalculatedData[row.id].col7) + getNum(newCalculatedData[row.id].col13) + t_col14).toFixed(2);
-                }
-            } else {
-                 newCalculatedData[row.id][colKeyToSum] = sum.toFixed(2); // For col16,17,18 if they are summed
-            }
+            newCalculatedData[row.id][colKeyToSum] = sum.toFixed(2);
           });
+           // For total rows, re-calculate derived columns based on their summed components
+           // This ensures consistency if summed inputs lead to different derived totals
+            const t_col1 = getNum(newCalculatedData[row.id].col1);
+            const t_col2 = getNum(newCalculatedData[row.id].col2);
+            const t_col3 = getNum(newCalculatedData[row.id].col3);
+            newCalculatedData[row.id].col4 = (t_col1 - t_col2 + t_col3).toFixed(2);
+
+            const t_col5 = getNum(newCalculatedData[row.id].col5);
+            const t_col6 = getNum(newCalculatedData[row.id].col6);
+            newCalculatedData[row.id].col7 = (getNum(newCalculatedData[row.id].col4) + t_col5 + t_col6).toFixed(2);
+            
+            const t_col8 = getNum(newCalculatedData[row.id].col8);
+            const t_col9 = getNum(newCalculatedData[row.id].col9);
+            newCalculatedData[row.id].col10 = (t_col8 + t_col9).toFixed(2);
+
+            const t_col11 = getNum(newCalculatedData[row.id].col11);
+            const t_col12 = getNum(newCalculatedData[row.id].col12);
+            newCalculatedData[row.id].col13 = (getNum(newCalculatedData[row.id].col10) + t_col11 - t_col12).toFixed(2);
+
+            const t_col14 = getNum(newCalculatedData[row.id].col14);
+            newCalculatedData[row.id].col15 = (getNum(newCalculatedData[row.id].col7) + getNum(newCalculatedData[row.id].col13) + t_col14).toFixed(2);
         }
       }
     });
     return newCalculatedData;
   }, [formData]);
-
 
   useEffect(() => {
     const errors = [];
@@ -290,88 +251,53 @@ const Schedule9ProvisionTable = ({
     const totalsA4 = calculatedData['A4_total'];
 
     if (totalsA1 && totalsA2 && totalsA3 && totalsA4) {
-        const colsToValidate = ['col7', 'col13', 'col15']; // Closing Provision, Closing LICRA, Total Prov+LICRA+IS
-        colsToValidate.forEach(colKey => {
+        const colsToValidateEquality = ['col7', 'col13', 'col15'];
+        colsToValidateEquality.forEach(colKey => {
             const valA1 = getNum(totalsA1[colKey]);
             const valA2 = getNum(totalsA2[colKey]);
             const valA3 = getNum(totalsA3[colKey]);
             const valA4 = getNum(totalsA4[colKey]);
-
-            if (!(valA1 === valA2 && valA2 === valA3 && valA3 === valA4)) {
-            errors.push(`Mismatch in totals for Column ${colKey.replace('col','')}: A-1 (${valA1.toFixed(2)}), A-2 (${valA2.toFixed(2)}), A-3 (${valA3.toFixed(2)}), A-4 (${valA4.toFixed(2)}) must be equal.`);
+            // Check with a small tolerance for floating point issues
+            const tolerance = 0.001; 
+            if (!(Math.abs(valA1 - valA2) < tolerance && Math.abs(valA2 - valA3) < tolerance && Math.abs(valA3 - valA4) < tolerance )) {
+             errors.push(`Mismatch in totals for Column ${colKey.replace('col','')}: A-1 (${valA1.toFixed(2)}), A-2 (${valA2.toFixed(2)}), A-3 (${valA3.toFixed(2)}), A-4 (${valA4.toFixed(2)}) must be equal.`);
             }
         });
     }
-     // Add other specific validations if needed
     setValidationErrors(errors);
   }, [calculatedData]);
 
-
   const buildPayload = (isSaveOperation) => {
     const payload = {
-      circleCode,
-      quarterEndDate,
-      role,
-      save: isSaveOperation,
-      status: isSaveOperation ? 'SAVED' : 'SUBMITTED', // Example status
-      // ... other common fields
+      circleCode, quarterEndDate, role,
+      save: isSaveOperation, status: isSaveOperation ? 'SAVED' : 'SUBMITTED',
     };
-
     rowDefinitionsConfig.forEach(row => {
       if (row.type === 'entry' && row.modelSuffix) {
-        const rowData = formData[row.id] || {};
-        Object.entries(columnFieldKeys).forEach(([colKeyAbbr, fieldKey]) => {
-            const backendFieldName = `${fieldKey}${row.modelSuffix}`;
-            payload[backendFieldName] = getNum(rowData[fieldKey]).toFixed(2);
+        const rowInputData = formData[row.id] || {};
+        Object.entries(columnFieldKeys).forEach(([colKeyAlias, fieldKeyInFormData]) => {
+            const backendFieldName = `${fieldKeyInFormData}${row.modelSuffix}`;
+            payload[backendFieldName] = getNum(rowInputData[fieldKeyInFormData]).toFixed(2);
         });
-        // For calculated fields that might also need to be sent or specific columns like 17,18 for A4.i
-        // This depends on backend expectations. The current ng-models in HTML suggest sending input values.
-        // Let's ensure all entered values are part of the payload.
-        // Example: if col17, col18 are direct inputs for A4.i
-        if(row.id === 'A4_i'){
-            payload[`${columnFieldKeys.col17}${row.modelSuffix}`] = getNum(rowData[columnFieldKeys.col17]).toFixed(2);
-            payload[`${columnFieldKeys.col18}${row.modelSuffix}`] = getNum(rowData[columnFieldKeys.col18]).toFixed(2);
-        }
       }
     });
     console.log("Built payload:", payload);
     return payload;
   };
 
-  const handleSave = async () => {
+  const handleSave = async () => { /* ... as before ... */ 
     const payload = buildPayload(true);
-    try {
-      const response = await callApi('/api/schedule9c/save', payload, 'POST'); // Replace with actual endpoint
-      if (response.success) {
-        showSnackbar('Data saved successfully!', 'success');
-      } else {
-        showSnackbar(response.message || 'Failed to save data.', 'error');
-      }
-    } catch (error) {
-      showSnackbar('An error occurred while saving data.', 'error');
-      console.error("Save error:", error);
-    }
+    showSnackbar('Save initiated (see console for payload).', 'info');
+    // Actual API call would go here
   };
-
-  const handleSubmit = async () => {
+  const handleSubmit = async () => { /* ... as before ... */ 
     if (validationErrors.length > 0) {
-      showSnackbar('Please correct the validation errors before submitting.', 'error');
-      // Optionally, scroll to errors or highlight them more
+      showSnackbar('Please correct validation errors.', 'error');
       return;
     }
     const payload = buildPayload(false);
-    try {
-      const response = await callApi('/api/schedule9c/submit', payload, 'POST'); // Replace with actual endpoint
-      if (response.success) {
-        showSnackbar('Data submitted successfully!', 'success');
-        // Potentially redirect or clear form
-      } else {
-        showSnackbar(response.message || 'Failed to submit data.', 'error');
-      }
-    } catch (error) {
-      showSnackbar('An error occurred while submitting data.', 'error');
-      console.error("Submit error:", error);
-    }
+    showSnackbar('Submit initiated (see console for payload).', 'info');
+     // Actual API call would go here
   };
   
   const columnHeaders = [
@@ -390,31 +316,28 @@ const Schedule9ProvisionTable = ({
     { label: 'Closing balance at <br>the end of Current Year <br>Rs. P<br><b>13=(10+11-12)</b>', key: 'col13', isCalculated: true },
     { label: `Interest Suspense<br> Account As on ${displayQuarterDate} <br>Rs. P`, key: 'col14' },
     { label: 'Total Provision+LICRA+<br>Interest Suspense<br> Rs.P<br><b>15=(7+13+14)</b>', key: 'col15', isCalculated: true },
-    { label: `DICGC /ECGC Claims Recd <br>as on ${displayQuarterDate}} <br>Rs. P`, key: 'col16' },
-    { label: `Provision on Restructured <br>Standard Asset as on <br>${displayQuarterDate}} (included in total <br>Provision in Column 7)`, key: 'col17' },
-    { label: `LICRA on Restructured <br>Standard Asset as on ${displayQuarterDate}} <br>(included in total<br> LICRA in Column 13)`, key: 'col18' },
+    { label: `DICGC /ECGC Claims Recd <br>as on ${displayQuarterDate} <br>Rs. P`, key: 'col16' },
+    { label: `Provision on Restructured <br>Standard Asset as on <br>${displayQuarterDate} (included in total <br>Provision in Column 7)`, key: 'col17' },
+    { label: `LICRA on Restructured <br>Standard Asset as on ${displayQuarterDate} <br>(included in total<br> LICRA in Column 13)`, key: 'col18' },
   ];
 
-
   return (
-    <Box sx={{ p: 2, width: '100%' }}>
-        <Typography variant="h5" gutterBottom sx={{textAlign: 'center', color: 'white', backgroundColor: 'rgba(0,0,0,0.7)', padding:'10px'}}>
+    <Box sx={{ p: 2, width: '100%', overflowX: 'hidden' }}>
+        <Typography variant="h5" gutterBottom sx={{textAlign: 'center', mb:2 }}>
             Schedule 9C - Provisions
         </Typography>
       {validationErrors.length > 0 && (
         <Alert severity="error" sx={{ mb: 2 }}>
           <ul style={{ margin: 0, paddingLeft: '1.2em' }}>
-            {validationErrors.map((e, i) => (
-              <li key={i}>{e}</li>
-            ))}
+            {validationErrors.map((e, i) => ( <li key={i}>{e}</li> ))}
           </ul>
         </Alert>
       )}
-      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)', overflow: 'auto' }}>
-        <Table stickyHeader sx={{ minWidth: 3000 }}> {/* minWidth to ensure horizontal scroll for many columns */}
+      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 250px)'}}>
+        <Table stickyHeader sx={{ minWidth: 3000 }}>
           <TableHead>
             <TableRow>
-              <StyledTableCell rowSpan={3} sx={{ minWidth: '450px', position: 'sticky', left: 0, zIndex: 1101, backgroundColor: 'grey.300' }}>
+              <StyledTableCell rowSpan={3} sx={{ minWidth: '450px', position: 'sticky', left: 0, zIndex: 1101, backgroundColor: '#f5f5f5' /* theme.palette.background.default or similar */ }}>
                 <b>Classification of PROVISION</b><br/>
                 (Excluding provision relating to : non-advance <br/>
                 related items debited to Recalled Assets and interest free Staff Advances ) <br/>
@@ -422,12 +345,10 @@ const Schedule9ProvisionTable = ({
               </StyledTableCell>
               <StyledTableCell colSpan={7}><b>PROVISIONS</b></StyledTableCell>
               <StyledTableCell colSpan={6}><b>Liability on Interest Capitalisation on Restructurred Account(LICRA)</b></StyledTableCell>
-              <StyledTableCell colSpan={5}><b>TOTAL PROVISION (Calculated) AND OTHER DETAILS</b></StyledTableCell>
+              <StyledTableCell colSpan={5}><b>TOTAL PROVISION AND OTHER DETAILS</b></StyledTableCell>
             </TableRow>
             <TableRow>
-                {columnHeaders.slice(0,7).map(ch => <StyledTableCell key={ch.key} dangerouslySetInnerHTML={{ __html: ch.label }} />)}
-                {columnHeaders.slice(7,13).map(ch => <StyledTableCell key={ch.key} dangerouslySetInnerHTML={{ __html: ch.label }} />)}
-                {columnHeaders.slice(13,18).map(ch => <StyledTableCell key={ch.key} dangerouslySetInnerHTML={{ __html: ch.label }} />)}
+                {columnHeaders.map(ch => <StyledTableCell key={ch.key} dangerouslySetInnerHTML={{ __html: ch.label }} />)}
             </TableRow>
             <TableRow>
                 {allColumnKeys.map((key, idx) => (
@@ -437,16 +358,13 @@ const Schedule9ProvisionTable = ({
           </TableHead>
           <TableBody>
             {rowDefinitionsConfig.map(row => {
-              const rowData = calculatedData[row.id] || {};
-              const inputRowData = formData[row.id] || {};
+              const displayRowData = calculatedData[row.id] || {};
+              const isTotalOrHeader = row.type === 'total' || row.type === 'sectionHeader' || row.type === 'subSectionHeader';
 
               if (row.type === 'sectionHeader' || row.type === 'subSectionHeader') {
                 return (
                   <StyledTableRow key={row.id} isSectionHeader={row.type === 'sectionHeader'} isSubSectionHeader={row.type === 'subSectionHeader'}>
-                    <StyledTableCell 
-                        colSpan={allColumnKeys.length + 1} 
-                        sx={{ textAlign: 'left', fontWeight: 'bold', position: 'sticky', left: 0, zIndex: 100 }}
-                    >
+                    <StyledTableCell colSpan={allColumnKeys.length + 1} sx={{ textAlign: 'left', position: 'sticky', left: 0, zIndex: 99, backgroundColor: row.type==='sectionHeader' ? '#e0e0e0' : '#f0f0f0' }}>
                       {row.label}
                     </StyledTableCell>
                   </StyledTableRow>
@@ -455,32 +373,32 @@ const Schedule9ProvisionTable = ({
               
               return (
                 <StyledTableRow key={row.id} isTotalRow={row.type === 'total'}>
-                  <StyledTableCell sx={{ textAlign: 'left', position: 'sticky', left: 0, zIndex: 100, backgroundColor: row.type === 'total' ? 'grey.100' : 'common.white' }}>
+                  <StyledTableCell sx={{ textAlign: 'left', position: 'sticky', left: 0, zIndex: 99, backgroundColor: row.type === 'total' ? '#f5f5f5' : 'white'  }}>
                     {row.type === 'total' ? <b>{row.label}</b> : row.label}
                   </StyledTableCell>
                   {allColumnKeys.map(colKey => {
-                    const fieldKeyForInput = columnFieldKeys[colKey];
-                    const isCalculatedCol = ['col4', 'col7', 'col10', 'col13', 'col15'].includes(colKey);
-                    const isDisabled = row.type === 'total' || isCalculatedCol;
-                    const valueToShow = rowData[colKey] !== undefined ? rowData[colKey] : '';
+                    const isCalculatedField = calculatedColKeys.includes(colKey);
+                    const isEditableField = row.type === 'entry' && !isCalculatedField;
+                    const fieldKeyInFormData = columnFieldKeys[colKey]; // This is undefined for calculated columns
+
+                    const valueToDisplayInTextField = displayRowData[colKey] ?? '';
                     
                     return (
                       <StyledTableCell key={`${row.id}-${colKey}`}>
                         <TextField
-                          variant="outlined"
-                          size="small"
-                          value={valueToShow}
-                          onChange={!isDisabled ? (e) => handleChange(row.id, fieldKeyForInput, e.target.value) : undefined}
-                          disabled={isDisabled}
+                          variant="outlined" size="small"
+                          value={valueToDisplayInTextField}
+                          onChange={isEditableField ? (e) => handleChange(row.id, fieldKeyInFormData, e.target.value) : undefined}
+                          disabled={!isEditableField}
                           InputProps={{
-                            readOnly: isDisabled,
+                            readOnly: !isEditableField,
                             sx: { 
                                 textAlign: 'right', 
                                 '& input': { textAlign: 'right', padding: '6px 8px' },
-                                backgroundColor: isDisabled ? 'grey.50' : 'common.white'
+                                backgroundColor: !isEditableField ? '#f0f0f0' : 'white' // Lighter grey for disabled
                             },
                           }}
-                          sx={{ width: '130px' }} // Fixed width for data cells
+                          sx={{ width: '130px' }}
                         />
                       </StyledTableCell>
                     );
@@ -500,4 +418,3 @@ const Schedule9ProvisionTable = ({
 };
 
 export default Schedule9ProvisionTable;
-
