@@ -1,30 +1,16 @@
-const getFieldName = (id, key) => {
-  // Skip non-entry types
-  if (id.startsWith('header')) return null;
+const buildSavePayload = (values, circleCode, quarterEndDate, role, save, status) => {
+  const payload = { circleCode, quarterEndDate, role, reportName: 'SC9', save, status };
 
-  let base = id.startsWith('fac') ? 'facility' : id.startsWith('sec') ? 'security' : 'sector';
+  Object.entries(values).forEach(([id, fields]) => {
+    Object.entries(fields).forEach(([key, val]) => {
+      if (['standard', 'subStandard', 'doubtful', 'loss', 'adjustment'].includes(key)) {
+        const fieldName = getFieldName(id, key);
+        if (fieldName) {
+          payload[fieldName] = val || '0';
+        }
+      }
+    });
+  });
 
-  const suffix =
-    {
-      standard: 'Standard',
-      subStandard: 'SubStandard',
-      doubtful: 'Doubtful',
-      loss: 'Loss',
-      adjustment: 'Adj',
-    }[key] || 'Total';
-
-  let idx;
-
-  if (id === 'inTotal') idx = 'a_Total';
-  else if (id === 'outTotal') idx = 'b_Total';
-  else if (id === 'advA3') idx = 'ab_Total';
-  else if (id.startsWith('in')) idx = `a${id.replace('in', '')}`;
-  else if (id.startsWith('out')) idx = `b${id.replace('out', '')}`;
-  else if (id.endsWith('Total')) idx = 'Total';
-  else {
-    const numeric = id.replace(/\D/g, '');
-    idx = numeric || '1';  // fallback to avoid blank
-  }
-
-  return `${base}_${suffix}_${idx}`;
+  return payload;
 };
