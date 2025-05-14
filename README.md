@@ -1,122 +1,92 @@
-Here’s how to update your code step-by-step to fully implement:
+To make your table body dark mode compatible, especially when using Material UI, follow these best practices:
 
 
 ---
 
-1. Make All Header Rows Vertically Sticky (Top)
+✅ 1. Use theme.palette Instead of Hardcoded Colors
 
-Update all <StyledTableCell> in the three <TableRow> blocks inside <TableHead>:
+Update your StyledTableCell to respond to light and dark modes automatically:
 
-First Header Row (Classification of PROVISION)
-
-<StyledTableCell
-  rowSpan={3}
-  sx={{
-    minWidth: '450px',
-    position: 'sticky',
-    left: 0,
-    top: 0,
-    zIndex: 1200,
-    backgroundColor: '#f5f5f5',
-  }}
->
-
-Second Header Row (Column labels)
-
-<StyledTableCell
-  key={ch.key}
-  sx={{
-    position: 'sticky',
-    top: 56, // adjust if row height differs
-    zIndex: 1100,
-    backgroundColor: '#000',
-    color: '#fff',
-    textAlign: 'center',
-    whiteSpace: 'normal',
-  }}
-  dangerouslySetInnerHTML={{ __html: ch.label }}
-/>
-
-Third Header Row (Column Numbers: 1,2,3...)
-
-<StyledTableCell
-  key={`colnum_${idx}`}
-  sx={{
-    position: 'sticky',
-    top: 112, // 56px + 56px
-    zIndex: 1000,
-    backgroundColor: '#000',
-    color: '#fff',
-    textAlign: 'center',
-  }}
->
-  <b>{idx + 1}</b>
-</StyledTableCell>
-
-
----
-
-2. Make Subheaders Horizontally Sticky (e.g. A-1, A-2)
-
-In the <StyledTableRow> for section and subSection headers:
-
-<StyledTableCell
-  colSpan={allColumnKeys.length + 1}
-  sx={{
-    position: 'sticky',
-    left: 0,
-    zIndex: 100,
-    backgroundColor: row.type === 'sectionHeader' ? '#e0e0e0' : '#f0f0f0',
-    textAlign: 'left',
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  fontSize: '0.875rem',
+  padding: '8px',
+  border: `1px solid ${theme.palette.divider}`,
+  whiteSpace: 'nowrap',
+  [`&.${tableCellClasses.head}`]: {
+    backgroundColor: theme.palette.background.default,
+    color: theme.palette.text.primary,
     fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  [`&.${tableCellClasses.body}`]: {
+    color: theme.palette.text.primary,
+    backgroundColor: theme.palette.background.paper,
+    textAlign: 'right',
+  },
+}));
+
+
+---
+
+✅ 2. Update Sticky Column Cell Backgrounds
+
+Sticky cells (like row labels and headers) must explicitly set backgroundColor from theme:
+
+backgroundColor: theme.palette.background.default,
+
+Example:
+
+<StyledTableCell
+  sx={{
+    position: 'sticky',
+    left: 0,
+    zIndex: 99,
+    backgroundColor: theme => theme.palette.background.default,
+    color: theme => theme.palette.text.primary,
+    textAlign: 'left',
   }}
 >
 
 
 ---
 
-3. Fix Input Lag (Debounce)
+✅ 3. Set TableContainer sx for Dark Compatibility
 
-Replace the current debounce block:
+In your <TableContainer> or <Paper>:
 
-const debouncedSetFormData = useCallback(
-  debounce((rowId, fieldKey, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [rowId]: { ...prev[rowId], [fieldKey]: value },
-    }));
-  }, 100),
-  []
-);
-
-With direct setFormData (no debounce):
-
-const handleChange = (rowId, fieldKey, value) => {
-  if (
-    value === '' ||
-    /^-?\d*\.?\d{0,2}$/.test(value) ||
-    (value === '-' && !(formData[rowId]?.[fieldKey]?.length > 0))
-  ) {
-    setFormData((prev) => ({
-      ...prev,
-      [rowId]: { ...prev[rowId], [fieldKey]: value },
-    }));
-  }
-};
+<TableContainer
+  component={Paper}
+  sx={{
+    backgroundColor: (theme) => theme.palette.background.paper,
+  }}
+>
 
 
 ---
 
-These updates will make:
+✅ 4. Optional: Alternate Row Striping in Dark Mode
 
-The entire header block stick vertically
+If you want alternate row colors, use:
 
-The first column (A-1, A-2 etc.) stick horizontally
+'&:nth-of-type(odd)': {
+  backgroundColor: theme.palette.action.hover,
+},
 
-The numbering stay aligned on scroll
-
-The inputs perform without lag
+Inside your StyledTableRow.
 
 
-Let me know if you want react-window or virtualization next.
+---
+
+✅ 5. Dark Mode Detection (if needed)
+
+If you need to manually detect dark mode:
+
+const isDarkMode = theme.palette.mode === 'dark';
+
+Use this to conditionally apply colors.
+
+
+---
+
+Would you like me to rewrite your StyledTableCell and StyledTableRow for full dark mode support right now?
 
