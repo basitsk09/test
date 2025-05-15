@@ -40,3 +40,15 @@ const columns = [
     />
   )}
 </StyledTableCell>
+
+<TextField
+  value={localValue}
+  onChange={handleChange}
+  fullWidth
+  size="small"
+  inputProps={{
+    style: { textAlign: 'right' },
+    maxLength: column.key === 'borrowerName' ? 255 : 18,
+  }}
+  sx={{ px: 0.5 }}
+/>
