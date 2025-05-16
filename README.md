@@ -1,137 +1,47 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  Table,
-  TableBody,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  TextField,
-  Checkbox,
-  Snackbar,
-  Alert,
-  Stack,
-  Box,
-  TableCell,
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
-import { CustomButton } from '../../../../common/components/ui/Buttons'; // Assuming path is correct
-import useApi from '../../../../common/hooks/useApi'; // Assuming path is correct
-import { FixedSizeList as List } from 'react-window';
-import AutoSizer from 'react-virtualized-auto-sizer';
+// Inside Schedule9ATable.js
 
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontSize: '1rem',
-  padding: theme.spacing(1), // Adjust padding as needed for fit
-  '&.MuiTableCell-head': {
-    backgroundColor: theme.palette.common.black,
-    color: theme.palette.common.white,
-    fontWeight: 'bold',
-  },
-}));
+// ... (imports and other definitions remain largely the same) ...
 
-const numericRegex = /^-?\d*(\.\d{0,2})?$/;
-const alphanumericRegex = /^[A-Za-z0-9\s]*$/;
-
-// Define columns with width and alignment
-const columns = [
-  { key: 'isDelete', label: 'Select', type: 'checkbox', editable: false, align: 'center', subHeading: '', width: '5%' },
-  {
-    key: 'borrowerName',
-    label: "Branch & Borrower's Name",
-    type: 'text',
-    editable: true,
-    align: 'left', // Text columns usually left-aligned
-    pattern: alphanumericRegex,
-    subHeading: '',
-    width: '25%'
-  },
-  {
-    key: 'aggOutStand',
-    label: 'Aggregate outstanding',
-    type: 'number',
-    editable: true,
-    align: 'right', // Numeric columns usually right-aligned
-    pattern: numericRegex,
-    subHeading: '( 1 )',
-    width: '14%' // Adjusted for sum
-  },
-  {
-    key: 'aggSecurities',
-    label: 'Aggregate value of realisable securities',
-    type: 'number',
-    editable: true,
-    align: 'right', // Numeric
-    pattern: numericRegex,
-    subHeading: '( 2 )',
-    width: '14%' // Adjusted for sum
-  },
-  {
-    key: 'netShortfall',
-    label: 'Net Shortfall',
-    type: 'number',
-    editable: false,
-    align: 'right', // Numeric
-    subHeading: '( 3 = 1 - 2 )',
-    width: '14%' // Adjusted for sum
-  },
-  {
-    key: 'provision',
-    label: 'Provision',
-    type: 'number',
-    editable: true,
-    align: 'right', // Numeric
-    pattern: numericRegex,
-    subHeading: '( 4 )',
-    width: '14%' // Adjusted for sum
-  },
-  {
-    key: 'balInterestSuspenseAcc',
-    label: 'Balance in Interest Suspense Account',
-    type: 'number',
-    editable: true,
-    align: 'right', // Numeric
-    pattern: numericRegex,
-    subHeading: '( 5 )',
-    width: '14%' // Adjusted for sum (5 + 25 + 14*5 = 5 + 25 + 70 = 100%)
-  },
-];
-
-const initialRow = {
-  isDelete: false,
-  borrowerName: '',
-  aggOutStand: '',
-  aggSecurities: '',
-  netShortfall: '',
-  provision: '',
-  balInterestSuspenseAcc: '',
-};
-
-function debounce(func, delay = 300) { // Increased default delay slightly
-  let timer;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => func(...args), delay);
-  };
-}
-
-// Memoized Cell Component for editable cells
+// MemoizedCellWithLocalState Component
 const MemoizedCellWithLocalState = React.memo(({ row, column, index, setRows }) => {
-  const [localValue, setLocalValue] = useState(row[column.key] || '');
+  const [localValue, setLocalValue] = useState(String(row[column.key] || '')); // Ensure string for initial value
 
   useEffect(() => {
-    setLocalValue(row[column.key] || '');
+    setLocalValue(String(row[column.key] || '')); // Ensure string when row data changes
   }, [row, column.key]);
 
   const debouncedUpdateGlobalState = useMemo(
     () =>
-      debounce((value) => {
+      debounce((newValue) => { // Renamed to newValue for clarity
         setRows((prevRows) => {
           const updatedRows = [...prevRows];
           if (updatedRows[index]) {
             const targetRow = { ...updatedRows[index] };
-            targetRow[column.key] = value;
+            let processedValue = newValue;
 
+            if (column.type === 'number') {
+              if (newValue === '' || newValue === '-') {
+                processedValue = newValue; // Keep empty or hyphen as is
+              } else {
+                const num = parseFloat(newValue);
+                if (isNaN(num)) {
+                  // Revert to the last valid value or empty if current input is not a number
+                  processedValue = String(targetRow[column.key] || '');
+                } else {
+                  // Apply toFixed(2) only for specific financial columns
+                  if (['aggOutStand', 'aggSecurities', 'provision', 'balInterestSuspenseAcc'].includes(column.key)) {
+                    processedValue = num.toFixed(2);
+                  } else {
+                    processedValue = String(num); // For other potential numeric fields
+                  }
+                }
+              }
+            }
+            // For non-numeric types, newValue is used directly,
+            // as handleChange already prevents global update for pattern mismatches.
+            targetRow[column.key] = processedValue;
+
+            // Recalculate netShortfall if relevant inputs changed
             if (column.key === 'aggOutStand' || column.key === 'aggSecurities') {
               const out = parseFloat(targetRow.aggOutStand) || 0;
               const sec = parseFloat(targetRow.aggSecurities) || 0;
@@ -142,19 +52,31 @@ const MemoizedCellWithLocalState = React.memo(({ row, column, index, setRows }) 
           }
           return prevRows;
         });
-      }, 300), // Debounce delay
-    [index, column.key, setRows]
+      }, 300),
+    [index, column.key, column.type, setRows] // Added column.type to dependencies
   );
 
   const handleChange = (e) => {
     const val = e.target.value;
+    setLocalValue(val); // STEP 1: Always update local state to reflect typed value immediately
+
+    // STEP 2: Validate and decide whether to call global update
     if (column.pattern) {
-      if (column.type === 'number' && val !== '' && val !== '-' && !column.pattern.test(val)) {
-        return;
+      if (column.type === 'number') {
+        // For numbers, we allow typing intermediate states (like "1.23." or even "abc").
+        // The validation/coercion to a valid number format (e.g. toFixed(2) or reverting "abc")
+        // will happen in `debouncedUpdateGlobalState`.
+        // So, no early 'return' here for numbers based on `column.pattern`.
+      } else { // For non-numeric types (e.g., alphanumeric)
+        if (val !== '' && !column.pattern.test(val)) {
+          // If the pattern for a non-numeric field is violated (e.g. "Branch$Name"),
+          // localValue shows it, but we prevent the global state update.
+          // The user needs to correct the input for it to be saved.
+          return;
+        }
       }
     }
-    setLocalValue(val);
-    debouncedUpdateGlobalState(val);
+    debouncedUpdateGlobalState(val); // Call global update for all numbers and valid non-numbers
   };
 
   return (
@@ -162,17 +84,18 @@ const MemoizedCellWithLocalState = React.memo(({ row, column, index, setRows }) 
       value={localValue}
       onChange={handleChange}
       inputProps={{
-        style: { textAlign: column.align || 'left' }, // Align text based on column definition
+        style: { textAlign: column.align || 'left' },
         maxLength: column.key === 'borrowerName' ? 255 : 18,
       }}
       size="small"
-      sx={{ width: '100%' }} // Ensure TextField fills the cell
+      sx={{ width: '100%' }}
     />
   );
 });
 MemoizedCellWithLocalState.displayName = 'MemoizedCellWithLocalState';
 
-// Memoized Row Renderer for react-window
+
+// RowRenderer (ensure boxSizing and check flex properties if issues persist)
 const RowRenderer = React.memo(({ index, style, data }) => {
   const { rows, columns: tableColumns, setRows, handleCheckboxChange } = data;
   const rowItem = rows[index];
@@ -183,28 +106,44 @@ const RowRenderer = React.memo(({ index, style, data }) => {
 
   return (
     <TableRow
-      key={rowItem.id || `row-${index}`} // Ensure unique key
-      style={{ ...style, display: 'flex' }} // react-window provides style, ensure display is flex for TableRow to work with cells
+      key={rowItem.id || `row-${index}`}
+      style={{
+        ...style, // Provided by react-window (includes height, width, top, left)
+        display: 'flex',
+        boxSizing: 'border-box', // Good practice for consistent width rendering
+      }}
     >
       {tableColumns.map((column) => (
         <StyledTableCell
           key={`${rowItem.id || index}-${column.key}`}
-          align={column.align || 'center'}
-          style={{ width: column.width, display: 'flex', alignItems: 'center', justifyContent: column.align || 'center' }} // Apply width and flex properties for alignment
+          align={column.align || 'center'} // This aligns the content block within the cell
+          style={{
+            width: column.width,
+            boxSizing: 'border-box',
+            // The following flex properties are for content WITHIN the cell, if needed
+            // For simple TextField with width:100%, often not strictly necessary here
+            // display: 'flex',
+            // alignItems: 'center', // Vertically centers content like Checkbox or TextField
+            // justifyContent: column.align || (column.type === 'checkbox' ? 'center' : 'flex-start'),
+          }}
         >
           {column.type === 'checkbox' ? (
-            <Checkbox checked={!!rowItem.isDelete} onChange={(e) => handleCheckboxChange(index, e.target.checked)} />
+            <Checkbox
+              checked={!!rowItem.isDelete}
+              onChange={(e) => handleCheckboxChange(index, e.target.checked)}
+              sx={{ padding: '0' }} // Reduce padding for better fit if needed
+            />
           ) : column.editable ? (
             <MemoizedCellWithLocalState row={rowItem} column={column} index={index} setRows={setRows} />
           ) : (
             <TextField
-              value={rowItem[column.key] || ''}
+              value={String(rowItem[column.key] || '')} // Ensure string value
               inputProps={{
-                style: { textAlign: column.align || 'left' }, // Align text based on column definition
+                style: { textAlign: column.align || 'left' },
               }}
               size="small"
               disabled
-              sx={{ width: '100%' }} // Ensure TextField fills the cell
+              sx={{ width: '100%' }}
             />
           )}
         </StyledTableCell>
@@ -214,303 +153,45 @@ const RowRenderer = React.memo(({ index, style, data }) => {
 });
 RowRenderer.displayName = 'RowRenderer';
 
-export default function Schedule9ATable() {
-  const { callApi } = useApi();
-  const [rows, setRows] = useState([]);
-  const [totals, setTotals] = useState({
-    aggOutStandTotal: '0.00',
-    aggSecuritiesTotal: '0.00',
-    netShortfallTotal: '0.00',
-    provisionTotal: '0.00',
-    balInterestSuspenseAccTotal: '0.00',
-  });
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [saveStatus, setSaveStatus] = useState(null);
-  const [submitStatus, setSubmitStatus] = useState(null);
-
-  useEffect(() => {
-    const payload = { circleCode: '021', quarterEndDate: '31/03/2025' };
-    const fetchData = async () => {
-      try {
-        const response = await callApi('/Maker/getSavedDataNineA', payload, 'POST');
-        const enriched = response.map((r, i) => ({ ...initialRow, ...r, id: r.id || `row-${Date.now()}-${i}` }));
-        setRows(enriched);
-      } catch (error) {
-        console.error('Error loading saved data:', error);
-        setSnackbarMessage('Error loading saved data.');
-        setSnackbarOpen(true);
-      }
-    };
-    fetchData();
-  }, [callApi]); // Added callApi to dependency array
-
-  const calculateTotals = useCallback(() => {
+// In Schedule9ATable function, `calculateTotals`
+// Ensure parseFloat is used on potentially stringified numbers from `toFixed`
+const calculateTotals = useCallback(() => {
     const totalsObj = rows.reduce(
       (acc, row) => {
         acc.aggOutStandTotal += parseFloat(row.aggOutStand) || 0;
         acc.aggSecuritiesTotal += parseFloat(row.aggSecurities) || 0;
-        // netShortfallTotal is calculated from other totals or directly from row.netShortfall if already computed
         acc.netShortfallTotal += parseFloat(row.netShortfall) || 0;
         acc.provisionTotal += parseFloat(row.provision) || 0;
         acc.balInterestSuspenseAccTotal += parseFloat(row.balInterestSuspenseAcc) || 0;
         return acc;
       },
-      {
-        aggOutStandTotal: 0,
-        aggSecuritiesTotal: 0,
-        netShortfallTotal: 0,
-        provisionTotal: 0,
-        balInterestSuspenseAccTotal: 0,
-      }
+      { /* initial totals */ }
     );
+    // ... setTotals with toFixed(2)
+}, [rows]);
 
-    setTotals({
-      aggOutStandTotal: totalsObj.aggOutStandTotal.toFixed(2),
-      aggSecuritiesTotal: totalsObj.aggSecuritiesTotal.toFixed(2),
-      netShortfallTotal: totalsObj.netShortfallTotal.toFixed(2),
-      provisionTotal: totalsObj.provisionTotal.toFixed(2),
-      balInterestSuspenseAccTotal: totalsObj.balInterestSuspenseAccTotal.toFixed(2),
-    });
-  }, [rows]);
 
-  useEffect(() => {
-    // Debounce calculateTotals or call it less frequently if performance is an issue
-    calculateTotals();
-  }, [rows, calculateTotals]);
+// Ensure initial state for totals are strings if TextField expects strings
+// const [totals, setTotals] = useState({
+//   aggOutStandTotal: '0.00',
+//   aggSecuritiesTotal: '0.00',
+//   // ...
+// });
 
-  const addRow = () => {
-    setRows((prev) => [...prev, { ...initialRow, id: `new-${Date.now()}-${Math.random()}` }]);
-  };
+// The rest of your Schedule9ATable component...
+// (TableHead, Totals Row, etc. should be mostly fine from the previous answer
+// regarding width and alignment, but ensure they also use boxSizing: 'border-box'
+// on TableRow and StyledTableCell if you encounter layout inconsistencies)
 
-  const deleteSelectedRows = () => {
-    setRows((prevRows) => prevRows.filter((row) => !row.isDelete));
-    setSnackbarMessage('Selected rows deleted.');
-    setSnackbarOpen(true);
-  };
-
-  const validateRows = () => {
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      const hasData = Object.keys(initialRow).some(
-        (key) => key !== 'isDelete' && row[key] !== initialRow[key] && row[key] !== ''
-      );
-
-      if (hasData && !row.borrowerName) {
-        setSnackbarMessage(`Row ${i + 1}: Please enter Branch & Borrower's Name.`);
-        setSnackbarOpen(true);
-        return false;
-      }
-      if (
-        hasData &&
-        ((row.aggOutStand !== '' && isNaN(parseFloat(row.aggOutStand))) ||
-          (row.aggSecurities !== '' && isNaN(parseFloat(row.aggSecurities))) ||
-          (row.provision !== '' && isNaN(parseFloat(row.provision))) ||
-          (row.balInterestSuspenseAcc !== '' && isNaN(parseFloat(row.balInterestSuspenseAcc))))
-      ) {
-        setSnackbarMessage(`Row ${i + 1}: Please enter valid numeric values for amounts.`);
-        setSnackbarOpen(true);
-        return false;
-      }
-    }
-    return true;
-  };
-
-  const buildPayload = (saveFlag) => ({
-    listToBeSent: rows.map(({ id, isDelete, ...rest }) => rest), // Remove client-side id and isDelete
-    circleCode: '021',
-    quarterEndDate: '31/03/2025',
-    userId: '1111111',
-    reportName: 'Schedule 9A',
-    reportMasterId: '310023',
-    status: null, // Or determine status based on action
-    save: saveFlag,
-  });
-
-  const handleSave = async () => {
-    if (!validateRows()) return;
-    try {
-      await callApi('/Maker/submitNineA', buildPayload(true), 'POST');
-      setSaveStatus('success');
-      setSnackbarMessage('Report saved successfully.');
-    } catch (error) {
-      console.error('Error saving report:', error);
-      setSaveStatus('error');
-      setSnackbarMessage(error.message || 'Error saving report.');
-    }
-    setSnackbarOpen(true);
-  };
-
-  const handleSubmit = async () => {
-    if (!validateRows()) return;
-    try {
-      await callApi('/Maker/submitNineA', buildPayload(false), 'POST');
-      setSubmitStatus('success');
-      setSnackbarMessage('Report submitted successfully.');
-    } catch (error) {
-      console.error('Error submitting report:', error);
-      setSubmitStatus('error');
-      setSnackbarMessage(error.message || 'Error submitting report.');
-    }
-    setSnackbarOpen(true);
-  };
-
-  const handleCloseSnackbar = (_, reason) => {
-    if (reason === 'clickaway') return;
-    setSnackbarOpen(false);
-    setSaveStatus(null); // Reset status
-    setSubmitStatus(null); // Reset status
-  };
-
-  const handleCheckboxChange = useCallback((rowIndex, checked) => {
-    setRows((prevRows) => prevRows.map((row, idx) => (idx === rowIndex ? { ...row, isDelete: checked } : row)));
-  }, []);
-
-  const itemData = useMemo(
-    () => ({
-      rows,
-      columns, // Pass the updated columns array with widths
-      setRows,
-      handleCheckboxChange,
-    }),
-    [rows, handleCheckboxChange] // columns is stable, but included for completeness if it could change
-  );
-
-  return (
-    <Box sx={{ p: 2 }}>
-      <TableContainer component={Paper} sx={{ width: '100%', mb: 2, overflowX: 'auto' }}>
-        <Table stickyHeader sx={{ tableLayout: 'fixed', width: '100%' }}>
-          <TableHead>
-            <TableRow sx={{ display: 'flex' }}> {/* Ensure header row is also flex */}
-              {columns.map((col) => (
-                <StyledTableCell
-                  key={col.key}
-                  align={col.align || 'left'}
-                  style={{ width: col.width, display: 'flex', alignItems: 'center', justifyContent: col.align || 'left' }} // Apply width
-                >
-                  {col.label}
-                </StyledTableCell>
-              ))}
-            </TableRow>
-            <TableRow sx={{ display: 'flex' }}> {/* Ensure sub-header row is also flex */}
-              {columns.map((col) => (
-                <StyledTableCell
-                  key={`${col.key}-sub`}
-                  align={col.align || 'left'}
-                  style={{ width: col.width, display: 'flex', alignItems: 'center', justifyContent: col.align || 'left' }} // Apply width
-                >
-                  {col.subHeading}
-                </StyledTableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-
-          {rows.length > 0 ? (
-            // TableBody for react-window List. List renders TableRow components.
-            // The TableBody itself is not strictly necessary here if List handles all row rendering.
-            // However, to keep structure similar to non-virtualized table, it can be kept.
-            // AutoSizer will give width to the List.
-            <TableBody component="div"> {/* component="div" for TableBody with react-window */}
-              <AutoSizer disableHeight>
-                {({ width }) => (
-                  <List
-                    height={Math.min(500, rows.length * 50 + (rows.length > 0 ? 5 : 0))}
-                    itemCount={rows.length}
-                    itemSize={50} // Height of each row
-                    width={width} // Width from AutoSizer
-                    overscanCount={5}
-                    itemData={itemData}
-                  >
-                    {RowRenderer}
-                  </List>
-                )}
-              </AutoSizer>
-            </TableBody>
-          ) : (
-            <TableBody>
-              <TableRow>
-                <TableCell colSpan={columns.length} align="center" sx={{ py: 3 }}>
-                  No data available. Click "Add Row" to begin.
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          )}
-
-          {/* Totals Row - Rendered as a standard TableBody/TableRow */}
-          <TableBody>
-            <TableRow sx={{ '& .MuiTableCell-root': { fontWeight: 'bold' }, display: 'flex' }}>
-              <StyledTableCell
-                align="center"
-                // Calculate combined width of the first two columns for the "Total" cell
-                style={{
-                    width: `calc(${columns[0].width} + ${columns[1].width})`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}
-              >
-                Total
-              </StyledTableCell>
-              {columns.slice(2).map((col) => ( // Iterate through columns that have totals
-                <StyledTableCell
-                  key={`${col.key}-total`}
-                  align={col.align || 'right'}
-                  style={{ width: col.width, display: 'flex', alignItems: 'center' }} // Apply width from column definition
-                >
-                  {totals[`${col.key}Total`] !== undefined ? (
-                    <TextField
-                      value={totals[`${col.key}Total`]}
-                      InputProps={{
-                        readOnly: true,
-                        style: { textAlign: col.align || 'right', fontWeight: 'bold' },
-                      }}
-                      size="small"
-                      variant="outlined"
-                      sx={{ width: '100%' }} // Ensure TextField takes full cell width
-                    />
-                  ) : null}
-                </StyledTableCell>
-              ))}
-            </TableRow>
-          </TableBody>
-        </Table>
-      </TableContainer>
-      <Stack direction="row" spacing={2} mt={2} justifyContent="flex-start">
-        <CustomButton label={'Add Row'} buttonType={'create'} onClickHandler={addRow} />
-        <CustomButton
-          label={'Delete Selected'}
-          buttonType={'delete'}
-          onClickHandler={deleteSelectedRows}
-          disabled={!rows.some((row) => row.isDelete)}
-        />
-        <CustomButton label={'Save Draft'} buttonType={'save'} onClickHandler={handleSave} disabled={!rows.length} />
-        <CustomButton
-          label={'Submit Report'}
-          buttonType={'submit'}
-          onClickHandler={handleSubmit}
-          disabled={!rows.length}
-        />
-      </Stack>
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={
-            saveStatus === 'error' || submitStatus === 'error'
-              ? 'error'
-              : saveStatus === 'success' || submitStatus === 'success'
-              ? 'success'
-              : 'info'
-          }
-          sx={{ width: '100%' }}
-          variant="filled"
-        >
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
-    </Box>
-  );
-}
-
+// Example for TableHead and Totals Row cells for consistency:
+// <TableRow sx={{ display: 'flex', boxSizing: 'border-box' }}>
+//   {columns.map((col) => (
+//     <StyledTableCell
+//       key={col.key}
+//       align={col.align || 'left'}
+//       style={{ width: col.width, boxSizing: 'border-box', /* other flex for content if needed */ }}
+//     >
+//       {col.label}
+//     </StyledTableCell>
+//   ))}
+// </TableRow>
