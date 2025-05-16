@@ -15,24 +15,27 @@ import {
   TableCell,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { CustomButton } from '../../../../common/components/ui/Buttons'; // Assuming path is correct
-import useApi from '../../../../common/hooks/useApi'; // Assuming path is correct
+// Assuming CustomButton and useApi paths are correct relative to your project structure
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import useApi from '../../../../common/hooks/useApi';
 import { FixedSizeList as List } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontSize: '1rem',
-  padding: '8px', // Added some padding for better spacing, adjust as needed
+  padding: '8px 10px', // Consistent padding: 8px Top/Bottom, 10px Left/Right
+  boxSizing: 'border-box', // Ensures padding is included in width/height calculations
   '&.MuiTableCell-head': {
     backgroundColor: theme.palette.common.black,
     color: theme.palette.common.white,
-    fontWeight: 'bold', // Make header text bold
+    fontWeight: 'bold',
   },
 }));
 
 const numericRegex = /^-?\d*(.\d{0,2})?$/;
 const alphanumericRegex = /^[A-Za-z0-9\s]*$/;
 
+// Define column properties including alignment for headers and cell content guidance
 const columns = [
   { key: 'isDelete', label: 'Select', type: 'checkbox', editable: false, align: 'center', subHeading: '' },
   {
@@ -40,7 +43,7 @@ const columns = [
     label: "Branch & Borrower's Name",
     type: 'text',
     editable: true,
-    align: 'left', // Changed to left for text, header will also be left
+    align: 'left', // Text columns typically left-aligned
     pattern: alphanumericRegex,
     subHeading: '',
   },
@@ -49,7 +52,7 @@ const columns = [
     label: 'Aggregate outstanding',
     type: 'number',
     editable: true,
-    align: 'right', // Changed to right for numbers, header will also be right
+    align: 'right', // Numeric columns typically right-aligned
     pattern: numericRegex,
     subHeading: '( 1 )',
   },
@@ -58,7 +61,7 @@ const columns = [
     label: 'Aggregate value of realisable securities',
     type: 'number',
     editable: true,
-    align: 'right', // Changed to right for numbers, header will also be right
+    align: 'right',
     pattern: numericRegex,
     subHeading: '( 2 )',
   },
@@ -67,7 +70,7 @@ const columns = [
     label: 'Net Shortfall',
     type: 'number',
     editable: false,
-    align: 'right', // Changed to right for numbers, header will also be right
+    align: 'right',
     subHeading: '( 3 = 1 - 2 )',
   },
   {
@@ -75,7 +78,7 @@ const columns = [
     label: 'Provision',
     type: 'number',
     editable: true,
-    align: 'right', // Changed to right for numbers, header will also be right
+    align: 'right',
     pattern: numericRegex,
     subHeading: '( 4 )',
   },
@@ -84,7 +87,7 @@ const columns = [
     label: 'Balance in Interest Suspense Account',
     type: 'number',
     editable: true,
-    align: 'right', // Changed to right for numbers, header will also be right
+    align: 'right',
     pattern: numericRegex,
     subHeading: '( 5 )',
   },
@@ -95,12 +98,12 @@ const initialRow = {
   borrowerName: '',
   aggOutStand: '',
   aggSecurities: '',
-  netShortfall: '',
+  netShortfall: '', // Will be calculated
   provision: '',
   balInterestSuspenseAcc: '',
 };
 
-function debounce(func, delay = 200) {
+function debounce(func, delay = 300) { // Increased default delay slightly
   let timer;
   return (...args) => {
     clearTimeout(timer);
@@ -114,7 +117,7 @@ const MemoizedCellWithLocalState = React.memo(({ row, column, index, setRows }) 
 
   useEffect(() => {
     setLocalValue(row[column.key] || '');
-  }, [row, column.key]);
+  }, [row, column.key]); // Dependency on row[column.key] directly might be more precise
 
   const debouncedUpdateGlobalState = useMemo(
     () =>
@@ -141,33 +144,42 @@ const MemoizedCellWithLocalState = React.memo(({ row, column, index, setRows }) 
 
   const handleChange = (e) => {
     const val = e.target.value;
+    // Regex validation
     if (column.pattern) {
       if (column.type === 'number' && val !== '' && val !== '-' && !column.pattern.test(val)) {
         return;
       }
-      // For alphanumeric, allow empty string or matching pattern
       if (column.type === 'text' && val !== '' && !column.pattern.test(val)) {
         return;
       }
     }
-
     setLocalValue(val);
     debouncedUpdateGlobalState(val);
   };
 
-  const textAlign = column.type === 'number' ? 'right' : 'left';
+  const textAlignForInput = column.type === 'number' ? 'right' : 'left';
 
   return (
     <TextField
       value={localValue}
       onChange={handleChange}
       inputProps={{
-        style: { textAlign: textAlign },
+        style: {
+          textAlign: textAlignForInput,
+        },
         maxLength: column.key === 'borrowerName' ? 255 : 18,
       }}
-      sx={{ width: '100%' }} // Ensure TextField takes full width
+      sx={{
+        width: '100%',
+        '& .MuiOutlinedInput-input': { // Specific to variant="outlined", size="small"
+          paddingTop: '8.5px',    // Default MUI vertical padding for size="small"
+          paddingBottom: '8.5px',
+          paddingLeft: '0px',     // Override horizontal padding
+          paddingRight: '0px',    // Override horizontal padding
+        },
+      }}
       size="small"
-      variant="outlined" // Using outlined for consistency, can be "standard"
+      variant="outlined"
     />
   );
 });
@@ -179,30 +191,64 @@ const RowRenderer = React.memo(({ index, style, data }) => {
   const rowItem = rows[index];
 
   if (!rowItem) {
-    return null;
+    return null; // Should not happen if itemCount is correct
   }
 
   return (
-    <TableRow key={rowItem.id || `row-${index}`} style={style} sx={{ '& .MuiTableCell-root': { borderBottom: '1px solid rgba(224, 224, 224, 1)'} }}>
+    <TableRow
+      key={rowItem.id || `row-${index}`}
+      style={style} // Essential for react-window positioning
+      sx={{
+        '& .MuiTableCell-root': {
+          borderBottom: '1px solid rgba(224, 224, 224, 1)', // Ensure cell borders are visible
+        },
+        '&:hover': { // Optional: hover effect for rows
+            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+        }
+      }}
+    >
       {tableColumns.map((column) => {
-        const textAlign = column.type === 'number' ? 'right' : 'left';
+        const cellAlignment = column.align || (column.type === 'number' ? 'right' : 'left');
+        const inputTextAlign = column.type === 'number' ? 'right' : 'left';
+
         return (
-          <StyledTableCell key={`${rowItem.id || `row-${index}`}-${column.key}`} align={column.align || 'left'}>
+          <StyledTableCell
+            key={`${rowItem.id || `row-${index}`}-${column.key}`}
+            align={cellAlignment}
+          >
             {column.type === 'checkbox' ? (
-              <Checkbox checked={!!rowItem.isDelete} onChange={(e) => handleCheckboxChange(index, e.target.checked)} />
+              <Checkbox
+                checked={!!rowItem.isDelete}
+                onChange={(e) => handleCheckboxChange(index, e.target.checked)}
+                size="small"
+              />
             ) : column.editable ? (
               <MemoizedCellWithLocalState row={rowItem} column={column} index={index} setRows={setRows} />
             ) : (
-              <TextField
+              <TextField // For non-editable fields like 'netShortfall'
                 value={rowItem[column.key] || ''}
                 inputProps={{
-                  style: { textAlign: textAlign },
+                  style: { textAlign: inputTextAlign },
                   readOnly: true,
                 }}
-                sx={{ width: '100%' }} // Ensure TextField takes full width
+                sx={{
+                  width: '100%',
+                  '& .MuiOutlinedInput-input': { // Specific to variant="outlined", size="small"
+                    paddingTop: '8.5px',
+                    paddingBottom: '8.5px',
+                    paddingLeft: '0px',
+                    paddingRight: '0px',
+                    color: rowItem[column.key] ? undefined : 'rgba(0, 0, 0, 0.38)', // Dim empty disabled text
+                  },
+                  '& .MuiOutlinedInput-root': { // Dim border for disabled
+                    '&.Mui-disabled .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(0, 0, 0, 0.26)',
+                    },
+                  }
+                }}
                 size="small"
-                variant="outlined" // Using outlined for consistency
-                disabled // Visually indicate non-editable, ensure readOnly in inputProps
+                variant="outlined"
+                disabled // Visually and functionally disable
               />
             )}
           </StyledTableCell>
@@ -212,6 +258,8 @@ const RowRenderer = React.memo(({ index, style, data }) => {
   );
 });
 RowRenderer.displayName = 'RowRenderer';
+
+const ITEM_SIZE = 52; // Adjust based on cell padding and TextField height for comfortable row height
 
 export default function Schedule9ATable() {
   const { callApi } = useApi();
@@ -225,43 +273,46 @@ export default function Schedule9ATable() {
   });
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [saveStatus, setSaveStatus] = useState(null);
-  const [submitStatus, setSubmitStatus] = useState(null);
+  const [saveStatus, setSaveStatus] = useState(null); // null | 'success' | 'error'
+  const [submitStatus, setSubmitStatus] = useState(null); // null | 'success' | 'error'
 
   useEffect(() => {
-    const payload = { circleCode: '021', quarterEndDate: '31/03/2025' };
+    const payload = { circleCode: '021', quarterEndDate: '31/03/2025' }; // Example payload
     const fetchData = async () => {
       try {
-        const response = await callApi('/Maker/getSavedDataNineA', payload, 'POST');
-        // Ensure fetched data has initialRow structure for all fields
-        const enriched = response.map((r, i) => {
-            const netShortfall = (parseFloat(r.aggOutStand) || 0) - (parseFloat(r.aggSecurities) || 0);
-            return { 
-                ...initialRow, 
-                ...r, 
+        const responseData = await callApi('/Maker/getSavedDataNineA', payload, 'POST');
+        const enriched = responseData.map((r, i) => {
+            const aggOutStand = parseFloat(r.aggOutStand) || 0;
+            const aggSecurities = parseFloat(r.aggSecurities) || 0;
+            const netShortfall = aggOutStand - aggSecurities;
+            return {
+                ...initialRow, // Ensure all fields from initialRow are present
+                ...r, // Overwrite with fetched data
+                aggOutStand: r.aggOutStand || '', // Keep as string for input or format
+                aggSecurities: r.aggSecurities || '',
                 netShortfall: isNaN(netShortfall) ? '' : netShortfall.toFixed(2),
-                id: r.id || `row-${Date.now()}-${i}` 
+                id: r.id || `row-${Date.now()}-${i}`, // Ensure unique ID
             };
         });
-        setRows(enriched);
+        setRows(enriched.length > 0 ? enriched : [{ ...initialRow, id: `new-${Date.now()}-0` }]); // Start with one empty row if no data
       } catch (error) {
-        setSnackbarMessage('Error loading saved data.');
+        console.error('Error loading saved data:', error);
+        setSnackbarMessage('Error loading saved data. Please try again.');
         setSnackbarOpen(true);
-        // Initialize with one empty row if fetch fails, or based on requirements
-        // setRows([{ ...initialRow, id: `new-${Date.now()}-${Math.random()}` }]);
+        setRows([{ ...initialRow, id: `new-${Date.now()}-0` }]); // Start with one empty row on error
       }
     };
     fetchData();
-  }, [callApi]); // Added callApi to dependency array as it's used in effect
+  }, [callApi]); // callApi should be stable, but include if it could change
 
   const calculateTotals = useCallback(() => {
-    const totalsObj = rows.reduce(
+    const newTotals = rows.reduce(
       (acc, row) => {
         acc.aggOutStandTotal += parseFloat(row.aggOutStand) || 0;
         acc.aggSecuritiesTotal += parseFloat(row.aggSecurities) || 0;
-        // netShortfall is calculated, so re-calculate for total based on row values to be safe
+        // netShortfall is derived, sum it based on its current value in row or re-calculate
         const currentNetShortfall = (parseFloat(row.aggOutStand) || 0) - (parseFloat(row.aggSecurities) || 0);
-        acc.netShortfallTotal += currentNetShortfall || 0;
+        acc.netShortfallTotal += currentNetShortfall;
         acc.provisionTotal += parseFloat(row.provision) || 0;
         acc.balInterestSuspenseAccTotal += parseFloat(row.balInterestSuspenseAcc) || 0;
         return acc;
@@ -274,143 +325,135 @@ export default function Schedule9ATable() {
         balInterestSuspenseAccTotal: 0,
       }
     );
-
     setTotals({
-      aggOutStandTotal: totalsObj.aggOutStandTotal.toFixed(2),
-      aggSecuritiesTotal: totalsObj.aggSecuritiesTotal.toFixed(2),
-      netShortfallTotal: totalsObj.netShortfallTotal.toFixed(2),
-      provisionTotal: totalsObj.provisionTotal.toFixed(2),
-      balInterestSuspenseAccTotal: totalsObj.balInterestSuspenseAccTotal.toFixed(2),
+      aggOutStandTotal: newTotals.aggOutStandTotal.toFixed(2),
+      aggSecuritiesTotal: newTotals.aggSecuritiesTotal.toFixed(2),
+      netShortfallTotal: newTotals.netShortfallTotal.toFixed(2),
+      provisionTotal: newTotals.provisionTotal.toFixed(2),
+      balInterestSuspenseAccTotal: newTotals.balInterestSuspenseAccTotal.toFixed(2),
     });
   }, [rows]);
 
   useEffect(() => {
-    // Debounce or throttle total calculation if rows update very frequently
-    const timer = setTimeout(calculateTotals, 50); // Reduced delay slightly
-    return () => clearTimeout(timer);
+    // Calculate totals whenever rows change. Debounce if performance is an issue for rapid changes.
+    calculateTotals();
   }, [rows, calculateTotals]);
 
   const addRow = () => {
-    setRows((prev) => [...prev, { ...initialRow, id: `new-${Date.now()}-${Math.random()}` }]);
+    setRows((prev) => [...prev, { ...initialRow, id: `new-${Date.now()}-${prev.length}` }]);
   };
 
   const deleteSelectedRows = () => {
-    setRows((prevRows) => prevRows.filter((row) => !row.isDelete));
+    const remainingRows = rows.filter((row) => !row.isDelete);
+    setRows(remainingRows);
     setSnackbarMessage('Selected rows deleted.');
     setSnackbarOpen(true);
+    if (remainingRows.length === 0) { // Optionally add a new blank row if all are deleted
+        setTimeout(() => addRow(), 100);
+    }
   };
 
   const validateRows = () => {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      // Check if row has any data apart from checkbox and default initial values
-      const hasMeaningfulData = Object.keys(initialRow).some(
-        (key) => key !== 'isDelete' && row[key] !== initialRow[key] && row[key] !== ''
+      const hasAnyData = Object.keys(initialRow).some(
+        (key) => key !== 'isDelete' && String(row[key] || '').trim() !== ''
       );
-  
-      if (hasMeaningfulData && !row.borrowerName.trim()) {
-        setSnackbarMessage(`Row ${i + 1}: Please enter Branch & Borrower's Name.`);
+
+      if (hasAnyData && !String(row.borrowerName || '').trim()) {
+        setSnackbarMessage(`Row ${i + 1}: Branch & Borrower's Name is required if other data is present.`);
         setSnackbarOpen(true);
         return false;
       }
-      // Validate numeric fields if they are not empty and contain meaningful data
-      if (hasMeaningfulData) {
-        const numericFields = ['aggOutStand', 'aggSecurities', 'provision', 'balInterestSuspenseAcc'];
-        for (const field of numericFields) {
-          if (row[field] !== '' && (isNaN(parseFloat(row[field])) || !numericRegex.test(row[field]))) {
-            const columnLabel = columns.find(col => col.key === field)?.label || field;
-            setSnackbarMessage(`Row ${i + 1}: Please enter a valid number for ${columnLabel}.`);
-            setSnackbarOpen(true);
-            return false;
-          }
+
+      const numericFieldsToValidate = ['aggOutStand', 'aggSecurities', 'provision', 'balInterestSuspenseAcc'];
+      for (const field of numericFieldsToValidate) {
+        const value = String(row[field] || '');
+        if (value !== '' && (isNaN(parseFloat(value)) || !numericRegex.test(value))) {
+          const columnLabel = columns.find(col => col.key === field)?.label || field;
+          setSnackbarMessage(`Row ${i + 1}: Invalid number in ${columnLabel}.`);
+          setSnackbarOpen(true);
+          return false;
         }
       }
     }
     return true;
   };
-  
 
   const buildPayload = (saveFlag) => ({
-    listToBeSent: rows.map(({ id, isDelete, netShortfall, ...rest }) => {
-        // Recalculate netShortfall just before sending to ensure accuracy
+    listToBeSent: rows.map(({ id, isDelete, ...rest }) => {
         const out = parseFloat(rest.aggOutStand) || 0;
         const sec = parseFloat(rest.aggSecurities) || 0;
-        return {
-            ...rest,
-            aggOutStand: rest.aggOutStand || '0.00',
-            aggSecurities: rest.aggSecurities || '0.00',
+        return { // Ensure all fields are present and formatted as strings if needed by backend
+            borrowerName: String(rest.borrowerName || '').trim(),
+            aggOutStand: out.toFixed(2),
+            aggSecurities: sec.toFixed(2),
             netShortfall: (out - sec).toFixed(2),
-            provision: rest.provision || '0.00',
-            balInterestSuspenseAcc: rest.balInterestSuspenseAcc || '0.00',
+            provision: (parseFloat(rest.provision) || 0).toFixed(2),
+            balInterestSuspenseAcc: (parseFloat(rest.balInterestSuspenseAcc) || 0).toFixed(2),
         };
     }),
-    circleCode: '021',
-    quarterEndDate: '31/03/2025',
-    userId: '1111111',
+    circleCode: '021', // Example
+    quarterEndDate: '31/03/2025', // Example
+    userId: '1111111', // Example
     reportName: 'Schedule 9A',
-    reportMasterId: '310023',
-    status: null, // This might need to be set based on action (e.g., 'Submitted')
+    reportMasterId: '310023', // Example
+    status: saveFlag ? 'Draft' : 'Submitted', // Example status
     save: saveFlag,
   });
 
-  const handleSave = async () => {
+  const handleApiCall = async (apiAction, payload, successMessage, statusSetter) => {
     if (!validateRows()) return;
+    statusSetter('pending'); // Optional: for loading state
     try {
-      await callApi('/Maker/submitNineA', buildPayload(true), 'POST');
-      setSaveStatus('success');
-      setSnackbarMessage('Report saved successfully.');
+      await callApi(apiAction, payload, 'POST');
+      statusSetter('success');
+      setSnackbarMessage(successMessage);
     } catch (error) {
-      setSaveStatus('error');
-      setSnackbarMessage(error.message || 'Error saving report.');
+      console.error(`Error ${payload.save ? 'saving' : 'submitting'} report:`, error);
+      statusSetter('error');
+      setSnackbarMessage(error.message || `Error ${payload.save ? 'saving' : 'submitting'} report.`);
     }
     setSnackbarOpen(true);
   };
 
-  const handleSubmit = async () => {
-    if (!validateRows()) return;
-    try {
-      // Add status for submit if needed in payload
-      // const payload = {...buildPayload(false), status: "Submitted"};
-      await callApi('/Maker/submitNineA', buildPayload(false), 'POST');
-      setSubmitStatus('success');
-      setSnackbarMessage('Report submitted successfully.');
-    } catch (error) {
-      setSubmitStatus('error');
-      setSnackbarMessage(error.message || 'Error submitting report.');
-    }
-    setSnackbarOpen(true);
+  const handleSave = () => {
+    handleApiCall('/Maker/submitNineA', buildPayload(true), 'Report saved successfully.', setSaveStatus);
+  };
+
+  const handleSubmit = () => {
+    handleApiCall('/Maker/submitNineA', buildPayload(false), 'Report submitted successfully.', setSubmitStatus);
   };
 
   const handleCloseSnackbar = (_, reason) => {
     if (reason === 'clickaway') return;
     setSnackbarOpen(false);
-    // Reset status after snackbar closes or timeout
-    setTimeout(() => {
-        setSaveStatus(null);
-        setSubmitStatus(null);
-    }, 300);
+    // Consider resetting status after a delay or on next action
   };
 
   const handleCheckboxChange = useCallback((rowIndex, checked) => {
-    setRows((prevRows) => prevRows.map((row, idx) => (idx === rowIndex ? { ...row, isDelete: checked } : row)));
+    setRows((prevRows) =>
+      prevRows.map((row, idx) => (idx === rowIndex ? { ...row, isDelete: checked } : row))
+    );
   }, []);
 
   const itemData = useMemo(
     () => ({
       rows,
-      columns, // Pass the updated columns definition
+      columns,
       setRows,
       handleCheckboxChange,
     }),
-    [rows, handleCheckboxChange] // columns is constant, but good to include if it could change
+    [rows, handleCheckboxChange] // `columns` is stable but good practice if it could change
   );
+  
+  const listHeight = Math.min(500, rows.length * ITEM_SIZE + (rows.length > 0 ? 5 : 0));
 
-  const ITEM_SIZE = 60; // Increased item size slightly for better padding with outlined TextFields
 
   return (
-    <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)' }}> {/* Adjust 64px based on header/navbar height */}
-      <TableContainer component={Paper} sx={{ flexGrow: 1, overflow: 'hidden' /* Let AutoSizer handle scroll */ }}>
-        <Table stickyHeader>
+    <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 100px)' /* Adjust based on actual surrounding UI */ }}>
+      <TableContainer component={Paper} sx={{ flexGrow: 1, overflow: 'hidden' /* AutoSizer handles scroll region */ }}>
+        <Table stickyHeader sx={{ tableLayout: 'auto' /* 'fixed' can be an option for more rigid columns */ }}>
           <TableHead>
             <TableRow>
               {columns.map((col) => (
@@ -421,31 +464,25 @@ export default function Schedule9ATable() {
             </TableRow>
             <TableRow>
               {columns.map((col) => (
-                <StyledTableCell key={`${col.key}-sub`} align={col.align || 'left'}> {/* Corrected key syntax */}
+                <StyledTableCell key={`${col.key}-sub`} align={col.align || 'left'}>
                   {col.subHeading}
                 </StyledTableCell>
               ))}
             </TableRow>
           </TableHead>
-
+          {/* Virtualized Table Body */}
           {rows.length > 0 ? (
-            // TableBody for react-window needs to be a direct child for AutoSizer usually,
-            // or AutoSizer needs to wrap the component that List is in.
-            // The List itself will render TableRow, so we don't need an explicit <TableBody> here
-            // if AutoSizer and List are handling the scrolling body.
-            // However, MUI table structure expects TableBody.
-            // Let's try keeping TableBody and ensuring AutoSizer works within it.
-            <TableBody component="div" sx={{ display: 'block' /* Required for react-window with TableBody */}}>
+            <TableBody component="div" sx={{ display: 'block', position: 'relative' /* For AutoSizer */ }}>
               <AutoSizer disableHeight>
                 {({ width }) => (
                   <List
-                    height={Math.min(500, rows.length * ITEM_SIZE)} // Use dynamic item size
+                    height={listHeight}
                     itemCount={rows.length}
                     itemSize={ITEM_SIZE} // Row height
                     width={width}
-                    overscanCount={5}
+                    overscanCount={5} // Render a few rows above/below viewport
                     itemData={itemData}
-                    style={{ display: 'block' }} // Ensure List behaves as block for TableBody
+                    style={{ display: 'block' }} // Ensure List behaves as block
                   >
                     {RowRenderer}
                   </List>
@@ -455,52 +492,57 @@ export default function Schedule9ATable() {
           ) : (
             <TableBody>
               <TableRow>
-                <TableCell colSpan={columns.length} align="center" sx={{ py: 3 }}>
+                <StyledTableCell colSpan={columns.length} align="center" sx={{ py: 3 }}>
                   No data available. Click "Add Row" to begin.
-                </TableCell>
+                </StyledTableCell>
               </TableRow>
             </TableBody>
           )}
-
-          {/* Totals Row - Placed outside the scrollable virtualized list */}
         </Table>
       </TableContainer>
-      {/* Separate Table for Totals to keep it sticky at the bottom of the container if needed, or just after the list */}
-      <TableContainer component={Paper} sx={{ width: '100%', mt:0, borderTop:'2px solid black' /* Visual separation */ }}>
-        <Table>
-        <TableBody>
-            <TableRow sx={{ '& .MuiTableCell-root': { fontWeight: 'bold', backgroundColor: '#f0f0f0' } }}>
-              <StyledTableCell colSpan={2} align="center">
-                Total
-              </StyledTableCell>
-              {[
-                'aggOutStandTotal',
-                'aggSecuritiesTotal',
-                'netShortfallTotal',
-                'provisionTotal',
-                'balInterestSuspenseAccTotal',
-              ].map((key, index) => (
-                <StyledTableCell key={key} align={columns[index + 2]?.align || 'right'}> {/* Align with column data */}
-                  <TextField
-                    value={totals[key]}
-                    InputProps={{
-                      readOnly: true,
-                      style: {
-                        textAlign: columns[index + 2]?.align || 'right', // Align text with column data
-                        fontWeight: 'bold',
-                      },
-                    }}
-                    sx={{ width: '100%' }} // Ensure TextField takes full width
-                    size="small"
-                    variant="outlined" // Consistent variant
-                  />
-                </StyledTableCell>
-              ))}
+
+      {/* Totals Row Container */}
+      <TableContainer component={Paper} sx={{ width: '100%', mt: 0, borderTop: '2px solid black' }}>
+        <Table sx={{ tableLayout: 'auto' }}>
+          <TableBody>
+            <TableRow sx={{ '& .MuiTableCell-root': { fontWeight: 'bold', backgroundColor: '#f9f9f9' } }}>
+              <StyledTableCell colSpan={2} align="center">Total</StyledTableCell>
+              {columns.slice(2).map((col) => { // Iterate through data columns for totals
+                const totalKey = `${col.key}Total`; // Construct key like 'aggOutStandTotal'
+                const showTotal = totals.hasOwnProperty(totalKey);
+                const textAlignForInput = col.type === 'number' ? 'right' : 'left';
+
+                return (
+                  <StyledTableCell key={totalKey} align={col.align || 'right'}>
+                    {showTotal ? (
+                      <TextField
+                        value={totals[totalKey]}
+                        InputProps={{
+                          readOnly: true,
+                          style: { fontWeight: 'bold', textAlign: textAlignForInput },
+                        }}
+                        sx={{
+                          width: '100%',
+                          '& .MuiOutlinedInput-input': { // Align with data row TextFields
+                            paddingTop: '8.5px',
+                            paddingBottom: '8.5px',
+                            paddingLeft: '0px',
+                            paddingRight: '0px',
+                          },
+                        }}
+                        size="small"
+                        variant="outlined"
+                      />
+                    ) : null}
+                  </StyledTableCell>
+                );
+              })}
             </TableRow>
           </TableBody>
         </Table>
       </TableContainer>
 
+      {/* Action Buttons */}
       <Stack direction="row" spacing={2} mt={2} justifyContent="flex-start">
         <CustomButton label={'Add Row'} buttonType={'create'} onClickHandler={addRow} />
         <CustomButton
@@ -517,6 +559,8 @@ export default function Schedule9ATable() {
           disabled={!rows.length}
         />
       </Stack>
+
+      {/* Snackbar for Notifications */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={6000}
@@ -530,7 +574,7 @@ export default function Schedule9ATable() {
               ? 'error'
               : saveStatus === 'success' || submitStatus === 'success'
               ? 'success'
-              : 'info'
+              : 'info' // Default for general messages
           }
           sx={{ width: '100%' }}
           variant="filled"
@@ -541,4 +585,3 @@ export default function Schedule9ATable() {
     </Box>
   );
 }
-
