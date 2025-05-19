@@ -1,90 +1,123 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-  Table,
-  TableBody,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  TextField,
-  Button,
-  Alert,
-  Box,
-  Stack,
-  CircularProgress,
-  Typography,
-} from '@mui/material';
-import TableCell, { tableCellClasses } from '@mui/material/TableCell';
-import { styled } from '@mui/material/styles';
-import debounce from 'lodash/debounce';
-import FormInput from '../../../../common/components/ui/FormInput';
-import useApi from '../../../../common/hooks/useApi';
+The 10-second delay you're facing in rendering the Schedule9CProvisionTable is likely due to slow execution of the fetchData function inside useEffect, particularly this API call:
 
-// ... other parts of your component remain unchanged
+await callApi('/Maker/getSavedDataNineC', requestPayload, 'POST');
 
-const Schedule9CProvisionTable = (props) => {
-  const { callApi } = useApi();
-  const [formData, setFormData] = useState({});
-  const [validationErrors, setValidationErrors] = useState([]);
+Here's a full analysis and solution approach:
 
-  const buildPayload = (isSaveOperation) => {
-    const payload = {
-      circleCode: '021',
-      quarterEndDate: '31/03/2025',
-      userId: '1111111',
-      reportId: '125911',
-      reportMasterId: '310021',
-      reportName: 'Schedule9C PROVISION',
-      status: isSaveOperation ? '11' : '21',
-      save: isSaveOperation,
-    };
-    rowDefinitionsConfig.forEach((row) => {
-      if (row.type === 'entry' && row.modelSuffix) {
-        const rowInputData = formData[row.id] || {};
-        Object.entries(columnFieldKeys).forEach(([_, fieldKeyInFormData]) => {
-          const backendFieldName = `${fieldKeyInFormData}${row.modelSuffix}`;
-          payload[backendFieldName] = parseFloat(rowInputData[fieldKeyInFormData] || 0).toFixed(2);
-        });
-      }
-    });
-    return payload;
-  };
 
-  const handleSave = async () => {
-    try {
-      const payload = buildPayload(true);
-      const response = await callApi('/Maker/submitNineC', payload, 'POST');
-      if (response && response.includes('~11')) {
-        showSnackbar('Data saved successfully', 'success');
-      } else {
-        showSnackbar('Save failed. Please try again.', 'error');
-      }
-    } catch (error) {
-      console.error(error);
-      showSnackbar('An error occurred while saving.', 'error');
+---
+
+Root Cause
+
+The useEffect runs fetchData() immediately after the component mounts.
+
+fetchData() sets isLoading = true, calls the API, processes the response (including a loop over Object.entries(fetchedApiData)), and then sets formData.
+
+If the API response is large or slow, or the transformation logic is inefficient, the UI will appear to "hang" until it completes.
+
+
+
+---
+
+Solution Options
+
+1. Show Skeleton or Immediate Layout
+
+Right now you're delaying any render until isLoading is false. Instead, render the table structure with a loading overlay. Modify this:
+
+if (isLoading) {
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+      <CircularProgress />
+      <Typography sx={{ ml: 2 }}>Loading Data...</Typography>
+    </Box>
+  );
+}
+
+Replace with this:
+
+<Box sx={{ p: 1, width: '100%', overflowX: 'hidden', position: 'relative' }}>
+  {isLoading && (
+    <Box
+      sx={{
+        position: 'absolute',
+        top: 0, left: 0,
+        right: 0, bottom: 0,
+        zIndex: 10,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.7)',
+      }}
+    >
+      <CircularProgress />
+      <Typography sx={{ ml: 2 }}>Loading Data...</Typography>
+    </Box>
+  )}
+
+This renders the table layout first, then overlays a loader — making the UI feel instant.
+
+
+---
+
+2. Optimize fetchData() transformation logic
+
+In your loop:
+
+for (const [apiFullKey, apiValue] of Object.entries(fetchedApiData)) {
+  ...
+}
+
+This loop becomes slow if:
+
+fetchedApiData has hundreds of keys.
+
+modelSuffixToRowIdMap lookup is undefined or large.
+
+
+
+Improve it by memoizing the modelSuffixToRowIdMap once outside the component:
+
+const modelSuffixToRowIdMap = useMemo(() => {
+  const map = {};
+  rowDefinitionsConfig.forEach((row) => {
+    if (row.modelSuffix) {
+      map[row.modelSuffix] = row.id;
     }
-  };
+  });
+  return map;
+}, []);
 
-  const handleSubmit = async () => {
-    if (validationErrors.length > 0) {
-      showSnackbar('Please correct validation errors.', 'error');
-      return;
-    }
-    try {
-      const payload = buildPayload(false);
-      const response = await callApi('/Maker/submitNineC', payload, 'POST');
-      if (response && response.includes('~21')) {
-        showSnackbar('Form submitted successfully', 'success');
-      } else {
-        showSnackbar('Submit failed. Please try again.', 'error');
-      }
-    } catch (error) {
-      console.error(error);
-      showSnackbar('An error occurred while submitting.', 'error');
-    }
-  };
+And then use this memoized modelSuffixToRowIdMap in fetchData.
 
-  // Return your UI with the Save/Submit buttons wired to handleSave and handleSubmit
-};
 
-export default Schedule9CProvisionTable;
+---
+
+3. Add console time profiler (Optional for debugging)
+
+Wrap timing code to measure actual delay:
+
+console.time('fetchTransform');
+...
+// transformation logic
+...
+console.timeEnd('fetchTransform');
+
+
+---
+
+Summary of Fixes You Should Apply
+
+Fix	Description
+
+Render table early	Avoid hiding the entire table behind isLoading. Use an overlay instead.
+Memoize lookup map	Optimize lookup for modelSuffixToRowIdMap.
+Profile API and transformation	Use console.time to pinpoint the delay source.
+Optional: Chunk rendering	If data is huge, render rows in batches or with react-window.
+
+
+
+---
+
+Let me know if you want help converting this table to use virtualized rendering (react-window) to make large data fast.
+
