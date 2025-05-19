@@ -1,123 +1,250 @@
-The 10-second delay you're facing in rendering the Schedule9CProvisionTable is likely due to slow execution of the fetchData function inside useEffect, particularly this API call:
+// Optimized Schedule9CProvisionTable Component
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import {
+  Table, TableBody, TableContainer, TableHead, TableRow,
+  Paper, Button, Alert, Box, Stack, CircularProgress, Typography
+} from '@mui/material';
+import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import { styled } from '@mui/material/styles';
+import FormInput from '../../../../common/components/ui/FormInput';
+import useApi from '../../../../common/hooks/useApi';
+import debounce from 'lodash/debounce';
 
-await callApi('/Maker/getSavedDataNineC', requestPayload, 'POST');
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  fontSize: '0.875rem',
+  padding: '8px',
+  border: '1px solid #e0e0e0',
+  whiteSpace: 'nowrap',
+  [`&.${tableCellClasses.head}`]: {
+    backgroundColor: theme.palette.common.black,
+    color: theme.palette.common.white,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  [`&.${tableCellClasses.body}`]: {
+    color: theme.palette.text.primary,
+    backgroundColor: theme.palette.background.paper,
+    textAlign: 'left',
+  },
+}));
 
-Here's a full analysis and solution approach:
+const StyledTableRow = styled(TableRow)(({ theme, isTotalRow, isSectionHeader, isSubSectionHeader }) => ({
+  backgroundColor: theme.palette.background.paper,
+  ...(isSectionHeader && {
+    '& > td': { fontWeight: 'bold', textAlign: 'left' },
+  }),
+  ...(isSubSectionHeader && {
+    '& > td': { fontWeight: 'bold', fontStyle: 'italic', textAlign: 'left' },
+  }),
+  ...(isTotalRow && {
+    '& > td': { fontWeight: 'bold' },
+  }),
+}));
 
+// Your rowDefinitionsConfig, columnFieldKeys, allColumnKeys, calculatedColKeys here (unchanged for brevity)
 
----
+const Schedule9CProvisionTable = ({
+  circleCode = '021',
+  quarterEndDate = '31/03/2025',
+  role = 'Maker',
+  previousYear = '2024',
+  displayQuarterDate = '31/03/2025'
+}) => {
+  const showSnackbar = (msg, sev) => console.log(`Snackbar: ${msg} (${sev})`);
+  const { callApi } = useApi();
 
-Root Cause
+  const [formData, setFormData] = useState({});
+  const [validationErrors, setValidationErrors] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [rawApiData, setRawApiData] = useState(null);
 
-The useEffect runs fetchData() immediately after the component mounts.
+  const modelSuffixToRowIdMap = useMemo(() => {
+    const map = {};
+    rowDefinitionsConfig.forEach(r => { if (r.modelSuffix) map[r.modelSuffix] = r.id; });
+    return map;
+  }, []);
 
-fetchData() sets isLoading = true, calls the API, processes the response (including a loop over Object.entries(fetchedApiData)), and then sets formData.
+  useEffect(() => {
+    const fetchData = async () => {
+      showSnackbar('Loading data...', 'info');
+      const payload = {
+        circleCode, quarterEndDate, userId: '1111111',
+        reportName: 'Schedule9C PROVISION', reportId: '125911', reportMasterId: '310021',
+        status: '11', areMocPending: true
+      };
+      try {
+        const response = await callApi('/Maker/getSavedDataNineC', payload, 'POST');
+        setRawApiData(response);
+      } catch (err) {
+        showSnackbar('API fetch error', 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
-If the API response is large or slow, or the transformation logic is inefficient, the UI will appear to "hang" until it completes.
+  useEffect(() => {
+    if (!rawApiData) return;
+    const initial = {};
+    rowDefinitionsConfig.forEach(row => {
+      if (row.type === 'entry') {
+        initial[row.id] = {};
+        Object.values(columnFieldKeys).forEach(field => { initial[row.id][field] = ''; });
+      }
+    });
+    for (const [apiKey, apiVal] of Object.entries(rawApiData)) {
+      for (const fieldKey of Object.values(columnFieldKeys)) {
+        if (apiKey.startsWith(fieldKey)) {
+          const suffix = apiKey.slice(fieldKey.length);
+          const rowId = modelSuffixToRowIdMap[suffix];
+          if (rowId && initial[rowId]) initial[rowId][fieldKey] = apiVal ? String(apiVal) : '';
+        }
+      }
+    }
+    setFormData(initial);
+    showSnackbar('Data loaded successfully', 'success');
+  }, [rawApiData]);
 
+  const getNum = (v) => parseFloat(v) || 0;
+  const calculatedData = useMemo(() => {
+    const calc = {};
+    rowDefinitionsConfig.forEach(row => {
+      if (row.type === 'entry' || row.type === 'total') {
+        const d = {};
+        if (row.type === 'entry') {
+          const rowData = formData[row.id] || {};
+          Object.entries(columnFieldKeys).forEach(([colKey, fieldKey]) => { d[colKey] = rowData[fieldKey] ?? ''; });
+          const n = (k) => getNum(d[k]);
+          d.col4 = (n('col1') - n('col2') + n('col3')).toFixed(2);
+          d.col7 = (n('col4') + n('col5') + n('col6')).toFixed(2);
+          d.col10 = (n('col8') + n('col9')).toFixed(2);
+          d.col13 = (n('col10') + n('col11') - n('col12')).toFixed(2);
+          d.col15 = (n('col7') + n('col13') + n('col14')).toFixed(2);
+        }
+        calc[row.id] = d;
+      }
+    });
+    rowDefinitionsConfig.forEach(row => {
+      if (row.type === 'total') {
+        const total = {};
+        allColumnKeys.forEach(col => {
+          total[col] = row.subItemIds.reduce((sum, id) => sum + getNum(calc[id]?.[col]), 0).toFixed(2);
+        });
+        const n = (k) => getNum(total[k]);
+        total.col4 = (n('col1') - n('col2') + n('col3')).toFixed(2);
+        total.col7 = (n('col4') + n('col5') + n('col6')).toFixed(2);
+        total.col10 = (n('col8') + n('col9')).toFixed(2);
+        total.col13 = (n('col10') + n('col11') - n('col12')).toFixed(2);
+        total.col15 = (n('col7') + n('col13') + n('col14')).toFixed(2);
+        calc[row.id] = total;
+      }
+    });
+    return calc;
+  }, [formData]);
 
+  const handleChange = useCallback((rowId, fieldKey, value) => {
+    if (value === '' || /^-?\d*\.?\d{0,2}$/.test(value)) {
+      setFormData(prev => ({
+        ...prev,
+        [rowId]: { ...prev[rowId], [fieldKey]: value }
+      }));
+    }
+  }, []);
 
----
+  const buildPayload = (isSave) => {
+    const payload = { circleCode, quarterEndDate, role, save: isSave, status: isSave ? 'SAVED' : 'SUBMITTED' };
+    rowDefinitionsConfig.forEach(row => {
+      if (row.type === 'entry') {
+        const d = formData[row.id] || {};
+        Object.entries(columnFieldKeys).forEach(([colKey, field]) => {
+          const key = `${field}${row.modelSuffix}`;
+          payload[key] = getNum(d[field]).toFixed(2);
+        });
+      }
+    });
+    return payload;
+  };
 
-Solution Options
+  const handleSubmit = async () => {
+    const errors = [];
+    const keys = ['col7', 'col13', 'col15'];
+    const a1 = calculatedData['A1_total'], a2 = calculatedData['A2_total'], a3 = calculatedData['A3_grand_total'], a4 = calculatedData['A4_total'];
+    keys.forEach(key => {
+      const [v1, v2, v3, v4] = [a1, a2, a3, a4].map(r => getNum(r[key]));
+      if (!(Math.abs(v1 - v2) < 0.01 && Math.abs(v2 - v3) < 0.01 && Math.abs(v3 - v4) < 0.01)) {
+        errors.push(`Column ${key}: Totals mismatch A1=${v1}, A2=${v2}, A3=${v3}, A4=${v4}`);
+      }
+    });
+    if (errors.length > 0) return setValidationErrors(errors);
+    const payload = buildPayload(false);
+    console.log('Submit Payload:', payload);
+    showSnackbar('Submitted successfully', 'success');
+  };
 
-1. Show Skeleton or Immediate Layout
+  const handleSave = async () => {
+    const payload = buildPayload(true);
+    console.log('Save Payload:', payload);
+    showSnackbar('Saved successfully', 'info');
+  };
 
-Right now you're delaying any render until isLoading is false. Instead, render the table structure with a loading overlay. Modify this:
+  if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /><Typography ml={2}>Loading...</Typography></Box>;
 
-if (isLoading) {
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-      <CircularProgress />
-      <Typography sx={{ ml: 2 }}>Loading Data...</Typography>
+    <Box sx={{ p: 1 }}>
+      {validationErrors.length > 0 && (
+        <Alert severity="error">
+          <ul>{validationErrors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+        </Alert>
+      )}
+      <TableContainer component={Paper}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <StyledTableCell>Classification</StyledTableCell>
+              {allColumnKeys.map((key, i) => <StyledTableCell key={key}>{i + 1}</StyledTableCell>)}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rowDefinitionsConfig.map(row => {
+              const data = calculatedData[row.id] || {};
+              if (row.type.includes('Header')) return (
+                <StyledTableRow key={row.id} isSectionHeader={true}>
+                  <StyledTableCell colSpan={allColumnKeys.length + 1}>{row.label}</StyledTableCell>
+                </StyledTableRow>
+              );
+              return (
+                <StyledTableRow key={row.id} isTotalRow={row.type === 'total'}>
+                  <StyledTableCell>{row.label}</StyledTableCell>
+                  {allColumnKeys.map(col => {
+                    const editable = row.type === 'entry' && !calculatedColKeys.includes(col);
+                    const val = data[col] ?? '';
+                    const field = columnFieldKeys[col];
+                    return (
+                      <StyledTableCell key={col}>
+                        <FormInput
+                          name={''}
+                          value={val}
+                          onChange={editable ? e => handleChange(row.id, field, e.target.value) : undefined}
+                          readOnly={!editable}
+                          isNumeric
+                          customStyles={{ width: '120px', textAlign: 'right', '& input': { textAlign: 'right' } }}
+                        />
+                      </StyledTableCell>
+                    );
+                  })}
+                </StyledTableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      <Stack direction="row" spacing={2} justifyContent="center" mt={2}>
+        <Button variant="contained" color="warning" onClick={handleSave}>Save</Button>
+        <Button variant="contained" color="success" onClick={handleSubmit}>Submit</Button>
+      </Stack>
     </Box>
   );
-}
+};
 
-Replace with this:
-
-<Box sx={{ p: 1, width: '100%', overflowX: 'hidden', position: 'relative' }}>
-  {isLoading && (
-    <Box
-      sx={{
-        position: 'absolute',
-        top: 0, left: 0,
-        right: 0, bottom: 0,
-        zIndex: 10,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(255,255,255,0.7)',
-      }}
-    >
-      <CircularProgress />
-      <Typography sx={{ ml: 2 }}>Loading Data...</Typography>
-    </Box>
-  )}
-
-This renders the table layout first, then overlays a loader — making the UI feel instant.
-
-
----
-
-2. Optimize fetchData() transformation logic
-
-In your loop:
-
-for (const [apiFullKey, apiValue] of Object.entries(fetchedApiData)) {
-  ...
-}
-
-This loop becomes slow if:
-
-fetchedApiData has hundreds of keys.
-
-modelSuffixToRowIdMap lookup is undefined or large.
-
-
-
-Improve it by memoizing the modelSuffixToRowIdMap once outside the component:
-
-const modelSuffixToRowIdMap = useMemo(() => {
-  const map = {};
-  rowDefinitionsConfig.forEach((row) => {
-    if (row.modelSuffix) {
-      map[row.modelSuffix] = row.id;
-    }
-  });
-  return map;
-}, []);
-
-And then use this memoized modelSuffixToRowIdMap in fetchData.
-
-
----
-
-3. Add console time profiler (Optional for debugging)
-
-Wrap timing code to measure actual delay:
-
-console.time('fetchTransform');
-...
-// transformation logic
-...
-console.timeEnd('fetchTransform');
-
-
----
-
-Summary of Fixes You Should Apply
-
-Fix	Description
-
-Render table early	Avoid hiding the entire table behind isLoading. Use an overlay instead.
-Memoize lookup map	Optimize lookup for modelSuffixToRowIdMap.
-Profile API and transformation	Use console.time to pinpoint the delay source.
-Optional: Chunk rendering	If data is huge, render rows in batches or with react-window.
-
-
-
----
-
-Let me know if you want help converting this table to use virtualized rendering (react-window) to make large data fast.
-
+export default Schedule9CProvisionTable;
