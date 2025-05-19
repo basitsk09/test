@@ -1,37 +1,90 @@
-import axios from 'axios';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  Table,
+  TableBody,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  TextField,
+  Button,
+  Alert,
+  Box,
+  Stack,
+  CircularProgress,
+  Typography,
+} from '@mui/material';
+import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import { styled } from '@mui/material/styles';
+import debounce from 'lodash/debounce';
+import FormInput from '../../../../common/components/ui/FormInput';
+import useApi from '../../../../common/hooks/useApi';
 
-const API_URL = '/Maker/submitNineC';
+// ... other parts of your component remain unchanged
 
-const handleSave = async (data) => {
-  try {
+const Schedule9CProvisionTable = (props) => {
+  const { callApi } = useApi();
+  const [formData, setFormData] = useState({});
+  const [validationErrors, setValidationErrors] = useState([]);
+
+  const buildPayload = (isSaveOperation) => {
     const payload = {
-      ...data,
-      save: true // Indicates this is a "Save" action
+      circleCode: '021',
+      quarterEndDate: '31/03/2025',
+      userId: '1111111',
+      reportId: '125911',
+      reportMasterId: '310021',
+      reportName: 'Schedule9C PROVISION',
+      status: isSaveOperation ? '11' : '21',
+      save: isSaveOperation,
     };
-    const response = await axios.post(API_URL, payload);
-    if (response.status === 200) {
-      console.log('Save successful:', response.data);
-      // You can show a Snackbar or Alert here
+    rowDefinitionsConfig.forEach((row) => {
+      if (row.type === 'entry' && row.modelSuffix) {
+        const rowInputData = formData[row.id] || {};
+        Object.entries(columnFieldKeys).forEach(([_, fieldKeyInFormData]) => {
+          const backendFieldName = `${fieldKeyInFormData}${row.modelSuffix}`;
+          payload[backendFieldName] = parseFloat(rowInputData[fieldKeyInFormData] || 0).toFixed(2);
+        });
+      }
+    });
+    return payload;
+  };
+
+  const handleSave = async () => {
+    try {
+      const payload = buildPayload(true);
+      const response = await callApi('/Maker/submitNineC', payload, 'POST');
+      if (response && response.includes('~11')) {
+        showSnackbar('Data saved successfully', 'success');
+      } else {
+        showSnackbar('Save failed. Please try again.', 'error');
+      }
+    } catch (error) {
+      console.error(error);
+      showSnackbar('An error occurred while saving.', 'error');
     }
-  } catch (error) {
-    console.error('Save failed:', error);
-    // Show error alert
-  }
+  };
+
+  const handleSubmit = async () => {
+    if (validationErrors.length > 0) {
+      showSnackbar('Please correct validation errors.', 'error');
+      return;
+    }
+    try {
+      const payload = buildPayload(false);
+      const response = await callApi('/Maker/submitNineC', payload, 'POST');
+      if (response && response.includes('~21')) {
+        showSnackbar('Form submitted successfully', 'success');
+      } else {
+        showSnackbar('Submit failed. Please try again.', 'error');
+      }
+    } catch (error) {
+      console.error(error);
+      showSnackbar('An error occurred while submitting.', 'error');
+    }
+  };
+
+  // Return your UI with the Save/Submit buttons wired to handleSave and handleSubmit
 };
 
-const handleSubmit = async (data) => {
-  try {
-    const payload = {
-      ...data,
-      save: false // Indicates this is a "Submit" action
-    };
-    const response = await axios.post(API_URL, payload);
-    if (response.status === 200) {
-      console.log('Submit successful:', response.data);
-      // You can show a Snackbar or Alert here
-    }
-  } catch (error) {
-    console.error('Submit failed:', error);
-    // Show error alert
-  }
-};
+export default Schedule9CProvisionTable;
