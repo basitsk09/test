@@ -108,3 +108,22 @@ public class RORML {
 
 
 }
+//////////////
+
+2025-05-19 :: 10:52:29.966 ||  WARN :: SqlExceptionHelper.java: | 145 | :: SQL Error: 1, SQLState: 23000
+2025-05-19 :: 10:52:29.966 ||  ERROR:: SqlExceptionHelper.java: | 150 | :: ORA-00001: unique constraint (FNSONLI.TAR_REPORTS_MASTER_LIST_PK) violated
+ 
+2025-05-19 :: 10:52:29.968 ||  ERROR:: ErrorPageFilter.java: | 182 | :: Forwarding to error page from request [/roManagerReject] due to exception [could not execute statement [ORA-00001: unique constraint (FNSONLI.TAR_REPORTS_MASTER_LIST_PK) violated
+] [insert into tar_reports_master_list (status,ro_acc_rej_date,ro_acc_rej_flag,ro_acc_rej_remark,ro_id,branch_code,quarter_date,report_master_id,report_id) values (?,?,?,?,?,?,?,?,?)]; SQL [insert into tar_reports_master_list (status,ro_acc_rej_date,ro_acc_rej_flag,ro_acc_rej_remark,ro_id,branch_code,quarter_date,report_master_id,report_id) values (?,?,?,?,?,?,?,?,?)]; constraint [FNSONLI.TAR_REPORTS_MASTER_LIST_PK]]
+org.springframework.dao.DataIntegrityViolationException: could not execute statement [ORA-00001: unique constraint (FNSONLI.TAR_REPORTS_MASTER_LIST_PK) violated
+] [insert into tar_reports_master_list (status,ro_acc_rej_date,ro_acc_rej_flag,ro_acc_rej_remark,ro_id,branch_code,quarter_date,report_master_id,report_id) values (?,?,?,?,?,?,?,?,?)]; SQL [insert into tar_reports_master_list (status,ro_acc_rej_date,ro_acc_rej_flag,ro_acc_rej_remark,ro_id,branch_code,quarter_date,report_master_id,report_id) values (?,?,?,?,?,?,?,?,?)]; constraint [FNSONLI.TAR_REPORTS_MASTER_LIST_PK]
+        at org.springframework.orm.jpa.vendor.HibernateJpaDialect.convertHibernateAccessException(HibernateJpaDialect.java:290)
+        at org.springframework.orm.jpa.vendor.HibernateJpaDialect.translateExceptionIfPossible(HibernateJpaDialect.java:241)
+        at org.springframework.orm.jpa.JpaTransactionManager.doCommit(JpaTransactionManager.java:566)
+        at org.springframework.transaction.support.AbstractPlatformTransactionManager.processCommit(AbstractPlatformTransactionManager.java:795)
+        at org.springframework.transaction.support.AbstractPlatformTransactionManager.commit(AbstractPlatformTransactionManager.java:758)
+        at org.springframework.transaction.interceptor.TransactionAspectSupport.commitTransactionAfterReturning(TransactionAspectSupport.java:676)
+        at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:426)
+        at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:137)
