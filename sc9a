@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';  
+import React, { useState, useEffect, useMemo, useCallback } from 'react';  
 import {  
   Table,  
   TableBody,  
@@ -15,11 +15,13 @@ import {
 } from '@mui/material';  
 import TableCell, { tableCellClasses } from '@mui/material/TableCell';  
 import { styled } from '@mui/material/styles';  
-import { FixedSizeList as List } from 'react-window';  // Import react-window for virtualization
+import { FixedSizeList as List } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer'; // Added for responsive sizing
 import FormInput from '../../../../common/components/ui/FormInput';  
 import useApi from '../../../../common/hooks/useApi';  
 
-const StyledTableCell = styled(TableCell)(({ theme }) => ({  
+// Memoized styled component
+const StyledTableCell = React.memo(styled(TableCell)(({ theme }) => ({  
   fontSize: '0.875rem',  
   padding: '8px',  
   border: '1px solid #e0e0e0',  
@@ -35,28 +37,45 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
     backgroundColor: theme.palette.background.paper,  
     textAlign: 'left',  
   },  
-}));
+})));
 
-const ProvisionRow = React.memo(({ row, calculatedData, formData, handleChange }) => {
+// Memoized row component with optimized props
+const ProvisionRow = React.memo(({ index, data, style }) => {
+  const { rows, calculatedData, handleChange } = data;
+  const row = rows[index];
   const displayRowData = calculatedData[row.id] || {};
+
   return (
-    <TableRow key={row.id}>
-      <StyledTableCell>{row.label}</StyledTableCell>
-      {allColumnKeys.map((colKey) => {
-        const valueToDisplayInTextField = displayRowData[colKey] ?? '';
-        return (
-          <StyledTableCell key={`${row.id}-${colKey}`}>
-            <FormInput
-              value={valueToDisplayInTextField}
-              onChange={(e) => handleChange(row.id, columnFieldKeys[colKey], e.target.value)}
-              readOnly={row.type !== 'entry'}
-              customStyles={{ textAlign: 'right', width: '130px' }}
-              isNumeric
-            />
-          </StyledTableCell>
-        );
-      })}
-    </TableRow>
+    <div style={style}>
+      <TableRow>
+        <StyledTableCell>{row.label}</StyledTableCell>
+        {allColumnKeys.map((colKey) => {
+          const valueToDisplayInTextField = displayRowData[colKey] ?? '';
+          return (
+            <StyledTableCell key={`${row.id}-${colKey}`}>
+              <FormInput
+                value={valueToDisplayInTextField}
+                onChange={(e) => handleChange(row.id, columnFieldKeys[colKey], e.target.value)}
+                readOnly={row.type !== 'entry'}
+                customStyles={{ textAlign: 'right', width: '130px' }}
+                isNumeric
+              />
+            </StyledTableCell>
+          );
+        })}
+      </TableRow>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison function to prevent unnecessary re-renders
+  const prevRow = prevProps.data.rows[prevProps.index];
+  const nextRow = nextProps.data.rows[nextProps.index];
+  
+  // Only re-render if the row data or calculated data for this row changes
+  return (
+    prevRow === nextRow &&
+    prevProps.data.calculatedData[prevRow.id] === nextProps.data.calculatedData[nextRow.id] &&
+    prevProps.style === nextProps.style
   );
 });
 
@@ -65,6 +84,7 @@ const Schedule9CProvisionTable = ({ circleCode = '021', quarterEndDate = '31/03/
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({});
 
+  // Memoized mapping
   const modelSuffixToRowIdMap = useMemo(() => {
     const map = {};
     rowDefinitionsConfig.forEach((row) => {
@@ -75,9 +95,10 @@ const Schedule9CProvisionTable = ({ circleCode = '021', quarterEndDate = '31/03/
     return map;
   }, []);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
+  // Optimized data fetching
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
       const response = await callApi('/Maker/getSavedDataNineC', {
         circleCode,
         quarterEndDate,
@@ -85,6 +106,8 @@ const Schedule9CProvisionTable = ({ circleCode = '021', quarterEndDate = '31/03/
 
       if (response) {
         const transformedData = {};
+        
+        // Initialize all rows first
         rowDefinitionsConfig.forEach((row) => {
           if (row.type === 'entry') {
             transformedData[row.id] = {};
@@ -94,39 +117,62 @@ const Schedule9CProvisionTable = ({ circleCode = '021', quarterEndDate = '31/03/
           }
         });
         
-        // Populate with response data
+        // Then populate with response data
         Object.entries(response).forEach(([key, value]) => {
           const rowId = modelSuffixToRowIdMap[key];
-          if (rowId) {
+          if (rowId && transformedData[rowId]) {
             transformedData[rowId] = value;
           }
         });
 
         setFormData(transformedData);
       }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
       setIsLoading(false);
-    };
+    }
+  }, [circleCode, quarterEndDate, callApi, modelSuffixToRowIdMap]);
 
+  useEffect(() => {
     fetchData();
-  }, [circleCode, quarterEndDate]);
+  }, [fetchData]);
 
+  // Optimized calculations
   const calculatedData = useMemo(() => {
     const newCalculatedData = {};
-    rowDefinitionsConfig.forEach((row) => {
-      if (row.type === 'entry' || row.type === 'total') {
-        newCalculatedData[row.id] = {};
-        const currentRowFormData = formData[row.id] || {};
+    
+    // Process only entry and total rows
+    const processableRows = rowDefinitionsConfig.filter(row => 
+      row.type === 'entry' || row.type === 'total'
+    );
+    
+    processableRows.forEach((row) => {
+      newCalculatedData[row.id] = {};
+      const currentRowFormData = formData[row.id] || {};
 
-        if (row.type === 'entry') {
-          Object.entries(columnFieldKeys).forEach(([colKeyAlias, fieldKeyInFormData]) => {
-            newCalculatedData[row.id][colKeyAlias] = currentRowFormData[fieldKeyInFormData] ?? '';
-          });
-          // Calculation logic here...
-        }
+      if (row.type === 'entry') {
+        Object.entries(columnFieldKeys).forEach(([colKeyAlias, fieldKeyInFormData]) => {
+          newCalculatedData[row.id][colKeyAlias] = currentRowFormData[fieldKeyInFormData] ?? '';
+        });
       }
+      
+      // Add your calculation logic here if needed
     });
+    
     return newCalculatedData;
   }, [formData]);
+
+  // Optimized change handler
+  const handleChange = useCallback((id, field, value) => {
+    setFormData(prevData => ({
+      ...prevData,
+      [id]: {
+        ...prevData[id],
+        [field]: value,
+      },
+    }));
+  }, []);
 
   if (isLoading) {
     return (
@@ -137,9 +183,16 @@ const Schedule9CProvisionTable = ({ circleCode = '021', quarterEndDate = '31/03/
     );
   }
 
+  // Prepare data for virtualized list
+  const rowData = useMemo(() => ({
+    rows: rowDefinitionsConfig,
+    calculatedData,
+    handleChange,
+  }), [rowDefinitionsConfig, calculatedData, handleChange]);
+
   return (
-    <Box sx={{ p: 1, width: '100%' }}>
-      <TableContainer component={Paper} sx={{ maxHeight: 'calc(120vh - 250px)' }}>
+    <Box sx={{ p: 1, width: '100%', height: 'calc(100vh - 150px)' }}>
+      <TableContainer component={Paper} sx={{ height: '100%' }}>
         <Table stickyHeader sx={{ minWidth: 3000 }}>
           <TableHead>
             <TableRow>
@@ -162,37 +215,24 @@ const Schedule9CProvisionTable = ({ circleCode = '021', quarterEndDate = '31/03/
             </TableRow>
           </TableHead>
 
-          <List
-            height={600} // Adjust as needed
-            itemCount={rowDefinitionsConfig.length}
-            itemSize={60} // Adjust based on row height
-            width={3000}
-          >
-            {({ index, style }) => {
-              const row = rowDefinitionsConfig[index];
-              return (
-                <div style={style}>
-                  <ProvisionRow
-                    key={row.id}
-                    row={row}
-                    formData={formData}
-                    calculatedData={calculatedData}
-                    handleChange={(id, field, value) => {
-                      setFormData((prevData) => ({
-                        ...prevData,
-                        [id]: {
-                          ...prevData[id],
-                          [field]: value,
-                        },
-                      }));
-                    }}
-                  />
-                </div>
-              );
-            }}
-          </List>
+          <TableBody component="div">
+            <AutoSizer>
+              {({ height, width }) => (
+                <List
+                  height={height}
+                  itemCount={rowDefinitionsConfig.length}
+                  itemSize={60}
+                  width={width}
+                  itemData={rowData}
+                >
+                  {ProvisionRow}
+                </List>
+              )}
+            </AutoSizer>
+          </TableBody>
         </Table>
       </TableContainer>
+      
       <Stack direction="row" spacing={2} sx={{ mt: 2, justifyContent: 'center' }}>
         <Button variant="contained" color="warning" onClick={() => { /* save function */ }}>
           Save
@@ -205,4 +245,4 @@ const Schedule9CProvisionTable = ({ circleCode = '021', quarterEndDate = '31/03/
   );
 };
 
-export default Schedule9CProvisionTable;
+export default React.memo(Schedule9CProvisionTable);
