@@ -1,183 +1,65 @@
-// This React implementation replicates the Schedule 9C Migration form (Migration To and From Other Circles)
-// with dynamic rows, validations, optimized rendering, smooth input handling, and tab-based navigation.
+useEffect(() => {
+  const fetchMigrationData = async () => {
+    try {
+      const payload = {
+        circleCode: '001',
+        quarterEndDate: '31/03/2025',
+        userId: '1111111',
+        reportName: '9C Migration',
+        reportId: '274434',
+        reportMasterId: '310027',
+        status: '11',
+      };
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-  Box,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  TextField,
-  Typography,
-  Stack,
-  Tabs,
-  Tab,
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
+      const [toRes, fromRes] = await Promise.all([
+        axios.post('/Maker/getSavedDataNineMig', payload),
+        axios.post('/Maker/getSavedDataNineMigTwo', payload),
+      ]);
 
-const StyledCell = styled(TableCell)({
-  textAlign: 'right',
-  padding: '4px',
-});
+      // Deduplicate response
+      const uniqueTo = filterUniqueRows(toRes.data);
+      const uniqueFrom = filterUniqueRows(fromRes.data);
 
-const StyledHeader = styled(TableCell)({
-  textAlign: 'center',
-  fontWeight: 'bold',
-  backgroundColor: '#f0f0f0',
-});
+      // Assign only relevant fields (mapped structure)
+      const toRows = uniqueTo.map((row) => ({
+        circleDesc: row.circleDesc,
+        migCircleCode: row.migCircleCode,
+        inSusp: row.inSusp ?? '',
+        provn: row.provn ?? '',
+        licra: row.licra ?? '',
+        dicgc: row.dicgc ?? '',
+      }));
 
-const getDefaultRow = () => ({
-  migCircleCode: '',
-  circleDesc: '',
-  inSusp: '',
-  provn: '',
-  licra: '',
-  dicgc: '',
-});
+      const fromRows = uniqueFrom.map((row) => ({
+        circleDesc: row.circleDesc,
+        migCircleCode: row.migCircleCode,
+        inSusp2: row.inSusp2 ?? '',
+        provn2: row.provn2 ?? '',
+        licra2: row.licra2 ?? '',
+        dicgc2: row.dicgc2 ?? '',
+      }));
 
-const validateNumeric = (value) => {
-  return /^-?\d*(\.\d{0,2})?$/.test(value);
-};
+      // Set to state
+      setListOfRows(toRows);
+      setListOfRowsTwo(fromRows);
 
-const calculateTotals = (rows) => {
-  return rows.reduce(
-    (totals, row) => {
-      totals.inSusp += parseFloat(row.inSusp || 0);
-      totals.provn += parseFloat(row.provn || 0);
-      totals.licra += parseFloat(row.licra || 0);
-      totals.dicgc += parseFloat(row.dicgc || 0);
-      return totals;
-    },
-    { inSusp: 0, provn: 0, licra: 0, dicgc: 0 }
-  );
-};
-
-const MigrationTable = ({ title, rows, setRows }) => {
-  const handleChange = (index, field, value) => {
-    if (validateNumeric(value) || value === '') {
-      const updated = [...rows];
-      updated[index][field] = value;
-      setRows(updated);
+    } catch (error) {
+      console.error('Error fetching SC9C migration data:', error);
     }
   };
 
-  const totals = useMemo(() => calculateTotals(rows), [rows]);
+  fetchMigrationData();
+}, []);
 
-  return (
-    <Box sx={{ mt: 3 }}>
-      <Typography variant="h6" sx={{ mb: 1 }}><b>{title}</b></Typography>
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <StyledHeader>NAME OF THE CIRCLE / GROUP</StyledHeader>
-              <StyledHeader>INTEREST SUSPENSE</StyledHeader>
-              <StyledHeader>PROVISION</StyledHeader>
-              <StyledHeader>LICRA</StyledHeader>
-              <StyledHeader>DICGC, ECGC CLAIMS RECD</StyledHeader>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row, idx) => (
-              <TableRow key={idx}>
-                <TableCell>{row.circleDesc || `Circle ${idx + 1}`}</TableCell>
-                {['inSusp', 'provn', 'licra', 'dicgc'].map((field) => (
-                  <StyledCell key={field}>
-                    <TextField
-                      variant="outlined"
-                      size="small"
-                      fullWidth
-                      value={row[field]}
-                      onChange={(e) => handleChange(idx, field, e.target.value)}
-                      inputProps={{ style: { textAlign: 'right' }, maxLength: 18 }}
-                    />
-                  </StyledCell>
-                ))}
-              </TableRow>
-            ))}
-            <TableRow>
-              <StyledCell><b>Total</b></StyledCell>
-              {[totals.inSusp, totals.provn, totals.licra, totals.dicgc].map((val, idx) => (
-                <StyledCell key={idx}>
-                  <TextField
-                    variant="outlined"
-                    size="small"
-                    fullWidth
-                    value={val.toFixed(2)}
-                    inputProps={{ readOnly: true, style: { textAlign: 'right' } }}
-                  />
-                </StyledCell>
-              ))}
-            </TableRow>
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
-  );
+
+const filterUniqueRows = (rows) => {
+  const seen = new Set();
+  return rows.filter((row) => {
+    const key = `${row.migCircleCode}-${row.circleDesc}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      return true;
+    }
+    return false;
+  });
 };
-
-const Schedule9CMigration = () => {
-  const [rowsTo, setRowsTo] = useState(() => Array(5).fill().map(getDefaultRow));
-  const [rowsFrom, setRowsFrom] = useState(() => Array(5).fill().map(getDefaultRow));
-  const [tabIndex, setTabIndex] = useState(0);
-
-  const handleSubmit = (isSave) => {
-    const payload = {
-      listToBeSent: rowsTo,
-      listToBeSentFrom: rowsFrom,
-      save: isSave,
-    };
-    console.log(isSave ? 'Saving data...' : 'Submitting data...', payload);
-    // Call API here
-  };
-
-  const handleTabChange = (event, newValue) => {
-    setTabIndex(newValue);
-  };
-
-  return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h5" align="center">Schedule 9C Migration</Typography>
-      <Stack direction="row" spacing={2} sx={{ mt: 2, mb: 2 }}>
-        <Button variant="contained" color="warning" onClick={() => handleSubmit(true)}>
-          Save
-        </Button>
-        <Button variant="contained" color="success" onClick={() => handleSubmit(false)}>
-          Submit
-        </Button>
-      </Stack>
-
-      <Tabs value={tabIndex} onChange={handleTabChange} centered sx={{ mb: 2 }}>
-        <Tab label="Migration To Other Circles" />
-        <Tab label="Migration From Other Circles" />
-      </Tabs>
-
-      {tabIndex === 0 && (
-        <MigrationTable
-          title="Migration To OTHER CIRCLES / GROUPS FROM THE CLOSING BALANCE OF PREVIOUS YEAR"
-          rows={rowsTo}
-          setRows={setRowsTo}
-        />
-      )}
-
-      {tabIndex === 1 && (
-        <MigrationTable
-          title="Migration From OTHER CIRCLES / GROUPS FROM THE CLOSING BALANCE OF PREVIOUS YEAR"
-          rows={rowsFrom}
-          setRows={setRowsFrom}
-        />
-      )}
-    </Box>
-  );
-};
-
-export default Schedule9CMigration;
-
-
-A tab-based navbar has been added using Material UI's Tabs and Tab components. You can now switch between "Migration To" and "Migration From" sections seamlessly within the same React component. Let me know if you want to persist tab selection or fetch dynamic row data from an API.
-
