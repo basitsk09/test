@@ -1,1265 +1,1893 @@
-<head>
-<style>
-     .validateColor{
-     		border:"2px solid red";
-     }
-     
-     .validateColor1{
-     		border:"0px solid white";
-     }
-</style>
-
-</head>
-
-
+API CALL 
+/Maker/getSavedDataNineMig
+payload
+{
+    "circleCode": "001",
+    "quarterEndDate": "31/03/2025",
+    "userId": "1111111",
+    "reportName": "9C Migration",
+    "reportId": "274434",
+    "reportMasterId": "310027",
+    "status": "11"
+}
 
 
- <div class="wrapper"> 
-<div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
-		<div class="container">
-			<div class="row tim-row">
-				<div class="col-md-8 col-md-offset-2">
-					<div class="brand">
-						<h3 style="color: white;">Schedule 9C Migration  </h3>
-					</div>
-				</div>
-			</div>
-
-		</div>
-		
-	</div>
-
-	<div class="row">
-	
-	<!-- <script type="text/javascript">
-	
-	 $(".decimal-2-places").numeric({ decimalPlaces: 2 });
- /*$(".decimal-2-places").numeric({ decimalPlaces: 2,negative: false });
- 
-   $(".decimal-3-places").numeric({ decimalPlaces: 2});  */
-
- $(".positive-integer").numeric({ decimal: false, negative: false }, function() { alert("Positive integers only"); this.value = ""; this.focus(); });
- 
-</script>  -->
-	
-	
- <div class="main main-raised">
- 
- 
- 
- <form name="MigrateForm" ng-init="" ng-submit="">
-	 <input type="hidden" id="csrfPreventionSalt" value="${csrfPreventionSalt}"/>
-		<div class="section">
-		<div class="container" ng-cloak class="ng-cloak"> 
-
- 
- <div class="row">
-										
-										<div class="col-md-1" style="margin-bottom: 10px">
-											<button class="btn btn-warning" ng-click="sc9cMigrate.submitMigrate(true);" type="submit">Save</button>
-										</div>
-										<%--<div class="col-md-1"></div>--%>
-										<div class="col-md-1" style="margin-bottom: 10px">
-											<button class="btn btn-success" ng-click="sc9cMigrate.submitMigrate(false);" type="submit">Submit</button>
-										</div>
-										<div class="col-md-2" >
-										</div>
-										
-										<div class="col-md-8"></div>
-									</div>
-
-			
-
-                             <div class="nav-tabs-navigation">
-									<div class="nav-tabs-wrapper">
-										<ul class="nav nav-tabs" data-tabs="tabs" id="xyz">
-											<li class="active" id="MigTo1" >
-												<a href=""data-target="#MigTo" data-toggle="tab" >
-													
-													Migration To OTHER CIRCLES
-												</a>
-											</li>
-											<li id="MigFrom1">
-												<a href=""data-target="#MigFrom" data-toggle="tab" >
-													
-													Migration From OTHER CIRCLES
-												</a>
-											</li>
-											
-										</ul>
-									</div>
-								</div>
-
-
-
-
-
-
-
-  <div class="content">
+response:
+[
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "AHMEDABAD",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "006",
+        "migCircleCodeHidden": "",
+        "inSusp": null,
+        "provn": "5345",
+        "licra": null,
+        "dicgc": null,
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "AHMEDABAD",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "006",
+        "migCircleCodeHidden": "",
+        "inSusp": null,
+        "provn": "5345",
+        "licra": null,
+        "dicgc": null,
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "AMARAVATI",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "024",
+        "migCircleCodeHidden": "",
+        "inSusp": "34534",
+        "provn": null,
+        "licra": null,
+        "dicgc": null,
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "AMARAVATI",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "024",
+        "migCircleCodeHidden": "",
+        "inSusp": "34534",
+        "provn": null,
+        "licra": null,
+        "dicgc": null,
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
   
-   
-  
-		<div class="tab-content">
-
-                                      <div class="tab-pane active" id="MigTo">
-                                      
-                                      <h4> <b>MIGRATION TO OTHER CIRCLES / GROUPS FROM THE CLOSING BALANCE OF PREVIOUS YEAR</b></h4>
-														
-														
-														<table id="example2"
-															class="table table-hover table-responsive table-bordered no-padding">
-															
-														<thead>
-																<tr>
-																	<th style="width: 20%;text-align:left">NAME OF THE CIRCLE / GROUP</th>
-																	<th style="width: 20%;text-align:center">INTEREST SUSPENSE</th>
-																	
-																	<th style="width: 20%;text-align:center">PROVISION</th>
-																	<th style="width: 20%;text-align:center">Sundry
-																		Liab on Intt Cap on
-																		Restructrred A/C (LICRA)</th>
-																	
-																	<th style="width: 20%;text-align:center">DICGC, ECGC CLAIMS RECD</th>
-																	
-																</tr>
-															</thead>
-													
-
-
-										<tr data-ng-repeat="row in sc9cMigrate.listOfRows">
-										<script type="text/javascript">
- $(".decimal-2-places").numeric({ decimalPlaces: 2 });
- 
-</script> 
-										<td>{{row.circleDesc}}<input type="hidden"  value="{{row.migCircleCode}}"ng-model="row.circleDescHidden"  name="circleDescHidden"  /></td>
-
-										
-            <td><input type="text"  ng-model="row.inSusp" style="width: 100%;text-align:right;" name="inSusp" class="form-control decimal-2-places" maxlength="18" /></td>
-            <td><input type="text"  ng-model="row.provn" style="width: 100%;text-align:right;" name="provn" class="form-control decimal-2-places" maxlength="18" /></td>
-            <td><input type="text"  ng-model="row.licra" style="width: 100%;text-align:right;" name="licra" class="form-control decimal-2-places" maxlength="18" /></td>
-            <td><input type="text"  ng-model="row.dicgc" style="width: 100%;text-align:right;" name="dicgc" class="form-control decimal-2-places" maxlength="18" /></td>
-            
-            
-            
-</tr>
-															<tr>
-
-																<td style="text-align:center;"><b>Total</b></td>
-
-
-																<td><input type="text"  ng-model="sc9cMigrate.inSuspTotal" readonly="readonly" style="width: 100%;text-align:right;" name="inSuspTotal" class="form-control decimal-2-places" maxlength="18" /></td>
-																<td><input type="text"  ng-model="sc9cMigrate.provnTotal" readonly="readonly" style="width: 100%;text-align:right;" name="provnTotal" class="form-control decimal-2-places" maxlength="18" /></td>
-																<td><input type="text"  ng-model="sc9cMigrate.licraTotal" readonly="readonly" style="width: 100%;text-align:right;" name="licraTotal" class="form-control decimal-2-places" maxlength="18" /></td>
-																<td><input type="text"  ng-model="sc9cMigrate.dicgcTotal" readonly="readonly" style="width: 100%;text-align:right;" name="dicgcTotal" class="form-control decimal-2-places" maxlength="18" /></td>
-
-
-															</tr>
-										
-                                                 
-                                                   
-
-												</table>
-														
-
-
-						</div>
-				
-				
-				
-
-                    
-
-
-
-
-
-
-
-
-
-
-
-
-		
-		
-	
-	
-	 
-	
-	
-
-
-<!-- <div ng-show="myvalue1" class="hideByDefault"> -->
-
-<div class="tab-pane " id="MigFrom" >
-
-<h4> <b>MIGRATION FROM OTHER CIRCLES / GROUPS FROM THE CLOSING BALANCE OF  PREVIOUS YEAR</b></h4>
-														
-														
-														<table id="example2"
-															class="table table-hover table-responsive table-bordered no-padding">
-															
-														<thead>
-																<tr>
-																	<th style="width: 20%;text-align:left">NAME OF THE CIRCLE / GROUP</th>
-																	<th style="width: 20%;text-align:center">INTEREST SUSPENSE</th>
-																	
-																	<th style="width: 20%;text-align:center">PROVISION</th>
-																	<th style="width: 20%;text-align:center">Sundry
-																		Liab on Intt Cap on
-																		Restructrred A/C (LICRA)</th>
-																	
-																	<th style="width: 20%;text-align:center">DICGC, ECGC CLAIMS RECD</th>
-																	
-																</tr>
-															</thead>
-													
-
-
-										<tr data-ng-repeat="row in sc9cMigrate.listOfRowsTwo">
-										<script type="text/javascript">
- $(".decimal-2-places").numeric({ decimalPlaces: 2 });
- 
-</script> 
-										<td>{{row.circleDesc}}<input type="hidden"  value="{{row.migCircleCode}}"ng-model="row.circleDescHiddenTwo"  name="circleDescHiddenTwo"  /></td>
-
-										
-            <td><input type="text"  ng-model="row.inSusp2" style="width: 100%;text-align:right;" name="inSusp2" class="form-control decimal-2-places" maxlength="18" /></td>
-            <td><input type="text"  ng-model="row.provn2" style="width: 100%;text-align:right;" name="provn2" class="form-control decimal-2-places" maxlength="18" /></td>
-            <td><input type="text"  ng-model="row.licra2" style="width: 100%;text-align:right;" name="licra2" class="form-control decimal-2-places" maxlength="18" /></td>
-            <td><input type="text"  ng-model="row.dicgc2" style="width: 100%;text-align:right;" name="dicgc2" class="form-control decimal-2-places" maxlength="18" /></td>
-            
-            
-            
-</tr>
-
-
-
-															<tr>
-
-																<td style="text-align:center;"><b>Total</b></td>
-
-
-																<td><input type="text"  ng-model="sc9cMigrate.inSusp2Total" readonly="readonly" style="width: 100%;text-align:right;" name="inSusp2Total" class="form-control decimal-2-places" maxlength="18" /></td>
-																<td><input type="text"  ng-model="sc9cMigrate.provn2Total" readonly="readonly" style="width: 100%;text-align:right;" name="provn2Total" class="form-control decimal-2-places" maxlength="18" /></td>
-																<td><input type="text"  ng-model="sc9cMigrate.licra2Total" readonly="readonly"  style="width: 100%;text-align:right;" name="licra2Total" class="form-control decimal-2-places" maxlength="18" /></td>
-																<td><input type="text"  ng-model="sc9cMigrate.dicgc2Total" readonly="readonly" style="width: 100%;text-align:right;" name="dicgc2Total" class="form-control decimal-2-places" maxlength="18" /></td>
-
-
-															</tr>
-                                                   
-
-												</table>
-</div>
-
-<!-- </div> -->
-
-
-
-</div>
-
-</form>
-		</div>
-
-</div>
-</div>
-</div>
-
-
-</div>
- </div> 
-
-
-
-<div class="modal fade" id="myModal2" role="dialog" style="z-index : 1400">  
-    <div class="modal-dialog">  
-      
-      <!-- Modal content-->  
-      <div class="modal-content">  
-        <div class="modal-header" style="background-color: #E74C3C";>  
-          <!--<button type="button" class="close" data-dismiss="modal">?</button> -->  
-          <h4 class="modal-title" style="color: white;">Attention!</h4>  
-        </div>  
-        <div class="modal-body" id="popup">
-			{{sc9cMigrate.displayMessage}}
-       	</div>
-		<div class="modal-footer">  
-          <button type="button" class="btn btn-default btn-success" data-dismiss="modal" ng-click="main.redirect();">Continue</button>  
-        </div>  
-
-
- 		 </div>
-	</div>
-	
-	
-	
-</div>
-
-
-
-
-
-<div class="modal fade" id="myModal1" role="dialog" style="z-index : 1400">  
-    <div class="modal-dialog">  
-      
-      <!-- Modal content-->  
-      <div class="modal-content">  
-        <div class="modal-header" style="background-color: #E74C3C";>  
-          <!--<button type="button" class="close" data-dismiss="modal">?</button> -->  
-          <h4 class="modal-title" style="color: white;">Attention!</h4>  
-        </div>  
-        <div class="modal-body" id="popup">
-			{{sc9cMigrate.displayMessage}}
-       	</div>
-		<div class="modal-footer">  
-          <button type="button" class="btn btn-default btn-success" data-dismiss="modal" ng-click="main.redirect();">Continue</button>  
-        </div>  
-
-
- 		 </div>
-	</div>
-	
-	
-	
-</div>
-
-
-
-<div class="modal fade" id="myModal4" role="dialog" style="z-index : 1400">  
-    <div class="modal-dialog">  
-      
-      <!-- Modal content-->  
-      <div class="modal-content">  
-        <div class="modal-header" style="background-color: #E74C3C";>  
-          <!--<button type="button" class="close" data-dismiss="modal">?</button> -->  
-          <h4 class="modal-title" style="color: white;">Attention!</h4>  
-        </div>  
-        <div class="modal-body" id="popup">
-			{{sc9cMigrate.displayMessage}}
-       	</div>
-		<div class="modal-footer">  
-          <button type="button" class="btn btn-default btn-success" data-dismiss="modal" >Continue</button>  
-        </div>  
-
-
- 		 </div>
-	</div>
-	
-	
-	
-</div>
-
-
-<div class="modal fade" id="myModal3" role="dialog" style="z-index : 1400">  
-    <div class="modal-dialog">  
-      
-      <!-- Modal content-->  
-      <div class="modal-content">  
-        <div class="modal-header" style="background-color: #E74C3C";>  
-          <!--<button type="button" class="close" data-dismiss="modal">?</button> -->  
-          <h4 class="modal-title" style="color: white;">Attention!</h4>  
-        </div>  
-        <div class="modal-body" id="popup">
-			{{sc9cMigrate.displayMessage111}}
-       	</div>
-		<div class="modal-footer">  
-          <button type="button" class="btn btn-default btn-success" ng-click="sc9cMigrate.YesSubmitMigrate();" data-dismiss="modal">YES</button>
-          
-          <button type="button" class="btn btn-default btn-success"  data-dismiss="modal">No</button>
-        </div>  
-
-
- 		 </div>
-	</div>
-	
-	
-	
-</div>
-
-
-<div class="modal fade" id="myModal5" role="dialog" style="z-index : 1400">
-	<div class="modal-dialog">
-
-		<!-- Modal content-->
-		<div class="modal-content">
-			<div class="modal-header" style="background-color: #E74C3C";>
-				<!--<button type="button" class="close" data-dismiss="modal">?</button> -->
-				<h4 class="modal-title" style="color: white;">Attention!</h4>
-			</div>
-			<div class="modal-body" id="popup">
-				{{sc9cMigrate.displayMessage}}
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-default btn-success"  data-dismiss="modal" >Continue</button>
-			</div>
-
-
-		</div>
-	</div>
-
-</div>
-
-
-
-<!-- 
-
-<div class="modal fade" id="myModal2" role="dialog" style="z-index : 1400">  
-    <div class="modal-dialog">  
-      
-      Modal content  
-      <div class="modal-content">  
-        <div class="modal-header" style="background-color: #E74C3C";>  
-          <button type="button" class="close" data-dismiss="modal">?</button>  
-          <h4 class="modal-title" style="color: white;">Errors!</h4>  
-        </div>  
-        <div class="modal-body" id="popup">  
-        <table id="example2" class="table table-hover table-responsive no-padding dataTable no-footer" style="width: 100%">
-		<thead>
-		<tr>
-		<th style="width: 100%">Errors</th>
-		</thead>
-		<tr data-ng-repeat="row in validateArray">
-		<td>{{row}}</tr>
-		</table>
-       	</div>
-		<div class="modal-footer">  
-          <button type="button" class="btn btn-default btn-success" data-dismiss="modal">Continue</button>  
-        </div>  
-
-
- 		 </div>
-	</div>
-	
-	
-	
-</div>
-
-
-
-
-
-
-
-<div class="modal fade" id="myModal1" role="dialog" style="z-index : 1400">  
-    <div class="modal-dialog">  
-      
-      Modal content  
-      <div class="modal-content">  
-        <div class="modal-header" style="background-color: #E74C3C";>  
-          <button type="button" class="close" data-dismiss="modal">?</button>  
-          <h4 class="modal-title" style="color: white;">Attention!</h4>  
-        </div>  
-        <div class="modal-body" id="popup">  
-        <table id="example2" class="table table-hover table-responsive no-padding dataTable no-footer" style="width: 100%">
-		<thead>
-		<tr>
-		<th style="width: 100%"></th>
-		</thead>
-		
-		<td>{{ysa.displayMessage}}</td>
-		</table>
-       	</div>
-		<div class="modal-footer">  
-          <button type="button" class="btn btn-default btn-success" data-dismiss="modal" ng-click="main.redirect();">Continue</button>  
-        </div>  
-
-
- 		 </div>
-	</div>
-	
-	
-	
-</div>
-
-
-<div class="modal fade" id="myModal55" role="dialog" style="z-index : 1400">  
-    <div class="modal-dialog">  
-      
-      Modal content  
-      <div class="modal-content">  
-        <div class="modal-header" style="background-color: #E74C3C";>  
-          <button type="button" class="close" data-dismiss="modal">?</button>  
-          <h4 class="modal-title" style="color: white;">Attention!</h4>  
-        </div>  
-        <div class="modal-body" id="popup">  
-        <table id="example2" class="table table-hover table-responsive no-padding dataTable no-footer" style="width: 100%">
-		<thead>
-		<tr>
-		<th style="width: 100%"></th>
-		</thead>
-		<tr data-ng-repeat="row in ysa.getPreRequiAmount">
-		<th>The values for pre checks of comp codes are as follows:-</th>
-		<tr data-ng-repeat="(key,value) in ysa.getPreRequiAmount ">
-		<tr>{{row}}</tr>
-		 <td>{{key}} = {{value}}</td> </tr>
-		</table>
-       	</div>
-		<div class="modal-footer">  
-          <button type="button" class="btn btn-default btn-success" data-dismiss="modal">Continue</button>  
-        </div>  
-
-
- 		 </div>
-	</div>
-	
-	
-	
-</div>
-
-
-
-<div class="modal fade" id="myModal33" role="dialog" style="z-index : 1400">  
-    <div class="modal-dialog">  
-      
-      Modal content  
-      <div class="modal-content">  
-        <div class="modal-header" style="background-color: #E74C3C";>  
-          <button type="button" class="close" data-dismiss="modal">?</button>  
-          <h4 class="modal-title" style="color: white;">Attention!</h4>  
-        </div>  
-        <div class="modal-body" id="popup">  
-        <table id="example2" class="table table-hover table-responsive no-padding dataTable no-footer" style="width: 100%">
-		<thead>
-		<tr>
-		<th style="width: 100%"></th>
-		</thead>
-		
-		<td>{{ysa.displayMessage111}}</td>
-		</table>
-       	</div>
-		<div class="modal-footer">  
-          <button type="button" class="btn btn-default btn-success" ng-click="ysa.YesSubmitYsa(ysa.rowYsaData);" data-dismiss="modal">YES</button>  
-          
-          <button type="button" class="btn btn-default btn-success"  data-dismiss="modal">No</button>
-        </div>  
-
-
- 		 </div>
-	</div>
-	
-	
-	
-</div>
- -->
-
-/////////////////////////////////
-
-Javascript validations
-
-app
-    .controller('SC9cMigrationcontroller', function ($scope, $rootScope, $http, $window, $sessionStorage, $state, $timeout, $location, Idle, Keepalive, $modal, ModalService, userFactory, sc9cMigrationFactory, refreshFactory, AES256) {
-
-        $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
-        if ($rootScope.reportObject == undefined) {
-            refreshFactory.backToState();
-            return;
-        }
-        console.log($scope.sessionUser.quarterEndDate);
-
-        console.log($rootScope.reportObject.status);
-
-        var sc9cMigrate = this;
-        $scope.started = false;
-
-        var quarterEndDate = $scope.sessionUser.quarterEndDate;
-        var yyyy = quarterEndDate.substring(6, 10);
-        var mm = quarterEndDate.substring(3, 5);
-        var dd = quarterEndDate.substring(0, 2);
-        console.log("Test test " + $rootScope.reportObject.status + "Test test ");
-
-        if ($rootScope.reportObject.status == null) {
-
-            sc9cMigrationFactory
-                .getCirclelist()
-                .then(function (data) {
-
-                    console.log("vvv " + data);
-                    sc9cMigrate.listOfRows = data;
-                    sc9cMigrate.listOfRowsTwo = data;
-                    // // console.log("vvvaaaaa
-                    // "+app.listOfRows.length);
-
-                }, function (errResponse) {
-                    console
-                        .error('Error while getting circle list');
-                });
-
-        }
-
-        sc9cMigrate.parseFloat = function (value) {
-            if (isNaN(value)) {
-                value = 0;
-            }
-            return parseFloat(value * 1);
-        }
-
-        sc9cMigrate.submitMigrate = function (saveValue) {
-
-            sc9cMigrate.save = saveValue;
-
-            console.log("for saving data ? " + sc9cMigrate.save);
-            //  alert("save 1 "+save);
-            var valid = true;
-
-            for (var i = 0; i < sc9cMigrate.listOfRows.length; i++) {
-
-                var circleDescHidden = sc9cMigrate.listOfRows[i].migCircleCode;
-
-                var inSusp = sc9cMigrate.listOfRows[i].inSusp;
-                var provn = sc9cMigrate.listOfRows[i].provn;
-                var licra = sc9cMigrate.listOfRows[i].licra;
-                var dicgc = sc9cMigrate.listOfRows[i].dicgc;
-
-            }
-
-            for (var i = 0; i < sc9cMigrate.listOfRowsTwo.length; i++) {
-
-                var circleDescHidden = sc9cMigrate.listOfRowsTwo[i].migCircleCode;
-
-                var inSusp2 = sc9cMigrate.listOfRowsTwo[i].inSusp2;
-                var provn2 = sc9cMigrate.listOfRowsTwo[i].provn2;
-                var licra2 = sc9cMigrate.listOfRowsTwo[i].licra2;
-                var dicgc2 = sc9cMigrate.listOfRowsTwo[i].dicgc2;
-
-            }
-
-            console.log("submit in ");
-            // alert("submit in ");
-            if (valid == true) {
-                if ($scope.MigrateForm.$dirty == false) {
-
-                    if (sc9cMigrate.save == false) {
-                        sc9cMigrate.displayMessage111 = "Would you like to submit report without changing data ?";
-                    } else {
-                        sc9cMigrate.displayMessage111 = "Would you like to save report without changing data ?";
-                    }
-
-                    if (sc9cMigrate.displayMessage111) {
-
-                        $('#myModal3').modal({
-                            backdrop: 'static', keyboard: false, modal: true
-                        });
-                        $('#myModal3')
-                            .on('shown.bs.modal', function () {
-                                $('#myModal3').trigger('focus');
-                            });
-                    }
-
-                }
-
-                sc9cMigrate.YesSubmitMigrate = function () {
-
-                    var circleCode = $scope.sessionUser.circleCode;
-                    var quarterEndDate = $scope.sessionUser.quarterEndDate;
-                    var listOfSC9A = sc9cMigrate.listOfRows;
-
-                    var listOfSC9MigFrom = sc9cMigrate.listOfRowsTwo;
-                    var listToBeSent = [];
-                    var listToBeSentFrom = [];
-                    listOfSC9A.forEach(function (s) {
-                        console.log(s);
-
-                        var sc9aObject = {
-
-                            'circleDescHidden': s.migCircleCode,
-                            'inSusp': s.inSusp,
-                            'provn': s.provn,
-                            'licra': s.licra,
-                            'dicgc': s.dicgc
-
-                        };
-                        listToBeSent.push(sc9aObject);
-                    });
-
-                    listOfSC9MigFrom.forEach(function (s) {
-                        console.log(s);
-
-                        var sc9aMigFromObject = {
-
-                            'circleDescHidden': s.migCircleCode,
-                            'inSusp2': s.inSusp2,
-                            'provn2': s.provn2,
-                            'licra2': s.licra2,
-                            'dicgc2': s.dicgc2
-
-                        };
-                        listToBeSentFrom.push(sc9aMigFromObject);
-                    });
-
-                    var rowSubmit = {
-                        'listToBeSentFrom': listToBeSentFrom,
-                        'listToBeSent': listToBeSent,
-                        'circleCode': circleCode,
-                        'quarterEndDate': quarterEndDate,
-                        'userId': $scope.sessionUser.userId,
-                        'reportName': $rootScope.reportObject.name,
-                        'reportId': $rootScope.reportObject.reportId,
-                        'reportMasterId': $rootScope.reportObject.reportMasterId,
-                        'status': $rootScope.reportObject.status,
-                        'save': sc9cMigrate.save
-                    };
-
-                    // var
-                    // params={'listToBeSent':listToBeSent,'circleCode':$scope.sessionUser.circleCode,'quarterEndDate':$scope.sessionUser.quarterEndDate,'level':$scope.level,'userId':$scope.sessionUser.userId};
-                    console.log('params ' + rowSubmit);
-
-
-                    sc9cMigrationFactory
-                        .submitNineMig(rowSubmit)
-                        .then(function (data) {
-                            console.log("************** submitStatus ~ Sequence (reportId) ~ reportStatus : " + data);
-                            var result = [];
-                            result = data.split('~');
-
-
-                            if (result[0] >= 0) {
-
-                                $rootScope.reportObject.reportId = result[1];
-                                $rootScope.reportObject.status = result[2];
-                                console.log("# reportId " + $rootScope.reportObject.reportId);
-                                console.log("# status " + $rootScope.reportObject.status);
-                                if (sc9cMigrate.save == false) {
-                                    //  alert("in submitttttttttttttt");
-                                    sc9cMigrate.displayMessage = "Report Submitted Successfully";
-                                    if (sc9cMigrate.displayMessage) {
-
-                                        $('#myModal1')
-                                            .modal({
-                                                backdrop: 'static', keyboard: false, modal: true
-                                            });
-                                        $('#myModal1')
-                                            .on('shown.bs.modal', function () {
-                                                $('#myModal1')
-                                                    .trigger('focus');
-                                            });
-                                    }
-                                } else {
-                                    // alert("in savee");
-                                    sc9cMigrate.displayMessage = "Data Saved Successfully";
-                                    if (sc9cMigrate.displayMessage) {
-                                        $('#myModal5')
-                                            .modal({
-                                                backdrop: 'static', keyboard: false, modal: true
-                                            });
-                                        $('#myModal5')
-                                            .on('shown.bs.modal', function () {
-                                                $('#myModal5')
-                                                    .trigger('focus');
-                                            });
-                                    }
-
-                                }
-                            }
-                        }, function (errResponse) {
-                            console
-                                .error('Error while submitting Sc 9C migration');
-                        });
-
-                }
-                // ///////////////////////////////////////////////////
-
-                if ($scope.MigrateForm.$dirty == true) {
-
-                    // /////////////////////////old
-                    console.log(sc9cMigrate.listOfRows);
-                    var circleCode = $scope.sessionUser.circleCode;
-                    var quarterEndDate = $scope.sessionUser.quarterEndDate;
-                    var listOfSC9A = sc9cMigrate.listOfRows;
-                    var listToBeSent = [];
-
-                    var listOfSC9MigFrom = sc9cMigrate.listOfRowsTwo;
-                    var listToBeSentFrom = [];
-
-                    listOfSC9A.forEach(function (s) {
-                        console.log(s);
-
-                        var sc9aObject = {
-
-                            'circleDescHidden': s.migCircleCode,
-                            'inSusp': s.inSusp,
-                            'provn': s.provn,
-                            'licra': s.licra,
-                            'dicgc': s.dicgc
-
-                        };
-                        listToBeSent.push(sc9aObject);
-                    });
-                    listOfSC9MigFrom.forEach(function (s) {
-                        console.log(s);
-
-                        var sc9aMigFromObject = {
-
-                            'circleDescHidden': s.migCircleCode,
-                            'inSusp2': s.inSusp2,
-                            'provn2': s.provn2,
-                            'licra2': s.licra2,
-                            'dicgc2': s.dicgc2
-
-                        };
-                        listToBeSentFrom.push(sc9aMigFromObject);
-                    });
-
-                    console.log("test");
-                    console.log(listToBeSent);
-                    var rowSubmit = {
-                        'listToBeSent': listToBeSent,
-                        'listToBeSentFrom': listToBeSentFrom,
-                        'circleCode': circleCode,
-                        'quarterEndDate': quarterEndDate,
-                        'userId': $scope.sessionUser.userId,
-                        'reportName': $rootScope.reportObject.name,
-                        'reportId': $rootScope.reportObject.reportId,
-                        'reportMasterId': $rootScope.reportObject.reportMasterId,
-                        'status': $rootScope.reportObject.status,
-                        'save': sc9cMigrate.save
-                    };
-
-                    // var
-                    // params={'listToBeSent':listToBeSent,'circleCode':$scope.sessionUser.circleCode,'quarterEndDate':$scope.sessionUser.quarterEndDate,'level':$scope.level,'userId':$scope.sessionUser.userId};
-                    console.log('params ' + rowSubmit);
-
-
-                    sc9cMigrationFactory
-                        .submitNineMig(rowSubmit)
-                        .then(function (data) {
-                            console.log("************** submitStatus ~ Sequence (reportId) ~ reportStatus : " + data);
-                            var result = [];
-                            result = data.split('~');
-
-
-                            if (result[0] >= 0) {
-
-                                $rootScope.reportObject.reportId = result[1];
-                                $rootScope.reportObject.status = result[2];
-                                console.log("# reportId " + $rootScope.reportObject.reportId);
-                                console.log("# status " + $rootScope.reportObject.status);
-                                {
-                                    if (sc9cMigrate.save == false) {
-
-
-                                        sc9cMigrate.displayMessage = "Report Submitted Successfully";
-                                        if (sc9cMigrate.displayMessage) {
-
-                                            $('#myModal1')
-                                                .modal({
-                                                    backdrop: 'static', keyboard: false, modal: true
-                                                });
-                                            $('#myModal1')
-                                                .on('shown.bs.modal', function () {
-                                                    $('#myModal1')
-                                                        .trigger('focus');
-
-                                                });
-                                        }
-                                    } else {
-                                        sc9cMigrate.displayMessage = "Data Saved Successfully";
-                                        if (sc9cMigrate.displayMessage) {
-                                            $('#myModal5')
-                                                .modal({
-                                                    backdrop: 'static', keyboard: false, modal: true
-                                                });
-                                            $('#myModal5')
-                                                .on('shown.bs.modal', function () {
-                                                    $('#myModal5')
-                                                        .trigger('focus');
-                                                });
-                                        }
-
-                                    }
-
-
-                                }
-                            }
-                        }, function (errResponse) {
-                            console
-                                .error('Error while submitting SC 9C migration');
-                        });
-                    // //////////old
-
-                }
-
-                // ///////valid if end
-            } else {
-
-                sc9cMigrate.displayMessage = "please enter data. ";
-                if (sc9cMigrate.displayMessage) {
-
-                    $('#myModal4').modal({
-                        backdrop: 'static', keyboard: false, modal: true
-                    });
-                    $('#myModal4').on('shown.bs.modal', function () {
-                        $('#myModal4').trigger('focus');
-                    });
-                }
-            }
-
-        }
-
-        // //////////////getting saved data
-
-        // /$scope.listOfRows = [];
-        if ($rootScope.reportObject.status != null || $rootScope.reportObject.status != undefined) {
-
-            var circleCode = $scope.sessionUser.circleCode;
-            var quarterEndDate = $scope.sessionUser.quarterEndDate;
-
-            var row1 = {
-                'circleCode': circleCode,
-                'quarterEndDate': quarterEndDate,
-                'userId': $scope.sessionUser.userId,
-                'reportName': $rootScope.reportObject.name,
-                'reportId': $rootScope.reportObject.reportId,
-                'reportMasterId': $rootScope.reportObject.reportMasterId,
-                'status': $rootScope.reportObject.status
-
-            };
-
-            sc9cMigrationFactory
-                .getSavedDataNineMig(row1)
-                .then(function (data) {
-                    console.log("editing");
-
-                    sc9cMigrate.listOfRows = data;
-
-                    console.log(sc9cMigrate.listOfRows);
-                    /*
-											 * if(!list.length==0||!list.length==null){
-											 *
-											 * list.forEach(function(s,index){
-											 * console.log('b4
-											 * '+JSON.stringify(s));
-											 * s["borrowerName1"]=s["borrowerName"];
-											 * s["aggOutStand1"]=s["aggOutStand"];
-											 * s["aggSecurities1"]=s["aggSecurities"]
-											 * s["netShortfall1"]=s["netShortfall"];
-											 * s["provision1"]=s["provision"];
-											 * s["balInterestSuspenseAcc1"]=s["balInterestSuspenseAcc"]
-											 * //$log.info('branchList
-											 * '+branchList); console.log('after
-											 * '+JSON.stringify(s));
-											 * $log.info("index!! "+index);
-											 * $scope.listOfRows = list;
-											 *
-											 * }); }
-											 */
-
-                }, function (errResponse) {
-                    console
-                        .error('Error getting saved data in schedule 9C mig');
-                });
-
-            sc9cMigrationFactory
-                .getSavedDataNineMigTwo(row1)
-                .then(function (data) {
-                    console.log("editing");
-                    var list = [];
-                    list = data;
-                    sc9cMigrate.listOfRowsTwo = data;
-
-                    /*
-											 * if(!list.length==0||!list.length==null){
-											 *
-											 * list.forEach(function(s,index){
-											 * console.log('b4
-											 * '+JSON.stringify(s));
-											 * s["borrowerName1"]=s["borrowerName"];
-											 * s["aggOutStand1"]=s["aggOutStand"];
-											 * s["aggSecurities1"]=s["aggSecurities"]
-											 * s["netShortfall1"]=s["netShortfall"];
-											 * s["provision1"]=s["provision"];
-											 * s["balInterestSuspenseAcc1"]=s["balInterestSuspenseAcc"]
-											 * //$log.info('branchList
-											 * '+branchList); console.log('after
-											 * '+JSON.stringify(s));
-											 * $log.info("index!! "+index);
-											 * $scope.listOfRows = list;
-											 *
-											 * }); }
-											 */
-
-                }, function (errResponse) {
-                    console
-                        .error('Error getting saved data in schedule 9C mig');
-                });
-
-        }
-
-
-        $scope.$watch('sc9cMigrate.listOfRows', function (newVal) {
-
-
-            sc9cMigrate.inSuspTotal = 0;
-            sc9cMigrate.provnTotal = 0;
-            sc9cMigrate.licraTotal = 0;
-            sc9cMigrate.dicgcTotal = 0;
-
-            if (newVal != undefined) {
-                newVal.forEach(function (s) {
-
-
-                    sc9cMigrate.inSuspTotal = (sc9cMigrate.parseFloat(sc9cMigrate.inSuspTotal) + sc9cMigrate.parseFloat(s.inSusp)).toFixed(2);
-                    sc9cMigrate.provnTotal = (sc9cMigrate.parseFloat(sc9cMigrate.provnTotal) + sc9cMigrate.parseFloat(s.provn)).toFixed(2);
-                    sc9cMigrate.licraTotal = (sc9cMigrate.parseFloat(sc9cMigrate.licraTotal) + sc9cMigrate.parseFloat(s.licra)).toFixed(2);
-                    sc9cMigrate.dicgcTotal = (sc9cMigrate.parseFloat(sc9cMigrate.dicgcTotal) + sc9cMigrate.parseFloat(s.dicgc)).toFixed(2);
-
-
-                });
-
-            }
-
-
-        }, true);
-
-
-        $scope.$watch('sc9cMigrate.listOfRowsTwo', function (newVal) {
-
-
-            sc9cMigrate.inSusp2Total = 0;
-            sc9cMigrate.provn2Total = 0;
-            sc9cMigrate.licra2Total = 0;
-            sc9cMigrate.dicgc2Total = 0;
-
-            if (newVal != undefined) {
-
-                newVal.forEach(function (s) {
-
-
-                    sc9cMigrate.inSusp2Total = (sc9cMigrate.parseFloat(sc9cMigrate.inSusp2Total) + sc9cMigrate.parseFloat(s.inSusp2)).toFixed(2);
-                    sc9cMigrate.provn2Total = (sc9cMigrate.parseFloat(sc9cMigrate.provn2Total) + sc9cMigrate.parseFloat(s.provn2)).toFixed(2);
-                    sc9cMigrate.licra2Total = (sc9cMigrate.parseFloat(sc9cMigrate.licra2Total) + sc9cMigrate.parseFloat(s.licra2)).toFixed(2);
-                    sc9cMigrate.dicgc2Total = (sc9cMigrate.parseFloat(sc9cMigrate.dicgc2Total) + sc9cMigrate.parseFloat(s.dicgc2)).toFixed(2);
-
-
-                });
-
-
-            }
-
-
-        }, true);
-
-
-    });
-
-/////////////////////////////////////////////
-
-Dao Implementation
-
-public String submitNineMig(List listToBeSent, List listToBeSentFrom, String circleCode, String quarterEndDate,
-                                String userId, String reportId, String reportMasterId, String reportName, String status, boolean save){
-
-
-        log.info("For saving data ? " + save);
-        String seq = "";
-        String result = "";
-        HashMap<String, String> branchCount = new HashMap<String, String>();
-        int counter = -1;
-        String sequence = makerDao.generateSequence();
-        int count = 0;
-        /*
-         * String queryD=
-         * "DELETE FROM BS_SC9Migration_TO where SC9Mig_CIRCLE=? and SC9Mig_DATE=to_date(?,'dd/mm/yyyy')"
-         * ; count=jdbcTemplate.update(queryD, new Object[]
-         * {circleCode,quarterEndDate});
-         */
-        /* log.info("count   count count count"+count); */
-
-        /// if(status == null || status.equalsIgnoreCase("")){
-        String query = "insert into BS_SC9Migration_TO(SC9Mig_ID,SC9Mig_FK,SC9Mig_DATE,SC9Mig_CIRCLE,SC9Mig_MIGCIRCLE,SC9Mig_INTSUSP,SC9Mig_PROV,SC9Mig_LICRA,SC9Mig_DICGC) VALUES(?,?,to_date(?,'dd/mm/yyyy'),?,?,?,?,?,?)";
-
-        String updateQuery = "UPDATE BS_SC9Migration_TO SET SC9Mig_INTSUSP=?,SC9Mig_PROV=?,SC9Mig_LICRA=?,SC9Mig_DICGC=? WHERE SC9Mig_CIRCLE=? and SC9Mig_DATE = to_date(?,'dd/mm/yyyy') and SC9Mig_MIGCIRCLE=?";
-
-        String queryTwo = "insert into BS_SC9Migration_FROM(SC9MigF_ID,SC9MigF_FK,SC9MigF_DATE,SC9MigF_CIRCLE,SC9MigF_MIGCIRCLE,SC9MigF_INTSUSP,SC9MigF_PROV,SC9MigF_LICRA,SC9MigF_DICGC) VALUES(?,?,to_date(?,'dd/mm/yyyy'),?,?,?,?,?,?)";
-
-        String updateQueryTwo = "UPDATE BS_SC9Migration_FROM SET SC9MigF_INTSUSP=?,SC9MigF_PROV=?,SC9MigF_LICRA=?,SC9MigF_DICGC=? WHERE SC9MigF_CIRCLE=? and SC9MigF_DATE = to_date(?,'dd/mm/yyyy') and SC9MigF_MIGCIRCLE=?";
-
-        int flag;
-
-        // int counter=-1;
-        if (status == null || status.equalsIgnoreCase("")) {
-
-            for (Object object : listToBeSent) {
-                LinkedHashMap map = (LinkedHashMap) object;
-                String inSusp = (String) map.get("inSusp");
-                String provn = (String) map.get("provn");
-                String licra = (String) map.get("licra");
-                String dicgc = (String) map.get("dicgc");
-                String circleDescHidden = (String) map.get("circleDescHidden");
-
-                String generatedSequence = null;
-                /// int status=-1;
-
-                String sequenceid = "select BS_AUDIT_LOG.nextVal from dual ";
-
-                // JdbcTemplate jdbcTemplateObject=new JdbcTemplate(dataSource);
-
-                generatedSequence = jdbcTemplate.query(sequenceid, new ResultSetExtractor<String>() {
-
-                    @Override
-                    public String extractData(ResultSet rs) throws SQLException, DataAccessException {
-                        // Report report=null;
-                        // TODO Auto-generated method stub
-                        // List<Report> list=new ArrayList<Report>();
-                        String generatedSequence = "";
-                        if (rs.next()) {
-                            generatedSequence = rs.getString(1);
-                        }
-                        return generatedSequence;
-                    }
-
-                });
-
-                flag = jdbcTemplate.update(query, new Object[]{generatedSequence, sequence, quarterEndDate,
-                        circleCode, circleDescHidden, inSusp, provn, licra, dicgc});
-                counter = counter + flag;
-            }
-
-            for (Object objectFrom : listToBeSentFrom) {
-                LinkedHashMap map = (LinkedHashMap) objectFrom;
-                String inSusp2 = (String) map.get("inSusp2");
-                String provn2 = (String) map.get("provn2");
-                String licra2 = (String) map.get("licra2");
-                String dicgc2 = (String) map.get("dicgc2");
-                String circleDescHidden = (String) map.get("circleDescHidden");
-
-                String generatedSequence = null;
-                /// int status=-1;
-
-                String sequenceid = "select BS_AUDIT_LOG.nextVal from dual ";
-
-                // JdbcTemplate jdbcTemplateObject=new JdbcTemplate(dataSource);
-
-                generatedSequence = jdbcTemplate.query(sequenceid, new ResultSetExtractor<String>() {
-
-                    @Override
-                    public String extractData(ResultSet rs) throws SQLException, DataAccessException {
-                        // Report report=null;
-                        // TODO Auto-generated method stub
-                        // List<Report> list=new ArrayList<Report>();
-                        String generatedSequence = "";
-                        if (rs.next()) {
-                            generatedSequence = rs.getString(1);
-                        }
-                        return generatedSequence;
-                    }
-
-                });
-
-                flag = jdbcTemplate.update(queryTwo, new Object[]{generatedSequence, sequence, quarterEndDate,
-                        circleCode, circleDescHidden, inSusp2, provn2, licra2, dicgc2});
-                counter = counter + flag;
-            }
-
-            log.info("for saving data ? " + save);
-
-            String sts = "20";
-            if (save) {
-                sts = "11";
-            }
-            seq = sequence + "~" + sts;
-
-            makerDao.reportEntryInMasterTable(sequence, reportMasterId, circleCode, quarterEndDate, reportName, userId,
-                    sts, "I");
-            count = 1;
-
-            log.info("******************************* inserting  SC 9C migration *** status as " + sts);
-        } else {
-
-            for (Object object : listToBeSent) {
-                LinkedHashMap map = (LinkedHashMap) object;
-                String inSusp = (String) map.get("inSusp");
-                String provn = (String) map.get("provn");
-                String licra = (String) map.get("licra");
-                String dicgc = (String) map.get("dicgc");
-                String circleDescHidden = (String) map.get("circleDescHidden");
-
-                String generatedSequence = null;
-                /// int status=-1;
-
-                String sequenceid = "select BS_AUDIT_LOG.nextVal from dual ";
-
-                // JdbcTemplate jdbcTemplateObject=new JdbcTemplate(dataSource);
-
-                generatedSequence = jdbcTemplate.query(sequenceid, new ResultSetExtractor<String>() {
-
-                    @Override
-                    public String extractData(ResultSet rs) throws SQLException, DataAccessException {
-                        // Report report=null;
-                        // TODO Auto-generated method stub
-                        // List<Report> list=new ArrayList<Report>();
-                        String generatedSequence = "";
-                        if (rs.next()) {
-                            generatedSequence = rs.getString(1);
-                        }
-                        return generatedSequence;
-                    }
-
-                });
-
-                flag = jdbcTemplate.update(updateQuery,
-                        new Object[]{inSusp, provn, licra, dicgc, circleCode, quarterEndDate, circleDescHidden});
-                counter = counter + flag;
-            }
-            for (Object objectFrom : listToBeSentFrom) {
-                LinkedHashMap map = (LinkedHashMap) objectFrom;
-                String inSusp2 = (String) map.get("inSusp2");
-                String provn2 = (String) map.get("provn2");
-                String licra2 = (String) map.get("licra2");
-                String dicgc2 = (String) map.get("dicgc2");
-                String circleDescHidden = (String) map.get("circleDescHidden");
-
-                String generatedSequence = null;
-                /// int status=-1;
-
-                String sequenceid = "select BS_AUDIT_LOG.nextVal from dual ";
-
-                // JdbcTemplate jdbcTemplateObject=new JdbcTemplate(dataSource);
-
-                generatedSequence = jdbcTemplate.query(sequenceid, new ResultSetExtractor<String>() {
-
-                    @Override
-                    public String extractData(ResultSet rs) throws SQLException, DataAccessException {
-                        // Report report=null;
-                        // TODO Auto-generated method stub
-                        // List<Report> list=new ArrayList<Report>();
-                        String generatedSequence = "";
-                        if (rs.next()) {
-                            generatedSequence = rs.getString(1);
-                        }
-                        return generatedSequence;
-                    }
-
-                });
-
-                flag = jdbcTemplate.update(updateQueryTwo,
-                        new Object[]{inSusp2, provn2, licra2, dicgc2, circleCode, quarterEndDate, circleDescHidden});
-                counter = counter + flag;
-            }
-            log.info("for saving data ?  " + save);
-
-            String sts = "21";
-            if (save) {
-                sts = "11";
-            }
-            seq = reportId + "~" + sts;
-
-            makerDao.reportEntryInMasterTable(reportId, reportMasterId, circleCode, quarterEndDate, reportName, userId,
-                    sts, "U");
-
-            log.info("*******************************updating SC 9C migration *** status as " + sts + " and sequence is " + reportId);
-            count = 1;
-
-        }
-
-        // }
-
-        //return count;
-
-        result = count + "~" + seq;
-        log.info("############  SC 9C migration submit result is " + result);
-
-        return result;
-
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "MAHARASHTRA",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "002",
+        "migCircleCodeHidden": "",
+        "inSusp": null,
+        "provn": null,
+        "licra": "345435",
+        "dicgc": null,
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "MAHARASHTRA",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "002",
+        "migCircleCodeHidden": "",
+        "inSusp": null,
+        "provn": null,
+        "licra": "345435",
+        "dicgc": null,
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "MUMBAI (METRO)",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "027",
+        "migCircleCodeHidden": "",
+        "inSusp": "45345345345",
+        "provn": "534534",
+        "licra": null,
+        "dicgc": "34534534",
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "MUMBAI METRO",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "027",
+        "migCircleCodeHidden": "",
+        "inSusp": "45345345345",
+        "provn": "534534",
+        "licra": null,
+        "dicgc": "34534534",
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "DELHI",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "004",
+        "migCircleCodeHidden": "",
+        "inSusp": null,
+        "provn": "345",
+        "licra": "345345",
+        "dicgc": null,
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "NEW DELHI",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "004",
+        "migCircleCodeHidden": "",
+        "inSusp": null,
+        "provn": "345",
+        "licra": "345345",
+        "dicgc": null,
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "PATNA",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "009",
+        "migCircleCodeHidden": "",
+        "inSusp": null,
+        "provn": null,
+        "licra": null,
+        "dicgc": null,
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "PATNA",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "009",
+        "migCircleCodeHidden": "",
+        "inSusp": null,
+        "provn": null,
+        "licra": null,
+        "dicgc": null,
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "SARG STRS ASSET RESOLUTION GRP",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "017",
+        "migCircleCodeHidden": "",
+        "inSusp": "34534",
+        "provn": null,
+        "licra": null,
+        "dicgc": null,
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "SARG STRS ASSET RESOLUTION GRP",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "017",
+        "migCircleCodeHidden": "",
+        "inSusp": "34534",
+        "provn": null,
+        "licra": null,
+        "dicgc": null,
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "THIRUVANANTHAPURAM",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "014",
+        "migCircleCodeHidden": "",
+        "inSusp": null,
+        "provn": null,
+        "licra": null,
+        "dicgc": null,
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "THIRUVANANTHAPURAM",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "014",
+        "migCircleCodeHidden": "",
+        "inSusp": null,
+        "provn": null,
+        "licra": null,
+        "dicgc": null,
+        "inSusp2": "",
+        "provn2": "",
+        "licra2": "",
+        "dicgc2": "",
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
     }
+]
+///////////////////////////////////////////
 
+API CALL 
+/Maker/getSavedDataNineMigTwo
+payload
+{
+    "circleCode": "001",
+    "quarterEndDate": "31/03/2025",
+    "userId": "1111111",
+    "reportName": "9C Migration",
+    "reportId": "274434",
+    "reportMasterId": "310027",
+    "status": "11"
+}
+
+
+Response:
+[
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "AHMEDABAD",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "006",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "AHMEDABAD",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "006",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "AMARAVATI",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "024",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "AMARAVATI",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "024",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "BENGALURU",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "013",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "BANGALORE",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "013",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "BHOPAL",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "008",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "BHOPAL",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "008",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "BHUBANESHWAR",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "011",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "BHUBANESWAR",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "011",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "CCG COMMERCIAL CLIENTS GROUP",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "016",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "CCG COMMERCIAL CLIENTS GROUP",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "016",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "CHANDIGARH",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "010",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "CHANDIGARH",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "010",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "CHENNAI",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "003",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "CHENNAI",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "003",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "CO-AU II, MUMBAI",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "020",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "CO-AU II, MUMBAI",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "020",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "CORPORATE ACCOUNTS GROUP",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "015",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "CORPORATE ACCOUNTS GROUP",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "015",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "GUWAHATI",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "012",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "NORTH-EASTERN",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "012",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "HYDERABAD",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "007",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "TELENGANA",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "007",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "JAIPUR",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "023",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "JAIPUR",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "023",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "KOLKATA",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "001",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "KOLKATA",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "001",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "LUCKNOW",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "005",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "LUCKNOW",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "005",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "MAHARASHTRA",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "002",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "MAHARASHTRA",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "002",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "MUMBAI (METRO)",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "027",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "MUMBAI METRO",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "027",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "DELHI",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "004",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "NEW DELHI",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "004",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "PATNA",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "009",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "PATNA",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "009",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "SARG STRS ASSET RESOLUTION GRP",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "017",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "SARG STRS ASSET RESOLUTION GRP",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "017",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "THIRUVANANTHAPURAM",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "014",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    },
+    {
+        "reportName": "",
+        "description": "",
+        "userId": null,
+        "reportId": null,
+        "reportMasterId": null,
+        "status": null,
+        "circleCode": "",
+        "quarterEndDate": "",
+        "circleDesc": "THIRUVANANTHAPURAM",
+        "circleDescHidden": "",
+        "circleDescHiddenTwo": "",
+        "migCircleCode": "014",
+        "migCircleCodeHidden": "",
+        "inSusp": "",
+        "provn": "",
+        "licra": "",
+        "dicgc": "",
+        "inSusp2": null,
+        "provn2": null,
+        "licra2": null,
+        "dicgc2": null,
+        "inSuspTotal": null,
+        "provnTotal": null,
+        "licraTotal": null,
+        "dicgcTotal": null,
+        "inSusp2Total": null,
+        "provn2Total": null,
+        "licra2Total": null,
+        "dicgc2Total": null,
+        "save": false
+    }
+]
