@@ -1,102 +1,95 @@
-const fromRows = uniqueFrom.map((row) => ({
-  circleDesc: row.circleDesc,
-  migCircleCode: row.migCircleCode,
-  circleDescHidden: row.migCircleCode, // critical field needed in submit
-  inSusp2: row.inSusp2 ?? '',
-  provn2: row.provn2 ?? '',
-  licra2: row.licra2 ?? '',
-  dicgc2: row.dicgc2 ?? '',
-}));
+{tabIndex === 0 && (
+  <MigrationTable
+    title="Migration To OTHER CIRCLES / GROUPS"
+    rows={rowsTo}
+    setRows={setRowsTo}
+    fieldPrefix=""
+  />
+)}
 
-circleDescHidden: row.migCircleCode,
+{tabIndex === 1 && (
+  <MigrationTable
+    title="Migration From OTHER CIRCLES / GROUPS"
+    rows={rowsFrom}
+    setRows={setRowsFrom}
+    fieldPrefix="2"
+  />
+)}
 
-const handleSubmit = async (isSave) => {
-  const payload = {
-    listToBeSent: rowsTo.map((r) => ({
-      circleDescHidden: r.migCircleCode,
-      inSusp: r.inSusp,
-      provn: r.provn,
-      licra: r.licra,
-      dicgc: r.dicgc,
-    })),
-    listToBeSentFrom: rowsFrom.map((r) => ({
-      circleDescHidden: r.migCircleCode,
-      inSusp2: r.inSusp2,
-      provn2: r.provn2,
-      licra2: r.licra2,
-      dicgc2: r.dicgc2,
-    })),
-    save: isSave,
-    circleCode: user.circleCode,
-    quarterEndDate: user.quarterEndDate,
-    userId: user.userId,
-    reportName: report.name,
-    reportId: report.reportId,
-    reportMasterId: report.reportMasterId,
-    status: report.status,
-  };
 
-  try {
-    const res = await callApi('/Maker/submitNineMig', payload, 'POST');
-    console.log(isSave ? 'Saved Successfully' : 'Submitted Successfully', res);
-  } catch (e) {
-    console.error('Submit Error:', e);
-  }
+const calculateTotals = (rows, fieldPrefix = '') => {
+  return rows.reduce(
+    (totals, row) => {
+      ['inSusp', 'provn', 'licra', 'dicgc'].forEach((field) => {
+        totals[field] += parseFloat(row[`${fieldPrefix}${field}`] || 0);
+      });
+      return totals;
+    },
+    { inSusp: 0, provn: 0, licra: 0, dicgc: 0 }
+  );
 };
 
-const [snackbarOpen, setSnackbarOpen] = useState(false);
-const [snackbarMessage, setSnackbarMessage] = useState('');
-const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-
-
-const handleSubmit = async (isSave) => {
-  const payload = {
-    listToBeSent: rowsTo.map((r) => ({
-      circleDescHidden: r.migCircleCode,
-      inSusp: r.inSusp,
-      provn: r.provn,
-      licra: r.licra,
-      dicgc: r.dicgc,
-    })),
-    listToBeSentFrom: rowsFrom.map((r) => ({
-      circleDescHidden: r.migCircleCode,
-      inSusp2: r.inSusp2,
-      provn2: r.provn2,
-      licra2: r.licra2,
-      dicgc2: r.dicgc2,
-    })),
-    save: isSave,
-    circleCode: user.circleCode,
-    quarterEndDate: user.quarterEndDate,
-    userId: user.userId,
-    reportName: report.name,
-    reportId: report.reportId,
-    reportMasterId: report.reportMasterId,
-    status: report.status,
+const MigrationTable = ({ title, rows, setRows, fieldPrefix = '' }) => {
+  const handleChange = (index, field, value) => {
+    if (validateNumeric(value) || value === '') {
+      const updated = [...rows];
+      updated[index][`${fieldPrefix}${field}`] = value;
+      setRows(updated);
+    }
   };
 
-  try {
-    const res = await callApi('/Maker/submitNineMig', payload, 'POST');
-    setSnackbarMessage(isSave ? 'Data saved successfully.' : 'Data submitted successfully.');
-    setSnackbarSeverity('success');
-    setSnackbarOpen(true);
-  } catch (e) {
-    setSnackbarMessage('Failed to save/submit data.');
-    setSnackbarSeverity('error');
-    setSnackbarOpen(true);
-  }
+  const totals = useMemo(() => calculateTotals(rows, fieldPrefix), [rows, fieldPrefix]);
+
+  return (
+    <Box sx={{ mt: 3 }}>
+      <Typography variant="h6" sx={{ mb: 1 }}>
+        <b>{title}</b>
+      </Typography>
+      <TableContainer component={Paper}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <StyledHeader>NAME OF THE CIRCLE / GROUP</StyledHeader>
+              <StyledHeader>INTEREST SUSPENSE</StyledHeader>
+              <StyledHeader>PROVISION</StyledHeader>
+              <StyledHeader>LICRA</StyledHeader>
+              <StyledHeader>DICGC, ECGC CLAIMS RECD</StyledHeader>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((row, idx) => (
+              <TableRow key={idx}>
+                <TableCell>{row.circleDesc || `Circle ${idx + 1}`}</TableCell>
+                {['inSusp', 'provn', 'licra', 'dicgc'].map((field) => (
+                  <StyledCell key={field}>
+                    <FormInput
+                      variant="outlined"
+                      inputType="amountDecimal"
+                      value={row[`${fieldPrefix}${field}`]}
+                      onChange={(e) => handleChange(idx, field, e.target.value)}
+                    />
+                  </StyledCell>
+                ))}
+              </TableRow>
+            ))}
+            <TableRow>
+              <StyledCell>
+                <b>Total</b>
+              </StyledCell>
+              {['inSusp', 'provn', 'licra', 'dicgc'].map((field) => (
+                <StyledCell key={field}>
+                  <FormInput
+                    variant="outlined"
+                    value={totals[field].toFixed(2)}
+                    inputType="amountDecimal"
+                    readOnly
+                  />
+                </StyledCell>
+              ))}
+            </TableRow>
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
+  );
 };
-
-
-import { Snackbar, Alert } from '@mui/material';
-...
-<Snackbar
-  open={snackbarOpen}
-  autoHideDuration={4000}
-  onClose={() => setSnackbarOpen(false)}
-  anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
->
-  <Alert severity={snackbarSeverity} sx={{ width: '100%' }} onClose={() => setSnackbarOpen(false)}>
-    {snackbarMessage}
-  </Alert>
-</Snackbar>
