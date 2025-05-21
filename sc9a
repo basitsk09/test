@@ -16,22 +16,26 @@ import {
   Tabs,
   CircularProgress,
   Tab,
+  useTheme,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import useApi from '../../../../common/hooks/useApi';
 import { CustomButton } from '../../../../common/components/ui/Buttons';
 import FormInput from '../../../../common/components/ui/FormInput';
 
-const StyledCell = styled(TableCell)({
+const StyledCell = styled(TableCell)(({ theme }) => ({
   textAlign: 'right',
   padding: '4px',
-});
+  backgroundColor: theme.palette.background.paper,
+  color: theme.palette.text.primary,
+}));
 
-const StyledHeader = styled(TableCell)({
+const StyledHeader = styled(TableCell)(({ theme }) => ({
   textAlign: 'center',
   fontWeight: 'bold',
-  backgroundColor: '#f0f0f0',
-});
+  backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : '#f0f0f0',
+  color: theme.palette.text.primary,
+}));
 
 const getDefaultRow = () => ({
   migCircleCode: '',
@@ -120,6 +124,7 @@ const MigrationTable = ({ title, rows, setRows }) => {
 };
 
 const Schedule9CMigration = () => {
+  const theme = useTheme();
   const [rowsTo, setRowsTo] = useState(() => Array(5).fill().map(getDefaultRow));
   const [rowsFrom, setRowsFrom] = useState(() => Array(5).fill().map(getDefaultRow));
   const [tabIndex, setTabIndex] = useState(0);
@@ -144,14 +149,11 @@ const Schedule9CMigration = () => {
         };
 
         const toRes = await callApi('/Maker/getSavedDataNineMig', payload, 'POST');
-
         const fromRes = await callApi('/Maker/getSavedDataNineMigTwo', payload, 'POST');
 
-        // Deduplicate response
         const uniqueTo = filterUniqueRows(toRes);
         const uniqueFrom = filterUniqueRows(fromRes);
 
-        // Assign only relevant fields (mapped structure)
         const toRows = uniqueTo.map((row) => ({
           circleDesc: row.circleDesc,
           migCircleCode: row.migCircleCode,
@@ -170,7 +172,6 @@ const Schedule9CMigration = () => {
           dicgc2: row.dicgc2 ?? '',
         }));
 
-        // Set to state
         setRowsTo(toRows);
         setRowsFrom(fromRows);
       } catch (error) {
@@ -195,14 +196,37 @@ const Schedule9CMigration = () => {
     });
   };
 
-  const handleSubmit = (isSave) => {
+  const handleSubmit = async (isSave) => {
     const payload = {
-      listToBeSent: rowsTo,
-      listToBeSentFrom: rowsFrom,
+      listToBeSent: rowsTo.map(({ circleDesc, migCircleCode, inSusp, provn, licra, dicgc }) => ({
+        circleDescHidden: migCircleCode,
+        inSusp,
+        provn,
+        licra,
+        dicgc,
+      })),
+      listToBeSentFrom: rowsFrom.map(({ circleDesc, migCircleCode, inSusp2, provn2, licra2, dicgc2 }) => ({
+        circleDescHidden: migCircleCode,
+        inSusp2,
+        provn2,
+        licra2,
+        dicgc2,
+      })),
+      circleCode: user.circleCode,
+      quarterEndDate: user.quarterEndDate,
+      userId: user.userId,
+      reportName: report.name,
+      reportId: report.reportId,
+      reportMasterId: report.reportMasterId,
+      status: report.status,
       save: isSave,
     };
-    console.log(isSave ? 'Saving data...' : 'Submitting data...', payload);
-    // Call API here
+    try {
+      const response = await callApi('/Maker/submitNineMig', payload, 'POST');
+      console.log(isSave ? 'Saved' : 'Submitted', response);
+    } catch (error) {
+      console.error('Error in save/submit:', error);
+    }
   };
 
   const handleTabChange = (event, newValue) => {
@@ -219,30 +243,15 @@ const Schedule9CMigration = () => {
   }
 
   return (
-    <Box sx={{ p: 2 }}>
+    <Box sx={{ p: 2, backgroundColor: theme.palette.background.default, color: theme.palette.text.primary }}>
       <Stack direction="row" spacing={2} sx={{ mt: 2, mb: 2 }}>
         <CustomButton buttonType={'save'} label={'Save'} onClickHandler={() => handleSubmit(true)} />
-
         <CustomButton buttonType={'submit'} label={'Submit'} onClickHandler={() => handleSubmit(false)} />
       </Stack>
 
-      <Tabs value={tabIndex} onChange={handleTabChange} sx={{ mb: 2, display: 'flex', gap: 2 }}>
-        <Tab
-          label="Migration To Other Circles"
-          style={
-            tabIndex === 0
-              ? { backgroundColor: 'white', color: 'black', border: '2px solid #008CBA', marginRight: '16px' }
-              : {}
-          }
-        />
-        <Tab
-          label="Migration From Other Circles"
-          style={
-            tabIndex === 1
-              ? { backgroundColor: 'white', color: 'black', border: '2px solid #008CBA', marginLeft: '16px' }
-              : {}
-          }
-        />
+      <Tabs value={tabIndex} onChange={handleTabChange} sx={{ mb: 2 }}>
+        <Tab label="Migration To Other Circles" />
+        <Tab label="Migration From Other Circles" />
       </Tabs>
 
       {tabIndex === 0 && (
@@ -265,3 +274,28 @@ const Schedule9CMigration = () => {
 };
 
 export default Schedule9CMigration;
+
+
+The Schedule9CMigration component has been updated with the following changes:
+
+1. Mapped Submit Payloads Correctly:
+
+listToBeSent and listToBeSentFrom now explicitly extract only the required fields (circleDescHidden, inSusp, provn, licra, dicgc, and their 2 versions).
+
+
+
+2. Implemented Save/Submit Logic:
+
+handleSubmit makes a real POST API call to /Maker/submitNineMig.
+
+
+
+3. Dark Mode Compatibility:
+
+Applied theme.palette to styled components for background and text to respect dark mode settings.
+
+
+
+
+Let me know if you want to display a snackbar/toast after save/submit success/failure.
+
