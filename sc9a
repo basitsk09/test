@@ -1,95 +1,21 @@
-{tabIndex === 0 && (
-  <MigrationTable
-    title="Migration To OTHER CIRCLES / GROUPS"
-    rows={rowsTo}
-    setRows={setRowsTo}
-    fieldPrefix=""
-  />
-)}
-
-{tabIndex === 1 && (
-  <MigrationTable
-    title="Migration From OTHER CIRCLES / GROUPS"
-    rows={rowsFrom}
-    setRows={setRowsFrom}
-    fieldPrefix="2"
-  />
-)}
-
-
-const calculateTotals = (rows, fieldPrefix = '') => {
-  return rows.reduce(
-    (totals, row) => {
-      ['inSusp', 'provn', 'licra', 'dicgc'].forEach((field) => {
-        totals[field] += parseFloat(row[`${fieldPrefix}${field}`] || 0);
-      });
-      return totals;
-    },
-    { inSusp: 0, provn: 0, licra: 0, dicgc: 0 }
-  );
-};
-
-const MigrationTable = ({ title, rows, setRows, fieldPrefix = '' }) => {
-  const handleChange = (index, field, value) => {
-    if (validateNumeric(value) || value === '') {
-      const updated = [...rows];
-      updated[index][`${fieldPrefix}${field}`] = value;
-      setRows(updated);
-    }
-  };
-
-  const totals = useMemo(() => calculateTotals(rows, fieldPrefix), [rows, fieldPrefix]);
-
+{['inSusp', 'provn', 'licra', 'dicgc'].map((field) => {
+  const fullField = `${fieldPrefix}${field}`;
   return (
-    <Box sx={{ mt: 3 }}>
-      <Typography variant="h6" sx={{ mb: 1 }}>
-        <b>{title}</b>
-      </Typography>
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <StyledHeader>NAME OF THE CIRCLE / GROUP</StyledHeader>
-              <StyledHeader>INTEREST SUSPENSE</StyledHeader>
-              <StyledHeader>PROVISION</StyledHeader>
-              <StyledHeader>LICRA</StyledHeader>
-              <StyledHeader>DICGC, ECGC CLAIMS RECD</StyledHeader>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row, idx) => (
-              <TableRow key={idx}>
-                <TableCell>{row.circleDesc || `Circle ${idx + 1}`}</TableCell>
-                {['inSusp', 'provn', 'licra', 'dicgc'].map((field) => (
-                  <StyledCell key={field}>
-                    <FormInput
-                      variant="outlined"
-                      inputType="amountDecimal"
-                      value={row[`${fieldPrefix}${field}`]}
-                      onChange={(e) => handleChange(idx, field, e.target.value)}
-                    />
-                  </StyledCell>
-                ))}
-              </TableRow>
-            ))}
-            <TableRow>
-              <StyledCell>
-                <b>Total</b>
-              </StyledCell>
-              {['inSusp', 'provn', 'licra', 'dicgc'].map((field) => (
-                <StyledCell key={field}>
-                  <FormInput
-                    variant="outlined"
-                    value={totals[field].toFixed(2)}
-                    inputType="amountDecimal"
-                    readOnly
-                  />
-                </StyledCell>
-              ))}
-            </TableRow>
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
+    <StyledCell key={fullField}>
+      <FormInput
+        variant="outlined"
+        inputType="amountDecimal"
+        value={row[fullField] || ''}
+        onChange={(e) => handleChange(idx, field, e.target.value)}
+      />
+    </StyledCell>
   );
+})}
+
+const handleChange = (index, field, value) => {
+  if (validateNumeric(value) || value === '') {
+    const updated = [...rows];
+    updated[index][`${fieldPrefix}${field}`] = value;
+    setRows(updated);
+  }
 };
