@@ -1,758 +1,267 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
+import {
+  Box,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  TextField,
+  Typography,
+  Stack,
+  Tabs,
+  CircularProgress,
+  Tab,
+} from '@mui/material';
+import { styled } from '@mui/material/styles';
+import useApi from '../../../../common/hooks/useApi';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import FormInput from '../../../../common/components/ui/FormInput';
 
-API: /Maker/submitNineMig
-{
-    "listToBeSentFrom": [
-        {
-            "circleDescHidden": "006",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "006",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "024",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "024",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "013",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "013",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "008",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "008",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "011",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "011",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "016",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "016",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "010",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "010",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "003",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "003",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "020",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "020",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "015",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "015",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "012",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "012",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "007",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "007",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "023",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "023",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "001",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "001",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "005",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "005",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "002",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "002",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "027",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "027",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "004",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "004",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "009",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "009",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "017",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "017",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "014",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        },
-        {
-            "circleDescHidden": "014",
-            "inSusp2": null,
-            "provn2": null,
-            "licra2": null,
-            "dicgc2": null
-        }
-    ],
-    "listToBeSent": [
-        {
-            "circleDescHidden": "006",
-            "inSusp": null,
-            "provn": "5345",
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "006",
-            "inSusp": null,
-            "provn": "5345",
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "024",
-            "inSusp": "34534",
-            "provn": null,
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "024",
-            "inSusp": "34534",
-            "provn": null,
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "013",
-            "inSusp": null,
-            "provn": "345345345",
-            "licra": "43553443",
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "013",
-            "inSusp": null,
-            "provn": "345345345",
-            "licra": "43553443",
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "008",
-            "inSusp": "345345345345345",
-            "provn": null,
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "008",
-            "inSusp": "345345345345345",
-            "provn": null,
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "011",
-            "inSusp": "5345345",
-            "provn": null,
-            "licra": "34543",
-            "dicgc": "5345345435435"
-        },
-        {
-            "circleDescHidden": "011",
-            "inSusp": "5345345",
-            "provn": null,
-            "licra": "34543",
-            "dicgc": "5345345435435"
-        },
-        {
-            "circleDescHidden": "016",
-            "inSusp": null,
-            "provn": "53434",
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "016",
-            "inSusp": null,
-            "provn": "53434",
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "010",
-            "inSusp": null,
-            "provn": "5345",
-            "licra": null,
-            "dicgc": "4355"
-        },
-        {
-            "circleDescHidden": "010",
-            "inSusp": null,
-            "provn": "5345",
-            "licra": null,
-            "dicgc": "4355"
-        },
-        {
-            "circleDescHidden": "003",
-            "inSusp": null,
-            "provn": null,
-            "licra": "35345435345",
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "003",
-            "inSusp": null,
-            "provn": null,
-            "licra": "35345435345",
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "020",
-            "inSusp": null,
-            "provn": "345345345",
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "020",
-            "inSusp": null,
-            "provn": "345345345",
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "015",
-            "inSusp": "34534",
-            "provn": null,
-            "licra": null,
-            "dicgc": "345"
-        },
-        {
-            "circleDescHidden": "015",
-            "inSusp": "34534",
-            "provn": null,
-            "licra": null,
-            "dicgc": "345"
-        },
-        {
-            "circleDescHidden": "012",
-            "inSusp": null,
-            "provn": null,
-            "licra": "345345",
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "012",
-            "inSusp": null,
-            "provn": null,
-            "licra": "345345",
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "007",
-            "inSusp": "4353453",
-            "provn": "34534",
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "007",
-            "inSusp": "4353453",
-            "provn": "34534",
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "023",
-            "inSusp": null,
-            "provn": "5345",
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "023",
-            "inSusp": null,
-            "provn": "5345",
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "001",
-            "inSusp": null,
-            "provn": null,
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "001",
-            "inSusp": null,
-            "provn": null,
-            "licra": null,
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "005",
-            "inSusp": "5345",
-            "provn": "345",
-            "licra": "3453455",
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "005",
-            "inSusp": "5345",
-            "provn": "345",
-            "licra": "3453455",
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "002",
-            "inSusp": null,
-            "provn": null,
-            "licra": "345435",
-            "dicgc": null
-        },
-        {
-            "circleDescHidden": "002",
-            "inSusp": null,
-            "provn": null,
-            "licra": "345435",
-            "dicgc": null
-        }
-       
-        
-    ],
-    "circleCode": "001",
-    "quarterEndDate": "31/03/2025",
-    "userId": "1111111",
-    "reportName": "9C Migration",
-    "reportId": "274434",
-    "reportMasterId": "310027",
-    "status": "11",
-    "save": true
-}
+const StyledCell = styled(TableCell)({
+  textAlign: 'right',
+  padding: '4px',
+});
 
-Response: 1~274434~11
+const StyledHeader = styled(TableCell)({
+  textAlign: 'center',
+  fontWeight: 'bold',
+  backgroundColor: '#f0f0f0',
+});
 
-////////////////////////////////////
+const getDefaultRow = () => ({
+  migCircleCode: '',
+  circleDesc: '',
+  inSusp: '',
+  provn: '',
+  licra: '',
+  dicgc: '',
+});
 
+const validateNumeric = (value) => {
+  return /^-?\d*(\.\d{0,2})?$/.test(value);
+};
 
-public String submitNineMig(List listToBeSent, List listToBeSentFrom, String circleCode, String quarterEndDate,
-                                String userId, String reportId, String reportMasterId, String reportName, String status, boolean save){
+const calculateTotals = (rows) => {
+  return rows.reduce(
+    (totals, row) => {
+      totals.inSusp += parseFloat(row.inSusp || 0);
+      totals.provn += parseFloat(row.provn || 0);
+      totals.licra += parseFloat(row.licra || 0);
+      totals.dicgc += parseFloat(row.dicgc || 0);
+      return totals;
+    },
+    { inSusp: 0, provn: 0, licra: 0, dicgc: 0 }
+  );
+};
 
-
-        log.info("For saving data ? " + save);
-        String seq = "";
-        String result = "";
-        HashMap<String, String> branchCount = new HashMap<String, String>();
-        int counter = -1;
-        String sequence = makerDao.generateSequence();
-        int count = 0;
-        /*
-         * String queryD=
-         * "DELETE FROM BS_SC9Migration_TO where SC9Mig_CIRCLE=? and SC9Mig_DATE=to_date(?,'dd/mm/yyyy')"
-         * ; count=jdbcTemplate.update(queryD, new Object[]
-         * {circleCode,quarterEndDate});
-         */
-        /* log.info("count   count count count"+count); */
-
-        /// if(status == null || status.equalsIgnoreCase("")){
-        String query = "insert into BS_SC9Migration_TO(SC9Mig_ID,SC9Mig_FK,SC9Mig_DATE,SC9Mig_CIRCLE,SC9Mig_MIGCIRCLE,SC9Mig_INTSUSP,SC9Mig_PROV,SC9Mig_LICRA,SC9Mig_DICGC) VALUES(?,?,to_date(?,'dd/mm/yyyy'),?,?,?,?,?,?)";
-
-        String updateQuery = "UPDATE BS_SC9Migration_TO SET SC9Mig_INTSUSP=?,SC9Mig_PROV=?,SC9Mig_LICRA=?,SC9Mig_DICGC=? WHERE SC9Mig_CIRCLE=? and SC9Mig_DATE = to_date(?,'dd/mm/yyyy') and SC9Mig_MIGCIRCLE=?";
-
-        String queryTwo = "insert into BS_SC9Migration_FROM(SC9MigF_ID,SC9MigF_FK,SC9MigF_DATE,SC9MigF_CIRCLE,SC9MigF_MIGCIRCLE,SC9MigF_INTSUSP,SC9MigF_PROV,SC9MigF_LICRA,SC9MigF_DICGC) VALUES(?,?,to_date(?,'dd/mm/yyyy'),?,?,?,?,?,?)";
-
-        String updateQueryTwo = "UPDATE BS_SC9Migration_FROM SET SC9MigF_INTSUSP=?,SC9MigF_PROV=?,SC9MigF_LICRA=?,SC9MigF_DICGC=? WHERE SC9MigF_CIRCLE=? and SC9MigF_DATE = to_date(?,'dd/mm/yyyy') and SC9MigF_MIGCIRCLE=?";
-
-        int flag;
-
-        // int counter=-1;
-        if (status == null || status.equalsIgnoreCase("")) {
-
-            for (Object object : listToBeSent) {
-                LinkedHashMap map = (LinkedHashMap) object;
-                String inSusp = (String) map.get("inSusp");
-                String provn = (String) map.get("provn");
-                String licra = (String) map.get("licra");
-                String dicgc = (String) map.get("dicgc");
-                String circleDescHidden = (String) map.get("circleDescHidden");
-
-                String generatedSequence = null;
-                /// int status=-1;
-
-                String sequenceid = "select BS_AUDIT_LOG.nextVal from dual ";
-
-                // JdbcTemplate jdbcTemplateObject=new JdbcTemplate(dataSource);
-
-                generatedSequence = jdbcTemplate.query(sequenceid, new ResultSetExtractor<String>() {
-
-                    @Override
-                    public String extractData(ResultSet rs) throws SQLException, DataAccessException {
-                        // Report report=null;
-                        // TODO Auto-generated method stub
-                        // List<Report> list=new ArrayList<Report>();
-                        String generatedSequence = "";
-                        if (rs.next()) {
-                            generatedSequence = rs.getString(1);
-                        }
-                        return generatedSequence;
-                    }
-
-                });
-
-                flag = jdbcTemplate.update(query, new Object[]{generatedSequence, sequence, quarterEndDate,
-                        circleCode, circleDescHidden, inSusp, provn, licra, dicgc});
-                counter = counter + flag;
-            }
-
-            for (Object objectFrom : listToBeSentFrom) {
-                LinkedHashMap map = (LinkedHashMap) objectFrom;
-                String inSusp2 = (String) map.get("inSusp2");
-                String provn2 = (String) map.get("provn2");
-                String licra2 = (String) map.get("licra2");
-                String dicgc2 = (String) map.get("dicgc2");
-                String circleDescHidden = (String) map.get("circleDescHidden");
-
-                String generatedSequence = null;
-                /// int status=-1;
-
-                String sequenceid = "select BS_AUDIT_LOG.nextVal from dual ";
-
-                // JdbcTemplate jdbcTemplateObject=new JdbcTemplate(dataSource);
-
-                generatedSequence = jdbcTemplate.query(sequenceid, new ResultSetExtractor<String>() {
-
-                    @Override
-                    public String extractData(ResultSet rs) throws SQLException, DataAccessException {
-                        // Report report=null;
-                        // TODO Auto-generated method stub
-                        // List<Report> list=new ArrayList<Report>();
-                        String generatedSequence = "";
-                        if (rs.next()) {
-                            generatedSequence = rs.getString(1);
-                        }
-                        return generatedSequence;
-                    }
-
-                });
-
-                flag = jdbcTemplate.update(queryTwo, new Object[]{generatedSequence, sequence, quarterEndDate,
-                        circleCode, circleDescHidden, inSusp2, provn2, licra2, dicgc2});
-                counter = counter + flag;
-            }
-
-            log.info("for saving data ? " + save);
-
-            String sts = "20";
-            if (save) {
-                sts = "11";
-            }
-            seq = sequence + "~" + sts;
-
-            makerDao.reportEntryInMasterTable(sequence, reportMasterId, circleCode, quarterEndDate, reportName, userId,
-                    sts, "I");
-            count = 1;
-
-            log.info("******************************* inserting  SC 9C migration *** status as " + sts);
-        } else {
-
-            for (Object object : listToBeSent) {
-                LinkedHashMap map = (LinkedHashMap) object;
-                String inSusp = (String) map.get("inSusp");
-                String provn = (String) map.get("provn");
-                String licra = (String) map.get("licra");
-                String dicgc = (String) map.get("dicgc");
-                String circleDescHidden = (String) map.get("circleDescHidden");
-
-                String generatedSequence = null;
-                /// int status=-1;
-
-                String sequenceid = "select BS_AUDIT_LOG.nextVal from dual ";
-
-                // JdbcTemplate jdbcTemplateObject=new JdbcTemplate(dataSource);
-
-                generatedSequence = jdbcTemplate.query(sequenceid, new ResultSetExtractor<String>() {
-
-                    @Override
-                    public String extractData(ResultSet rs) throws SQLException, DataAccessException {
-                        // Report report=null;
-                        // TODO Auto-generated method stub
-                        // List<Report> list=new ArrayList<Report>();
-                        String generatedSequence = "";
-                        if (rs.next()) {
-                            generatedSequence = rs.getString(1);
-                        }
-                        return generatedSequence;
-                    }
-
-                });
-
-                flag = jdbcTemplate.update(updateQuery,
-                        new Object[]{inSusp, provn, licra, dicgc, circleCode, quarterEndDate, circleDescHidden});
-                counter = counter + flag;
-            }
-            for (Object objectFrom : listToBeSentFrom) {
-                LinkedHashMap map = (LinkedHashMap) objectFrom;
-                String inSusp2 = (String) map.get("inSusp2");
-                String provn2 = (String) map.get("provn2");
-                String licra2 = (String) map.get("licra2");
-                String dicgc2 = (String) map.get("dicgc2");
-                String circleDescHidden = (String) map.get("circleDescHidden");
-
-                String generatedSequence = null;
-                /// int status=-1;
-
-                String sequenceid = "select BS_AUDIT_LOG.nextVal from dual ";
-
-                // JdbcTemplate jdbcTemplateObject=new JdbcTemplate(dataSource);
-
-                generatedSequence = jdbcTemplate.query(sequenceid, new ResultSetExtractor<String>() {
-
-                    @Override
-                    public String extractData(ResultSet rs) throws SQLException, DataAccessException {
-                        // Report report=null;
-                        // TODO Auto-generated method stub
-                        // List<Report> list=new ArrayList<Report>();
-                        String generatedSequence = "";
-                        if (rs.next()) {
-                            generatedSequence = rs.getString(1);
-                        }
-                        return generatedSequence;
-                    }
-
-                });
-
-                flag = jdbcTemplate.update(updateQueryTwo,
-                        new Object[]{inSusp2, provn2, licra2, dicgc2, circleCode, quarterEndDate, circleDescHidden});
-                counter = counter + flag;
-            }
-            log.info("for saving data ?  " + save);
-
-            String sts = "21";
-            if (save) {
-                sts = "11";
-            }
-            seq = reportId + "~" + sts;
-
-            makerDao.reportEntryInMasterTable(reportId, reportMasterId, circleCode, quarterEndDate, reportName, userId,
-                    sts, "U");
-
-//            log.info("*******************************updating SC 9C migration *** status as " + sts + " and sequence is " + reportId);
-            count = 1;
-
-        }
-
-        // }
-
-        //return count;
-
-        result = count + "~" + seq;
-//        log.info("############  SC 9C migration submit result is " + result);
-
-        return result;
-
+const MigrationTable = ({ title, rows, setRows }) => {
+  const handleChange = (index, field, value) => {
+    if (validateNumeric(value) || value === '') {
+      const updated = [...rows];
+      updated[index][field] = value;
+      setRows(updated);
     }
+  };
+
+  const totals = useMemo(() => calculateTotals(rows), [rows]);
+
+  return (
+    <Box sx={{ mt: 3 }}>
+      <Typography variant="h6" sx={{ mb: 1 }}>
+        <b>{title}</b>
+      </Typography>
+      <TableContainer component={Paper}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <StyledHeader>NAME OF THE CIRCLE / GROUP</StyledHeader>
+              <StyledHeader>INTEREST SUSPENSE</StyledHeader>
+              <StyledHeader>PROVISION</StyledHeader>
+              <StyledHeader>LICRA</StyledHeader>
+              <StyledHeader>DICGC, ECGC CLAIMS RECD</StyledHeader>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((row, idx) => (
+              <TableRow key={idx}>
+                <TableCell>{row.circleDesc || `Circle ${idx + 1}`}</TableCell>
+                {['inSusp', 'provn', 'licra', 'dicgc'].map((field) => (
+                  <StyledCell key={field}>
+                    <FormInput
+                      variant="outlined"
+                      inputType={'amountDecimal'}
+                      value={row[field]}
+                      onChange={(e) => handleChange(idx, field, e.target.value)}
+                    />
+                  </StyledCell>
+                ))}
+              </TableRow>
+            ))}
+            <TableRow>
+              <StyledCell>
+                <b>Total</b>
+              </StyledCell>
+              {[totals.inSusp, totals.provn, totals.licra, totals.dicgc].map((val, idx) => (
+                <StyledCell key={idx}>
+                  <FormInput variant="outlined" value={val.toFixed(2)} inputType={'amountDecimal'} readOnly />
+                </StyledCell>
+              ))}
+            </TableRow>
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
+  );
+};
+
+const Schedule9CMigration = () => {
+  const [rowsTo, setRowsTo] = useState(() => Array(5).fill().map(getDefaultRow));
+  const [rowsFrom, setRowsFrom] = useState(() => Array(5).fill().map(getDefaultRow));
+  const [tabIndex, setTabIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const { callApi } = useApi();
+  const { state } = useLocation();
+  const { report } = state;
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  useEffect(() => {
+    const fetchMigrationData = async () => {
+      setIsLoading(true);
+      try {
+        const payload = {
+          circleCode: user.circleCode,
+          quarterEndDate: user.quarterEndDate,
+          userId: user.userId,
+          reportName: report.name,
+          reportId: report.reportId,
+          reportMasterId: report.reportMasterId,
+          status: report.status,
+        };
+
+        const toRes = await callApi('/Maker/getSavedDataNineMig', payload, 'POST');
+
+        const fromRes = await callApi('/Maker/getSavedDataNineMigTwo', payload, 'POST');
+
+        // Deduplicate response
+        const uniqueTo = filterUniqueRows(toRes);
+        const uniqueFrom = filterUniqueRows(fromRes);
+
+        // Assign only relevant fields (mapped structure)
+        const toRows = uniqueTo.map((row) => ({
+          circleDesc: row.circleDesc,
+          migCircleCode: row.migCircleCode,
+          inSusp: row.inSusp ?? '',
+          provn: row.provn ?? '',
+          licra: row.licra ?? '',
+          dicgc: row.dicgc ?? '',
+        }));
+
+        const fromRows = uniqueFrom.map((row) => ({
+          circleDesc: row.circleDesc,
+          migCircleCode: row.migCircleCode,
+          inSusp2: row.inSusp2 ?? '',
+          provn2: row.provn2 ?? '',
+          licra2: row.licra2 ?? '',
+          dicgc2: row.dicgc2 ?? '',
+        }));
+
+        // Set to state
+        setRowsTo(toRows);
+        setRowsFrom(fromRows);
+      } catch (error) {
+        console.error('Error fetching SC9C migration data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMigrationData();
+  }, []);
+
+  const filterUniqueRows = (rows) => {
+    const seen = new Set();
+    return rows.filter((row) => {
+      const key = `${row.migCircleCode}-${row.circleDesc}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        return true;
+      }
+      return false;
+    });
+  };
+
+  const handleSubmit = (isSave) => {
+    const payload = {
+      listToBeSent: rowsTo,
+      listToBeSentFrom: rowsFrom,
+      save: isSave,
+    };
+    console.log(isSave ? 'Saving data...' : 'Submitting data...', payload);
+    // Call API here
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setTabIndex(newValue);
+  };
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress />
+        <Typography sx={{ ml: 2 }}>Loading Data...</Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: 2 }}>
+      <Stack direction="row" spacing={2} sx={{ mt: 2, mb: 2 }}>
+        <CustomButton buttonType={'save'} label={'Save'} onClickHandler={() => handleSubmit(true)} />
+
+        <CustomButton buttonType={'submit'} label={'Submit'} onClickHandler={() => handleSubmit(false)} />
+      </Stack>
+
+      <Tabs value={tabIndex} onChange={handleTabChange} sx={{ mb: 2, display: 'flex', gap: 2 }}>
+        <Tab
+          label="Migration To Other Circles"
+          style={
+            tabIndex === 0
+              ? { backgroundColor: 'white', color: 'black', border: '2px solid #008CBA', marginRight: '16px' }
+              : {}
+          }
+        />
+        <Tab
+          label="Migration From Other Circles"
+          style={
+            tabIndex === 1
+              ? { backgroundColor: 'white', color: 'black', border: '2px solid #008CBA', marginLeft: '16px' }
+              : {}
+          }
+        />
+      </Tabs>
+
+      {tabIndex === 0 && (
+        <MigrationTable
+          title="Migration To OTHER CIRCLES / GROUPS FROM THE CLOSING BALANCE OF PREVIOUS YEAR"
+          rows={rowsTo}
+          setRows={setRowsTo}
+        />
+      )}
+
+      {tabIndex === 1 && (
+        <MigrationTable
+          title="Migration From OTHER CIRCLES / GROUPS FROM THE CLOSING BALANCE OF PREVIOUS YEAR"
+          rows={rowsFrom}
+          setRows={setRowsFrom}
+        />
+      )}
+    </Box>
+  );
+};
+
+export default Schedule9CMigration;
