@@ -32,3 +32,6 @@ private void streamFileToZip(ZipOutputStream zipOutputStream, String fileName, I
     zipOutputStream.closeEntry();
     log.info(fileName + " added to zip (streamed)");
 }
+
+@Query("SELECT evidence_file, evidence_name FROM crs_lfar WHERE report_master_list_id_fk = :submissionId")
+List<Object[]> getBlobStreamBySubmissionId(String submissionId);
