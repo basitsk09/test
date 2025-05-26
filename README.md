@@ -1,159 +1,311 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, TextField, Button, Dialog, DialogTitle, DialogContent, DialogActions, Typography, Box, Stack
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
+ @RequestMapping(value = "/login", method = RequestMethod.POST)
+    public @ResponseBody
+    JSONObject doLogin(@RequestBody(required =false)UserLogin userLogin, HttpServletRequest request) throws Exception {
+//        log.info("LoginController > doLogin  >>>>> " + request.getAttribute("data"));
 
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontSize: '0.875rem',
-  border: '1px solid #e0e0e0',
-  textAlign: 'right',
-  '&.MuiTableCell-head': {
-    backgroundColor: theme.palette.mode === 'dark' ? '#333' : '#000',
-    color: theme.palette.common.white,
-    textAlign: 'center'
-  }
-}));
+        UserLogin user = null;
 
-const FormRow = ({ label, grField, proField, data, handleChange, readOnly = false, bold = false, indent = false }) => (
-  <TableRow>
-    <TableCell sx={{ fontWeight: bold ? 'bold' : 'normal', pl: indent ? 4 : 1 }}>{label}</TableCell>
-    <StyledTableCell>
-      <TextField
-        variant="standard"
-        name={grField}
-        value={data[grField] || ''}
-        onChange={handleChange(grField)}
-        onBlur={handleChange(grField, true)}
-        inputProps={{ maxLength: 18, style: { textAlign: 'right' } }}
-        fullWidth
-        disabled={readOnly}
-        color={readOnly ? 'secondary' : 'primary'}
-      />
-    </StyledTableCell>
-    <StyledTableCell>
-      <TextField
-        variant="standard"
-        name={proField}
-        value={data[proField] || ''}
-        onChange={handleChange(proField)}
-        onBlur={handleChange(proField, true)}
-        inputProps={{ maxLength: 18, style: { textAlign: 'right' } }}
-        fullWidth
-        disabled={readOnly}
-        color={readOnly ? 'secondary' : 'primary'}
-      />
-    </StyledTableCell>
-  </TableRow>
-);
+//        Map<String, Object> jsonMap = (Map<String, Object>) request.getAttribute("data");
+//        log.info("jsonMap " + jsonMap);
+//        log.info("jsonMap " + jsonMap.get("userId"));
+//
+//        ////log.info("id " + userLogin.getUserId());
+//        String userId = (String) jsonMap.get("userId");
+        // FOR NEW FE Changes
+        String userId = userLogin.getUserId();
+//        String userId = CommonFunctions.getDcrypted(userLogin.getUserId());
+//        log.info("userrid"+userId);
+        userLogin.setUserId(userId);
+        HttpSession session=request.getSession();
 
-const rowDefinitions = [
-  { label: '1. Bills Purchased and discounted (1.1 + 1.2)', gr: 'bilPurGrAmt', pro: 'bilPurPro', readOnly: true, bold: true },
-  { label: '1.1 Inland Bills Purchased and Discounted', gr: 'inlBilPurGrAmt', pro: 'inlBilPurPro', indent: true },
-  { label: '1.2 Foreign Bills Purchased and Discounted (1.2.1+1.2.2+1.2.3)', gr: 'foreBilPurGrAmt', pro: 'foreBilPurPro', readOnly: true, bold: true, indent: true },
-  { label: '1.2.1 Export Bills drawn in India', gr: 'expBillGrAmt', pro: 'expBillPro', indent: true },
-  { label: '1.2.2 Import Bills drawn on and payable in India', gr: 'impBillGrAmt', pro: 'impBillPro', indent: true },
-  { label: '1.2.3.1 Payable in India', gr: 'payIndGrAmt', pro: 'payIndPro', indent: true },
-  { label: '1.2.3.2 Payable outside India', gr: 'payOutGrAmt', pro: 'payOutPro', indent: true },
-  { label: '2. Loans and Advances (2.1 + 2.2)', gr: 'loanAdvGrAmt', pro: 'loanAdvPro', readOnly: true, bold: true },
-  { label: '2.1 Loans and Advances, Cash Credit & Overdrafts', gr: 'loanAdvCreGrAmt', pro: 'loanAdvCrePro', indent: true },
-  { label: '2.2 Due from Banks (2.2.1+2.2.2+2.2.3)', gr: 'dueGrAmt', pro: 'duePro', readOnly: true, bold: true, indent: true },
-  { label: '2.2.1 Co-operative Banks in India', gr: 'coopBankGrAmt', pro: 'coopBankPro', indent: true },
-  { label: '2.2.2 Commercial Banks in India', gr: 'commBankGrAmt', pro: 'commBankPro', indent: true },
-  { label: '2.2.3 Banks outside India', gr: 'bankOutIndGrAmt', pro: 'bankOutIndPro', indent: true },
-  { label: '3. Grand Total (1 + 2)', gr: 'grandTotlGrAmt', pro: 'grandTotlPro', readOnly: true, bold: true },
-];
+        session.setAttribute(CommonConstant.USER_ID, userId);
+        session.setAttribute(CommonConstant.USER_SESSION_ID, session.getId() + "-" + session.getCreationTime());
+        session.setAttribute(CommonConstant.USER_SESSION_ID, session.getId());
 
-const SC9Supplementary = () => {
-  const [data, setData] = useState({});
-  const [dialog, setDialog] = useState({ open: false, message: '' });
 
-  const parse = (v) => isNaN(parseFloat(v)) ? 0 : parseFloat(v);
 
-  const handleChange = (field, isBlur = false) => (e) => {
-    const value = e.target.value.replace(/[^0-9.]/g, '');
-    setData((prev) => ({ ...prev, [field]: value }));
+
+        user = loginService.doLogin(userLogin);
+        String quarterFYearDate = loginService.getQuarterYear();
+        String QFD[] = quarterFYearDate.split("~");
+        String quarter = QFD[0];
+        String financial_year = QFD[1];
+        String quarter_end_date = QFD[2];
+        String previousYearEndDate = QFD[3];
+        String previousQuarterEndDate = QFD[4];
+        user.setQuarterEndDate(quarter_end_date);
+        user.setPreviousQuarterEndDate(previousQuarterEndDate);
+        user.setPreviousYearEndDate(previousYearEndDate);
+        user.setFinancialYear(financial_year);
+        user.setQuarter(quarter);
+//        log.info("user.getCircleCode()::"+user.getCircleCode());
+        // Adding the Parameter to token for checking isCircle Authorized to SFTP Data
+
+        boolean output=ifamsSftpService.getCirclesList(user.getCircleCode());
+        log.info("Is Circle Exits for SFTP ::"+output);
+
+        user.setIsCircleExist(String.valueOf(output));
+        log.info("User getCircleExits :"+user.getIsCircleExist());
+
+
+
+
+        if (!(("-1").equalsIgnoreCase(user.getIsUserExist()) || ("P").equalsIgnoreCase(user.getStatus()))) {
+            user = loginService.getadditionalDetails(user);
+            String token = CommonFunctions.getToken(user);
+            session.setAttribute("TOKEN", token);
+            int updated = loginService.saveToken(user, token);
+            user.setToken(token);
+            log.info("User save token :"+user.getToken());
+        }
+
+        String IV = AESGCM256.generateBase64IV();
+        String SALT = AESGCM256.generateBase64Salt();
+
+        //starting encryption
+        user.setUserId(userId);
+        user.setUserName(user.getUserName());
+        user.setCircleCode(user.getCircleCode());
+        user.setCircleName(user.getCircleName());
+        user.setRole(user.getRole());
+        user.setCapacity(user.getCapacity());
+        if(!("P").equalsIgnoreCase(user.getStatus())){
+        user.setStatus(user.getStatus());
+        }
+        user.setIsBranchFinal(user.getIsBranchFinal());
+        user.setIsCircleFreeze(user.getIsCircleFreeze());
+        user.setIsAuditorDig(user.getIsAuditorDig());
+        user.setIsCheckerDig(user.getIsCheckerDig());
+        user.setFrRMId("444444");
+        user.setFrReportId("444444");
+        user.setMocFlag(user.getMocFlag());
+        user.setIsCircleExist(user.getIsCircleExist());
+
+        ObjectMapper mapper = new ObjectMapper();
+        String JsonString = mapper.writeValueAsString(user);
+
+        String decryptedData = AESGCM256.encrypt(
+                JsonString,
+                IV,
+                SALT
+        );
+
+
+        log.info("decryptedData::"+decryptedData);
+
+        JSONObject jObj = new JSONObject();
+        jObj.put("iv", IV);
+        jObj.put("salt", SALT);
+        jObj.put("user", decryptedData);
+        return jObj;
+    }
+	
+	
+	 public static String encrypt(String plainText, String BASE64_IV, String BASE64_SALT) throws Exception {
+        byte[] iv = Base64.getDecoder().decode(BASE64_IV);
+        byte[] salt = Base64.getDecoder().decode(BASE64_SALT);
+        byte[] passwordBytes =  BASE64_PASSWORD.getBytes(StandardCharsets.UTF_8);//Base64.getDecoder().decode(base64Password);
+
+        SecretKeySpec key = deriveKey(passwordBytes, salt);
+
+        Cipher cipher = Cipher.getInstance(CIPHER_TRANSFORMATION);
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
+        cipher.init(Cipher.ENCRYPT_MODE, key, gcmSpec);
+
+        byte[] cipherText = cipher.doFinal(plainText.getBytes("UTF-8"));
+        return Base64.getEncoder().encodeToString(cipherText);
+    }
+
+    public static String decrypt(String base64CipherText, String str_iv, String str_salt) throws Exception {
+        byte[] iv = Base64.getDecoder().decode(str_iv);
+        byte[] salt = Base64.getDecoder().decode(str_salt);
+        byte[] encryptedBytes = Base64.getDecoder().decode(base64CipherText);
+        byte[] passwordBytes = BASE64_PASSWORD.getBytes(StandardCharsets.UTF_8);
+
+        SecretKeySpec key = deriveKey(passwordBytes, salt);
+
+        Cipher cipher = Cipher.getInstance(CIPHER_TRANSFORMATION);
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
+        cipher.init(Cipher.DECRYPT_MODE, key, gcmSpec);
+
+        byte[] decrypted = cipher.doFinal(encryptedBytes);
+        return new String(decrypted, "UTF-8");
+    }
+////////////////////////////
+	
+	
+	
+	import { useState } from 'react';
+import axios from 'axios';
+import { encrypt } from '../../core/security/AES-GCM256';
+const iv = crypto.getRandomValues(new Uint8Array(12)); // for encryption
+const ivBase64 = btoa(String.fromCharCode.apply(null, iv)); // for be decryption
+const salt = crypto.getRandomValues(new Uint8Array(16)); // for encryption
+const saltBase64 = btoa(String.fromCharCode.apply(null, salt)); // for encryption
+
+function isObjectEmpty(obj) {
+  return Object.keys(obj).length === 0 && obj.constructor === Object;
+}
+
+const useApi = () => {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const callApi = async (
+    url,
+    payload,
+    method = 'POST',
+    responseType = 'json',
+    contentType = 'application/json',
+    ...props
+  ) => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (contentType !== 'multipart/form-data') {
+        if (payload) {
+          const encryptedData = await encrypt(iv, salt, JSON.stringify(payload));
+          payload = { iv: ivBase64, salt: saltBase64, data: encryptedData };
+        }
+      }
+
+      let headers = {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': contentType,
+      };
+      const config = {
+        method,
+        url: import.meta.env.VITE_BASE_SERVICE_URL + url,
+        headers,
+        responseType, // <-- key fix
+        ...props,
+      };
+      if (method.toUpperCase() === 'GET') {
+        config.params = payload || '';
+      } else {
+        config.data = payload || {};
+      }
+
+      const response = await axios(config);
+      setData(response.data);
+      return response.data;
+    } catch (err) {
+      console.error('API call error:', err);
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => {
-    const updated = { ...data };
-    updated.othForeBilPurGrAmt = (parse(data.payIndGrAmt) + parse(data.payOutGrAmt)).toFixed(2);
-    updated.othForeBilPurPro = (parse(data.payIndPro) + parse(data.payOutPro)).toFixed(2);
-    updated.foreBilPurGrAmt = (parse(data.expBillGrAmt) + parse(data.impBillGrAmt) + parse(updated.othForeBilPurGrAmt)).toFixed(2);
-    updated.foreBilPurPro = (parse(data.expBillPro) + parse(data.impBillPro) + parse(updated.othForeBilPurPro)).toFixed(2);
-    updated.bilPurGrAmt = (parse(data.inlBilPurGrAmt) + parse(updated.foreBilPurGrAmt)).toFixed(2);
-    updated.bilPurPro = (parse(data.inlBilPurPro) + parse(updated.foreBilPurPro)).toFixed(2);
-    updated.dueGrAmt = (parse(data.coopBankGrAmt) + parse(data.commBankGrAmt) + parse(data.bankOutIndGrAmt)).toFixed(2);
-    updated.duePro = (parse(data.coopBankPro) + parse(data.commBankPro) + parse(data.bankOutIndPro)).toFixed(2);
-    updated.loanAdvGrAmt = (parse(data.loanAdvCreGrAmt) + parse(updated.dueGrAmt)).toFixed(2);
-    updated.loanAdvPro = (parse(data.loanAdvCrePro) + parse(updated.duePro)).toFixed(2);
-    updated.grandTotlGrAmt = (parse(updated.loanAdvGrAmt) + parse(updated.bilPurGrAmt)).toFixed(2);
-    updated.grandTotlPro = (parse(updated.loanAdvPro) + parse(updated.bilPurPro)).toFixed(2);
-    setData(updated);
-  }, [data.payIndGrAmt, data.payOutGrAmt, data.expBillGrAmt, data.impBillGrAmt, data.inlBilPurGrAmt, data.loanAdvCreGrAmt, data.coopBankGrAmt, data.commBankGrAmt, data.bankOutIndGrAmt,
-    data.payIndPro, data.payOutPro, data.expBillPro, data.impBillPro, data.inlBilPurPro, data.loanAdvCrePro, data.coopBankPro, data.commBankPro, data.bankOutIndPro]);
-
-  return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom>Schedule 9 Supplementary Information</Typography>
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <StyledTableCell>Description</StyledTableCell>
-              <StyledTableCell>Gross Amount</StyledTableCell>
-              <StyledTableCell>Provision</StyledTableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rowDefinitions.map((row) => (
-              <FormRow
-                key={row.gr}
-                label={row.label}
-                grField={row.gr}
-                proField={row.pro}
-                data={data}
-                handleChange={handleChange}
-                readOnly={row.readOnly}
-                bold={row.bold}
-                indent={row.indent}
-              />
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <Stack direction="row" spacing={2} sx={{ mt: 2, justifyContent: 'center' }}>
-        <Button variant="contained" color="warning" onClick={() => alert('Save logic here')}>Save</Button>
-        <Button variant="contained" color="success" onClick={() => alert('Submit logic here')}>Submit</Button>
-      </Stack>
-    </Box>
-  );
+  return { data, error, loading, callApi };
 };
 
-export default SC9Supplementary;
+export default useApi;
 
+/////////////////////////////////////
 
-I've addressed all the issues you mentioned:
+const passphrase = 'juVI+XqX90tQSqYPAmtVxg==';
 
-Added missing row 2.2 Due from Banks
+function base64ToArrayBuffer(base64Text) {
+  const binaryString = atob(base64Text);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
 
-Applied readOnly styling with color="secondary" to mimic disabled look
+async function encryptData(iv, salt, passphrase, data) {
+  const encoder = new TextEncoder();
+  const passphraseBuffer = encoder.encode(passphrase);
+  const keyMaterial = await window.crypto.subtle.importKey('raw', passphraseBuffer, { name: 'PBKDF2' }, false, ['deriveKey']);
 
-Shifted child rows right using pl (paddingLeft) for better visual indentation
+  const derivedKey = await window.crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: salt, //crypto.getRandomValues(new Uint8Array(16)),
+      iterations: 1000,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    {
+      name: 'AES-GCM',
+      length: 256,
+    },
+    true,
+    ['encrypt', 'decrypt']
+  );
+  const encodedData = new TextEncoder().encode(data);
+  const encryptedData = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, derivedKey, encodedData);
 
-Made all major headings bold
+  return { iv, salt, encryptedData };
+}
 
-Added Save and Submit buttons at the bottom
+async function decryptData(iv, salt, passphrase, encryptedData) {
+  const encoder = new TextEncoder();
+  const passphraseBuffer = encoder.encode(passphrase);
 
-Implemented all calculation logic (grand total, loanAdv, bilPur, etc.) inside useEffect
+  const encryptedArray = base64ToArrayBuffer(encryptedData);
+  const keyMaterial = await window.crypto.subtle.importKey('raw', passphraseBuffer, { name: 'PBKDF2' }, false, ['deriveKey']);
 
+  salt = base64ToArrayBuffer(salt);
+  iv = base64ToArrayBuffer(iv);
 
-Let me know if I should proceed to:
+  try {
+    const derivedKey = await window.crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: salt, //crypto.getRandomValues(new Uint8Array(16)),
+        iterations: 1000,
+        hash: 'SHA-256',
+      },
+      keyMaterial,
+      {
+        name: 'AES-GCM',
+        length: 256,
+      },
+      true,
+      ['encrypt', 'decrypt']
+    );
 
-Hook up actual backend APIs (/Maker/getSavedDataNineSupl, /Maker/submitNineSupl)
+    //console.log('444444');
 
-Add modal dialogs for Save/Submit confirmation and response messages
+    const decryptedData = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv }, derivedKey, encryptedArray);
+    //console.log('5555555');
+    const dec = new TextDecoder();
 
+    //return { iv, salt, dec.decode(decryptedData)};
+    return dec.decode(decryptedData);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function decrypt(iv, salt, data) {
+ 
+  return decryptData(iv, salt, passphrase, data)
+    .then((value) => {
+     
+      try {
+        return value;
+      } catch (e) {
+        console.error('decrypt  ' + e);
+      }
+    })
+    .catch(() => {});
+}
+
+function encrypt(iv, salt, data) {
+  return encryptData(iv, salt, passphrase, data)
+    .then((value) => {
+      return btoa(String.fromCharCode.apply(null, new Uint8Array(value.encryptedData)));
+    })
+    .catch((e) => {
+      console.error(e);
+    });
+}
+
+export { encrypt, decrypt };
 
