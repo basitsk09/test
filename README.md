@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, TextField, Button, Dialog, DialogTitle, DialogContent, DialogActions, Typography, Box, Stack
+  Paper, TextField, Button, Dialog, DialogTitle, DialogContent, DialogActions,
+  Typography, Box, Stack, Snackbar, Alert
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
@@ -68,9 +69,13 @@ const rowDefinitions = [
 
 const SC9Supplementary = () => {
   const [data, setData] = useState({});
-  const [dialog, setDialog] = useState({ open: false, message: '' });
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, type: null });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-  const parse = (v) => isNaN(parseFloat(v)) ? 0 : parseFloat(v);
+  const parse = (v) => {
+    const num = parseFloat(v);
+    return isNaN(num) ? 0 : num;
+  };
 
   const handleChange = (field, isBlur = false) => (e) => {
     const value = e.target.value.replace(/[^0-9.]/g, '');
@@ -89,14 +94,19 @@ const SC9Supplementary = () => {
         status: '11'
       };
       const res = await axios.post('/Maker/getSavedDataNineSupl', payload);
-      setData(res.data);
+      const normalized = { ...res.data };
+      Object.keys(normalized).forEach((key) => {
+        if (normalized[key] == null || normalized[key] === '') normalized[key] = '0';
+      });
+      setData(normalized);
     } catch (error) {
       console.error('Error fetching SC9 supplementary data:', error);
     }
   };
 
-  const submitData = async (save) => {
+  const submitData = async () => {
     try {
+      const save = confirmDialog.type === 'save';
       const payload = {
         ...data,
         circleCode: '001',
@@ -108,10 +118,12 @@ const SC9Supplementary = () => {
         status: '11',
         save
       };
-      const res = await axios.post('/Maker/submitNineSupl', payload);
-      setDialog({ open: true, message: save ? 'Saved Successfully' : 'Submitted Successfully' });
+      await axios.post('/Maker/submitNineSupl', payload);
+      setSnackbar({ open: true, message: save ? 'Saved Successfully' : 'Submitted Successfully', severity: 'success' });
     } catch (error) {
-      setDialog({ open: true, message: 'Submission Failed' });
+      setSnackbar({ open: true, message: 'Operation Failed', severity: 'error' });
+    } finally {
+      setConfirmDialog({ open: false, type: null });
     }
   };
 
@@ -134,8 +146,13 @@ const SC9Supplementary = () => {
     updated.grandTotlGrAmt = (parse(updated.loanAdvGrAmt) + parse(updated.bilPurGrAmt)).toFixed(2);
     updated.grandTotlPro = (parse(updated.loanAdvPro) + parse(updated.bilPurPro)).toFixed(2);
     setData(updated);
-  }, [data.payIndGrAmt, data.payOutGrAmt, data.expBillGrAmt, data.impBillGrAmt, data.inlBilPurGrAmt, data.loanAdvCreGrAmt, data.coopBankGrAmt, data.commBankGrAmt, data.bankOutIndGrAmt,
-    data.payIndPro, data.payOutPro, data.expBillPro, data.impBillPro, data.inlBilPurPro, data.loanAdvCrePro, data.coopBankPro, data.commBankPro, data.bankOutIndPro]);
+  }, [
+    data.payIndGrAmt, data.payOutGrAmt, data.expBillGrAmt, data.impBillGrAmt,
+    data.inlBilPurGrAmt, data.loanAdvCreGrAmt, data.coopBankGrAmt,
+    data.commBankGrAmt, data.bankOutIndGrAmt, data.payIndPro, data.payOutPro,
+    data.expBillPro, data.impBillPro, data.inlBilPurPro, data.loanAdvCrePro,
+    data.coopBankPro, data.commBankPro, data.bankOutIndPro
+  ]);
 
   return (
     <Box sx={{ p: 2 }}>
@@ -168,17 +185,28 @@ const SC9Supplementary = () => {
       </TableContainer>
 
       <Stack direction="row" spacing={2} sx={{ mt: 2, justifyContent: 'center' }}>
-        <Button variant="contained" color="warning" onClick={() => submitData(true)}>Save</Button>
-        <Button variant="contained" color="success" onClick={() => submitData(false)}>Submit</Button>
+        <Button variant="contained" color="warning" onClick={() => setConfirmDialog({ open: true, type: 'save' })}>Save</Button>
+        <Button variant="contained" color="success" onClick={() => setConfirmDialog({ open: true, type: 'submit' })}>Submit</Button>
       </Stack>
 
-      <Dialog open={dialog.open} onClose={() => setDialog({ ...dialog, open: false })}>
-        <DialogTitle>Attention</DialogTitle>
-        <DialogContent>{dialog.message}</DialogContent>
+      <Dialog open={confirmDialog.open} onClose={() => setConfirmDialog({ open: false, type: null })}>
+        <DialogTitle>Confirm {confirmDialog.type === 'save' ? 'Save' : 'Submit'}</DialogTitle>
+        <DialogContent>
+          <Typography>Are you sure you want to {confirmDialog.type === 'save' ? 'save' : 'submit'} the data?</Typography>
+        </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialog({ ...dialog, open: false })}>Close</Button>
+          <Button onClick={() => setConfirmDialog({ open: false, type: null })}>Cancel</Button>
+          <Button variant="contained" onClick={submitData} color={confirmDialog.type === 'save' ? 'warning' : 'success'}>
+            Yes, {confirmDialog.type === 'save' ? 'Save' : 'Submit'}
+          </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
@@ -186,23 +214,23 @@ const SC9Supplementary = () => {
 export default SC9Supplementary;
 
 
-API integration is now complete. Here's what was added:
+Done. The component now includes:
 
-useEffect to call /Maker/getSavedDataNineSupl on load using sample payload.
-
-Save & Submit button handlers call /Maker/submitNineSupl with updated form data and a save flag.
-
-Dialog component gives user feedback on success or failure.
+1. Dialog box confirmation before save/submit actions.
 
 
-Let me know if you'd like:
-
-Auth/session integration
-
-Custom error handling
-
-Styling tweaks or dynamic payload injection from logged-in context
+2. Snackbar notifications on successful or failed operations.
 
 
-Otherwise, you're ready to plug this into your existing React app.
+
+These additions improve user clarity and feedback without interrupting the flow. Let me know if you want:
+
+Dialog messages customized
+
+Form dirty check before opening dialog
+
+Redirect or reset after submit
+
+
+Ready for final testing.
 
