@@ -66,39 +66,75 @@ const StyledTableRow = styled(TableRow)(({ theme, istotalrow, issectionheader, i
 }));
 
 const Schedule10 = () => {
-  // Initialize state to hold all form data, similar to sc10.row in JSP
+  // Initialize state to hold all form data, corresponding to ng-model fields in Schedule10.txt
   const [formData, setFormData] = useState({
-    stcNstaff1: '',
-    offResidenceA1: '',
-    otherPremisesA1: '',
-    electricFitting1: '',
-    totalA1: '', // Readonly field, will be calculated
-    computers1: '',
-    compSoftwareInt1: '',
-    compSoftwareNonint1: '',
-    compSoftwareTotal1: '', // Readonly field, will be calculated
-    motor1: '',
-    offResidenceB1: '',
-    stcLho1: '',
-    otherPremisesB1: '',
-    otherMachineryPlant1: '', // Readonly field, will be calculated
-    totalB1: '', // Readonly field, will be calculated
-    totalFurnFix1: '', // Readonly field, will be calculated
-    landNotRev1: '',
-    landRev1: '',
-    landRevEnh1: '',
-    offBuildNotRev1: '',
-    offBuildRev1: '',
-    offBuildEnh1: '', // Assuming this should be an input field for enhancement
-    residQuartNotRev1: '',
-    residQuartRev1: '',
-    residQuartRevEnh1: '',
-    premisTotal1: '', // Readonly field, will be calculated
-    revtotal1: '', // Readonly field, will be calculated
-    totalC1: '', // Readonly field, will be calculated
-    premisesUnderCons1: '',
-    grandTotal1: '', // Readonly field, will be calculated
-    // ... add all other fields from Schedule10.txt
+    // (A) FURNITURE & FITTINGS
+    stcNstaff1: '', // i) At STCs & Staff Colleges
+    offResidenceA1: '', // ii) At Officers' Residences
+    otherPremisesA1: '', // iii) At Other Premises
+    electricFitting1: '', // iv) Electric Fittings
+    totalA1: '', // TOTAL (A) - Calculated
+
+    // (B) MACHINERY & PLANT
+    computers1: '', // i) Computer Hardware
+    compSoftwareInt1: '', // a. Computer Software (forming integral part of Hardware)
+    compSoftwareNonint1: '', // b. Computer Software (not forming integral of Hardware)
+    compSoftwareTotal1: '', // ii) Computer Software Total (a+b) - Calculated
+    motor1: '', // iii) Motor Vehicles
+    offResidenceB1: '', // a) At Officers' Residences (Other Machinery & Plant)
+    stcLho1: '', // b) At STCs (Other Machinery & Plant)
+    otherPremisesB1: '', // c) At other Premises (Other Machinery & Plant)
+    otherMachineryPlant1: '', // iv) Other Machinery & Plant (a+b+c) - Calculated
+    totalB1: '', // TOTAL (B= i+ii+iii+iv) - Calculated
+
+    // Total Furniture & Fixtures (A+B)
+    totalFurnFix1: '', // Calculated
+
+    // (C) PREMISES
+    landNotRev1: '', // (a) Land (Not Revalued): Cost
+    landRev1: '', // (b) Land (Revalued): Cost
+    landRevEnh1: '', // (c) Land (Revalued): Enhancement due to Revaluation
+    offBuildNotRev1: '', // (d) Office Building (Not revalued): Cost
+    offBuildRev1: '', // (e) Office Building (Revalued): Cost
+    offBuildRevEnh1: '', // (f) Office Building (Revalued): Enhancement due to Revaluation
+    residQuartNotRev1: '', // (g) Residential Building (Not revalued): Cost
+    residQuartRev1: '', // (h) Residential Building (Revalued): Cost
+    residQuartRevEnh1: '', // (i) Residential Building (Revalued): Enhancement due to Revaluation
+    premisTotal1: '', // (j) Premises Total (a+b+d+e+g+h) - Calculated
+    revtotal1: '', // (k) Revaluation Total (c+f+i) - Calculated
+    totalC1: '', // TOTAL (C=j+k) - Calculated
+
+    // (D) Projects under construction
+    premisesUnderCons1: '', // (D) Projects under construction
+
+    // Grand Total (A + B + C + D)
+    grandTotal1: '', // Calculated
+
+    // Add more fields from Schedule10.txt if they exist in the full file and are required inputs
+    // Based on the snippet, there are also fields like:
+    premCostYear: '',
+    revCostYear: '',
+    premRevOfPreYear: '',
+    premDedOfPreYear: '',
+    revDedOfPre: '',
+    depCostPreYear: '',
+    depRevPreYear: '',
+    fixCostPre: '',
+    fixAddPreYear: '',
+    fixDedPreYear: '',
+    fixAddYear: '',
+    fixDedYear: '',
+    fixDepYear: '',
+    fixDepPreYear: '',
+    premCostYear: '',
+    revCostYear: '',
+
+    // Calculated fields often have 'currv' or 'ttl' prefixes based on the snippet
+    currvPremTotal: '', // Calculated
+    fixCostYear: '', // Calculated
+    ttlFixCurrYear: '', // Calculated
+    ttlFixPreYear: '', // Calculated
+    grandCurrTotal: '', // Calculated
   });
 
   // State to hold validation errors
@@ -120,14 +156,24 @@ const Schedule10 = () => {
   // Debounced validation function
   const debouncedValidate = useCallback(
     debounce((name, value) => {
-      if (name.endsWith('1') && !validateDecimal2Places(value)) {
-        setErrors((prevErrors) => ({ ...prevErrors, [name]: 'Invalid decimal format (max 2 places).' }));
-      } else {
-        setErrors((prevErrors) => {
-          const newErrors = { ...prevErrors };
-          delete newErrors[name]; // Clear error if valid
-          return newErrors;
-        });
+      // Only validate fields that are not calculated
+      if (
+        name.endsWith('1') &&
+        ![
+          'totalA1', 'compSoftwareTotal1', 'otherMachineryPlant1', 'totalB1', 'totalFurnFix1',
+          'premisTotal1', 'revtotal1', 'totalC1', 'grandTotal1',
+          'currvPremTotal', 'fixCostYear', 'ttlFixCurrYear', 'ttlFixPreYear', 'grandCurrTotal'
+        ].includes(name)
+      ) {
+        if (!validateDecimal2Places(value)) {
+          setErrors((prevErrors) => ({ ...prevErrors, [name]: 'Invalid decimal format (max 2 places).' }));
+        } else {
+          setErrors((prevErrors) => {
+            const newErrors = { ...prevErrors };
+            delete newErrors[name]; // Clear error if valid
+            return newErrors;
+          });
+        }
       }
     }, 300), // Adjust debounce delay as needed (e.g., 300ms)
     [] // Empty dependency array means this function is created once
@@ -141,12 +187,12 @@ const Schedule10 = () => {
   };
 
   // Debounced function to perform all calculations
-  const calculateTotals = useCallback(
+  const calculateAllTotals = useCallback(
     debounce((currentFormData) => {
       setFormData((prevData) => {
-        const newData = { ...currentFormData }; // Use the passed currentFormData
+        const newData = { ...currentFormData };
 
-        // Example calculation for totalA1: (i+ii+iii+iv)
+        // (A) FURNITURE & FITTINGS calculations
         newData.totalA1 = (
           parseFloatSafe(newData.stcNstaff1) +
           parseFloatSafe(newData.offResidenceA1) +
@@ -154,20 +200,18 @@ const Schedule10 = () => {
           parseFloatSafe(newData.electricFitting1)
         ).toFixed(2);
 
-        // Example calculation for compSoftwareTotal1: (a+b)
+        // (B) MACHINERY & PLANT calculations
         newData.compSoftwareTotal1 = (
           parseFloatSafe(newData.compSoftwareInt1) +
           parseFloatSafe(newData.compSoftwareNonint1)
         ).toFixed(2);
 
-        // Example calculation for otherMachineryPlant1: (a+b+c)
         newData.otherMachineryPlant1 = (
           parseFloatSafe(newData.offResidenceB1) +
           parseFloatSafe(newData.stcLho1) +
           parseFloatSafe(newData.otherPremisesB1)
         ).toFixed(2);
 
-        // Example calculation for totalB1: (i+ii+iii+iv)
         newData.totalB1 = (
           parseFloatSafe(newData.computers1) +
           parseFloatSafe(newData.compSoftwareTotal1) +
@@ -175,13 +219,13 @@ const Schedule10 = () => {
           parseFloatSafe(newData.otherMachineryPlant1)
         ).toFixed(2);
 
-        // Example calculation for totalFurnFix1: (A+B)
+        // Total Furniture & Fixtures (A+B) calculation
         newData.totalFurnFix1 = (
           parseFloatSafe(newData.totalA1) +
           parseFloatSafe(newData.totalB1)
         ).toFixed(2);
 
-        // Example calculation for premisTotal1: (a+b+d+e+g+h)
+        // (C) PREMISES calculations
         newData.premisTotal1 = (
           parseFloatSafe(newData.landNotRev1) +
           parseFloatSafe(newData.landRev1) +
@@ -191,20 +235,18 @@ const Schedule10 = () => {
           parseFloatSafe(newData.residQuartRev1)
         ).toFixed(2);
 
-        // Example calculation for revtotal1: (c+f+i)
         newData.revtotal1 = (
           parseFloatSafe(newData.landRevEnh1) +
-          parseFloatSafe(newData.offBuildEnh1) +
+          parseFloatSafe(newData.offBuildRevEnh1) +
           parseFloatSafe(newData.residQuartRevEnh1)
         ).toFixed(2);
 
-        // Example calculation for totalC1: (j+k)
         newData.totalC1 = (
           parseFloatSafe(newData.premisTotal1) +
           parseFloatSafe(newData.revtotal1)
         ).toFixed(2);
 
-        // Example calculation for grandTotal1: (A + B + C + D)
+        // Grand Total (A + B + C + D) calculation
         newData.grandTotal1 = (
           parseFloatSafe(newData.totalA1) +
           parseFloatSafe(newData.totalB1) +
@@ -212,10 +254,44 @@ const Schedule10 = () => {
           parseFloatSafe(newData.premisesUnderCons1)
         ).toFixed(2);
 
-        // Remember to add ALL your calculations from Schedule10.txt here.
-        // E.g., from your Schedule10.txt snippet:
+        // --- Additional calculations based on Schedule10.txt snippet ---
+        // You'll need to accurately map these to your formData fields
         // SCH10.row.currvPremTotal = (SCH10.parseFloat(SCH10.row.premCostYear) + SCH10.parseFloat(SCH10.row.revCostYear)).toFixed(2);
-        // Translate these to newData.fieldName = ... using parseFloatSafe.
+        newData.currvPremTotal = (
+          parseFloatSafe(newData.premCostYear) +
+          parseFloatSafe(newData.revCostYear)
+        ).toFixed(2);
+
+        // SCH10.row.fixCostYear = (SCH10.parseFloat(SCH10.row.fixCostPre) + SCH10.parseFloat(SCH10.row.fixAddPreYear) - SCH10.parseFloat(SCH10.row.fixDedPreYear)).toFixed(2);
+        newData.fixCostYear = (
+          parseFloatSafe(newData.fixCostPre) +
+          parseFloatSafe(newData.fixAddPreYear) -
+          parseFloatSafe(newData.fixDedPreYear)
+        ).toFixed(2);
+
+        // SCH10.row.ttlFixCurrYear = (SCH10.parseFloat(SCH10.row.fixCostYear) + SCH10.parseFloat(SCH10.row.fixAddYear) - SCH10.parseFloat(SCH10.row.fixDedYear) - SCH10.parseFloat(SCH10.row.fixDepYear)).toFixed(2);
+        newData.ttlFixCurrYear = (
+          parseFloatSafe(newData.fixCostYear) +
+          parseFloatSafe(newData.fixAddYear) -
+          parseFloatSafe(newData.fixDedYear) -
+          parseFloatSafe(newData.fixDepYear)
+        ).toFixed(2);
+
+        // SCH10.row.ttlFixPreYear = (SCH10.parseFloat(SCH10.row.fixCostPre) + SCH10.parseFloat(SCH10.row.fixAddPreYear) - SCH10.parseFloat(SCH10.row.fixDedPreYear) - SCH10.parseFloat(SCH10.row.fixDepPreYear)).toFixed(2);
+        newData.ttlFixPreYear = (
+          parseFloatSafe(newData.fixCostPre) +
+          parseFloatSafe(newData.fixAddPreYear) -
+          parseFloatSafe(newData.fixDedPreYear) -
+          parseFloatSafe(newData.fixDepPreYear)
+        ).toFixed(2);
+
+        // SCH10.row.grandCurrTotal = (SCH10.parseFloat(SCH10.row.currvPremTotal) + SCH10.parseFloat(SCH10.row.ttlFixCurrYear) + SCH10.parseFloat(SCH10.row.premisUnderConst)).toFixed(2);
+        // Assuming 'premisUnderConst' corresponds to 'premisesUnderCons1' in your formData
+        newData.grandCurrTotal = (
+          parseFloatSafe(newData.currvPremTotal) +
+          parseFloatSafe(newData.ttlFixCurrYear) +
+          parseFloatSafe(newData.premisesUnderCons1)
+        ).toFixed(2);
 
         return newData;
       });
@@ -226,36 +302,29 @@ const Schedule10 = () => {
   // useEffect to trigger debounced calculations when relevant fields change
   useEffect(() => {
     // Pass the current state to the debounced function
-    calculateTotals(formData);
+    calculateAllTotals(formData);
     // Cleanup function for debounce to cancel any pending calls on unmount or re-render
     return () => {
-      calculateTotals.cancel();
+      calculateAllTotals.cancel();
       debouncedValidate.cancel();
     };
   }, [
-    formData.stcNstaff1,
-    formData.offResidenceA1,
-    formData.otherPremisesA1,
-    formData.electricFitting1,
-    formData.computers1,
-    formData.compSoftwareInt1,
-    formData.compSoftwareNonint1,
-    formData.motor1,
-    formData.offResidenceB1,
-    formData.stcLho1,
-    formData.otherPremisesB1,
-    formData.landNotRev1,
-    formData.landRev1,
-    formData.landRevEnh1,
-    formData.offBuildNotRev1,
-    formData.offBuildRev1,
-    formData.offBuildEnh1,
-    formData.residQuartNotRev1,
-    formData.residQuartRev1,
-    formData.residQuartRevEnh1,
+    // Dependencies for (A) FURNITURE & FITTINGS
+    formData.stcNstaff1, formData.offResidenceA1, formData.otherPremisesA1, formData.electricFitting1,
+    // Dependencies for (B) MACHINERY & PLANT
+    formData.computers1, formData.compSoftwareInt1, formData.compSoftwareNonint1, formData.motor1,
+    formData.offResidenceB1, formData.stcLho1, formData.otherPremisesB1,
+    // Dependencies for (C) PREMISES
+    formData.landNotRev1, formData.landRev1, formData.landRevEnh1,
+    formData.offBuildNotRev1, formData.offBuildRev1, formData.offBuildRevEnh1,
+    formData.residQuartNotRev1, formData.residQuartRev1, formData.residQuartRevEnh1,
     formData.premisesUnderCons1,
-    // Add all other fields that trigger calculations here
-    calculateTotals, // Include debounced function in dependencies
+    // Dependencies for additional calculations based on snippet
+    formData.premCostYear, formData.revCostYear,
+    formData.fixCostPre, formData.fixAddPreYear, formData.fixDedPreYear,
+    formData.fixAddYear, formData.fixDedYear, formData.fixDepYear, formData.fixDepPreYear,
+    // Include the debounced function itself as a dependency (safe with useCallback)
+    calculateAllTotals,
   ]);
 
 
@@ -264,7 +333,14 @@ const Schedule10 = () => {
     let newErrors = {};
     // Iterate over all fields that require validation (e.g., all input fields)
     for (const key in formData) {
-      if (key.endsWith('1') && !key.startsWith('total') && !key.startsWith('premis') && !key.startsWith('rev')) { // Exclude calculated fields
+      // Exclude calculated fields from direct validation
+      if (
+        ![
+          'totalA1', 'compSoftwareTotal1', 'otherMachineryPlant1', 'totalB1', 'totalFurnFix1',
+          'premisTotal1', 'revtotal1', 'totalC1', 'grandTotal1',
+          'currvPremTotal', 'fixCostYear', 'ttlFixCurrYear', 'ttlFixPreYear', 'grandCurrTotal'
+        ].includes(key)
+      ) {
         if (!validateDecimal2Places(formData[key])) {
           newErrors[key] = 'Invalid decimal format (max 2 places).';
         }
@@ -278,7 +354,7 @@ const Schedule10 = () => {
     e.preventDefault();
     // Ensure all debounced validations/calculations have completed before final submit validation
     debouncedValidate.flush();
-    calculateTotals.flush();
+    calculateAllTotals.flush();
 
     if (validateForm()) {
       console.log('Form data submitted:', formData);
@@ -288,47 +364,103 @@ const Schedule10 = () => {
     }
   };
 
-  // Define the table structure, similar to rowDefinitionsConfig in Example.txt
+  // Define the table structure for rendering the form
+  // This structure maps to the visual layout of Schedule 10 in your JSP file
   const tableRows = useMemo(() => [
-    // Row A: Total Original Cost / Revalued Value upto the end of previous year
+    // Section A: FURNITURE & FITTINGS
     {
-      id: 'rowA',
-      label: `Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March {{sc10.year1}}`,
-      type: 'entry',
-      fields: {
-        stcNstaff1: { name: 'stcNstaff1', readonly: false, maxLength: 18 },
-        offResidenceA1: { name: 'offResidenceA1', readonly: false, maxLength: 18 },
-        otherPremisesA1: { name: 'otherPremisesA1', readonly: false, maxLength: 18 },
-        electricFitting1: { name: 'electricFitting1', readonly: false, maxLength: 18 },
-        totalA1: { name: 'totalA1', readonly: true, maxLength: 18 },
-        computers1: { name: 'computers1', readonly: false, maxLength: 18 },
-        compSoftwareInt1: { name: 'compSoftwareInt1', readonly: false, maxLength: 18 },
-        compSoftwareNonint1: { name: 'compSoftwareNonint1', readonly: false, maxLength: 18 },
-        compSoftwareTotal1: { name: 'compSoftwareTotal1', readonly: true, maxLength: 18 },
-        motor1: { name: 'motor1', readonly: false, maxLength: 18 },
-        offResidenceB1: { name: 'offResidenceB1', readonly: false, maxLength: 18 },
-        stcLho1: { name: 'stcLho1', readonly: false, maxLength: 18 },
-        otherPremisesB1: { name: 'otherPremisesB1', readonly: false, maxLength: 18 },
-        otherMachineryPlant1: { name: 'otherMachineryPlant1', readonly: true, maxLength: 18 },
-        totalB1: { name: 'totalB1', readonly: true, maxLength: 18 },
-        totalFurnFix1: { name: 'totalFurnFix1', readonly: true, maxLength: 18 },
-        landNotRev1: { name: 'landNotRev1', readonly: false, maxLength: 18 },
-        landRev1: { name: 'landRev1', readonly: false, maxLength: 18 },
-        landRevEnh1: { name: 'landRevEnh1', readonly: false, maxLength: 18 },
-        offBuildNotRev1: { name: 'offBuildNotRev1', readonly: false, maxLength: 18 },
-        offBuildRev1: { name: 'offBuildRev1', readonly: false, maxLength: 18 },
-        offBuildEnh1: { name: 'offBuildEnh1', readonly: false, maxLength: 18 }, // Assuming this should be an input field for enhancement
-        residQuartNotRev1: { name: 'residQuartNotRev1', readonly: false, maxLength: 18 },
-        residQuartRev1: { name: 'residQuartRev1', readonly: false, maxLength: 18 },
-        residQuartRevEnh1: { name: 'residQuartRevEnh1', readonly: false, maxLength: 18 },
-        premisTotal1: { name: 'premisTotal1', readonly: true, maxLength: 18 },
-        revtotal1: { name: 'revtotal1', readonly: true, maxLength: 18 },
-        totalC1: { name: 'totalC1', readonly: true, maxLength: 18 },
-        premisesUnderCons1: { name: 'premisesUnderCons1', readonly: false, maxLength: 18 },
-        grandTotal1: { name: 'grandTotal1', readonly: true, maxLength: 18 },
-      },
+      id: 'A',
+      label: 'Total Original Cost / Revalued Value upto the end of previous year',
+      type: 'section',
+      isSectionHeader: true,
+      cells: [
+        { field: 'stcNstaff1', readonly: false, maxLength: 18 },
+        { field: 'offResidenceA1', readonly: false, maxLength: 18 },
+        { field: 'otherPremisesA1', readonly: false, maxLength: 18 },
+        { field: 'electricFitting1', readonly: false, maxLength: 18 },
+        { field: 'totalA1', readonly: true, maxLength: 18 },
+        null, // Placeholder for grand total column in section A
+        null, null, null, null, null, null, null, null, null, // Placeholders for section B
+        null, null, null, null, null, null, null, null, null, null, null, // Placeholders for section C
+        null, null, // Placeholder for section D and Grand Total
+      ],
     },
-    // You would continue to define objects for other rows like "Addition", "Original cost of items put to use during the year:" etc.
+    // Adding row for "Additions during the year:" (Example for one such row)
+    // You will need to add more rows and their corresponding 'cells' and 'field' definitions
+    // based on the complete HTML structure of your Schedule10.txt
+    {
+      id: 'B',
+      label: 'Original Cost of items put to use during the year:',
+      type: 'section',
+      isSectionHeader: true,
+      cells: [
+        { field: 'computers1', readonly: false, maxLength: 18 },
+        { field: 'compSoftwareInt1', readonly: false, maxLength: 18 },
+        { field: 'compSoftwareNonint1', readonly: false, maxLength: 18 },
+        { field: 'compSoftwareTotal1', readonly: true, maxLength: 18 },
+        { field: 'motor1', readonly: false, maxLength: 18 },
+        { field: 'offResidenceB1', readonly: false, maxLength: 18 },
+        { field: 'stcLho1', readonly: false, maxLength: 18 },
+        { field: 'otherPremisesB1', readonly: false, maxLength: 18 },
+        { field: 'otherMachineryPlant1', readonly: true, maxLength: 18 },
+        { field: 'totalB1', readonly: true, maxLength: 18 },
+        { field: 'totalFurnFix1', readonly: true, maxLength: 18 }, // Total Furniture & Fixtures (A+B)
+        { field: 'landNotRev1', readonly: false, maxLength: 18 },
+        { field: 'landRev1', readonly: false, maxLength: 18 },
+        { field: 'landRevEnh1', readonly: false, maxLength: 18 },
+        { field: 'offBuildNotRev1', readonly: false, maxLength: 18 },
+        { field: 'offBuildRev1', readonly: false, maxLength: 18 },
+        { field: 'offBuildRevEnh1', readonly: false, maxLength: 18 },
+        { field: 'residQuartNotRev1', readonly: false, maxLength: 18 },
+        { field: 'residQuartRev1', readonly: false, maxLength: 18 },
+        { field: 'residQuartRevEnh1', readonly: false, maxLength: 18 },
+        { field: 'premisTotal1', readonly: true, maxLength: 18 },
+        { field: 'revtotal1', readonly: true, maxLength: 18 },
+        { field: 'totalC1', readonly: true, maxLength: 18 },
+        { field: 'premisesUnderCons1', readonly: false, maxLength: 18 },
+        { field: 'grandTotal1', readonly: true, maxLength: 18 }, // Grand Total (A + B + C + D)
+      ],
+    },
+    // Row 2: Based on the snippet, "Additions during the year:" would be a new row,
+    // and would likely have its own set of fields and calculations.
+    // Example for a row (you'll need to populate actual fields and headers)
+    {
+      id: 'row2',
+      label: 'Additions during the year:',
+      type: 'data',
+      cells: [
+        // These fields would map to `ng-model`s for additions
+        { field: 'addStcNstaff1', readonly: false, maxLength: 18 }, // Example additional field
+        { field: 'addOffResidenceA1', readonly: false, maxLength: 18 },
+        { field: 'addOtherPremisesA1', readonly: false, maxLength: 18 },
+        { field: 'addElectricFitting1', readonly: false, maxLength: 18 },
+        { field: 'addTotalA1', readonly: true, maxLength: 18 }, // Example calculated addition total
+        // ... and so on for all columns
+        null, null, null, null, null, null, null, null, null, null,
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+      ]
+    },
+    // Example for row related to 'fixCostYear'
+    {
+      id: 'rowFixCostYear',
+      label: 'Fixed Assets at the end of current year:', // Placeholder label
+      type: 'data',
+      cells: [
+        { field: 'fixCostPre', readonly: false, maxLength: 18 },
+        { field: 'fixAddPreYear', readonly: false, maxLength: 18 },
+        { field: 'fixDedPreYear', readonly: false, maxLength: 18 },
+        { field: 'fixAddYear', readonly: false, maxLength: 18 },
+        { field: 'fixDedYear', readonly: false, maxLength: 18 },
+        { field: 'fixDepYear', readonly: false, maxLength: 18 },
+        { field: 'fixDepPreYear', readonly: false, maxLength: 18 },
+        { field: 'currvPremTotal', readonly: true, maxLength: 18 }, // Calculated field
+        { field: 'fixCostYear', readonly: true, maxLength: 18 }, // Calculated field
+        { field: 'ttlFixCurrYear', readonly: true, maxLength: 18 }, // Calculated field
+        { field: 'ttlFixPreYear', readonly: true, maxLength: 18 }, // Calculated field
+        { field: 'grandCurrTotal', readonly: true, maxLength: 18 }, // Calculated field
+        null, null, null, null, null, null, null, null, null, null, null, null, null, // more placeholders
+      ]
+    }
   ], [formData]); // Re-memoize if formData structure changes, though it generally won't
 
   return (
@@ -388,33 +520,34 @@ const Schedule10 = () => {
             <TableBody>
               {tableRows.map((row) => (
                 <StyledTableRow key={row.id}>
-                  {/* Sr.No and Particulars columns */}
-                  <StyledTableCell>{row.id === 'rowA' ? 'A' : ''}</StyledTableCell>
+                  <StyledTableCell>{row.id}</StyledTableCell>
                   <StyledTableCell>{row.label}</StyledTableCell>
-
-                  {/* Render input cells based on row.fields */}
-                  {Object.keys(row.fields).map((fieldName) => {
-                    const field = row.fields[fieldName];
+                  {row.cells.map((cell, index) => {
+                    if (cell === null) {
+                      // Render an empty cell for placeholders, or a cell with no input if desired
+                      return <StyledTableCell key={`empty-${row.id}-${index}`} />;
+                    }
+                    const fieldName = cell.field;
                     return (
-                      <StyledTableCell key={field.name}>
+                      <StyledTableCell key={fieldName}>
                         <input
                           type="text"
-                          name={field.name}
-                          value={formData[field.name]}
+                          name={fieldName}
+                          value={formData[fieldName]}
                           onChange={handleChange}
-                          readOnly={field.readonly}
-                          maxLength={field.maxLength}
+                          readOnly={cell.readonly}
+                          maxLength={cell.maxLength}
                           style={{
                             textAlign: 'right',
                             width: '100%',
                             boxSizing: 'border-box',
-                            backgroundColor: field.readonly ? '#f0f0f0' : 'white',
-                            border: errors[field.name] ? '1px solid red' : '1px solid #ccc',
+                            backgroundColor: cell.readonly ? '#f0f0f0' : 'white',
+                            border: errors[fieldName] ? '1px solid red' : '1px solid #ccc',
                           }}
                         />
-                        {errors[field.name] && (
+                        {errors[fieldName] && (
                           <Typography variant="caption" color="error">
-                            {errors[field.name]}
+                            {errors[fieldName]}
                           </Typography>
                         )}
                       </StyledTableCell>
