@@ -15,12 +15,11 @@ import {
 } from '@mui/material';
 import TableCell, { tableCellClasses } from '@mui/material/TableCell';
 import { styled } from '@mui/material/styles';
-//import debounce from 'lodash/debounce';
-import FormInput from '../../../../common/components/ui/FormInput';
 
-import useApi from '../../../../common/hooks/useApi';
-// import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+// Assuming you have a reusable FormInput component like in Example.txt
+// import FormInput from '../../../../common/components/ui/FormInput'; // Adjust path as needed
 
+// Styled components from Example.txt for consistent UI
 const StyledTableCell = React.memo(
   styled(TableCell)(({ theme }) => ({
     fontSize: '0.875rem',
@@ -68,709 +67,357 @@ const StyledTableRow = styled(TableRow)(({ theme, istotalrow, issectionheader, i
   }),
 }));
 
-const rowDefinitionsConfig = [
-  { id: 'A1_header', label: 'A-1. Facility Wise Classification', type: 'sectionHeader' },
-  { id: 'A1_i', modelSuffix: '2', label: '[i] Bills Purchased and Discounted', type: 'entry' },
-  {
-    id: 'A1_ii',
-    modelSuffix: '3',
-    label: '[ii] Cash Credits, Overdrafts, loans repayable on Demand and Recalled Assets',
-    type: 'entry',
-  },
-  {
-    id: 'A1_iii',
-    modelSuffix: '4',
-    label: '[iii] Term Loans , Agricultural Term Loans, FCNRB Term Loan',
-    type: 'entry',
-  },
-  {
-    id: 'A1_total',
-    modelSuffix: '5',
-    label: 'Total of Facility wise Classification',
-    type: 'total',
-    subItemIds: ['A1_i', 'A1_ii', 'A1_iii'],
-  },
-
-  { id: 'A2_header', label: 'A-2. Security Wise Classifications', type: 'sectionHeader' },
-  { id: 'A2_i', modelSuffix: '7', label: '[i] Secured by Tangible Assets', type: 'entry' },
-  { id: 'A2_ii', modelSuffix: '8', label: '[ii] Covered by Bank/DICGC/CGTSI / Govt Guarantee', type: 'entry' },
-  { id: 'A2_iii', modelSuffix: '9', label: '[iii] Unsecured', type: 'entry' },
-  {
-    id: 'A2_total',
-    modelSuffix: '10',
-    label: 'Total of Security-wise Classification',
-    type: 'total',
-    subItemIds: ['A2_i', 'A2_ii', 'A2_iii'],
-  },
-
-  { id: 'A3_header', label: 'A-3. Sector-Wise Classifications', type: 'sectionHeader' },
-  { id: 'A3_a_header', label: 'a) In India', type: 'subSectionHeader' },
-  { id: 'A3_a_i', modelSuffix: '13', label: '[i] Priority', type: 'entry' },
-  { id: 'A3_a_ii', modelSuffix: '14', label: '[ii] Public', type: 'entry' },
-  { id: 'A3_a_iii', modelSuffix: '15', label: '[iii] Banks in India', type: 'entry' },
-  { id: 'A3_a_iv', modelSuffix: '16', label: '[iv] Others', type: 'entry' },
-  {
-    id: 'A3_a_total',
-    modelSuffix: '17',
-    label: 'TOTAL IN INDIA (i+ii+iii+iv)',
-    type: 'total',
-    subItemIds: ['A3_a_i', 'A3_a_ii', 'A3_a_iii', 'A3_a_iv'],
-  },
-
-  { id: 'A3_b_header', label: 'b) Outside India (Excluding Foreign LCs and BGs)', type: 'subSectionHeader' },
-  { id: 'A3_b_i', modelSuffix: '19', label: '[i] Due from Banks', type: 'entry' },
-  {
-    id: 'A3_b_ii_1',
-    modelSuffix: '20',
-    label: '[ii] Due from Others [1] Bills Purchased and Discounted',
-    type: 'entry',
-  },
-  { id: 'A3_b_ii_2', modelSuffix: '21', label: '[2] Syndicated Loans', type: 'entry' },
-  { id: 'A3_b_ii_3', modelSuffix: '22', label: '[3] Others', type: 'entry' },
-  {
-    id: 'A3_b_total',
-    modelSuffix: '23',
-    label: 'TOTAL IN OUTSIDE INDIA(i+ii.1+ii.2+ii.3)',
-    type: 'total',
-    subItemIds: ['A3_b_i', 'A3_b_ii_1', 'A3_b_ii_2', 'A3_b_ii_3'],
-  },
-  {
-    id: 'A3_grand_total',
-    modelSuffix: '24',
-    label: 'Total of Sector-wise Classification(a+b)',
-    type: 'total',
-    subItemIds: ['A3_a_total', 'A3_b_total'],
-  },
-
-  { id: 'A4_header', label: 'A-4. Assets-wise Classifications', type: 'sectionHeader' },
-  { id: 'A4_i', modelSuffix: '26', label: '[i] Standard', type: 'entry' },
-  { id: 'A4_ii', modelSuffix: '27', label: '[ii] Sub-standard', type: 'entry' },
-  { id: 'A4_iii', modelSuffix: '28', label: '[iii] Doubtful', type: 'entry' },
-  { id: 'A4_iv', modelSuffix: '29', label: '[iv] Loss', type: 'entry' },
-  {
-    id: 'A4_total',
-    modelSuffix: '30',
-    label: 'Total of Assets-wise Classification',
-    type: 'total',
-    subItemIds: ['A4_i', 'A4_ii', 'A4_iii', 'A4_iv'],
-  },
-];
-
-const columnFieldKeys = {
-  // Maps colKey (e.g. 'col1') to actual field key in formData
-  col1: 'opBalCurYearProvision',
-  col2: 'writOffCurProvision',
-  col3: 'addRedFlucProvision',
-  col5: 'addCurYearProvision',
-  col6: 'addCurDepreciProvision',
-  col8: 'opBalCurYearAccount',
-  col9: 'addRedFlucAccount',
-  col11: 'addCurYearAccount',
-  col12: 'dedRevCurYearAccount',
-  col14: 'intSuspEndOfCurrYearAccount',
-  col16: 'diAndCgcTotalPro',
-  col17: 'standardAssetsTotalPro',
-  col18: 'licraTotalPro',
-};
-const allColumnKeys = [
-  // Represents all data columns in display order
-  'col1',
-  'col2',
-  'col3',
-  'col4',
-  'col5',
-  'col6',
-  'col7',
-  'col8',
-  'col9',
-  'col10',
-  'col11',
-  'col12',
-  'col13',
-  'col14',
-  'col15',
-  'col16',
-  'col17',
-  'col18',
-];
-const calculatedColKeys = ['col4', 'col7', 'col10', 'col13', 'col15'];
-
-const Schedule9CProvisionTable = ({
-  circleCode = '021',
-  quarterEndDate = '31/03/2025',
-  role = 'Maker',
-  previousYear = '2024',
-  displayQuarterDate = '31/03/2025',
-  initialDataFromApi = null,
-}) => {
-  const showSnackbar = (message, severity) => console.log(`Snackbar: ${message} (${severity})`);
-  const { callApi } = useApi();
-  const [validationErrors, setValidationErrors] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const [formData, setFormData] = useState(() => {
-    const initial = {};
-    rowDefinitionsConfig.forEach((row) => {
-      if (row.type === 'entry') {
-        initial[row.id] = {};
-        Object.values(columnFieldKeys).forEach((fieldKey) => {
-          // Use fieldKey from columnFieldKeys
-          initial[row.id][fieldKey] = '';
-        });
-      }
-    });
-    return initial;
+const Schedule10 = () => {
+  // Initialize state to hold all form data, similar to sc10.row in JSP
+  const [formData, setFormData] = useState({
+    stcNstaff1: '',
+    offResidenceA1: '',
+    otherPremisesA1: '',
+    electricFitting1: '',
+    totalA1: '', // Readonly field, will be calculated
+    computers1: '',
+    compSoftwareInt1: '',
+    compSoftwareNonint1: '',
+    compSoftwareTotal1: '', // Readonly field, will be calculated
+    motor1: '',
+    offResidenceB1: '',
+    stcLho1: '',
+    otherPremisesB1: '',
+    otherMachineryPlant1: '', // Readonly field, will be calculated
+    totalB1: '', // Readonly field, will be calculated
+    totalFurnFix1: '', // Readonly field, will be calculated
+    landNotRev1: '',
+    landRev1: '',
+    landRevEnh1: '',
+    offBuildNotRev1: '',
+    offBuildRev1: '',
+    offBuildRevEnh1: '',
+    residQuartNotRev1: '',
+    residQuartRev1: '',
+    residQuartRevEnh1: '',
+    premisTotal1: '', // Readonly field, will be calculated
+    revtotal1: '', // Readonly field, will be calculated
+    totalC1: '', // Readonly field, will be calculated
+    premisesUnderCons1: '',
+    grandTotal1: '', // Readonly field, will be calculated
+    // ... add all other fields from Schedule10.txt
   });
 
-  // Effect for fetching data from API
-  const modelSuffixToRowIdMap = useMemo(() => {
-    const map = {};
-    rowDefinitionsConfig.forEach((row) => {
-      if (row.modelSuffix) {
-        map[row.modelSuffix] = row.id;
-      }
-    });
-    return map;
-  }, []);
+  // State to hold validation errors
+  const [errors, setErrors] = useState({});
 
-  useEffect(() => {
-    console.log('9c starting');
-    const fetchData = async () => {
-      setIsLoading(true);
-      showSnackbar('Loading data...', 'info');
-
-      const requestPayload = {
-        circleCode,
-        quarterEndDate,
-        userId: '1111111',
-        reportName: 'Schedule9C PROVISION',
-        reportId: '125911',
-        reportMasterId: '310021',
-        status: '11',
-        areMocPending: true,
-      };
-
-      try {
-        const response = await callApi('/Maker/getSavedDataNineC', requestPayload, 'POST');
-
-        if (response) {
-          const transformedData = {};
-
-          // Initialize blank structure for all entry rows
-          rowDefinitionsConfig.forEach((row) => {
-            if (row.type === 'entry') {
-              transformedData[row.id] = {};
-              Object.values(columnFieldKeys).forEach((fieldKey) => {
-                transformedData[row.id][fieldKey] = '';
-              });
-            }
-          });
-
-          // Populate with data from API response
-          for (const [apiKey, apiValue] of Object.entries(response)) {
-            for (const fieldKey of Object.values(columnFieldKeys)) {
-              if (apiKey.startsWith(fieldKey)) {
-                const suffix = apiKey.replace(fieldKey, '');
-                const rowId = modelSuffixToRowIdMap[suffix];
-
-                if (rowId && transformedData[rowId] && fieldKey in transformedData[rowId]) {
-                  transformedData[rowId][fieldKey] = apiValue !== null ? String(apiValue) : '';
-                }
-              }
-            }
-          }
-
-          setFormData(transformedData);
-          showSnackbar('Data loaded successfully.', 'success');
-        } else {
-          showSnackbar('No data returned from API.', 'error');
-        }
-      } catch (error) {
-        console.error('Fetch error:', error);
-        showSnackbar('Failed to load data.', 'error');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  //   useEffect(() => {
-  //     if (initialDataFromApi) {
-  //       const newFormData = {};
-  //       rowDefinitionsConfig.forEach((row) => {
-  //         if (row.type === 'entry') {
-  //           newFormData[row.id] = {}; // Ensure object exists
-  //           const apiRowData = initialDataFromApi[row.id] || {};
-  //           Object.values(columnFieldKeys).forEach((fieldKey) => {
-  //             newFormData[row.id][fieldKey] = apiRowData[fieldKey] ?? '';
-  //           });
-  //         }
-  //       });
-  //       setFormData((prev) => ({ ...prev, ...newFormData }));
-  //     }
-  //   }, [initialDataFromApi]);
-
-  //   const debouncedSetFormData = useCallback(
-  //     debounce((rowId, fieldKey, value) => {
-  //       setFormData((prev) => ({
-  //         ...prev,
-  //         [rowId]: { ...prev[rowId], [fieldKey]: value },
-  //       }));
-  //     }, 100),
-  //     []
-  //   );
-
-  const handleChange = (rowId, fieldKey, value) => {
-    if (
-      value === '' ||
-      /^-?\d*\.?\d{0,2}$/.test(value) ||
-      (value === '-' && !(formData[rowId]?.[fieldKey]?.length > 0))
-    ) {
-      setFormData((prev) => ({
-        ...prev,
-        [rowId]: { ...prev[rowId], [fieldKey]: value },
-      }));
-    }
+  // Helper function to parse float values, handling empty strings as 0
+  const parseFloatSafe = (value) => {
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? 0 : parsed;
   };
 
-  const getNum = (value) => parseFloat(value) || 0;
+  // Validation function for decimal places
+  const validateDecimal2Places = (value) => {
+    if (value === null || value.trim() === '') return true; // Allow empty or null
+    const regex = /^-?\d+(\.\d{1,2})?$/; // Allows for 0, 1, or 2 decimal places, and negative numbers
+    return regex.test(value);
+  };
 
-  const calculatedData = useMemo(() => {
-    const newCalculatedData = {};
+  // Handle input changes
+  const handleChange = (e) => {
+    const { name, value } = e.target;
 
-    rowDefinitionsConfig.forEach((row) => {
-      if (row.type === 'entry' || row.type === 'total') {
-        newCalculatedData[row.id] = {};
-        const currentRowFormData = formData[row.id] || {}; // Data from state for 'entry' rows
-
-        if (row.type === 'entry') {
-          // Step 1: Populate newCalculatedData with direct input values using colX keys
-          Object.entries(columnFieldKeys).forEach(([colKeyAlias, fieldKeyInFormData]) => {
-            newCalculatedData[row.id][colKeyAlias] = currentRowFormData[fieldKeyInFormData] ?? '';
-          });
-          // Step 2: Calculate derived columns (col4, col7, etc.)
-          const col1 = getNum(newCalculatedData[row.id].col1);
-          const col2 = getNum(newCalculatedData[row.id].col2);
-          const col3 = getNum(newCalculatedData[row.id].col3);
-          newCalculatedData[row.id].col4 = (col1 - col2 + col3).toFixed(2);
-
-          const col5 = getNum(newCalculatedData[row.id].col5);
-          const col6 = getNum(newCalculatedData[row.id].col6);
-          newCalculatedData[row.id].col7 = (getNum(newCalculatedData[row.id].col4) + col5 + col6).toFixed(2);
-
-          const col8 = getNum(newCalculatedData[row.id].col8);
-          const col9 = getNum(newCalculatedData[row.id].col9);
-          newCalculatedData[row.id].col10 = (col8 + col9).toFixed(2);
-
-          const col11 = getNum(newCalculatedData[row.id].col11);
-          const col12 = getNum(newCalculatedData[row.id].col12);
-          newCalculatedData[row.id].col13 = (getNum(newCalculatedData[row.id].col10) + col11 - col12).toFixed(2);
-
-          const col14 = getNum(newCalculatedData[row.id].col14);
-          newCalculatedData[row.id].col15 = (
-            getNum(newCalculatedData[row.id].col7) +
-            getNum(newCalculatedData[row.id].col13) +
-            col14
-          ).toFixed(2);
-        } else if (row.type === 'total') {
-          // Calculate for total rows by summing corresponding colX keys from subItemIds
-          allColumnKeys.forEach((colKeyToSum) => {
-            let sum = 0;
-            row.subItemIds.forEach((subItemId) => {
-              sum += getNum(newCalculatedData[subItemId]?.[colKeyToSum]);
-            });
-            newCalculatedData[row.id][colKeyToSum] = sum.toFixed(2);
-          });
-          // For total rows, re-calculate derived columns based on their summed components
-          // This ensures consistency if summed inputs lead to different derived totals
-          const t_col1 = getNum(newCalculatedData[row.id].col1);
-          const t_col2 = getNum(newCalculatedData[row.id].col2);
-          const t_col3 = getNum(newCalculatedData[row.id].col3);
-          newCalculatedData[row.id].col4 = (t_col1 - t_col2 + t_col3).toFixed(2);
-
-          const t_col5 = getNum(newCalculatedData[row.id].col5);
-          const t_col6 = getNum(newCalculatedData[row.id].col6);
-          newCalculatedData[row.id].col7 = (getNum(newCalculatedData[row.id].col4) + t_col5 + t_col6).toFixed(2);
-
-          const t_col8 = getNum(newCalculatedData[row.id].col8);
-          const t_col9 = getNum(newCalculatedData[row.id].col9);
-          newCalculatedData[row.id].col10 = (t_col8 + t_col9).toFixed(2);
-
-          const t_col11 = getNum(newCalculatedData[row.id].col11);
-          const t_col12 = getNum(newCalculatedData[row.id].col12);
-          newCalculatedData[row.id].col13 = (getNum(newCalculatedData[row.id].col10) + t_col11 - t_col12).toFixed(2);
-
-          const t_col14 = getNum(newCalculatedData[row.id].col14);
-          newCalculatedData[row.id].col15 = (
-            getNum(newCalculatedData[row.id].col7) +
-            getNum(newCalculatedData[row.id].col13) +
-            t_col14
-          ).toFixed(2);
-        }
-      }
-    });
-    return newCalculatedData;
-  }, [formData]);
-
-  useEffect(() => {
-    const errors = [];
-    const totalsA1 = calculatedData['A1_total'];
-    const totalsA2 = calculatedData['A2_total'];
-    const totalsA3 = calculatedData['A3_grand_total'];
-    const totalsA4 = calculatedData['A4_total'];
-
-    if (totalsA1 && totalsA2 && totalsA3 && totalsA4) {
-      const colsToValidateEquality = ['col7', 'col13', 'col15'];
-      colsToValidateEquality.forEach((colKey) => {
-        const valA1 = getNum(totalsA1[colKey]);
-        const valA2 = getNum(totalsA2[colKey]);
-        const valA3 = getNum(totalsA3[colKey]);
-        const valA4 = getNum(totalsA4[colKey]);
-        // Check with a small tolerance for floating point issues
-        const tolerance = 0.001;
-        if (
-          !(
-            Math.abs(valA1 - valA2) < tolerance &&
-            Math.abs(valA2 - valA3) < tolerance &&
-            Math.abs(valA3 - valA4) < tolerance
-          )
-        ) {
-          errors.push(
-            `Mismatch in totals for Column ${colKey.replace('col', '')}: A-1 (${valA1.toFixed(
-              2
-            )}), A-2 (${valA2.toFixed(2)}), A-3 (${valA3.toFixed(2)}), A-4 (${valA4.toFixed(2)}) must be equal.`
-          );
-        }
+    // Apply decimal validation immediately (if desired, or on blur for less aggressive validation)
+    if (name.endsWith('1') && !validateDecimal2Places(value)) {
+      setErrors((prevErrors) => ({ ...prevErrors, [name]: 'Invalid decimal format (max 2 places).' }));
+    } else {
+      setErrors((prevErrors) => {
+        const newErrors = { ...prevErrors };
+        delete newErrors[name]; // Clear error if valid
+        return newErrors;
       });
     }
-    setValidationErrors(errors);
-  }, [calculatedData]);
 
-  const buildPayload = (isSaveOperation) => {
-    const payload = {
-      circleCode: '021',
-      quarterEndDate: '31/03/2025',
-      userId: '1111111',
-      reportId: '125911',
-      reportMasterId: '310021',
-      reportName: 'Schedule9C PROVISION',
-      status: isSaveOperation ? '11' : '21',
-      save: isSaveOperation,
-    };
-    rowDefinitionsConfig.forEach((row) => {
-      if (row.type === 'entry' && row.modelSuffix) {
-        const rowInputData = formData[row.id] || {};
-        Object.entries(columnFieldKeys).forEach(([_, fieldKeyInFormData]) => {
-          const backendFieldName = `${fieldKeyInFormData}${row.modelSuffix}`;
-          payload[backendFieldName] = parseFloat(rowInputData[fieldKeyInFormData] || 0).toFixed(2);
-        });
-      }
+    setFormData((prevData) => ({ ...prevData, [name]: value }));
+  };
+
+  // useEffect to recalculate total fields when dependencies change
+  useEffect(() => {
+    setFormData((prevData) => {
+      const newData = { ...prevData };
+
+      // Example calculation for totalA1: (i+ii+iii+iv)
+      newData.totalA1 = (
+        parseFloatSafe(newData.stcNstaff1) +
+        parseFloatSafe(newData.offResidenceA1) +
+        parseFloatSafe(newData.otherPremisesA1) +
+        parseFloatSafe(newData.electricFitting1)
+      ).toFixed(2);
+
+      // Example calculation for compSoftwareTotal1: (a+b)
+      newData.compSoftwareTotal1 = (
+        parseFloatSafe(newData.compSoftwareInt1) +
+        parseFloatSafe(newData.compSoftwareNonint1)
+      ).toFixed(2);
+
+      // Example calculation for otherMachineryPlant1: (a+b+c)
+      newData.otherMachineryPlant1 = (
+        parseFloatSafe(newData.offResidenceB1) +
+        parseFloatSafe(newData.stcLho1) +
+        parseFloatSafe(newData.otherPremisesB1)
+      ).toFixed(2);
+
+      // Example calculation for totalB1: (i+ii+iii+iv)
+      newData.totalB1 = (
+        parseFloatSafe(newData.computers1) +
+        parseFloatSafe(newData.compSoftwareTotal1) +
+        parseFloatSafe(newData.motor1) +
+        parseFloatSafe(newData.otherMachineryPlant1)
+      ).toFixed(2);
+
+      // Example calculation for totalFurnFix1: (A+B)
+      newData.totalFurnFix1 = (
+        parseFloatSafe(newData.totalA1) +
+        parseFloatSafe(newData.totalB1)
+      ).toFixed(2);
+
+      // Example calculation for premisTotal1: (a+b+d+e+g+h)
+      newData.premisTotal1 = (
+        parseFloatSafe(newData.landNotRev1) +
+        parseFloatSafe(newData.landRev1) +
+        parseFloatSafe(newData.offBuildNotRev1) +
+        parseFloatSafe(newData.offBuildRev1) +
+        parseFloatSafe(newData.residQuartNotRev1) +
+        parseFloatSafe(newData.residQuartRev1)
+      ).toFixed(2);
+
+      // Example calculation for revtotal1: (c+f+i)
+      newData.revtotal1 = (
+        parseFloatSafe(newData.landRevEnh1) +
+        parseFloatSafe(newData.offBuildRevEnh1) +
+        parseFloatSafe(newData.residQuartRevEnh1)
+      ).toFixed(2);
+
+      // Example calculation for totalC1: (j+k)
+      newData.totalC1 = (
+        parseFloatSafe(newData.premisTotal1) +
+        parseFloatSafe(newData.revtotal1)
+      ).toFixed(2);
+
+      // Example calculation for grandTotal1: (A + B + C + D)
+      newData.grandTotal1 = (
+        parseFloatSafe(newData.totalA1) +
+        parseFloatSafe(newData.totalB1) +
+        parseFloatSafe(newData.totalC1) +
+        parseFloatSafe(newData.premisesUnderCons1)
+      ).toFixed(2);
+
+      // You would need to add similar calculations for other rows/totals based on Schedule10.txt
+      // The provided `Schedule10.txt` also contains a larger JavaScript block at the end with more complex calculations involving "SCH10.parseFloat". You'll need to replicate these calculations here. For example:
+      // SCH10.row.currvPremTotal = (SCH10.parseFloat(SCH10.row.premCostYear) + SCH10.parseFloat(SCH10.row.revCostYear)).toFixed(2);
+      // This suggests a 'premCostYear' and 'revCostYear' which might be calculated elsewhere or derived from other inputs.
+      // You'll need to carefully trace all dependencies and implement them in `useEffect` hooks.
+
+      return newData;
     });
-    return payload;
-  };
+  }, [
+    formData.stcNstaff1,
+    formData.offResidenceA1,
+    formData.otherPremisesA1,
+    formData.electricFitting1,
+    formData.computers1,
+    formData.compSoftwareInt1,
+    formData.compSoftwareNonint1,
+    formData.motor1,
+    formData.offResidenceB1,
+    formData.stcLho1,
+    formData.otherPremisesB1,
+    formData.landNotRev1,
+    formData.landRev1,
+    formData.landRevEnh1,
+    formData.offBuildNotRev1,
+    formData.offBuildRev1,
+    formData.offBuildRevEnh1,
+    formData.residQuartNotRev1,
+    formData.residQuartRev1,
+    formData.residQuartRevEnh1,
+    formData.premisesUnderCons1,
+    // Add all other fields that trigger calculations here
+  ]);
 
-  const handleSave = async () => {
-    try {
-      const payload = buildPayload(true);
-      const response = await callApi('/Maker/submitNineC', payload, 'POST');
-      if (response && response.includes('~11')) {
-        showSnackbar('Data saved successfully', 'success');
-      } else {
-        showSnackbar('Save failed. Please try again.', 'error');
+  // Overall form validation before submission
+  const validateForm = () => {
+    let newErrors = {};
+    // Iterate over all fields that require validation (e.g., all input fields)
+    for (const key in formData) {
+      if (key.endsWith('1') && !key.startsWith('total') && !key.startsWith('premis') && !key.startsWith('rev')) { // Exclude calculated fields
+        if (!validateDecimal2Places(formData[key])) {
+          newErrors[key] = 'Invalid decimal format (max 2 places).';
+        }
       }
-    } catch (error) {
-      console.error(error);
-      showSnackbar('An error occurred while saving.', 'error');
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (validateForm()) {
+      console.log('Form data submitted:', formData);
+      // Integrate with your API to submit data, similar to useApi in Example.txt
+    } else {
+      console.log('Form has validation errors:', errors);
     }
   };
 
-  const handleSubmit = async () => {
-    if (validationErrors.length > 0) {
-      showSnackbar('Please correct validation errors.', 'error');
-      return;
-    }
-    try {
-      const payload = buildPayload(false);
-      const response = await callApi('/Maker/submitNineC', payload, 'POST');
-      if (response && response.includes('~21')) {
-        showSnackbar('Form submitted successfully', 'success');
-      } else {
-        showSnackbar('Submit failed. Please try again.', 'error');
-      }
-    } catch (error) {
-      console.error(error);
-      showSnackbar('An error occurred while submitting.', 'error');
-    }
-  };
-  const columnHeaders = [
+  // Define the table structure, similar to rowDefinitionsConfig in Example.txt
+  // This will be more complex given the highly nested headers in Schedule10.txt
+  const tableRows = useMemo(() => [
+    // Row A: Total Original Cost / Revalued Value upto the end of previous year
     {
-      label: `Opening Balance of Provisions <br>for Current Year (closing <br>balance ${previousYear})<br>Rs. P`,
-      key: 'col1',
+      id: 'rowA',
+      label: `Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March {{sc10.year1}}`,
+      type: 'entry',
+      fields: {
+        stcNstaff1: { name: 'stcNstaff1', readonly: false, maxLength: 18 },
+        offResidenceA1: { name: 'offResidenceA1', readonly: false, maxLength: 18 },
+        otherPremisesA1: { name: 'otherPremisesA1', readonly: false, maxLength: 18 },
+        electricFitting1: { name: 'electricFitting1', readonly: false, maxLength: 18 },
+        totalA1: { name: 'totalA1', readonly: true, maxLength: 18 },
+        computers1: { name: 'computers1', readonly: false, maxLength: 18 },
+        compSoftwareInt1: { name: 'compSoftwareInt1', readonly: false, maxLength: 18 },
+        compSoftwareNonint1: { name: 'compSoftwareNonint1', readonly: false, maxLength: 18 },
+        compSoftwareTotal1: { name: 'compSoftwareTotal1', readonly: true, maxLength: 18 },
+        motor1: { name: 'motor1', readonly: false, maxLength: 18 },
+        offResidenceB1: { name: 'offResidenceB1', readonly: false, maxLength: 18 },
+        stcLho1: { name: 'stcLho1', readonly: false, maxLength: 18 },
+        otherPremisesB1: { name: 'otherPremisesB1', readonly: false, maxLength: 18 },
+        otherMachineryPlant1: { name: 'otherMachineryPlant1', readonly: true, maxLength: 18 },
+        totalB1: { name: 'totalB1', readonly: true, maxLength: 18 },
+        totalFurnFix1: { name: 'totalFurnFix1', readonly: true, maxLength: 18 },
+        landNotRev1: { name: 'landNotRev1', readonly: false, maxLength: 18 },
+        landRev1: { name: 'landRev1', readonly: false, maxLength: 18 },
+        landRevEnh1: { name: 'landRevEnh1', readonly: false, maxLength: 18 },
+        offBuildNotRev1: { name: 'offBuildNotRev1', readonly: false, maxLength: 18 },
+        offBuildRev1: { name: 'offBuildRev1', readonly: false, maxLength: 18 },
+        offBuildRevEnh1: { name: 'offBuildRevEnh1', readonly: false, maxLength: 18 },
+        residQuartNotRev1: { name: 'residQuartNotRev1', readonly: false, maxLength: 18 },
+        residQuartRev1: { name: 'residQuartRev1', readonly: false, maxLength: 18 },
+        residQuartRevEnh1: { name: 'residQuartRevEnh1', readonly: false, maxLength: 18 },
+        premisTotal1: { name: 'premisTotal1', readonly: true, maxLength: 18 },
+        revtotal1: { name: 'revtotal1', readonly: true, maxLength: 18 },
+        totalC1: { name: 'totalC1', readonly: true, maxLength: 18 },
+        premisesUnderCons1: { name: 'premisesUnderCons1', readonly: false, maxLength: 18 },
+        grandTotal1: { name: 'grandTotal1', readonly: true, maxLength: 18 },
+      },
     },
-    { label: 'Write-off during the <br>current year for advances only<br>Rs. P', key: 'col2' },
-    { label: 'Addition/Reduction on <br>Account of Exchange <br>Fluctuation (only for IBG) <br>Rs. P', key: 'col3' },
-    {
-      label: 'Net (Adjusted) Opening <br>Balance of Provisions for <br>Current Year <br>Rs. P<br><b>4=(1-2+3)</b>',
-      key: 'col4',
-      isCalculated: true,
-    },
-    { label: 'Additions during <br>the Current Year <br>Rs. P', key: 'col5' },
-    {
-      label:
-        'Addition/Reduction in <br>Depreciation on Account of <br>Exchange Difference in RALOO <br>Rates & Exchange Rates used <br>for P&L (only for IBG)',
-      key: 'col6',
-    },
-    {
-      label: 'Closing balance of Provision <br>at the end of Current Year <br>Rs. P<br><b>7=(4+5+6)</b>',
-      key: 'col7',
-      isCalculated: true,
-    },
-    {
-      label: `Opening Balance of LICRA <br> for Current Year ( prev. year <br>closing balance -write-off ) <br>Rs. P`,
-      key: 'col8',
-    },
-    { label: 'Addition/Reduction on <br> Account of Exchange <br>Fluctuation (only for IBG) <br>Rs. P', key: 'col9' },
-    {
-      label: 'Net (Adjusted) Opening<br> Balance of Provisions for <br>Current Year <br>Rs. P<br><b>10=(8+9)</b>',
-      key: 'col10',
-      isCalculated: true,
-    },
-    { label: 'Additions during <br>the Current Year <br>Rs. P', key: 'col11' },
-    { label: 'Deductions /Reversal <br>during the Current Year <br>Rs. P', key: 'col12' },
-    {
-      label: 'Closing balance at <br>the end of Current Year <br>Rs. P<br><b>13=(10+11-12)</b>',
-      key: 'col13',
-      isCalculated: true,
-    },
-    { label: `Interest Suspense<br> Account As on ${displayQuarterDate} <br>Rs. P`, key: 'col14' },
-    {
-      label: 'Total Provision+LICRA+<br>Interest Suspense<br> Rs.P<br><b>15=(7+13+14)</b>',
-      key: 'col15',
-      isCalculated: true,
-    },
-    { label: `DICGC /ECGC Claims Recd <br>as on ${displayQuarterDate} <br>Rs. P`, key: 'col16' },
-    {
-      label: `Provision on Restructured <br>Standard Asset as on <br>${displayQuarterDate} (included in total <br>Provision in Column 7)`,
-      key: 'col17',
-    },
-    {
-      label: `LICRA on Restructured <br>Standard Asset as on ${displayQuarterDate} <br>(included in total<br> LICRA in Column 13)`,
-      key: 'col18',
-    },
-  ];
-
-  if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-        <CircularProgress />
-        <Typography sx={{ ml: 2 }}>Loading Data...</Typography>
-      </Box>
-    );
-  }
+    // You would continue to define objects for other rows like "Addition", "Original cost of items put to use during the year:" etc.
+    // Each entry in tableRows will represent a row, and its 'fields' property will define the input fields in that row.
+  ], [formData]); // Re-memoize if formData structure changes, though it generally won't
 
   return (
-    <Box sx={{ p: 1, width: '100%', overflowX: 'hidden' }}>
-      {/* <Typography variant="h5" gutterBottom sx={{ textAlign: 'center', mb: 2 }}>
-        Schedule 9C - Provisions
-      </Typography> */}
-      {validationErrors.length > 0 && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          <ul style={{ margin: 0, paddingLeft: '1.2em' }}>
-            {validationErrors.map((e, i) => (
-              <li key={i}>{e}</li>
-            ))}
-          </ul>
-        </Alert>
-      )}
-      <TableContainer component={Paper} sx={{ maxHeight: 'calc(120vh - 250px)' }}>
-        <Table stickyHeader sx={{ minWidth: 3000 }}>
-          <TableHead>
-            <TableRow
-              sx={{
-                position: 'sticky',
-                left: 0,
-                zIndex: 1101,
-                backgroundColor: '#f5f5f5' /* theme.palette.background.default or similar */,
-              }}
-            >
-              <StyledTableCell
-                rowSpan={3}
-                sx={{
-                  position: 'sticky',
-                  left: 0,
-                  top: 0,
-                  zIndex: 1100,
-                  backgroundColor: '#f5f5f5' /* theme.palette.background.default or similar */,
-                }}
-              >
-                <b>Classification of PROVISION</b>
-                <br />
-                (Excluding provision relating to : non-advance <br />
-                related items debited to Recalled Assets and interest free Staff Advances ) <br />
-                <b>(A.1=A.2=A.3=A.4)</b>
-              </StyledTableCell>
-              <StyledTableCell colSpan={8}>
-                <b>PROVISIONS</b>
-              </StyledTableCell>
-              <StyledTableCell colSpan={8}>
-                <b>Liability on Interest Capitalisation on Restructurred Account(LICRA)</b>
-              </StyledTableCell>
-              <StyledTableCell colSpan={5}>
-                <b>TOTAL PROVISION AND OTHER DETAILS</b>
-              </StyledTableCell>
-            </TableRow>
-            <TableRow>
-              {columnHeaders.map((ch) => (
-                <StyledTableCell
-                  key={ch.key}
-                  sx={{
-                    position: 'sticky',
-                    top: 42.5, // adjust if row height differs
-                    zIndex: 1100,
-                    backgroundColor: '#000',
-                    color: '#fff',
-                    textAlign: 'center',
-                    whiteSpace: 'normal',
-                  }}
-                  dangerouslySetInnerHTML={{ __html: ch.label }}
-                />
-              ))}
-            </TableRow>
-            <TableRow>
-              {allColumnKeys.map((key, idx) => (
-                <StyledTableCell
-                  key={`colnum_${idx}`}
-                  sx={{
-                    position: 'sticky',
-                    top: 228.5, // 56px + 56px
-                    zIndex: 1000,
-                    backgroundColor: '#000',
-                    color: '#fff',
-                    textAlign: 'center',
-                  }}
-                >
-                  <b>{idx + 1}</b>
-                </StyledTableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rowDefinitionsConfig.map((row) => {
-              const displayRowData = calculatedData[row.id] || {};
-              const isTotalOrHeader =
-                row.type === 'total' || row.type === 'sectionHeader' || row.type === 'subSectionHeader';
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h3" component="h1" gutterBottom>
+        Schedule 10
+      </Typography>
 
-              if (row.type === 'sectionHeader' || row.type === 'subSectionHeader') {
-                return (
-                  <StyledTableRow
-                    key={row.id}
-                    isSectionHeader={row.type === 'sectionHeader'}
-                    isSubSectionHeader={row.type === 'subSectionHeader'}
-                  >
-                    <StyledTableCell
-                      //colSpan={allColumnKeys.length + 1}
-                      sx={{
-                        textAlign: 'left', // Align text to the left
-                        position: 'sticky', // Make the section header sticky
-                        left: 0, // Stick to the left
-                        zIndex: 100, // Ensure it appears above other elements
-                        backgroundColor: row.type === 'sectionHeader' ? '#e0e0e0' : '#f0f0f0',
-                      }}
-                    >
-                      {row.label}
-                    </StyledTableCell>
-                  </StyledTableRow>
-                );
-              }
+      <form onSubmit={handleSubmit}>
+        <TableContainer component={Paper} sx={{ maxHeight: 650, overflow: 'auto' }}>
+          <Table stickyHeader aria-label="schedule 10 table" sx={{ minWidth: 4000 }}> {/* Adjust minWidth based on your table layout */}
+            <TableHead>
+              {/* Render the complex table headers from Schedule10.txt */}
+              {/* This part will be intricate due to rowspan and colspan */}
+              <TableRow>
+                <StyledTableCell rowSpan={2}><b>Sr.No</b></StyledTableCell>
+                <StyledTableCell rowSpan={2}><b>Particulars</b></StyledTableCell>
+                <StyledTableCell colSpan={5}><b>(A) FURNITURE & FITTINGS</b></StyledTableCell>
+                <StyledTableCell colSpan={10}><b>(B) MACHINERY & PLANT</b></StyledTableCell>
+                <StyledTableCell rowSpan={2}><b>Total Furniture & Fixtures <br>(A+B)</b></StyledTableCell>
+                <StyledTableCell colSpan={12}><b>(C) PREMISES</b></StyledTableCell>
+                <StyledTableCell rowSpan={2}><b>(D) Projects under <br>construction</b></StyledTableCell>
+                <StyledTableCell rowSpan={2}><b>Grand Total <br> (A + B + C + D)</b></StyledTableCell>
+              </TableRow>
+              <TableRow>
+                {/* Furniture & Fittings */}
+                <StyledTableCell><b>i) At STCs & Staff Colleges <br>(For Local Head Office only)</b></StyledTableCell>
+                <StyledTableCell><b>ii) At Officers' Residences</b></StyledTableCell>
+                <StyledTableCell><b>iii) At Other Premises</b></StyledTableCell>
+                <StyledTableCell><b>iv) Electric Fittings <br>(include electric wiring,<br> switches, sockets, other<br> fittings & fans etc.)</b></StyledTableCell>
+                <StyledTableCell><b>TOTAL (A)<br> (i+ii+iii+iv)</b></StyledTableCell>
+                {/* Machinery & Plant */}
+                <StyledTableCell><b>i) Computer Hardware</b></StyledTableCell>
+                <StyledTableCell><b>a. Computer Software <br>(forming integral part of<br> Hardware)</b></StyledTableCell>
+                <StyledTableCell><b>b. Computer Software <br>(not forming integral <br>of Hardware)</b></StyledTableCell>
+                <StyledTableCell><b>ii) Computer Software <br>Total (a+b)</b></StyledTableCell>
+                <StyledTableCell><b>iii) Motor Vehicles </b></StyledTableCell>
+                <StyledTableCell><b>a) At Officers' Residences</b></StyledTableCell>
+                <StyledTableCell><b>b) At STCs <br>(For Local Head Office)</b></StyledTableCell>
+                <StyledTableCell><b>c) At other Premises </b></StyledTableCell>
+                <StyledTableCell><b>iv) Other Machinery & Plant <br>( a+b+c)</b> </StyledTableCell>
+                <StyledTableCell><b>TOTAL <br> (B= i+ii+iii+iv)</b></StyledTableCell>
+                {/* Premises */}
+                <StyledTableCell><b>(a) Land (Not Revalued):<br> Cost</b></StyledTableCell>
+                <StyledTableCell><b>(b) Land (Revalued): <br>Cost</b></StyledTableCell>
+                <StyledTableCell><b>(c) Land (Revalued): <br>Enhancement due to <br>Revaluation</b></StyledTableCell>
+                <StyledTableCell><b>(d) Office Building <br>(Not revalued): Cost </b></StyledTableCell>
+                <StyledTableCell><b>(e) Office Building <br>(Revalued): Cost </b></StyledTableCell>
+                <StyledTableCell><b>(f) Office Building <br>(Revalued): Enhancement <br>due to Revaluation</b></StyledTableCell>
+                <StyledTableCell><b>(g) Residential Building <br>(Not revalued): Cost</b></StyledTableCell>
+                <StyledTableCell><b>(h) Residential Building <br>(Revalued): Cost</b></StyledTableCell>
+                <StyledTableCell><b>(i) Residential Building <br>(Revalued): Enhancement <br>due to Revaluation</b></StyledTableCell>
+                <StyledTableCell><b>(j) Premises Total <br>(a+b+d+e+g+h)</b></StyledTableCell>
+                <StyledTableCell><b>(k) Revaluation Total <br>(c+f+i)</b></StyledTableCell>
+                <StyledTableCell><b>TOTAL <br>(C=j+k)</b></StyledTableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {tableRows.map((row) => (
+                <StyledTableRow key={row.id}>
+                  {/* Sr.No and Particulars columns */}
+                  <StyledTableCell>{row.id === 'rowA' ? 'A' : ''}</StyledTableCell>
+                  <StyledTableCell>{row.label}</StyledTableCell>
 
-              return (
-                <StyledTableRow key={row.id} isTotalRow={row.type === 'total'}>
-                  <StyledTableCell
-                    sx={{
-                      textAlign: 'left',
-                      fontWeight: row.type === 'total' ? 'bold' : 'normal',
-                      fontStyle: row.type === 'entry' ? 'normal' : 'italic',
-                      position: 'sticky', // Make the first column sticky
-                      left: 0, // Stick to the left
-                      zIndex: 99,
-                      backgroundColor: row.type === 'total' ? '#f5f5f5' : row.type === 'entry' ? '#ffffff' : '#f0f0f0',
-                    }}
-                  >
-                    {row.label}
-                  </StyledTableCell>
-                  {allColumnKeys.map((colKey) => {
-                    const isCalculatedField = calculatedColKeys.includes(colKey);
-                    const isEditableField = row.type === 'entry' && !isCalculatedField;
-                    const fieldKeyInFormData = columnFieldKeys[colKey]; // This is undefined for calculated columns
-
-                    const valueToDisplayInTextField = displayRowData[colKey] ?? '';
-
+                  {/* Render input cells based on row.fields */}
+                  {Object.keys(row.fields).map((fieldName) => {
+                    const field = row.fields[fieldName];
                     return (
-                      <StyledTableCell key={`${row.id}-${colKey}`}>
-                        {/* <TextField
-                          variant="outlined"
-                          size="small"
-                          value={valueToDisplayInTextField}
-                          onChange={
-                            isEditableField
-                              ? (e) => handleChange(row.id, fieldKeyInFormData, e.target.value)
-                              : undefined
-                          }
-                          disabled={!isEditableField}
-                          InputProps={{
-                            readOnly: !isEditableField,
-                            sx: {
-                              textAlign: 'right',
-                              '& input': { textAlign: 'right', padding: '6px 8px' },
-                              backgroundColor: !isEditableField ? '#f0f0f0' : 'white', // Lighter grey for disabled
-                              color: (theme) => theme.palette.text.primary,
-                            },
-                          }}
-                          sx={{ width: '130px' }}
-                        /> */}
-
-                        <FormInput
-                          name={''}
-                          value={valueToDisplayInTextField}
-                          onChange={
-                            isEditableField
-                              ? (e) => handleChange(row.id, fieldKeyInFormData, e.target.value)
-                              : undefined
-                          }
-                          onBlur={() => {}}
-                          readOnly={!isEditableField}
-                          //  error={!!getFieldError(fieldName)}
-                          customStyles={{
+                      <StyledTableCell key={field.name}>
+                        {/* Replace FormInput with a standard input if not using a custom component */}
+                        <input
+                          type="text"
+                          name={field.name}
+                          value={formData[field.name]}
+                          onChange={handleChange}
+                          readOnly={field.readonly}
+                          maxLength={field.maxLength}
+                          style={{
                             textAlign: 'right',
-                            '& input': { textAlign: 'right', padding: '6px 8px' },
-                            backgroundColor: !isEditableField ? '#f0f0f0' : 'white', // Lighter grey for disabled
-                            color: (theme) => theme.palette.text.primary,
-                            width: '200px',
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            backgroundColor: field.readonly ? '#f0f0f0' : 'white',
+                            border: errors[field.name] ? '1px solid red' : '1px solid #ccc',
                           }}
-                          //  focus={focusedErrorField === fieldName}
-                          isNumeric={true} // Treat as numeric unless specified as integer
                         />
+                        {errors[field.name] && (
+                          <Typography variant="caption" color="error">
+                            {errors[field.name]}
+                          </Typography>
+                        )}
                       </StyledTableCell>
                     );
                   })}
                 </StyledTableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      <Stack direction="row" spacing={2} sx={{ mt: 2, justifyContent: 'center' }}>
-        <Button variant="contained" color="warning" onClick={handleSave}>
-          Save
-        </Button>
-        <Button variant="contained" color="success" onClick={handleSubmit} disabled={validationErrors.length > 0}>
-          Submit
-        </Button>
-      </Stack>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <Stack direction="row" spacing={2} sx={{ mt: 2, justifyContent: 'center' }}>
+          <Button variant="contained" color="warning" type="button">
+            Save
+          </Button>
+          <Button variant="contained" color="success" type="submit" disabled={Object.keys(errors).length > 0}>
+            Submit
+          </Button>
+        </Stack>
+      </form>
     </Box>
   );
 };
 
-export default Schedule9CProvisionTable;
+export default Schedule10;
