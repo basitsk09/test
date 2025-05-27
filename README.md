@@ -37,69 +37,96 @@ const NumericField = ({ value, onChange, readOnly = false }) => (
   />
 );
 
-const initialRow = {
-  stcNstaff1: '',
-  offResidenceA1: '',
-  otherPremisesA1: '',
-  electricFitting1: '',
-};
+const rowLabels = [
+  { id: '1', label: 'Total Original Cost / Revalued Value up to the end of previous year i.e. 31st March' },
+  { id: 'a(i)', label: 'Original cost of items put to use during the year: (i) At STCs & Staff Colleges' },
+  { id: 'a(ii)', label: 'Original cost of items put to use during the year: (ii) At Officers' Residences' },
+  { id: 'b', label: 'Increase in value of Fixed Assets due to Current Revaluation' },
+  { id: 'c', label: 'Original cost of items transferred from other Circles/Groups/CC Departments' },
+  { id: 'd', label: 'Original cost of items transferred from other branches of the same Circle' },
+  { id: 'I', label: 'Total of a(i) + a(ii) + b + c + d' },
+  { id: 'Ded(i)', label: 'Short Valuation charged to Revaluation Reserve due to Current Downward Revaluation' },
+];
 
 const Schedule10 = () => {
   const theme = useTheme();
-  const [row, setRow] = useState(initialRow);
+  const [rows, setRows] = useState(
+    rowLabels.map(() => ({
+      stcNstaff: '',
+      offResidenceA: '',
+      otherPremisesA: '',
+      electricFitting: '',
+    }))
+  );
 
-  const totalA = useMemo(() => {
-    const sum =
-      parseFloat(row.stcNstaff1 || 0) +
-      parseFloat(row.offResidenceA1 || 0) +
-      parseFloat(row.otherPremisesA1 || 0) +
-      parseFloat(row.electricFitting1 || 0);
-    return sum.toFixed(2);
-  }, [row]);
-
-  const handleChange = (key) => (e) => {
+  const handleChange = (rowIndex, key) => (e) => {
     const value = e.target.value.replace(/[^\d.]/g, '');
-    setRow((prev) => ({ ...prev, [key]: value }));
+    const updated = [...rows];
+    updated[rowIndex][key] = value;
+    setRows(updated);
+  };
+
+  const computeTotal = (row) => {
+    const total =
+      parseFloat(row.stcNstaff || 0) +
+      parseFloat(row.offResidenceA || 0) +
+      parseFloat(row.otherPremisesA || 0) +
+      parseFloat(row.electricFitting || 0);
+    return total.toFixed(2);
   };
 
   return (
     <Box p={2}>
       <Typography variant="h5" color="textPrimary" gutterBottom>
-        Schedule 10
+        Schedule 10 - Details of Fixed Assets
       </Typography>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
-              <StyledTableCell>Sr.No</StyledTableCell>
+              <StyledTableCell>Sr. No.</StyledTableCell>
               <StyledTableCell>Particulars</StyledTableCell>
-              <StyledTableCell>i) At STCs</StyledTableCell>
-              <StyledTableCell>ii) At Officers' Residences</StyledTableCell>
-              <StyledTableCell>iii) At Other Premises</StyledTableCell>
-              <StyledTableCell>iv) Electric Fittings</StyledTableCell>
-              <StyledTableCell>Total (A)</StyledTableCell>
+              <StyledTableCell>(i) At STCs & Staff Colleges (For Local Head Office only)</StyledTableCell>
+              <StyledTableCell>(ii) At Officers' Residences</StyledTableCell>
+              <StyledTableCell>(iii) At Other Premises</StyledTableCell>
+              <StyledTableCell>(iv) Electric Fittings (including electric wiring, switches, sockets, other fittings & fans etc.)</StyledTableCell>
+              <StyledTableCell>Total Furniture & Fittings (A)</StyledTableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            <TableRow>
-              <StyledTableCell>1</StyledTableCell>
-              <StyledTableCell>Total Cost as on 31st March</StyledTableCell>
-              <StyledTableCell>
-                <NumericField value={row.stcNstaff1} onChange={handleChange('stcNstaff1')} />
-              </StyledTableCell>
-              <StyledTableCell>
-                <NumericField value={row.offResidenceA1} onChange={handleChange('offResidenceA1')} />
-              </StyledTableCell>
-              <StyledTableCell>
-                <NumericField value={row.otherPremisesA1} onChange={handleChange('otherPremisesA1')} />
-              </StyledTableCell>
-              <StyledTableCell>
-                <NumericField value={row.electricFitting1} onChange={handleChange('electricFitting1')} />
-              </StyledTableCell>
-              <StyledTableCell>
-                <NumericField value={totalA} readOnly={true} />
-              </StyledTableCell>
-            </TableRow>
+            {rows.map((row, index) => (
+              <TableRow key={index}>
+                <StyledTableCell>{rowLabels[index].id}</StyledTableCell>
+                <StyledTableCell>{rowLabels[index].label}</StyledTableCell>
+                <StyledTableCell>
+                  <NumericField
+                    value={row.stcNstaff}
+                    onChange={handleChange(index, 'stcNstaff')}
+                  />
+                </StyledTableCell>
+                <StyledTableCell>
+                  <NumericField
+                    value={row.offResidenceA}
+                    onChange={handleChange(index, 'offResidenceA')}
+                  />
+                </StyledTableCell>
+                <StyledTableCell>
+                  <NumericField
+                    value={row.otherPremisesA}
+                    onChange={handleChange(index, 'otherPremisesA')}
+                  />
+                </StyledTableCell>
+                <StyledTableCell>
+                  <NumericField
+                    value={row.electricFitting}
+                    onChange={handleChange(index, 'electricFitting')}
+                  />
+                </StyledTableCell>
+                <StyledTableCell>
+                  <NumericField value={computeTotal(row)} readOnly={true} />
+                </StyledTableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </TableContainer>
@@ -110,25 +137,5 @@ const Schedule10 = () => {
 export default Schedule10;
 
 
-The React JSX implementation of the Schedule 10 form has been started. It includes:
-
-Material-UI table with support for dark mode
-
-Memoized total calculation for section A
-
-Smooth typing experience with controlled numeric inputs
-
-
-Let me know if you'd like to:
-
-Add more rows or sections (like B, C, D)
-
-Integrate form submission logic
-
-Include API calls or local storage
-
-Add validation and error handling
-
-
-I can continue building out the rest of the form as per the JSP structure.
+All table headings and row descriptions have been expanded to full, descriptive labels that match the original JSP's terminology. Let me know if you'd like to proceed with additional sections like (B) Machinery & Plant or (C) Premises.
 
