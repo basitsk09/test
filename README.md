@@ -147,15 +147,46 @@ const Schedule10 = () => {
       <TableContainer component={Paper} sx={{ maxHeight: '80vh' }}>
         <Table stickyHeader size="small">
           <TableHead>
-            <TableRow>
-              <HeaderCell>Sr.No</HeaderCell>
-              <HeaderCell>Particulars</HeaderCell>
-              {[...Array(12)].map((_, idx) => (
-                <HeaderCell key={idx}>Col {String.fromCharCode(65 + idx)}</HeaderCell>
-              ))}
-              <HeaderCell>Total</HeaderCell>
-            </TableRow>
-          </TableHead>
+  <TableRow>
+    <HeaderCell rowSpan={2}>Sr.No</HeaderCell>
+    <HeaderCell rowSpan={2}>Particulars</HeaderCell>
+    <HeaderCell colSpan={5}>(A) FURNITURE & FITTINGS</HeaderCell>
+    <HeaderCell colSpan={10}>(B) MACHINERY & PLANT</HeaderCell>
+    <HeaderCell rowSpan={2}>Total Furniture & Fittings (A+B)</HeaderCell>
+    <HeaderCell colSpan={12}>(C) PREMISES</HeaderCell>
+    <HeaderCell rowSpan={2}>(D) Projects under construction</HeaderCell>
+    <HeaderCell rowSpan={2}>Grand Total (A + B + C + D)</HeaderCell>
+  </TableRow>
+  <TableRow>
+    <HeaderCell>i) At STCs & Staff Colleges<br />(For Local Head Office only)</HeaderCell>
+    <HeaderCell>ii) At Officers' Residences</HeaderCell>
+    <HeaderCell>iii) At Other Premises</HeaderCell>
+    <HeaderCell>iv) Electric Fittings<br />(include electric wiring, switches, sockets, other fittings & fans etc.)</HeaderCell>
+    <HeaderCell>TOTAL (A)<br />(i+ii+iii+iv)</HeaderCell>
+    <HeaderCell>i) Computer Hardware</HeaderCell>
+    <HeaderCell>a) Computer Software<br />(integral to hardware)</HeaderCell>
+    <HeaderCell>b) Computer Software<br />(not part of hardware)</HeaderCell>
+    <HeaderCell>ii) Software Total (a+b)</HeaderCell>
+    <HeaderCell>iii) Motor Vehicles</HeaderCell>
+    <HeaderCell>a) At Officers' Residences</HeaderCell>
+    <HeaderCell>b) At STCs (LHO)</HeaderCell>
+    <HeaderCell>c) At Other Premises</HeaderCell>
+    <HeaderCell>iv) Other Machinery & Plant (a+b+c)</HeaderCell>
+    <HeaderCell>TOTAL (B)</HeaderCell>
+    <HeaderCell>(a) Land (Not Revalued)</HeaderCell>
+    <HeaderCell>(b) Land (Revalued)</HeaderCell>
+    <HeaderCell>(c) Land - Revaluation Enhancement</HeaderCell>
+    <HeaderCell>(d) Office Building (Not revalued)</HeaderCell>
+    <HeaderCell>(e) Office Building (Revalued)</HeaderCell>
+    <HeaderCell>(f) Office Building - Revaluation</HeaderCell>
+    <HeaderCell>(g) Residential Building (Not revalued)</HeaderCell>
+    <HeaderCell>(h) Residential Building (Revalued)</HeaderCell>
+    <HeaderCell>(i) Residential Building - Revaluation</HeaderCell>
+    <HeaderCell>(j) Premises Total</HeaderCell>
+    <HeaderCell>(k) Revaluation Total</HeaderCell>
+    <HeaderCell>TOTAL (C = j + k)</HeaderCell>
+  </TableRow>
+</TableHead>
           <TableBody>
             {data.map((row, rowIndex) => (
               <TableRow key={row.id}>
@@ -193,20 +224,21 @@ const Schedule10 = () => {
 };
 
 
-The following rows now calculate automatically in real-time as you type:
+The table headers now match the format shown in your screenshot:
 
-I = a(i) + a(ii) + b + c + d
+Multi-row structure with labeled sections: Furniture & Fittings, Machinery & Plant, Premises, etc.
 
-E = E1 + E2 + E3 + E4
+Detailed Roman-indexed column names
 
-F = D − E
-
-G = C − F
-
-I1 = D + E1
-
-K = H − (I1 + J)
+Sticky Sr.No and Particulars maintained
 
 
-Let me know if you want these cells locked as read-only or styled differently to indicate they're computed.
+Let me know if you'd like to:
+
+Freeze the first two columns horizontally
+
+Add export (PDF/Excel)
+
+Style calculated rows differently (like bold, shaded)
+
 
