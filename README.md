@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import TableCell, { tableCellClasses } from '@mui/material/TableCell';
 import { styled } from '@mui/material/styles';
-import debounce from 'lodash.debounce';
+import debounce from 'lodash/debounce';
 
 // Styled components (unchanged)
 const StyledTableCell = React.memo(
@@ -236,20 +236,47 @@ const Schedule10 = () => {
     debounce((name, value) => {
       // List of all calculated fields (readOnly) to exclude from direct validation
       const calculatedFields = [
-        'totalA1', 'totalAAdd1', 'totalADed1',
-        'compSoftwareTotal1', 'otherMachineryPlant1', 'totalB1',
-        'compSoftwareTotalAdd1', 'otherMachineryPlantAdd1', 'totalBAdd1',
-        'compSoftwareTotalDed1', 'otherMachineryPlantDed1', 'totalBDed1',
-        'totalFurnFixPrevYear1', 'totalFurnFixAdditions1', 'totalFurnFixDeductions1',
-        'premisTotal1', 'revtotal1', 'totalC1',
-        'premisTotalAdd1', 'revtotalAdd1', 'totalCAdd1',
-        'premisTotalDed1', 'revtotalDed1', 'totalCDed1',
+        'totalA1',
+        'totalAAdd1',
+        'totalADed1',
+        'compSoftwareTotal1',
+        'otherMachineryPlant1',
+        'totalB1',
+        'compSoftwareTotalAdd1',
+        'otherMachineryPlantAdd1',
+        'totalBAdd1',
+        'compSoftwareTotalDed1',
+        'otherMachineryPlantDed1',
+        'totalBDed1',
+        'totalFurnFixPrevYear1',
+        'totalFurnFixAdditions1',
+        'totalFurnFixDeductions1',
+        'premisTotal1',
+        'revtotal1',
+        'totalC1',
+        'premisTotalAdd1',
+        'revtotalAdd1',
+        'totalCAdd1',
+        'premisTotalDed1',
+        'revtotalDed1',
+        'totalCDed1',
         'premisesUnderConsCurrent1',
-        'totalDepreciation1', 'netBlockA1', 'netBlockB1', 'netBlockC1', 'netBlockD1', 'grandTotalNetBlock1',
-        'currvPremTotal', 'fixCostYear', 'ttlFixCurrYear', 'ttlFixPreYear', 'grandCurrTotal', 'totalPremPreYear'
+        'totalDepreciation1',
+        'netBlockA1',
+        'netBlockB1',
+        'netBlockC1',
+        'netBlockD1',
+        'grandTotalNetBlock1',
+        'currvPremTotal',
+        'fixCostYear',
+        'ttlFixCurrYear',
+        'ttlFixPreYear',
+        'grandCurrTotal',
+        'totalPremPreYear',
       ];
 
-      if (!calculatedFields.includes(name)) { // Only validate if it's not a calculated field
+      if (!calculatedFields.includes(name)) {
+        // Only validate if it's not a calculated field
         if (!validateDecimal2Places(value)) {
           setErrors((prevErrors) => ({ ...prevErrors, [name]: 'Invalid decimal format (max 2 places).' }));
         } else {
@@ -277,20 +304,25 @@ const Schedule10 = () => {
 
         // --- (A) FURNITURE & FITTINGS calculations ---
         newData.totalA1 = (
-          parseFloatSafe(newData.stcNstaff1) + parseFloatSafe(newData.offResidenceA1) +
-          parseFloatSafe(newData.otherPremisesA1) + parseFloatSafe(newData.electricFitting1)
+          parseFloatSafe(newData.stcNstaff1) +
+          parseFloatSafe(newData.offResidenceA1) +
+          parseFloatSafe(newData.otherPremisesA1) +
+          parseFloatSafe(newData.electricFitting1)
         ).toFixed(2);
 
         newData.totalAAdd1 = (
-          parseFloatSafe(newData.stcNstaffAdd1) + parseFloatSafe(newData.offResidenceAAdd1) +
-          parseFloatSafe(newData.otherPremisesAAdd1) + parseFloatSafe(newData.electricFittingAdd1)
+          parseFloatSafe(newData.stcNstaffAdd1) +
+          parseFloatSafe(newData.offResidenceAAdd1) +
+          parseFloatSafe(newData.otherPremisesAAdd1) +
+          parseFloatSafe(newData.electricFittingAdd1)
         ).toFixed(2);
 
         newData.totalADed1 = (
-          parseFloatSafe(newData.stcNstaffDed1) + parseFloatSafe(newData.offResidenceADed1) +
-          parseFloatSafe(newData.otherPremisesADed1) + parseFloatSafe(newData.electricFittingDed1)
+          parseFloatSafe(newData.stcNstaffDed1) +
+          parseFloatSafe(newData.offResidenceADed1) +
+          parseFloatSafe(newData.otherPremisesADed1) +
+          parseFloatSafe(newData.electricFittingDed1)
         ).toFixed(2);
-
 
         // --- (B) MACHINERY & PLANT calculations ---
         newData.compSoftwareTotal1 = (
@@ -298,13 +330,16 @@ const Schedule10 = () => {
         ).toFixed(2);
 
         newData.otherMachineryPlant1 = (
-          parseFloatSafe(newData.offResidenceB1) + parseFloatSafe(newData.stcLho1) +
+          parseFloatSafe(newData.offResidenceB1) +
+          parseFloatSafe(newData.stcLho1) +
           parseFloatSafe(newData.otherPremisesB1)
         ).toFixed(2);
 
         newData.totalB1 = (
-          parseFloatSafe(newData.computers1) + parseFloatSafe(newData.compSoftwareTotal1) +
-          parseFloatSafe(newData.motor1) + parseFloatSafe(newData.otherMachineryPlant1)
+          parseFloatSafe(newData.computers1) +
+          parseFloatSafe(newData.compSoftwareTotal1) +
+          parseFloatSafe(newData.motor1) +
+          parseFloatSafe(newData.otherMachineryPlant1)
         ).toFixed(2);
 
         newData.compSoftwareTotalAdd1 = (
@@ -312,13 +347,16 @@ const Schedule10 = () => {
         ).toFixed(2);
 
         newData.otherMachineryPlantAdd1 = (
-          parseFloatSafe(newData.offResidenceBAdd1) + parseFloatSafe(newData.stcLhoAdd1) +
+          parseFloatSafe(newData.offResidenceBAdd1) +
+          parseFloatSafe(newData.stcLhoAdd1) +
           parseFloatSafe(newData.otherPremisesBAdd1)
         ).toFixed(2);
 
         newData.totalBAdd1 = (
-          parseFloatSafe(newData.computersAdd1) + parseFloatSafe(newData.compSoftwareTotalAdd1) +
-          parseFloatSafe(newData.motorAdd1) + parseFloatSafe(newData.otherMachineryPlantAdd1)
+          parseFloatSafe(newData.computersAdd1) +
+          parseFloatSafe(newData.compSoftwareTotalAdd1) +
+          parseFloatSafe(newData.motorAdd1) +
+          parseFloatSafe(newData.otherMachineryPlantAdd1)
         ).toFixed(2);
 
         newData.compSoftwareTotalDed1 = (
@@ -326,20 +364,20 @@ const Schedule10 = () => {
         ).toFixed(2);
 
         newData.otherMachineryPlantDed1 = (
-          parseFloatSafe(newData.offResidenceBDed1) + parseFloatSafe(newData.stcLhoDed1) +
+          parseFloatSafe(newData.offResidenceBDed1) +
+          parseFloatSafe(newData.stcLhoDed1) +
           parseFloatSafe(newData.otherPremisesBDed1)
         ).toFixed(2);
 
         newData.totalBDed1 = (
-          parseFloatSafe(newData.computersDed1) + parseFloatSafe(newData.compSoftwareTotalDed1) +
-          parseFloatSafe(newData.motorDed1) + parseFloatSafe(newData.otherMachineryPlantDed1)
+          parseFloatSafe(newData.computersDed1) +
+          parseFloatSafe(newData.compSoftwareTotalDed1) +
+          parseFloatSafe(newData.motorDed1) +
+          parseFloatSafe(newData.otherMachineryPlantDed1)
         ).toFixed(2);
-
 
         // --- Total Furniture & Fixtures (A+B) for each row type ---
-        newData.totalFurnFixPrevYear1 = (
-          parseFloatSafe(newData.totalA1) + parseFloatSafe(newData.totalB1)
-        ).toFixed(2);
+        newData.totalFurnFixPrevYear1 = (parseFloatSafe(newData.totalA1) + parseFloatSafe(newData.totalB1)).toFixed(2);
 
         newData.totalFurnFixAdditions1 = (
           parseFloatSafe(newData.totalAAdd1) + parseFloatSafe(newData.totalBAdd1)
@@ -349,52 +387,61 @@ const Schedule10 = () => {
           parseFloatSafe(newData.totalADed1) + parseFloatSafe(newData.totalBDed1)
         ).toFixed(2);
 
-
         // --- (C) PREMISES calculations ---
         newData.premisTotal1 = (
-          parseFloatSafe(newData.landNotRev1) + parseFloatSafe(newData.landRev1) +
-          parseFloatSafe(newData.offBuildNotRev1) + parseFloatSafe(newData.offBuildRev1) +
-          parseFloatSafe(newData.residQuartNotRev1) + parseFloatSafe(newData.residQuartRev1)
+          parseFloatSafe(newData.landNotRev1) +
+          parseFloatSafe(newData.landRev1) +
+          parseFloatSafe(newData.offBuildNotRev1) +
+          parseFloatSafe(newData.offBuildRev1) +
+          parseFloatSafe(newData.residQuartNotRev1) +
+          parseFloatSafe(newData.residQuartRev1)
         ).toFixed(2);
 
         newData.revtotal1 = (
-          parseFloatSafe(newData.landRevEnh1) + parseFloatSafe(newData.offBuildRevEnh1) +
+          parseFloatSafe(newData.landRevEnh1) +
+          parseFloatSafe(newData.offBuildRevEnh1) +
           parseFloatSafe(newData.residQuartRevEnh1)
         ).toFixed(2);
 
-        newData.totalC1 = (
-          parseFloatSafe(newData.premisTotal1) + parseFloatSafe(newData.revtotal1)
-        ).toFixed(2);
+        newData.totalC1 = (parseFloatSafe(newData.premisTotal1) + parseFloatSafe(newData.revtotal1)).toFixed(2);
 
         newData.premisTotalAdd1 = (
-          parseFloatSafe(newData.landNotRevAdd1) + parseFloatSafe(newData.landRevAdd1) +
-          parseFloatSafe(newData.offBuildNotRevAdd1) + parseFloatSafe(newData.offBuildRevAdd1) +
-          parseFloatSafe(newData.residQuartNotRevAdd1) + parseFloatSafe(newData.residQuartRevAdd1)
+          parseFloatSafe(newData.landNotRevAdd1) +
+          parseFloatSafe(newData.landRevAdd1) +
+          parseFloatSafe(newData.offBuildNotRevAdd1) +
+          parseFloatSafe(newData.offBuildRevAdd1) +
+          parseFloatSafe(newData.residQuartNotRevAdd1) +
+          parseFloatSafe(newData.residQuartRevAdd1)
         ).toFixed(2);
 
         newData.revtotalAdd1 = (
-          parseFloatSafe(newData.landRevEnhAdd1) + parseFloatSafe(newData.offBuildRevEnhAdd1) +
+          parseFloatSafe(newData.landRevEnhAdd1) +
+          parseFloatSafe(newData.offBuildRevEnhAdd1) +
           parseFloatSafe(newData.residQuartRevEnhAdd1)
         ).toFixed(2);
 
-        newData.totalCAdd1 = (
-          parseFloatSafe(newData.premisTotalAdd1) + parseFloatSafe(newData.revtotalAdd1)
-        ).toFixed(2);
+        newData.totalCAdd1 = (parseFloatSafe(newData.premisTotalAdd1) + parseFloatSafe(newData.revtotalAdd1)).toFixed(
+          2
+        );
 
         newData.premisTotalDed1 = (
-          parseFloatSafe(newData.landNotRevDed1) + parseFloatSafe(newData.landRevDed1) +
-          parseFloatSafe(newData.offBuildNotRevDed1) + parseFloatSafe(newData.offBuildRevDed1) +
-          parseFloatSafe(newData.residQuartNotRevDed1) + parseFloatSafe(newData.residQuartRevDed1)
+          parseFloatSafe(newData.landNotRevDed1) +
+          parseFloatSafe(newData.landRevDed1) +
+          parseFloatSafe(newData.offBuildNotRevDed1) +
+          parseFloatSafe(newData.offBuildRevDed1) +
+          parseFloatSafe(newData.residQuartNotRevDed1) +
+          parseFloatSafe(newData.residQuartRevDed1)
         ).toFixed(2);
 
         newData.revtotalDed1 = (
-          parseFloatSafe(newData.landRevEnhDed1) + parseFloatSafe(newData.offBuildRevEnhDed1) +
+          parseFloatSafe(newData.landRevEnhDed1) +
+          parseFloatSafe(newData.offBuildRevEnhDed1) +
           parseFloatSafe(newData.residQuartRevEnhDed1)
         ).toFixed(2);
 
-        newData.totalCDed1 = (
-          parseFloatSafe(newData.premisTotalDed1) + parseFloatSafe(newData.revtotalDed1)
-        ).toFixed(2);
+        newData.totalCDed1 = (parseFloatSafe(newData.premisTotalDed1) + parseFloatSafe(newData.revtotalDed1)).toFixed(
+          2
+        );
 
         // --- (D) Projects under construction calculations ---
         newData.premisesUnderConsCurrent1 = (
@@ -415,13 +462,22 @@ const Schedule10 = () => {
         // minus their respective depreciation. Assuming depreciation applies to the Net Block for the year.
         // This is a simplified interpretation; exact logic might need clarification from full Schedule10.txt
         newData.netBlockA1 = (
-          parseFloatSafe(newData.totalA1) + parseFloatSafe(newData.totalAAdd1) - parseFloatSafe(newData.totalADed1) - parseFloatSafe(newData.depA1)
+          parseFloatSafe(newData.totalA1) +
+          parseFloatSafe(newData.totalAAdd1) -
+          parseFloatSafe(newData.totalADed1) -
+          parseFloatSafe(newData.depA1)
         ).toFixed(2);
         newData.netBlockB1 = (
-          parseFloatSafe(newData.totalB1) + parseFloatSafe(newData.totalBAdd1) - parseFloatSafe(newData.totalBDed1) - parseFloatSafe(newData.depB1)
+          parseFloatSafe(newData.totalB1) +
+          parseFloatSafe(newData.totalBAdd1) -
+          parseFloatSafe(newData.totalBDed1) -
+          parseFloatSafe(newData.depB1)
         ).toFixed(2);
         newData.netBlockC1 = (
-          parseFloatSafe(newData.totalC1) + parseFloatSafe(newData.totalCAdd1) - parseFloatSafe(newData.totalCDed1) - parseFloatSafe(newData.depC1)
+          parseFloatSafe(newData.totalC1) +
+          parseFloatSafe(newData.totalCAdd1) -
+          parseFloatSafe(newData.totalCDed1) -
+          parseFloatSafe(newData.depC1)
         ).toFixed(2);
         newData.netBlockD1 = parseFloatSafe(newData.premisesUnderConsCurrent1).toFixed(2); // Net Block D is simply current value of D
 
@@ -432,12 +488,10 @@ const Schedule10 = () => {
           parseFloatSafe(newData.netBlockD1)
         ).toFixed(2);
 
-
         // --- Additional calculations based on Schedule10.txt snippet for reconciliation ---
-        newData.currvPremTotal = (
-          parseFloatSafe(newData.premCostYear) +
-          parseFloatSafe(newData.revCostYear)
-        ).toFixed(2);
+        newData.currvPremTotal = (parseFloatSafe(newData.premCostYear) + parseFloatSafe(newData.revCostYear)).toFixed(
+          2
+        );
 
         newData.fixCostYear = (
           parseFloatSafe(newData.fixCostPre) +
@@ -476,7 +530,6 @@ const Schedule10 = () => {
           parseFloatSafe(newData.depRevPreYear)
         ).toFixed(2);
 
-
         return newData;
       });
     }, 500),
@@ -491,41 +544,96 @@ const Schedule10 = () => {
     };
   }, [
     // --- Dependencies for (A) FURNITURE & FITTINGS ---
-    formData.stcNstaff1, formData.offResidenceA1, formData.otherPremisesA1, formData.electricFitting1,
-    formData.stcNstaffAdd1, formData.offResidenceAAdd1, formData.otherPremisesAAdd1, formData.electricFittingAdd1,
-    formData.stcNstaffDed1, formData.offResidenceADed1, formData.otherPremisesADed1, formData.electricFittingDed1,
+    formData.stcNstaff1,
+    formData.offResidenceA1,
+    formData.otherPremisesA1,
+    formData.electricFitting1,
+    formData.stcNstaffAdd1,
+    formData.offResidenceAAdd1,
+    formData.otherPremisesAAdd1,
+    formData.electricFittingAdd1,
+    formData.stcNstaffDed1,
+    formData.offResidenceADed1,
+    formData.otherPremisesADed1,
+    formData.electricFittingDed1,
 
     // --- Dependencies for (B) MACHINERY & PLANT ---
-    formData.computers1, formData.compSoftwareInt1, formData.compSoftwareNonint1, formData.motor1,
-    formData.offResidenceB1, formData.stcLho1, formData.otherPremisesB1,
-    formData.computersAdd1, formData.compSoftwareIntAdd1, formData.compSoftwareNonintAdd1, formData.motorAdd1,
-    formData.offResidenceBAdd1, formData.stcLhoAdd1, formData.otherPremisesBAdd1,
-    formData.computersDed1, formData.compSoftwareIntDed1, formData.compSoftwareNonintDed1, formData.motorDed1,
-    formData.offResidenceBDed1, formData.stcLhoDed1, formData.otherPremisesBDed1,
+    formData.computers1,
+    formData.compSoftwareInt1,
+    formData.compSoftwareNonint1,
+    formData.motor1,
+    formData.offResidenceB1,
+    formData.stcLho1,
+    formData.otherPremisesB1,
+    formData.computersAdd1,
+    formData.compSoftwareIntAdd1,
+    formData.compSoftwareNonintAdd1,
+    formData.motorAdd1,
+    formData.offResidenceBAdd1,
+    formData.stcLhoAdd1,
+    formData.otherPremisesBAdd1,
+    formData.computersDed1,
+    formData.compSoftwareIntDed1,
+    formData.compSoftwareNonintDed1,
+    formData.motorDed1,
+    formData.offResidenceBDed1,
+    formData.stcLhoDed1,
+    formData.otherPremisesBDed1,
 
     // --- Dependencies for (C) PREMISES ---
-    formData.landNotRev1, formData.landRev1, formData.landRevEnh1,
-    formData.offBuildNotRev1, formData.offBuildRev1, formData.offBuildRevEnh1,
-    formData.residQuartNotRev1, formData.residQuartRev1, formData.residQuartRevEnh1,
-    formData.landNotRevAdd1, formData.landRevAdd1, formData.landRevEnhAdd1,
-    formData.offBuildNotRevAdd1, formData.offBuildRevAdd1, formData.offBuildRevEnhAdd1,
-    formData.residQuartNotRevAdd1, formData.residQuartRevAdd1, formData.residQuartRevEnhAdd1,
-    formData.landNotRevDed1, formData.landRevDed1, formData.landRevEnhDed1,
-    formData.offBuildNotRevDed1, formData.offBuildRevDed1, formData.offBuildRevEnhDed1,
-    formData.residQuartNotRevDed1, formData.residQuartRevDed1, formData.residQuartRevEnhDed1,
+    formData.landNotRev1,
+    formData.landRev1,
+    formData.landRevEnh1,
+    formData.offBuildNotRev1,
+    formData.offBuildRev1,
+    formData.offBuildRevEnh1,
+    formData.residQuartNotRev1,
+    formData.residQuartRev1,
+    formData.residQuartRevEnh1,
+    formData.landNotRevAdd1,
+    formData.landRevAdd1,
+    formData.landRevEnhAdd1,
+    formData.offBuildNotRevAdd1,
+    formData.offBuildRevAdd1,
+    formData.offBuildRevEnhAdd1,
+    formData.residQuartNotRevAdd1,
+    formData.residQuartRevAdd1,
+    formData.residQuartRevEnhAdd1,
+    formData.landNotRevDed1,
+    formData.landRevDed1,
+    formData.landRevEnhDed1,
+    formData.offBuildNotRevDed1,
+    formData.offBuildRevDed1,
+    formData.offBuildRevEnhDed1,
+    formData.residQuartNotRevDed1,
+    formData.residQuartRevDed1,
+    formData.residQuartRevEnhDed1,
 
     // --- Dependencies for (D) Projects under construction ---
-    formData.premisesUnderCons1, formData.premisesUnderConsAdd1, formData.premisesUnderConsDed1,
+    formData.premisesUnderCons1,
+    formData.premisesUnderConsAdd1,
+    formData.premisesUnderConsDed1,
 
     // --- Dependencies for Depreciation ---
-    formData.depA1, formData.depB1, formData.depC1,
+    formData.depA1,
+    formData.depB1,
+    formData.depC1,
 
     // --- Dependencies for additional reconciliation calculations ---
-    formData.premCostYear, formData.revCostYear,
-    formData.premRevOfPreYear, formData.premDedOfPreYear, formData.revDedOfPre,
-    formData.depCostPreYear, formData.depRevPreYear,
-    formData.fixCostPre, formData.fixAddPreYear, formData.fixDedPreYear,
-    formData.fixAddYear, formData.fixDedYear, formData.fixDepYear, formData.fixDepPreYear,
+    formData.premCostYear,
+    formData.revCostYear,
+    formData.premRevOfPreYear,
+    formData.premDedOfPreYear,
+    formData.revDedOfPre,
+    formData.depCostPreYear,
+    formData.depRevPreYear,
+    formData.fixCostPre,
+    formData.fixAddPreYear,
+    formData.fixDedPreYear,
+    formData.fixAddYear,
+    formData.fixDedYear,
+    formData.fixDepYear,
+    formData.fixDepPreYear,
 
     calculateAllTotals, // Include the debounced function itself as a dependency
   ]);
@@ -533,17 +641,43 @@ const Schedule10 = () => {
   const validateForm = () => {
     let newErrors = {};
     const calculatedFields = [
-      'totalA1', 'totalAAdd1', 'totalADed1',
-      'compSoftwareTotal1', 'otherMachineryPlant1', 'totalB1',
-      'compSoftwareTotalAdd1', 'otherMachineryPlantAdd1', 'totalBAdd1',
-      'compSoftwareTotalDed1', 'otherMachineryPlantDed1', 'totalBDed1',
-      'totalFurnFixPrevYear1', 'totalFurnFixAdditions1', 'totalFurnFixDeductions1',
-      'premisTotal1', 'revtotal1', 'totalC1',
-      'premisTotalAdd1', 'revtotalAdd1', 'totalCAdd1',
-      'premisTotalDed1', 'revtotalDed1', 'totalCDed1',
+      'totalA1',
+      'totalAAdd1',
+      'totalADed1',
+      'compSoftwareTotal1',
+      'otherMachineryPlant1',
+      'totalB1',
+      'compSoftwareTotalAdd1',
+      'otherMachineryPlantAdd1',
+      'totalBAdd1',
+      'compSoftwareTotalDed1',
+      'otherMachineryPlantDed1',
+      'totalBDed1',
+      'totalFurnFixPrevYear1',
+      'totalFurnFixAdditions1',
+      'totalFurnFixDeductions1',
+      'premisTotal1',
+      'revtotal1',
+      'totalC1',
+      'premisTotalAdd1',
+      'revtotalAdd1',
+      'totalCAdd1',
+      'premisTotalDed1',
+      'revtotalDed1',
+      'totalCDed1',
       'premisesUnderConsCurrent1',
-      'totalDepreciation1', 'netBlockA1', 'netBlockB1', 'netBlockC1', 'netBlockD1', 'grandTotalNetBlock1',
-      'currvPremTotal', 'fixCostYear', 'ttlFixCurrYear', 'ttlFixPreYear', 'grandCurrTotal', 'totalPremPreYear'
+      'totalDepreciation1',
+      'netBlockA1',
+      'netBlockB1',
+      'netBlockC1',
+      'netBlockD1',
+      'grandTotalNetBlock1',
+      'currvPremTotal',
+      'fixCostYear',
+      'ttlFixCurrYear',
+      'ttlFixPreYear',
+      'grandCurrTotal',
+      'totalPremPreYear',
     ];
 
     for (const key in formData) {
@@ -570,193 +704,283 @@ const Schedule10 = () => {
   };
 
   // Define the table structure with rows, sections, and subsections
-  const tableRows = useMemo(() => [
-    // SECTION: Total Original Cost / Revalued Value upto the end of previous year
-    {
-      id: 'A.I',
-      label: `Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March {{sc10.year1}}`,
-      isSectionHeader: true,
-      cells: [
-        { field: 'stcNstaff1', readonly: false },
-        { field: 'offResidenceA1', readonly: false },
-        { field: 'otherPremisesA1', readonly: false },
-        { field: 'electricFitting1', readonly: false },
-        { field: 'totalA1', readonly: true }, // TOTAL (A)
-        { field: 'computers1', readonly: false },
-        { field: 'compSoftwareInt1', readonly: false },
-        { field: 'compSoftwareNonint1', readonly: false },
-        { field: 'compSoftwareTotal1', readonly: true }, // Computer Software Total
-        { field: 'motor1', readonly: false },
-        { field: 'offResidenceB1', readonly: false },
-        { field: 'stcLho1', readonly: false },
-        { field: 'otherPremisesB1', readonly: false },
-        { field: 'otherMachineryPlant1', readonly: true }, // Other Machinery & Plant Total
-        { field: 'totalB1', readonly: true }, // TOTAL (B)
-        { field: 'totalFurnFixPrevYear1', readonly: true }, // Total Furniture & Fixtures (A+B) prev year
-        { field: 'landNotRev1', readonly: false },
-        { field: 'landRev1', readonly: false },
-        { field: 'landRevEnh1', readonly: false },
-        { field: 'offBuildNotRev1', readonly: false },
-        { field: 'offBuildRev1', readonly: false },
-        { field: 'offBuildRevEnh1', readonly: false },
-        { field: 'residQuartNotRev1', readonly: false },
-        { field: 'residQuartRev1', readonly: false },
-        { field: 'residQuartRevEnh1', readonly: false },
-        { field: 'premisTotal1', readonly: true }, // Premises Total (Cost)
-        { field: 'revtotal1', readonly: true }, // Revaluation Total (Enhancement)
-        { field: 'totalC1', readonly: true }, // TOTAL (C)
-        { field: 'premisesUnderCons1', readonly: false }, // Projects under construction
-        { field: 'grandTotal1', readonly: true }, // Grand Total (A+B+C+D) - This might be a reconciliation total, needs re-eval
-      ],
-    },
-    // SECTION: Additions during the year
-    {
-      id: 'A.II',
-      label: 'Additions during the year:',
-      isSectionHeader: true,
-      cells: [
-        { field: 'stcNstaffAdd1', readonly: false },
-        { field: 'offResidenceAAdd1', readonly: false },
-        { field: 'otherPremisesAAdd1', readonly: false },
-        { field: 'electricFittingAdd1', readonly: false },
-        { field: 'totalAAdd1', readonly: true },
-        { field: 'computersAdd1', readonly: false },
-        { field: 'compSoftwareIntAdd1', readonly: false },
-        { field: 'compSoftwareNonintAdd1', readonly: false },
-        { field: 'compSoftwareTotalAdd1', readonly: true },
-        { field: 'motorAdd1', readonly: false },
-        { field: 'offResidenceBAdd1', readonly: false },
-        { field: 'stcLhoAdd1', readonly: false },
-        { field: 'otherPremisesBAdd1', readonly: false },
-        { field: 'otherMachineryPlantAdd1', readonly: true },
-        { field: 'totalBAdd1', readonly: true },
-        { field: 'totalFurnFixAdditions1', readonly: true },
-        { field: 'landNotRevAdd1', readonly: false },
-        { field: 'landRevAdd1', readonly: false },
-        { field: 'landRevEnhAdd1', readonly: false },
-        { field: 'offBuildNotRevAdd1', readonly: false },
-        { field: 'offBuildRevAdd1', readonly: false },
-        { field: 'offBuildRevEnhAdd1', readonly: false },
-        { field: 'residQuartNotRevAdd1', readonly: false },
-        { field: 'residQuartRevAdd1', readonly: false },
-        { field: 'residQuartRevEnhAdd1', readonly: false },
-        { field: 'premisTotalAdd1', readonly: true },
-        { field: 'revtotalAdd1', readonly: true },
-        { field: 'totalCAdd1', readonly: true },
-        { field: 'premisesUnderConsAdd1', readonly: false },
-        null, // No Grand Total cell for this row, it would be part of a final total.
-      ],
-    },
-    // SECTION: Deductions during the year (Sales/Adjustments)
-    {
-      id: 'A.III',
-      label: 'Deductions during the year (Sales/Adjustments):',
-      isSectionHeader: true,
-      cells: [
-        { field: 'stcNstaffDed1', readonly: false },
-        { field: 'offResidenceADed1', readonly: false },
-        { field: 'otherPremisesADed1', readonly: false },
-        { field: 'electricFittingDed1', readonly: false },
-        { field: 'totalADed1', readonly: true },
-        { field: 'computersDed1', readonly: false },
-        { field: 'compSoftwareIntDed1', readonly: false },
-        { field: 'compSoftwareNonintDed1', readonly: false },
-        { field: 'compSoftwareTotalDed1', readonly: true },
-        { field: 'motorDed1', readonly: false },
-        { field: 'offResidenceBDed1', readonly: false },
-        { field: 'stcLhoDed1', readonly: false },
-        { field: 'otherPremisesBDed1', readonly: false },
-        { field: 'otherMachineryPlantDed1', readonly: true },
-        { field: 'totalBDed1', readonly: true },
-        { field: 'totalFurnFixDeductions1', readonly: true },
-        { field: 'landNotRevDed1', readonly: false },
-        { field: 'landRevDed1', readonly: false },
-        { field: 'landRevEnhDed1', readonly: false },
-        { field: 'offBuildNotRevDed1', readonly: false },
-        { field: 'offBuildRevDed1', readonly: false },
-        { field: 'offBuildRevEnhDed1', readonly: false },
-        { field: 'residQuartNotRevDed1', readonly: false },
-        { field: 'residQuartRevDed1', readonly: false },
-        { field: 'residQuartRevEnhDed1', readonly: false },
-        { field: 'premisTotalDed1', readonly: true },
-        { field: 'revtotalDed1', readonly: true },
-        { field: 'totalCDed1', readonly: true },
-        { field: 'premisesUnderConsDed1', readonly: false },
-        null, // No Grand Total cell for this row
-      ],
-    },
-    // SECTION: Depreciation for the year
-    {
-      id: 'A.IV',
-      label: 'Depreciation for the year:',
-      isSectionHeader: true,
-      cells: [
-        { field: 'depA1', readonly: false }, // Furniture & Fittings Depreciation
-        null, null, null, null, // Remaining A columns are empty for depreciation
-        { field: 'depB1', readonly: false }, // Machinery & Plant Depreciation
-        null, null, null, null, null, null, null, null, null, // Remaining B columns are empty
-        null, // Total Furn & Fix is empty
-        { field: 'depC1', readonly: false }, // Premises Depreciation
-        null, null, null, null, null, null, null, null, null, null, null, // Remaining C columns are empty
-        null, // Projects under construction is empty for depreciation
-        { field: 'totalDepreciation1', readonly: true }, // Grand Total Depreciation
-      ],
-    },
-    // SECTION: Net Block at the end of the year
-    {
-      id: 'A.V',
-      label: 'Net Block at the end of the year:',
-      isSectionHeader: true,
-      cells: [
-        { field: 'netBlockA1', readonly: true }, // Furniture & Fittings Net Block
-        null, null, null, null, // Remaining A columns are empty
-        { field: 'netBlockB1', readonly: true }, // Machinery & Plant Net Block
-        null, null, null, null, null, null, null, null, null, // Remaining B columns are empty
-        null, // Total Furn & Fix is empty
-        { field: 'netBlockC1', readonly: true }, // Premises Net Block
-        null, null, null, null, null, null, null, null, null, null, null, // Remaining C columns are empty
-        { field: 'netBlockD1', readonly: true }, // Projects under construction Net Block (same as premisesUnderConsCurrent1)
-        { field: 'grandTotalNetBlock1', readonly: true }, // Grand Total Net Block
-      ],
-    },
-    // Row for the reconciliation total - this is a separate row as per snippet
-    {
-      id: 'B.I',
-      label: 'Total Premises (Cost + Revaluation) at the end of Previous Year (for Reconciliation)',
-      isSectionHeader: true, // Treat as a total row for distinct styling
-      istotalrow: true,
-      cells: [
-        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, // Empty cells to align
-        { field: 'totalPremPreYear', readonly: true }, // Calculated from snippet logic
-        null, null, null, null, null, null, null, null, null, null, null, null, null, null, // More empty cells
-      ]
-    },
-    // Fixed Assets Reconciliation row (from snippet's calculation)
-    {
-      id: 'B.II',
-      label: 'Fixed Assets Cost Previous Year (for Reconciliation)',
-      isSectionHeader: true,
-      istotalrow: true,
-      cells: [
-        null, null, null, null, null, // Empty cells for A
-        { field: 'fixCostPre', readonly: false }, // Input from snippet
-        { field: 'fixAddPreYear', readonly: false }, // Input from snippet
-        { field: 'fixDedPreYear', readonly: false }, // Input from snippet
-        { field: 'fixAddYear', readonly: false }, // Input from snippet
-        { field: 'fixDedYear', readonly: false }, // Input from snippet
-        { field: 'fixDepYear', readonly: false }, // Input from snippet
-        { field: 'fixDepPreYear', readonly: false }, // Input from snippet
-        null, null, null, // Empty cells for B
-        { field: 'fixCostYear', readonly: true }, // Calculated from snippet
-        { field: 'ttlFixCurrYear', readonly: true }, // Calculated from snippet
-        { field: 'ttlFixPreYear', readonly: true }, // Calculated from snippet
-        { field: 'currvPremTotal', readonly: true }, // Calculated from snippet
-        { field: 'grandCurrTotal', readonly: true }, // Calculated from snippet
-        null, null, null, null, null, null, null, null, null, null, null, null, // More empty cells for C and D and Grand Total
-      ]
-    }
-    // Add more rows here as needed based on the full Schedule10.txt
-  ], [formData]);
+  const tableRows = useMemo(
+    () => [
+      // SECTION: Total Original Cost / Revalued Value upto the end of previous year
+      {
+        id: 'A.I',
+        label: `Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March {{sc10.year1}}`,
+        isSectionHeader: true,
+        cells: [
+          { field: 'stcNstaff1', readonly: false },
+          { field: 'offResidenceA1', readonly: false },
+          { field: 'otherPremisesA1', readonly: false },
+          { field: 'electricFitting1', readonly: false },
+          { field: 'totalA1', readonly: true }, // TOTAL (A)
+          { field: 'computers1', readonly: false },
+          { field: 'compSoftwareInt1', readonly: false },
+          { field: 'compSoftwareNonint1', readonly: false },
+          { field: 'compSoftwareTotal1', readonly: true }, // Computer Software Total
+          { field: 'motor1', readonly: false },
+          { field: 'offResidenceB1', readonly: false },
+          { field: 'stcLho1', readonly: false },
+          { field: 'otherPremisesB1', readonly: false },
+          { field: 'otherMachineryPlant1', readonly: true }, // Other Machinery & Plant Total
+          { field: 'totalB1', readonly: true }, // TOTAL (B)
+          { field: 'totalFurnFixPrevYear1', readonly: true }, // Total Furniture & Fixtures (A+B) prev year
+          { field: 'landNotRev1', readonly: false },
+          { field: 'landRev1', readonly: false },
+          { field: 'landRevEnh1', readonly: false },
+          { field: 'offBuildNotRev1', readonly: false },
+          { field: 'offBuildRev1', readonly: false },
+          { field: 'offBuildRevEnh1', readonly: false },
+          { field: 'residQuartNotRev1', readonly: false },
+          { field: 'residQuartRev1', readonly: false },
+          { field: 'residQuartRevEnh1', readonly: false },
+          { field: 'premisTotal1', readonly: true }, // Premises Total (Cost)
+          { field: 'revtotal1', readonly: true }, // Revaluation Total (Enhancement)
+          { field: 'totalC1', readonly: true }, // TOTAL (C)
+          { field: 'premisesUnderCons1', readonly: false }, // Projects under construction
+          { field: 'grandTotal1', readonly: true }, // Grand Total (A+B+C+D) - This might be a reconciliation total, needs re-eval
+        ],
+      },
+      // SECTION: Additions during the year
+      {
+        id: 'A.II',
+        label: 'Additions during the year:',
+        isSectionHeader: true,
+        cells: [
+          { field: 'stcNstaffAdd1', readonly: false },
+          { field: 'offResidenceAAdd1', readonly: false },
+          { field: 'otherPremisesAAdd1', readonly: false },
+          { field: 'electricFittingAdd1', readonly: false },
+          { field: 'totalAAdd1', readonly: true },
+          { field: 'computersAdd1', readonly: false },
+          { field: 'compSoftwareIntAdd1', readonly: false },
+          { field: 'compSoftwareNonintAdd1', readonly: false },
+          { field: 'compSoftwareTotalAdd1', readonly: true },
+          { field: 'motorAdd1', readonly: false },
+          { field: 'offResidenceBAdd1', readonly: false },
+          { field: 'stcLhoAdd1', readonly: false },
+          { field: 'otherPremisesBAdd1', readonly: false },
+          { field: 'otherMachineryPlantAdd1', readonly: true },
+          { field: 'totalBAdd1', readonly: true },
+          { field: 'totalFurnFixAdditions1', readonly: true },
+          { field: 'landNotRevAdd1', readonly: false },
+          { field: 'landRevAdd1', readonly: false },
+          { field: 'landRevEnhAdd1', readonly: false },
+          { field: 'offBuildNotRevAdd1', readonly: false },
+          { field: 'offBuildRevAdd1', readonly: false },
+          { field: 'offBuildRevEnhAdd1', readonly: false },
+          { field: 'residQuartNotRevAdd1', readonly: false },
+          { field: 'residQuartRevAdd1', readonly: false },
+          { field: 'residQuartRevEnhAdd1', readonly: false },
+          { field: 'premisTotalAdd1', readonly: true },
+          { field: 'revtotalAdd1', readonly: true },
+          { field: 'totalCAdd1', readonly: true },
+          { field: 'premisesUnderConsAdd1', readonly: false },
+          null, // No Grand Total cell for this row, it would be part of a final total.
+        ],
+      },
+      // SECTION: Deductions during the year (Sales/Adjustments)
+      {
+        id: 'A.III',
+        label: 'Deductions during the year (Sales/Adjustments):',
+        isSectionHeader: true,
+        cells: [
+          { field: 'stcNstaffDed1', readonly: false },
+          { field: 'offResidenceADed1', readonly: false },
+          { field: 'otherPremisesADed1', readonly: false },
+          { field: 'electricFittingDed1', readonly: false },
+          { field: 'totalADed1', readonly: true },
+          { field: 'computersDed1', readonly: false },
+          { field: 'compSoftwareIntDed1', readonly: false },
+          { field: 'compSoftwareNonintDed1', readonly: false },
+          { field: 'compSoftwareTotalDed1', readonly: true },
+          { field: 'motorDed1', readonly: false },
+          { field: 'offResidenceBDed1', readonly: false },
+          { field: 'stcLhoDed1', readonly: false },
+          { field: 'otherPremisesBDed1', readonly: false },
+          { field: 'otherMachineryPlantDed1', readonly: true },
+          { field: 'totalBDed1', readonly: true },
+          { field: 'totalFurnFixDeductions1', readonly: true },
+          { field: 'landNotRevDed1', readonly: false },
+          { field: 'landRevDed1', readonly: false },
+          { field: 'landRevEnhDed1', readonly: false },
+          { field: 'offBuildNotRevDed1', readonly: false },
+          { field: 'offBuildRevDed1', readonly: false },
+          { field: 'offBuildRevEnhDed1', readonly: false },
+          { field: 'residQuartNotRevDed1', readonly: false },
+          { field: 'residQuartRevDed1', readonly: false },
+          { field: 'residQuartRevEnhDed1', readonly: false },
+          { field: 'premisTotalDed1', readonly: true },
+          { field: 'revtotalDed1', readonly: true },
+          { field: 'totalCDed1', readonly: true },
+          { field: 'premisesUnderConsDed1', readonly: false },
+          null, // No Grand Total cell for this row
+        ],
+      },
+      // SECTION: Depreciation for the year
+      {
+        id: 'A.IV',
+        label: 'Depreciation for the year:',
+        isSectionHeader: true,
+        cells: [
+          { field: 'depA1', readonly: false }, // Furniture & Fittings Depreciation
+          null,
+          null,
+          null,
+          null, // Remaining A columns are empty for depreciation
+          { field: 'depB1', readonly: false }, // Machinery & Plant Depreciation
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null, // Remaining B columns are empty
+          null, // Total Furn & Fix is empty
+          { field: 'depC1', readonly: false }, // Premises Depreciation
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null, // Remaining C columns are empty
+          null, // Projects under construction is empty for depreciation
+          { field: 'totalDepreciation1', readonly: true }, // Grand Total Depreciation
+        ],
+      },
+      // SECTION: Net Block at the end of the year
+      {
+        id: 'A.V',
+        label: 'Net Block at the end of the year:',
+        isSectionHeader: true,
+        cells: [
+          { field: 'netBlockA1', readonly: true }, // Furniture & Fittings Net Block
+          null,
+          null,
+          null,
+          null, // Remaining A columns are empty
+          { field: 'netBlockB1', readonly: true }, // Machinery & Plant Net Block
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null, // Remaining B columns are empty
+          null, // Total Furn & Fix is empty
+          { field: 'netBlockC1', readonly: true }, // Premises Net Block
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null, // Remaining C columns are empty
+          { field: 'netBlockD1', readonly: true }, // Projects under construction Net Block (same as premisesUnderConsCurrent1)
+          { field: 'grandTotalNetBlock1', readonly: true }, // Grand Total Net Block
+        ],
+      },
+      // Row for the reconciliation total - this is a separate row as per snippet
+      {
+        id: 'B.I',
+        label: 'Total Premises (Cost + Revaluation) at the end of Previous Year (for Reconciliation)',
+        isSectionHeader: true, // Treat as a total row for distinct styling
+        istotalrow: true,
+        cells: [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null, // Empty cells to align
+          { field: 'totalPremPreYear', readonly: true }, // Calculated from snippet logic
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null, // More empty cells
+        ],
+      },
+      // Fixed Assets Reconciliation row (from snippet's calculation)
+      {
+        id: 'B.II',
+        label: 'Fixed Assets Cost Previous Year (for Reconciliation)',
+        isSectionHeader: true,
+        istotalrow: true,
+        cells: [
+          null,
+          null,
+          null,
+          null,
+          null, // Empty cells for A
+          { field: 'fixCostPre', readonly: false }, // Input from snippet
+          { field: 'fixAddPreYear', readonly: false }, // Input from snippet
+          { field: 'fixDedPreYear', readonly: false }, // Input from snippet
+          { field: 'fixAddYear', readonly: false }, // Input from snippet
+          { field: 'fixDedYear', readonly: false }, // Input from snippet
+          { field: 'fixDepYear', readonly: false }, // Input from snippet
+          { field: 'fixDepPreYear', readonly: false }, // Input from snippet
+          null,
+          null,
+          null, // Empty cells for B
+          { field: 'fixCostYear', readonly: true }, // Calculated from snippet
+          { field: 'ttlFixCurrYear', readonly: true }, // Calculated from snippet
+          { field: 'ttlFixPreYear', readonly: true }, // Calculated from snippet
+          { field: 'currvPremTotal', readonly: true }, // Calculated from snippet
+          { field: 'grandCurrTotal', readonly: true }, // Calculated from snippet
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null, // More empty cells for C and D and Grand Total
+        ],
+      },
+      // Add more rows here as needed based on the full Schedule10.txt
+    ],
+    [formData]
+  );
 
   return (
     <Box sx={{ p: 3 }}>
@@ -769,46 +993,192 @@ const Schedule10 = () => {
           <Table stickyHeader aria-label="schedule 10 table" sx={{ minWidth: 4000 }}>
             <TableHead>
               <TableRow>
-                <StyledTableCell rowSpan={2}><b>Sr.No</b></StyledTableCell>
-                <StyledTableCell rowSpan={2}><b>Particulars</b></StyledTableCell>
-                <StyledTableCell colSpan={5}><b>(A) FURNITURE & FITTINGS</b></StyledTableCell>
-                <StyledTableCell colSpan={10}><b>(B) MACHINERY & PLANT</b></StyledTableCell>
-                <StyledTableCell rowSpan={2}><b>Total Furniture & Fixtures <br />(A+B)</b></StyledTableCell>
-                <StyledTableCell colSpan={12}><b>(C) PREMISES</b></StyledTableCell>
-                <StyledTableCell rowSpan={2}><b>(D) Projects under <br />construction</b></StyledTableCell>
-                <StyledTableCell rowSpan={2}><b>Grand Total <br /> (A + B + C + D)</b></StyledTableCell>
+                <StyledTableCell rowSpan={2}>
+                  <b>Sr.No</b>
+                </StyledTableCell>
+                <StyledTableCell rowSpan={2}>
+                  <b>Particulars</b>
+                </StyledTableCell>
+                <StyledTableCell colSpan={5}>
+                  <b>(A) FURNITURE & FITTINGS</b>
+                </StyledTableCell>
+                <StyledTableCell colSpan={10}>
+                  <b>(B) MACHINERY & PLANT</b>
+                </StyledTableCell>
+                <StyledTableCell rowSpan={2}>
+                  <b>
+                    Total Furniture & Fixtures <br />
+                    (A+B)
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell colSpan={12}>
+                  <b>(C) PREMISES</b>
+                </StyledTableCell>
+                <StyledTableCell rowSpan={2}>
+                  <b>
+                    (D) Projects under <br />
+                    construction
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell rowSpan={2}>
+                  <b>
+                    Grand Total <br /> (A + B + C + D)
+                  </b>
+                </StyledTableCell>
               </TableRow>
               <TableRow>
                 {/* Furniture & Fittings */}
-                <StyledTableCell><b>i) At STCs & Staff Colleges <br />(For Local Head Office only)</b></StyledTableCell>
-                <StyledTableCell><b>ii) At Officers' Residences</b></StyledTableCell>
-                <StyledTableCell><b>iii) At Other Premises</b></StyledTableCell>
-                <StyledTableCell><b>iv) Electric Fittings <br />(include electric wiring,<br /> switches, sockets, other<br /> fittings & fans etc.)</b></StyledTableCell>
-                <StyledTableCell><b>TOTAL (A)<br /> (i+ii+iii+iv)</b></StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    i) At STCs & Staff Colleges <br />
+                    (For Local Head Office only)
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>ii) At Officers' Residences</b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>iii) At Other Premises</b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    iv) Electric Fittings <br />
+                    (include electric wiring,
+                    <br /> switches, sockets, other
+                    <br /> fittings & fans etc.)
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    TOTAL (A)
+                    <br /> (i+ii+iii+iv)
+                  </b>
+                </StyledTableCell>
                 {/* Machinery & Plant */}
-                <StyledTableCell><b>i) Computer Hardware</b></StyledTableCell>
-                <StyledTableCell><b>a. Computer Software <br />(forming integral part of<br /> Hardware)</b></StyledTableCell>
-                <StyledTableCell><b>b. Computer Software <br />(not forming integral <br />of Hardware)</b></StyledTableCell>
-                <StyledTableCell><b>ii) Computer Software <br />Total (a+b)</b></StyledTableCell>
-                <StyledTableCell><b>iii) Motor Vehicles </b></StyledTableCell>
-                <StyledTableCell><b>a) At Officers' Residences</b></StyledTableCell>
-                <StyledTableCell><b>b) At STCs <br />(For Local Head Office)</b></StyledTableCell>
-                <StyledTableCell><b>c) At other Premises </b></StyledTableCell>
-                <StyledTableCell><b>iv) Other Machinery & Plant <br />( a+b+c)</b> </StyledTableCell>
-                <StyledTableCell><b>TOTAL <br /> (B= i+ii+iii+iv)</b></StyledTableCell>
+                <StyledTableCell>
+                  <b>i) Computer Hardware</b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    a. Computer Software <br />
+                    (forming integral part of
+                    <br /> Hardware)
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    b. Computer Software <br />
+                    (not forming integral <br />
+                    of Hardware)
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    ii) Computer Software <br />
+                    Total (a+b)
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>iii) Motor Vehicles </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>a) At Officers' Residences</b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    b) At STCs <br />
+                    (For Local Head Office)
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>c) At other Premises </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    iv) Other Machinery & Plant <br />( a+b+c)
+                  </b>{' '}
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    TOTAL <br /> (B= i+ii+iii+iv)
+                  </b>
+                </StyledTableCell>
                 {/* Premises */}
-                <StyledTableCell><b>(a) Land (Not Revalued):<br /> Cost</b></StyledTableCell>
-                <StyledTableCell><b>(b) Land (Revalued): <br />Cost</b></StyledTableCell>
-                <StyledTableCell><b>(c) Land (Revalued): <br />Enhancement due to <br />Revaluation</b></StyledTableCell>
-                <StyledTableCell><b>(d) Office Building <br />(Not revalued): Cost </b></StyledTableCell>
-                <StyledTableCell><b>(e) Office Building <br />(Revalued): Cost </b></StyledTableCell>
-                <StyledTableCell><b>(f) Office Building <br />(Revalued): Enhancement <br />due to Revaluation</b></StyledTableCell>
-                <StyledTableCell><b>(g) Residential Building <br />(Not revalued): Cost</b></StyledTableCell>
-                <StyledTableCell><b>(h) Residential Building <br />(Revalued): Cost</b></StyledTableCell>
-                <StyledTableCell><b>(i) Residential Building <br />(Revalued): Enhancement <br />due to Revaluation</b></StyledTableCell>
-                <StyledTableCell><b>(j) Premises Total <br />(a+b+d+e+g+h)</b></StyledTableCell>
-                <StyledTableCell><b>(k) Revaluation Total <br />(c+f+i)</b></StyledTableCell>
-                <StyledTableCell><b>TOTAL <br />(C=j+k)</b></StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    (a) Land (Not Revalued):
+                    <br /> Cost
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    (b) Land (Revalued): <br />
+                    Cost
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    (c) Land (Revalued): <br />
+                    Enhancement due to <br />
+                    Revaluation
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    (d) Office Building <br />
+                    (Not revalued): Cost{' '}
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    (e) Office Building <br />
+                    (Revalued): Cost{' '}
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    (f) Office Building <br />
+                    (Revalued): Enhancement <br />
+                    due to Revaluation
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    (g) Residential Building <br />
+                    (Not revalued): Cost
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    (h) Residential Building <br />
+                    (Revalued): Cost
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    (i) Residential Building <br />
+                    (Revalued): Enhancement <br />
+                    due to Revaluation
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    (j) Premises Total <br />
+                    (a+b+d+e+g+h)
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    (k) Revaluation Total <br />
+                    (c+f+i)
+                  </b>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <b>
+                    TOTAL <br />
+                    (C=j+k)
+                  </b>
+                </StyledTableCell>
               </TableRow>
             </TableHead>
             <TableBody>
