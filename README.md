@@ -1,244 +1,530 @@
-// Final Schedule10.jsx React Component
-// All features integrated as discussed
-import React, { useState, useMemo } from 'react';
-import {
-  Box,
-  Typography,
-  Table,
-  TableBody,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TableCell,
-  Paper,
-  TextField,
-  Snackbar,
-  Alert,
-  Button,
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
-
-const StickyCell = styled(TableCell)(({ theme }) => ({
-  position: 'sticky',
-  left: 0,
-  zIndex: 1201,
-  backgroundColor: theme.palette.background.paper,
-  fontWeight: 'bold',
-  minWidth: 80,
-}));
-
-const StickySecondCell = styled(TableCell)(({ theme }) => ({
-  position: 'sticky',
-  left: 80,
-  zIndex: 1200,
-  backgroundColor: theme.palette.background.paper,
-  fontWeight: 'bold',
-  minWidth: 250,
-}));
-
-const StyledCell = styled(TableCell)(({ theme }) => ({
-  border: '1px solid #ccc',
-  minWidth: 140,
-  padding: 4,
-  textAlign: 'right',
-  backgroundColor: theme.palette.background.paper,
-}));
-
-const HeaderCell = styled(TableCell)(({ theme }) => ({
-  backgroundColor: theme.palette.grey[900],
-  color: theme.palette.common.white,
-  textAlign: 'center',
-  fontWeight: 'bold',
-  minWidth: 140,
-  whiteSpace: 'normal',
-  lineHeight: 1.4,
-  padding: 6,
-}));
-
-const Schedule10 = () => {
-  const [data, setData] = useState([
-    { id: '1', label: 'Total Original Cost / Revalued Value up to 31st March', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'a(i)', label: 'Original cost of items put to use during the year (i)', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'a(ii)', label: 'Original cost of items put to use during the year (ii)', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'b', label: 'Increase in value due to current revaluation', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'c', label: 'Transferred from other Circles/Groups', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'd', label: 'Transferred from other branches of same Circle', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'I', label: 'Total of a(i) + a(ii) + b + c + d', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'Ded(i)', label: 'Short Valuation charged to Revaluation Reserve', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'ii', label: 'Depreciation up to end of previous year', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'iii', label: 'Short Valuation charged to depreciation up to end of previous year', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'iv', label: 'Depreciation on repatriation of Officials from Subsidiaries / Associates', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'v', label: 'Depreciation transferred from other Circles / Groups / CC Departments', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'vi', label: 'Depreciation transferred from other branches of the same Circle', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'vii', label: 'Depreciation charged during the current year', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'viii', label: 'Short Valuation charged to depreciation during current year due to Current Revaluation', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'D', label: 'Total Depreciation (ii to viii)', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'Less', label: 'Less:', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'E1', label: 'Less: Past short valuation credited due to Current Upward Revaluation', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'E2', label: 'Less: Depreciation previously provided on fixed assets sold / discarded', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'E3', label: 'Less: Depreciation transferred to other Circles / Groups / CC Departments', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'E4', label: 'Less: Depreciation transferred to other branches of the same Circle', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'E', label: 'Total (E1 + E2 + E3 + E4)', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'F', label: 'Net Depreciation (D - E)', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'G', label: 'Net Book Value as at 31st March (C - F)', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'H', label: 'Sale Price of fixed assets', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'I1', label: 'Book Value of fixed assets sold [D + E1]', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'J', label: 'GST on Sale of fixed assets', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-    { id: 'K', label: 'Profit / (Loss) on sale of fixed assets [H - (I1 + J)]', A: '', B: '', C: '', D: '', E: '', F: '', G: '', H: '', I: '', J: '', K: '', total: '' },
-  ]);
-
-  const handleChange = (rowIdx, key) => (e) => {
-  const updated = [...data];
-  updated[rowIdx][key] = e.target.value;
-
-  // Auto-calculations
-  const getVal = (rowId, col) => parseFloat(updated.find(r => r.id === rowId)?.[col] || 0);
-
-  // Total I = a(i) + a(ii) + b + c + d
-  if (updated[rowIdx].id === 'I') {
-    ['A','B','C','D','E','F','G','H','I','J','K'].forEach(col => {
-      updated[rowIdx][col] = [getVal('a(i)', col), getVal('a(ii)', col), getVal('b', col), getVal('c', col), getVal('d', col)].reduce((a, b) => a + b, 0).toFixed(2);
-    });
-  }
-
-  // Total E = E1 + E2 + E3 + E4
-  if (updated[rowIdx].id === 'E') {
-    ['A','B','C','D','E','F','G','H','I','J','K'].forEach(col => {
-      updated[rowIdx][col] = [getVal('E1', col), getVal('E2', col), getVal('E3', col), getVal('E4', col)].reduce((a, b) => a + b, 0).toFixed(2);
-    });
-  }
-
-  // F = D - E
-  if (updated[rowIdx].id === 'F') {
-    ['A','B','C','D','E','F','G','H','I','J','K'].forEach(col => {
-      updated[rowIdx][col] = (getVal('D', col) - getVal('E', col)).toFixed(2);
-    });
-  }
-
-  // G = C - F
-  if (updated[rowIdx].id === 'G') {
-    ['A','B','C','D','E','F','G','H','I','J','K'].forEach(col => {
-      updated[rowIdx][col] = (getVal('C', col) - getVal('F', col)).toFixed(2);
-    });
-  }
-
-  // I1 = D + E1
-  if (updated[rowIdx].id === 'I1') {
-    ['A','B','C','D','E','F','G','H','I','J','K'].forEach(col => {
-      updated[rowIdx][col] = (getVal('D', col) + getVal('E1', col)).toFixed(2);
-    });
-  }
-
-  // K = H - (I1 + J)
-  if (updated[rowIdx].id === 'K') {
-    ['A','B','C','D','E','F','G','H','I','J','K'].forEach(col => {
-      updated[rowIdx][col] = (getVal('H', col) - getVal('I1', col) - getVal('J', col)).toFixed(2);
-    });
-  }
-
-  setData(updated);
-};
-
-  return (
-    <Box p={2}>
-      <Typography variant="h5" gutterBottom>
-        Schedule 10 - Full Enhanced Table
-      </Typography>
-      <TableContainer component={Paper} sx={{ maxHeight: '80vh' }}>
-        <Table stickyHeader size="small">
-          <TableHead>
-  <TableRow>
-    <HeaderCell rowSpan={2}>Sr.No</HeaderCell>
-    <HeaderCell rowSpan={2}>Particulars</HeaderCell>
-    <HeaderCell colSpan={5}>(A) FURNITURE & FITTINGS</HeaderCell>
-    <HeaderCell colSpan={10}>(B) MACHINERY & PLANT</HeaderCell>
-    <HeaderCell rowSpan={2}>Total Furniture & Fittings (A+B)</HeaderCell>
-    <HeaderCell colSpan={12}>(C) PREMISES</HeaderCell>
-    <HeaderCell rowSpan={2}>(D) Projects under construction</HeaderCell>
-    <HeaderCell rowSpan={2}>Grand Total (A + B + C + D)</HeaderCell>
-  </TableRow>
-  <TableRow>
-    <HeaderCell>i) At STCs & Staff Colleges<br />(For Local Head Office only)</HeaderCell>
-    <HeaderCell>ii) At Officers' Residences</HeaderCell>
-    <HeaderCell>iii) At Other Premises</HeaderCell>
-    <HeaderCell>iv) Electric Fittings<br />(include electric wiring, switches, sockets, other fittings & fans etc.)</HeaderCell>
-    <HeaderCell>TOTAL (A)<br />(i+ii+iii+iv)</HeaderCell>
-    <HeaderCell>i) Computer Hardware</HeaderCell>
-    <HeaderCell>a) Computer Software<br />(integral to hardware)</HeaderCell>
-    <HeaderCell>b) Computer Software<br />(not part of hardware)</HeaderCell>
-    <HeaderCell>ii) Software Total (a+b)</HeaderCell>
-    <HeaderCell>iii) Motor Vehicles</HeaderCell>
-    <HeaderCell>a) At Officers' Residences</HeaderCell>
-    <HeaderCell>b) At STCs (LHO)</HeaderCell>
-    <HeaderCell>c) At Other Premises</HeaderCell>
-    <HeaderCell>iv) Other Machinery & Plant (a+b+c)</HeaderCell>
-    <HeaderCell>TOTAL (B)</HeaderCell>
-    <HeaderCell>(a) Land (Not Revalued)</HeaderCell>
-    <HeaderCell>(b) Land (Revalued)</HeaderCell>
-    <HeaderCell>(c) Land - Revaluation Enhancement</HeaderCell>
-    <HeaderCell>(d) Office Building (Not revalued)</HeaderCell>
-    <HeaderCell>(e) Office Building (Revalued)</HeaderCell>
-    <HeaderCell>(f) Office Building - Revaluation</HeaderCell>
-    <HeaderCell>(g) Residential Building (Not revalued)</HeaderCell>
-    <HeaderCell>(h) Residential Building (Revalued)</HeaderCell>
-    <HeaderCell>(i) Residential Building - Revaluation</HeaderCell>
-    <HeaderCell>(j) Premises Total</HeaderCell>
-    <HeaderCell>(k) Revaluation Total</HeaderCell>
-    <HeaderCell>TOTAL (C = j + k)</HeaderCell>
-  </TableRow>
-</TableHead>
-          <TableBody>
-            {data.map((row, rowIndex) => (
-              <TableRow key={row.id}>
-                <StickyCell>{row.id}</StickyCell>
-                <StickySecondCell>{row.label}</StickySecondCell>
-                {['A','B','C','D','E','F','G','H','I','J','K'].map((key) => (
-                  <StyledCell key={key}>
-                    <TextField
-                      fullWidth
-                      variant="outlined"
-                      size="small"
-                      value={row[key]}
-                      onChange={handleChange(rowIndex, key)}
-                      inputProps={{ style: { textAlign: 'right' } }}
-                    />
-                  </StyledCell>
-                ))}
-                <StyledCell>
-                  <TextField
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                    value={row.total}
-                    onChange={handleChange(rowIndex, 'total')}
-                    inputProps={{ style: { textAlign: 'right' } }}
-                  />
-                </StyledCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
-  );
-};
-
-
-The table headers now match the format shown in your screenshot:
-
-Multi-row structure with labeled sections: Furniture & Fittings, Machinery & Plant, Premises, etc.
-
-Detailed Roman-indexed column names
-
-Sticky Sr.No and Particulars maintained
-
-
-Let me know if you'd like to:
-
-Freeze the first two columns horizontally
-
-Add export (PDF/Excel)
-
-Style calculated rows differently (like bold, shaded)
-
-
+{
+    "particulars3": "Cost of new items put to use upto 3rd October 2024",
+    "particulars4": "Cost of new items put to use during 4th October 2024 to 31st March 2025",
+    "totalA36": "0.00",
+    "stcNstaff7": "0.00",
+    "offResidenceA7": "0.00",
+    "otherPremisesA7": "0.00",
+    "electricFitting7": "0.00",
+    "stcNstaff12": "0.00",
+    "offResidenceA12": "0.00",
+    "otherPremisesA12": "0.00",
+    "electricFitting12": "0.00",
+    "totalA1": "0.00",
+    "totalA3": "0.00",
+    "totalA4": "0.00",
+    "totalA5": "0.00",
+    "totalA6": "0.00",
+    "totalA7": "0.00",
+    "totalA9": "0.00",
+    "totalA33": "0.00",
+    "totalA37": "0.00",
+    "totalA10": "0.00",
+    "totalA11": "0.00",
+    "totalA12": "0.00",
+    "stcNstaff13": "0.00",
+    "offResidenceA13": "0.00",
+    "otherPremisesA13": "0.00",
+    "electricFitting13": "0.00",
+    "totalA13": "0.00",
+    "stcNstaff14": "0.00",
+    "offResidenceA14": "0.00",
+    "otherPremisesA14": "0.00",
+    "electricFitting14": "0.00",
+    "totalA14": "0.00",
+    "totalA18": "0.00",
+    "totalA34": "0.00",
+    "totalA19": "0.00",
+    "totalA38": "0.00",
+    "totalA39": "0.00",
+    "totalA20": "0.00",
+    "totalA21": "0.00",
+    "stcNstaff22": "0.00",
+    "offResidenceA22": "0.00",
+    "otherPremisesA22": "0.00",
+    "electricFitting22": "0.00",
+    "totalA22": "0.00",
+    "totalA24": "0.00",
+    "totalA25": "0.00",
+    "totalA26": "0.00",
+    "totalA40": "0.00",
+    "stcNstaff27": "0.00",
+    "offResidenceA27": "0.00",
+    "otherPremisesA27": "0.00",
+    "electricFitting27": "0.00",
+    "totalA27": "0.00",
+    "stcNstaff28": "0.00",
+    "offResidenceA28": "0.00",
+    "otherPremisesA28": "0.00",
+    "electricFitting28": "0.00",
+    "totalA28": "0.00",
+    "stcNstaff29": "0.00",
+    "offResidenceA29": "0.00",
+    "otherPremisesA29": "0.00",
+    "electricFitting29": "0.00",
+    "totalA29": "0.00",
+    "totalA30": "0.00",
+    "totalA35": "0.00",
+    "stcNstaff31": "0.00",
+    "offResidenceA31": "0.00",
+    "otherPremisesA31": "0.00",
+    "electricFitting31": "0.00",
+    "totalA31": "0.00",
+    "compSoftwareTotal1": "0.00",
+    "compSoftwareTotal3": "0.00",
+    "compSoftwareTotal4": "0.00",
+    "compSoftwareTotal36": "0.00",
+    "compSoftwareTotal5": "0.00",
+    "compSoftwareTotal6": "0.00",
+    "computers7": "0.00",
+    "compSoftwareInt7": "0.00",
+    "compSoftwareNonint7": "0.00",
+    "compSoftwareTotal7": "0.00",
+    "compSoftwareTotal9": "0.00",
+    "compSoftwareTotal33": "0.00",
+    "compSoftwareTotal37": "0.00",
+    "compSoftwareTotal10": "0.00",
+    "compSoftwareTotal11": "0.00",
+    "computers12": "0.00",
+    "compSoftwareInt12": "0.00",
+    "compSoftwareNonint12": "0.00",
+    "compSoftwareTotal12": "0.00",
+    "computers13": "0.00",
+    "compSoftwareInt13": "0.00",
+    "compSoftwareNonint13": "0.00",
+    "compSoftwareTotal13": "0.00",
+    "computers14": "0.00",
+    "compSoftwareInt14": "0.00",
+    "compSoftwareNonint14": "0.00",
+    "compSoftwareTotal14": "0.00",
+    "compSoftwareTotal18": "0.00",
+    "compSoftwareTotal34": "0.00",
+    "compSoftwareTotal19": "0.00",
+    "compSoftwareTotal38": "0.00",
+    "compSoftwareTotal39": "0.00",
+    "compSoftwareTotal20": "0.00",
+    "compSoftwareTotal21": "0.00",
+    "computers22": "0.00",
+    "compSoftwareInt22": "0.00",
+    "compSoftwareNonint22": "0.00",
+    "compSoftwareTotal22": "0.00",
+    "compSoftwareTotal24": "0.00",
+    "compSoftwareTotal25": "0.00",
+    "compSoftwareTotal26": "0.00",
+    "compSoftwareTotal40": "0.00",
+    "computers27": "0.00",
+    "compSoftwareInt27": "0.00",
+    "compSoftwareNonint27": "0.00",
+    "compSoftwareTotal27": "0.00",
+    "computers28": "0.00",
+    "compSoftwareInt28": "0.00",
+    "compSoftwareNonint28": "0.00",
+    "compSoftwareTotal28": "0.00",
+    "computers29": "0.00",
+    "compSoftwareInt29": "0.00",
+    "compSoftwareNonint29": "0.00",
+    "compSoftwareTotal29": "0.00",
+    "compSoftwareTotal30": "0.00",
+    "compSoftwareTotal35": "0.00",
+    "computers31": "0.00",
+    "compSoftwareInt31": "0.00",
+    "compSoftwareNonint31": "0.00",
+    "compSoftwareTotal31": "0.00",
+    "otherMachineryPlant1": "0.00",
+    "otherMachineryPlant3": "0.00",
+    "otherMachineryPlant4": "0.00",
+    "otherMachineryPlant36": "0.00",
+    "otherMachineryPlant5": "0.00",
+    "otherMachineryPlant6": "0.00",
+    "totalB1": "0.00",
+    "totalB3": "0.00",
+    "totalB4": "0.00",
+    "totalB36": "0.00",
+    "totalB5": "0.00",
+    "totalB6": "0.00",
+    "motor7": "0.00",
+    "offResidenceB7": "0.00",
+    "stcLho7": "0.00",
+    "otherPremisesB7": "0.00",
+    "otherMachineryPlant7": "0.00",
+    "totalB7": "0.00",
+    "otherMachineryPlant9": "0.00",
+    "otherMachineryPlant33": "0.00",
+    "otherMachineryPlant37": "0.00",
+    "otherMachineryPlant10": "0.00",
+    "otherMachineryPlant11": "0.00",
+    "totalB9": "0.00",
+    "totalB33": "0.00",
+    "totalB37": "0.00",
+    "totalB10": "0.00",
+    "totalB11": "0.00",
+    "motor12": "0.00",
+    "offResidenceB12": "0.00",
+    "stcLho12": "0.00",
+    "otherPremisesB12": "0.00",
+    "otherMachineryPlant12": "0.00",
+    "totalB12": "0.00",
+    "motor13": "0.00",
+    "offResidenceB13": "0.00",
+    "stcLho13": "0.00",
+    "otherPremisesB13": "0.00",
+    "otherMachineryPlant13": "0.00",
+    "totalB13": "0.00",
+    "motor14": "0.00",
+    "offResidenceB14": "0.00",
+    "stcLho14": "0.00",
+    "otherPremisesB14": "0.00",
+    "otherMachineryPlant14": "0.00",
+    "totalB14": "0.00",
+    "otherMachineryPlant18": "0.00",
+    "otherMachineryPlant34": "0.00",
+    "otherMachineryPlant19": "0.00",
+    "otherMachineryPlant38": "0.00",
+    "otherMachineryPlant39": "0.00",
+    "otherMachineryPlant20": "0.00",
+    "otherMachineryPlant21": "0.00",
+    "totalB18": "0.00",
+    "totalB34": "0.00",
+    "totalB19": "0.00",
+    "totalB38": "0.00",
+    "totalB39": "0.00",
+    "totalB20": "0.00",
+    "totalB21": "0.00",
+    "motor22": "0.00",
+    "offResidenceB22": "0.00",
+    "stcLho22": "0.00",
+    "otherPremisesB22": "0.00",
+    "otherMachineryPlant22": "0.00",
+    "totalB22": "0.00",
+    "otherMachineryPlant24": "0.00",
+    "otherMachineryPlant25": "0.00",
+    "otherMachineryPlant26": "0.00",
+    "otherMachineryPlant40": "0.00",
+    "totalB24": "0.00",
+    "totalB25": "0.00",
+    "totalB26": "0.00",
+    "totalB40": "0.00",
+    "motor27": "0.00",
+    "offResidenceB27": "0.00",
+    "stcLho27": "0.00",
+    "otherPremisesB27": "0.00",
+    "otherMachineryPlant27": "0.00",
+    "totalB27": "0.00",
+    "motor28": "0.00",
+    "offResidenceB28": "0.00",
+    "stcLho28": "0.00",
+    "otherPremisesB28": "0.00",
+    "otherMachineryPlant28": "0.00",
+    "totalB28": "0.00",
+    "motor29": "0.00",
+    "offResidenceB29": "0.00",
+    "stcLho29": "0.00",
+    "otherPremisesB29": "0.00",
+    "otherMachineryPlant29": "0.00",
+    "totalB29": "0.00",
+    "otherMachineryPlant30": "0.00",
+    "otherMachineryPlant35": "0.00",
+    "totalB30": "0.00",
+    "totalB35": "0.00",
+    "motor31": "0.00",
+    "offResidenceB31": "0.00",
+    "stcLho31": "0.00",
+    "otherPremisesB31": "0.00",
+    "otherMachineryPlant31": "0.00",
+    "totalB31": "0.00",
+    "totalC1": "0.00",
+    "totalC3": "0.00",
+    "totalC4": "0.00",
+    "totalC36": "0.00",
+    "totalC5": "0.00",
+    "totalC6": "0.00",
+    "totalC7": "0.00",
+    "totalC9": "0.00",
+    "totalC33": "0.00",
+    "totalC37": "0.00",
+    "totalC10": "0.00",
+    "totalC11": "0.00",
+    "totalFurnFix7": "0.00",
+    "landNotRev7": "0.00",
+    "landRev7": "0.00",
+    "landRevEnh7": "0.00",
+    "offBuildNotRev7": "0.00",
+    "offBuildRev7": "0.00",
+    "offBuildRevEnh7": "0.00",
+    "residQuartNotRev7": "0.00",
+    "residQuartRev7": "0.00",
+    "residQuartRevEnh7": "0.00",
+    "premisTotal1": "0.00",
+    "premisTotal3": "0.00",
+    "premisTotal4": "0.00",
+    "premisTotal36": "0.00",
+    "premisTotal5": "0.00",
+    "premisTotal6": "0.00",
+    "premisTotal7": "0.00",
+    "totalFurnFix1": "0.00",
+    "totalFurnFix3": "0.00",
+    "totalFurnFix4": "0.00",
+    "totalFurnFix36": "0.00",
+    "totalFurnFix5": "0.00",
+    "totalFurnFix6": "0.00",
+    "totalFurnFix9": "0.00",
+    "totalFurnFix33": "0.00",
+    "totalFurnFix37": "0.00",
+    "totalFurnFix10": "0.00",
+    "totalFurnFix11": "0.00",
+    "totalFurnFix18": "0.00",
+    "totalFurnFix34": "0.00",
+    "totalFurnFix19": "0.00",
+    "totalFurnFix38": "0.00",
+    "totalFurnFix39": "0.00",
+    "totalFurnFix20": "0.00",
+    "totalFurnFix21": "0.00",
+    "totalFurnFix24": "0.00",
+    "totalFurnFix25": "0.00",
+    "totalFurnFix26": "0.00",
+    "totalFurnFix40": "0.00",
+    "totalFurnFix30": "0.00",
+    "totalFurnFix35": "0.00",
+    "totalFurnFix12": "0.00",
+    "landNotRev12": "0.00",
+    "landRev12": "0.00",
+    "landRevEnh12": "0.00",
+    "offBuildNotRev12": "0.00",
+    "offBuildRev12": "0.00",
+    "offBuildRevEnh12": "0.00",
+    "residQuartNotRev12": "0.00",
+    "residQuartRev12": "0.00",
+    "residQuartRevEnh12": "0.00",
+    "premisTotal9": "0.00",
+    "premisTotal10": "0.00",
+    "premisTotal11": "0.00",
+    "premisTotal33": "0.00",
+    "premisTotal37": "0.00",
+    "premisTotal12": "0.00",
+    "revtotal7": "0.00",
+    "revtotal36": "0.00",
+    "revtotal12": "0.00",
+    "revtotal13": "0.00",
+    "revtotal14": "0.00",
+    "revtotal22": "0.00",
+    "revtotal27": "0.00",
+    "revtotal28": "0.00",
+    "revtotal29": "0.00",
+    "revtotal31": "0.00",
+    "revtotal32": "0.00",
+    "revtotal1": "0.00",
+    "revtotal3": "0.00",
+    "revtotal4": "0.00",
+    "revtotal5": "0.00",
+    "revtotal6": "0.00",
+    "revtotal9": "0.00",
+    "revtotal10": "0.00",
+    "revtotal11": "0.00",
+    "revtotal33": "0.00",
+    "revtotal37": "0.00",
+    "revtotal18": "0.00",
+    "revtotal19": "0.00",
+    "revtotal38": "0.00",
+    "revtotal39": "0.00",
+    "revtotal20": "0.00",
+    "revtotal21": "0.00",
+    "revtotal34": "0.00",
+    "revtotal24": "0.00",
+    "revtotal25": "0.00",
+    "revtotal26": "0.00",
+    "revtotal40": "0.00",
+    "revtotal30": "0.00",
+    "revtotal35": "0.00",
+    "premisTotal18": "0.00",
+    "premisTotal19": "0.00",
+    "premisTotal38": "0.00",
+    "premisTotal39": "0.00",
+    "premisTotal20": "0.00",
+    "premisTotal21": "0.00",
+    "premisTotal34": "0.00",
+    "premisTotal24": "0.00",
+    "premisTotal25": "0.00",
+    "premisTotal26": "0.00",
+    "premisTotal40": "0.00",
+    "premisTotal30": "0.00",
+    "premisTotal35": "0.00",
+    "premisTotal13": "0.00",
+    "premisTotal14": "0.00",
+    "premisTotal22": "0.00",
+    "premisTotal27": "0.00",
+    "premisTotal28": "0.00",
+    "premisTotal29": "0.00",
+    "premisTotal31": "0.00",
+    "premisTotal32": "0.00",
+    "totalFurnFix13": "0.00",
+    "totalFurnFix14": "0.00",
+    "totalFurnFix22": "0.00",
+    "totalFurnFix27": "0.00",
+    "totalFurnFix28": "0.00",
+    "totalFurnFix29": "0.00",
+    "totalFurnFix31": "0.00",
+    "totalFurnFix32": "0.00",
+    "landNotRev13": "0.00",
+    "landNotRev14": "0.00",
+    "landNotRev22": "0.00",
+    "landNotRev27": "0.00",
+    "landNotRev28": "0.00",
+    "landNotRev29": "0.00",
+    "landNotRev31": "0.00",
+    "landNotRev32": "0.00",
+    "landRev13": "0.00",
+    "landRev14": "0.00",
+    "landRev22": "0.00",
+    "landRev27": "0.00",
+    "landRev28": "0.00",
+    "landRev29": "0.00",
+    "landRev31": "0.00",
+    "landRev32": "0.00",
+    "landRevEnh13": "0.00",
+    "landRevEnh14": "0.00",
+    "landRevEnh22": "0.00",
+    "landRevEnh27": "0.00",
+    "landRevEnh28": "0.00",
+    "landRevEnh29": "0.00",
+    "landRevEnh31": "0.00",
+    "landRevEnh32": "0.00",
+    "offBuildNotRev13": "0.00",
+    "offBuildNotRev14": "0.00",
+    "offBuildNotRev22": "0.00",
+    "offBuildNotRev27": "0.00",
+    "offBuildNotRev28": "0.00",
+    "offBuildNotRev29": "0.00",
+    "offBuildNotRev31": "0.00",
+    "offBuildNotRev32": "0.00",
+    "offBuildRev13": "0.00",
+    "offBuildRev14": "0.00",
+    "offBuildRev22": "0.00",
+    "offBuildRev27": "0.00",
+    "offBuildRev28": "0.00",
+    "offBuildRev29": "0.00",
+    "offBuildRev31": "0.00",
+    "offBuildRev32": "0.00",
+    "offBuildRevEnh13": "0.00",
+    "offBuildRevEnh14": "0.00",
+    "offBuildRevEnh22": "0.00",
+    "offBuildRevEnh27": "0.00",
+    "offBuildRevEnh28": "0.00",
+    "offBuildRevEnh29": "0.00",
+    "offBuildRevEnh31": "0.00",
+    "offBuildRevEnh32": "0.00",
+    "residQuartNotRev13": "0.00",
+    "residQuartNotRev14": "0.00",
+    "residQuartNotRev22": "0.00",
+    "residQuartNotRev27": "0.00",
+    "residQuartNotRev28": "0.00",
+    "residQuartNotRev29": "0.00",
+    "residQuartNotRev31": "0.00",
+    "residQuartNotRev32": "0.00",
+    "residQuartRev13": "0.00",
+    "residQuartRev14": "0.00",
+    "residQuartRev22": "0.00",
+    "residQuartRev27": "0.00",
+    "residQuartRev28": "0.00",
+    "residQuartRev29": "0.00",
+    "residQuartRev31": "0.00",
+    "residQuartRev32": "0.00",
+    "residQuartRevEnh13": "0.00",
+    "residQuartRevEnh14": "0.00",
+    "residQuartRevEnh22": "0.00",
+    "residQuartRevEnh27": "0.00",
+    "residQuartRevEnh28": "0.00",
+    "residQuartRevEnh29": "0.00",
+    "residQuartRevEnh31": "0.00",
+    "residQuartRevEnh32": "0.00",
+    "totalC12": "0.00",
+    "totalC13": "0.00",
+    "totalC18": "0.00",
+    "totalC19": "0.00",
+    "totalC38": "0.00",
+    "totalC39": "0.00",
+    "totalC20": "0.00",
+    "totalC21": "0.00",
+    "totalC34": "0.00",
+    "totalC22": "0.00",
+    "totalC24": "0.00",
+    "totalC25": "0.00",
+    "totalC26": "0.00",
+    "totalC40": "0.00",
+    "totalC27": "0.00",
+    "totalC28": "0.00",
+    "totalC29": "0.00",
+    "totalC30": "0.00",
+    "totalC31": "0.00",
+    "totalC32": "0.00",
+    "totalC35": "0.00",
+    "totalC14": "0.00",
+    "grandTotal1": "0.00",
+    "grandTotal3": "0.00",
+    "grandTotal36": "0.00",
+    "grandTotal4": "0.00",
+    "grandTotal5": "0.00",
+    "grandTotal6": "0.00",
+    "premisesUnderCons7": "0.00",
+    "grandTotal7": "0.00",
+    "grandTotal9": "0.00",
+    "grandTotal33": "0.00",
+    "grandTotal37": "0.00",
+    "grandTotal10": "0.00",
+    "grandTotal11": "0.00",
+    "premisesUnderCons12": "0.00",
+    "grandTotal12": "0.00",
+    "premisesUnderCons13": "0.00",
+    "grandTotal13": "0.00",
+    "premisesUnderCons14": "0.00",
+    "grandTotal14": "0.00",
+    "grandTotal18": "0.00",
+    "grandTotal34": "0.00",
+    "grandTotal19": "0.00",
+    "grandTotal38": "0.00",
+    "grandTotal39": "0.00",
+    "grandTotal20": "0.00",
+    "grandTotal21": "0.00",
+    "premisesUnderCons22": "0.00",
+    "grandTotal22": "0.00",
+    "grandTotal24": "0.00",
+    "grandTotal25": "0.00",
+    "grandTotal26": "0.00",
+    "grandTotal40": "0.00",
+    "premisesUnderCons27": "0.00",
+    "grandTotal27": "0.00",
+    "premisesUnderCons28": "0.00",
+    "grandTotal28": "0.00",
+    "premisesUnderCons29": "0.00",
+    "grandTotal29": "0.00",
+    "grandTotal30": "0.00",
+    "grandTotal35": "0.00",
+    "premisesUnderCons31": "0.00",
+    "grandTotal31": "0.00",
+    "stcNstaff32": "0.00",
+    "offResidenceA32": "0.00",
+    "otherPremisesA32": "0.00",
+    "electricFitting32": "0.00",
+    "totalA32": "0.00",
+    "computers32": "0.00",
+    "compSoftwareInt32": "0.00",
+    "compSoftwareNonint32": "0.00",
+    "compSoftwareTotal32": "0.00",
+    "motor32": "0.00",
+    "offResidenceB32": "0.00",
+    "stcLho32": "0.00",
+    "otherPremisesB32": "0.00",
+    "otherMachineryPlant32": "0.00",
+    "totalB32": "0.00",
+    "premisesUnderCons32": "0.00",
+    "grandTotal32": "0.00",
+    "save": true,
+    "finyearOne": "2024",
+    "finyearTwo": "2025",
+    "circleCode": "001",
+    "quarterEndDate": "31/03/2025",
+    "userId": "1111111",
+    "reportName": "Schedule 10",
+    "reportId": null,
+    "reportMasterId": "310010",
+    "status": null
+}
