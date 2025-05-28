@@ -6,7 +6,7 @@ import {
   TableHead,
   TableRow,
   Paper,
-  TextField, // Using TextField as a common input for simplicity
+  TextField,
   Box,
   Typography,
 } from '@mui/material';
@@ -594,172 +594,94 @@ const Schedule10 = () => {
     return isNaN(num) ? '' : num.toFixed(2);
   };
 
-  // Calculations using useEffect for dependencies
-  // NOTE: For brevity, only a few calculations are shown. You will need to add
-  // all the new calculation logic for totals (e.g., totalA7, totalB7, totalC7, grandTotal7, etc.)
-  // and their respective dependencies here.
+  // List of all row numbers present in the payload keys for dynamic calculations
+  const rowNumbers = useMemo(() => [
+    1, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 18, 19, 20, 21, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40
+  ], []);
+
   useEffect(() => {
     setFormData(prevData => {
       const newData = { ...prevData };
 
-      // Section A calculations (Furniture & Fittings) - Row 1
-      const stcNstaff1Val = parseFloat(newData.stcNstaff1) || 0;
-      const offResidenceA1Val = parseFloat(newData.offResidenceA1) || 0;
-      const otherPremisesA1Val = parseFloat(newData.otherPremisesA1) || 0;
-      const electricFitting1Val = parseFloat(newData.electricFitting1) || 0;
-      newData.totalA1 = parseAndFormat(stcNstaff1Val + offResidenceA1Val + otherPremisesA1Val + electricFitting1Val);
+      rowNumbers.forEach(num => {
+        // Section A calculations (Furniture & Fittings)
+        const stcNstaffVal = parseFloat(newData[`stcNstaff${num}`] || 0);
+        const offResidenceAVal = parseFloat(newData[`offResidenceA${num}`] || 0);
+        const otherPremisesAVal = parseFloat(newData[`otherPremisesA${num}`] || 0);
+        const electricFittingVal = parseFloat(newData[`electricFitting${num}`] || 0);
+        newData[`totalA${num}`] = parseAndFormat(stcNstaffVal + offResidenceAVal + otherPremisesAVal + electricFittingVal);
 
-      // Section B calculations (Machinery & Plant) - Row 1
-      const computers1Val = parseFloat(newData.computers1) || 0;
-      const compSoftwareInt1Val = parseFloat(newData.compSoftwareInt1) || 0;
-      const compSoftwareNonint1Val = parseFloat(newData.compSoftwareNonint1) || 0;
-      newData.compSoftwareTotal1 = parseAndFormat(compSoftwareInt1Val + compSoftwareNonint1Val);
+        // Section B calculations (Machinery & Plant) - Computer Software
+        const computersVal = parseFloat(newData[`computers${num}`] || 0);
+        const compSoftwareIntVal = parseFloat(newData[`compSoftwareInt${num}`] || 0);
+        const compSoftwareNonintVal = parseFloat(newData[`compSoftwareNonint${num}`] || 0);
+        newData[`compSoftwareTotal${num}`] = parseAndFormat(compSoftwareIntVal + compSoftwareNonintVal);
 
-      const motor1Val = parseFloat(newData.motor1) || 0;
-      const offResidenceB1Val = parseFloat(newData.offResidenceB1) || 0;
-      const stcLho1Val = parseFloat(newData.stcLho1) || 0;
-      const otherPremisesB1Val = parseFloat(newData.otherPremisesB1) || 0;
-      newData.otherMachineryPlant1 = parseAndFormat(offResidenceB1Val + stcLho1Val + otherPremisesB1Val);
+        // Section B calculations (Machinery & Plant) - Other Machinery & Plant
+        const motorVal = parseFloat(newData[`motor${num}`] || 0);
+        const offResidenceBVal = parseFloat(newData[`offResidenceB${num}`] || 0);
+        const stcLhoVal = parseFloat(newData[`stcLho${num}`] || 0);
+        const otherPremisesBVal = parseFloat(newData[`otherPremisesB${num}`] || 0);
+        newData[`otherMachineryPlant${num}`] = parseAndFormat(offResidenceBVal + stcLhoVal + otherPremisesBVal);
 
-      newData.totalB1 = parseAndFormat(computers1Val + parseFloat(newData.compSoftwareTotal1) + motor1Val + parseFloat(newData.otherMachineryPlant1));
+        // Section B Total
+        newData[`totalB${num}`] = parseAndFormat(
+          computersVal +
+          parseFloat(newData[`compSoftwareTotal${num}`] || 0) +
+          motorVal +
+          parseFloat(newData[`otherMachineryPlant${num}`] || 0)
+        );
 
-      // Total Furniture & Fixtures (A+B) - Row 1
-      newData.totalFurnFix1 = parseAndFormat(parseFloat(newData.totalA1) + parseFloat(newData.totalB1));
+        // Total Furniture & Fixtures (A+B)
+        newData[`totalFurnFix${num}`] = parseAndFormat(
+          parseFloat(newData[`totalA${num}`] || 0) + parseFloat(newData[`totalB${num}`] || 0)
+        );
 
-      // Section C calculations (Premises) - Row 1
-      const landNotRev1Val = parseFloat(newData.landNotRev1) || 0;
-      const landRev1Val = parseFloat(newData.landRev1) || 0;
-      const landRevEnh1Val = parseFloat(newData.landRevEnh1) || 0;
-      const offBuildNotRev1Val = parseFloat(newData.offBuildNotRev1) || 0;
-      const offBuildRev1Val = parseFloat(newData.offBuildRev1) || 0;
-      const offBuildRevEnh1Val = parseFloat(newData.offBuildRevEnh1) || 0;
-      const residQuartNotRev1Val = parseFloat(newData.residQuartNotRev1) || 0;
-      const residQuartRev1Val = parseFloat(newData.residQuartRev1) || 0;
-      const residQuartRevEnh1Val = parseFloat(newData.residQuartRevEnh1) || 0;
+        // Section C calculations (Premises)
+        const landNotRevVal = parseFloat(newData[`landNotRev${num}`] || 0);
+        const landRevVal = parseFloat(newData[`landRev${num}`] || 0);
+        const landRevEnhVal = parseFloat(newData[`landRevEnh${num}`] || 0);
+        const offBuildNotRevVal = parseFloat(newData[`offBuildNotRev${num}`] || 0);
+        const offBuildRevVal = parseFloat(newData[`offBuildRev${num}`] || 0);
+        const offBuildRevEnhVal = parseFloat(newData[`offBuildRevEnh${num}`] || 0);
+        const residQuartNotRevVal = parseFloat(newData[`residQuartNotRev${num}`] || 0);
+        const residQuartRevVal = parseFloat(newData[`residQuartRev${num}`] || 0);
+        const residQuartRevEnhVal = parseFloat(newData[`residQuartRevEnh${num}`] || 0);
 
-      newData.premisTotal1 = parseAndFormat(landNotRev1Val + landRev1Val + offBuildNotRev1Val + offBuildRev1Val + residQuartNotRev1Val + residQuartRev1Val);
-      newData.revtotal1 = parseAndFormat(landRevEnh1Val + offBuildRevEnh1Val + residQuartRevEnh1Val);
-      newData.totalC1 = parseAndFormat(parseFloat(newData.premisTotal1) + parseFloat(newData.revtotal1));
+        newData[`premisTotal${num}`] = parseAndFormat(
+          landNotRevVal + landRevVal + offBuildNotRevVal + offBuildRevVal + residQuartNotRevVal + residQuartRevVal
+        );
+        newData[`revtotal${num}`] = parseAndFormat(landRevEnhVal + offBuildRevEnhVal + residQuartRevEnhVal);
+        newData[`totalC${num}`] = parseAndFormat(
+          parseFloat(newData[`premisTotal${num}`] || 0) + parseFloat(newData[`revtotal${num}`] || 0)
+        );
 
-      // Grand Total (A+B+C+D) - Row 1
-      const premisesUnderCons1Val = parseFloat(newData.premisesUnderCons1) || 0;
-      newData.grandTotal1 = parseAndFormat(parseFloat(newData.totalA1) + parseFloat(newData.totalB1) + parseFloat(newData.totalC1) + premisesUnderCons1Val);
-
-      // Section A calculations (Furniture & Fittings) - Row 3
-      const stcNstaff3Val = parseFloat(newData.stcNstaff3) || 0;
-      const offResidenceA3Val = parseFloat(newData.offResidenceA3) || 0;
-      const otherPremisesA3Val = parseFloat(newData.otherPremisesA3) || 0;
-      const electricFitting3Val = parseFloat(newData.electricFitting3) || 0;
-      newData.totalA3 = parseAndFormat(stcNstaff3Val + offResidenceA3Val + otherPremisesA3Val + electricFitting3Val);
-
-      // Section B calculations (Machinery & Plant) - Row 3
-      const computers3Val = parseFloat(newData.computers3) || 0;
-      const compSoftwareInt3Val = parseFloat(newData.compSoftwareInt3) || 0;
-      const compSoftwareNonint3Val = parseFloat(newData.compSoftwareNonint3) || 0;
-      newData.compSoftwareTotal3 = parseAndFormat(compSoftwareInt3Val + compSoftwareNonint3Val);
-
-      const motor3Val = parseFloat(newData.motor3) || 0;
-      const offResidenceB3Val = parseFloat(newData.offResidenceB3) || 0;
-      const stcLho3Val = parseFloat(newData.stcLho3) || 0;
-      const otherPremisesB3Val = parseFloat(newData.otherPremisesB3) || 0;
-      newData.otherMachineryPlant3 = parseAndFormat(offResidenceB3Val + stcLho3Val + otherPremisesB3Val);
-
-      newData.totalB3 = parseAndFormat(computers3Val + parseFloat(newData.compSoftwareTotal3) + motor3Val + parseFloat(newData.otherMachineryPlant3));
-
-      // Total Furniture & Fixtures (A+B) - Row 3
-      newData.totalFurnFix3 = parseAndFormat(parseFloat(newData.totalA3) + parseFloat(newData.totalB3));
-
-      // Section C calculations (Premises) - Row 3
-      const landNotRev3Val = parseFloat(newData.landNotRev3) || 0;
-      const landRev3Val = parseFloat(newData.landRev3) || 0;
-      const landRevEnh3Val = parseFloat(newData.landRevEnh3) || 0;
-      const offBuildNotRev3Val = parseFloat(newData.offBuildNotRev3) || 0;
-      const offBuildRev3Val = parseFloat(newData.offBuildRev3) || 0;
-      const offBuildRevEnh3Val = parseFloat(newData.offBuildRevEnh3) || 0;
-      const residQuartNotRev3Val = parseFloat(newData.residQuartNotRev3) || 0;
-      const residQuartRev3Val = parseFloat(newData.residQuartRev3) || 0;
-      const residQuartRevEnh3Val = parseFloat(newData.residQuartRevEnh3) || 0;
-
-      newData.premisTotal3 = parseAndFormat(landNotRev3Val + landRev3Val + offBuildNotRev3Val + offBuildRev3Val + residQuartNotRev3Val + residQuartRev3Val);
-      newData.revtotal3 = parseAndFormat(landRevEnh3Val + offBuildRevEnh3Val + residQuartRevEnh3Val);
-      newData.totalC3 = parseAndFormat(parseFloat(newData.premisTotal3) + parseFloat(newData.revtotal3));
-
-      // Grand Total (A+B+C+D) - Row 3
-      const premisesUnderCons3Val = parseFloat(newData.premisesUnderCons3) || 0;
-      newData.grandTotal3 = parseAndFormat(parseFloat(newData.totalA3) + parseFloat(newData.totalB3) + parseFloat(newData.totalC3) + premisesUnderCons3Val);
-
-      // Add other calculation logic for the new fields here, following the pattern above.
-      // For example, for totalA7:
-      const stcNstaff7Val = parseFloat(newData.stcNstaff7) || 0;
-      const offResidenceA7Val = parseFloat(newData.offResidenceA7) || 0;
-      const otherPremisesA7Val = parseFloat(newData.otherPremisesA7) || 0;
-      const electricFitting7Val = parseFloat(newData.electricFitting7) || 0;
-      newData.totalA7 = parseAndFormat(stcNstaff7Val + offResidenceA7Val + otherPremisesA7Val + electricFitting7Val);
-
-      // And its related total for B section
-      const computers7Val = parseFloat(newData.computers7) || 0;
-      const compSoftwareInt7Val = parseFloat(newData.compSoftwareInt7) || 0;
-      const compSoftwareNonint7Val = parseFloat(newData.compSoftwareNonint7) || 0;
-      newData.compSoftwareTotal7 = parseAndFormat(compSoftwareInt7Val + compSoftwareNonint7Val);
-
-      const motor7Val = parseFloat(newData.motor7) || 0;
-      const offResidenceB7Val = parseFloat(newData.offResidenceB7) || 0;
-      const stcLho7Val = parseFloat(newData.stcLho7) || 0;
-      const otherPremisesB7Val = parseFloat(newData.otherPremisesB7) || 0;
-      newData.otherMachineryPlant7 = parseAndFormat(offResidenceB7Val + stcLho7Val + otherPremisesB7Val);
-      newData.totalB7 = parseAndFormat(computers7Val + parseFloat(newData.compSoftwareTotal7) + motor7Val + parseFloat(newData.otherMachineryPlant7));
-
-      // And its related total for C section
-      const landNotRev7Val = parseFloat(newData.landNotRev7) || 0;
-      const landRev7Val = parseFloat(newData.landRev7) || 0;
-      const landRevEnh7Val = parseFloat(newData.landRevEnh7) || 0;
-      const offBuildNotRev7Val = parseFloat(newData.offBuildNotRev7) || 0;
-      const offBuildRev7Val = parseFloat(newData.offBuildRev7) || 0;
-      const offBuildRevEnh7Val = parseFloat(newData.offBuildRevEnh7) || 0;
-      const residQuartNotRev7Val = parseFloat(newData.residQuartNotRev7) || 0;
-      const residQuartRev7Val = parseFloat(newData.residQuartRev7) || 0;
-      const residQuartRevEnh7Val = parseFloat(newData.residQuartRevEnh7) || 0;
-
-      newData.premisTotal7 = parseAndFormat(landNotRev7Val + landRev7Val + offBuildNotRev7Val + offBuildRev7Val + residQuartNotRev7Val + residQuartRev7Val);
-      newData.revtotal7 = parseAndFormat(landRevEnh7Val + offBuildRevEnh7Val + residQuartRevEnh7Val);
-      newData.totalC7 = parseAndFormat(parseFloat(newData.premisTotal7) + parseFloat(newData.revtotal7));
-
-      // And its related grand total
-      const premisesUnderCons7Val = parseFloat(newData.premisesUnderCons7) || 0;
-      newData.grandTotal7 = parseAndFormat(parseFloat(newData.totalA7) + parseFloat(newData.totalB7) + parseFloat(newData.totalC7) + premisesUnderCons7Val);
-
-
-      // ... and so on for all other new totals from the payload.
+        // Grand Total
+        const premisesUnderConsVal = parseFloat(newData[`premisesUnderCons${num}`] || 0);
+        newData[`grandTotal${num}`] = parseAndFormat(
+          parseFloat(newData[`totalA${num}`] || 0) +
+          parseFloat(newData[`totalB${num}`] || 0) +
+          parseFloat(newData[`totalC${num}`] || 0) +
+          premisesUnderConsVal
+        );
+      });
 
       return newData;
     });
   }, [
-    // Existing dependencies
-    formData.stcNstaff1, formData.offResidenceA1, formData.otherPremisesA1, formData.electricFitting1,
-    formData.computers1, formData.compSoftwareInt1, formData.compSoftwareNonint1, formData.motor1,
-    formData.offResidenceB1, formData.stcLho1, formData.otherPremisesB1,
-    formData.landNotRev1, formData.landRev1, formData.landRevEnh1, formData.offBuildNotRev1,
-    formData.offBuildRev1, formData.offBuildRevEnh1, formData.residQuartNotRev1, formData.residQuartRev1,
-    formData.residQuartRevEnh1, formData.premisesUnderCons1,
-    formData.stcNstaff3, formData.offResidenceA3, formData.otherPremisesA3, formData.electricFitting3,
-    formData.computers3, formData.compSoftwareInt3, formData.compSoftwareNonint3, formData.motor3,
-    formData.offResidenceB3, formData.stcLho3, formData.otherPremisesB3,
-    formData.landNotRev3, formData.landRev3, formData.landRevEnh3, formData.offBuildNotRev3,
-    formData.offBuildRev3, formData.offBuildRevEnh3, formData.residQuartNotRev3, formData.residQuartRev3,
-    formData.residQuartRevEnh3, formData.premisesUnderCons3,
-
-    // Add all new dependencies for the new fields introduced in the payload here
-    // For example, for totalA7:
-    formData.stcNstaff7, formData.offResidenceA7, formData.otherPremisesA7, formData.electricFitting7,
-    // For totalB7:
-    formData.computers7, formData.compSoftwareInt7, formData.compSoftwareNonint7, formData.motor7,
-    formData.offResidenceB7, formData.stcLho7, formData.otherPremisesB7,
-    // For totalC7:
-    formData.landNotRev7, formData.landRev7, formData.landRevEnh7, formData.offBuildNotRev7,
-    formData.offBuildRev7, formData.offBuildRevEnh7, formData.residQuartNotRev7, formData.residQuartRev7,
-    formData.residQuartRevEnh7, formData.premisesUnderCons7,
-    // And repeat this pattern for all other numbered rows (e.g., ...12, ...13, ...14, etc.)
-    // up to 40, including all sub-fields like stcNstaffX, offResidenceAX, etc.
+    // Dependencies for all input fields that drive calculations
+    // This array lists all keys that can be directly edited and affect calculated totals.
+    // It's manually constructed based on your payload and calculation logic.
+    // Ensure all input fields involved in calculations are listed here.
+    ...rowNumbers.flatMap(num => [
+      `stcNstaff${num}`, `offResidenceA${num}`, `otherPremisesA${num}`, `electricFitting${num}`,
+      `computers${num}`, `compSoftwareInt${num}`, `compSoftwareNonint${num}`,
+      `motor${num}`, `offResidenceB${num}`, `stcLho${num}`, `otherPremisesB${num}`,
+      `landNotRev${num}`, `landRev${num}`, `landRevEnh${num}`,
+      `offBuildNotRev${num}`, `offBuildRev${num}`, `offBuildRevEnh${num}`,
+      `residQuartNotRev${num}`, `residQuartRev${num}`, `residQuartRevEnh${num}`,
+      `premisesUnderCons${num}`,
+    ]).map(key => formData[key]), // Map to the actual values for effect re-runs
   ]);
 
   const handleChange = (e) => {
@@ -778,14 +700,14 @@ const Schedule10 = () => {
     <StyledTableCell>
       <TextField
         name={fieldName}
-        value={formData[fieldName]}
+        value={formData[fieldName] || ''} // Ensure value is not undefined
         onChange={handleChange}
         inputProps={{
-          maxLength: 18, // Maxlength as per Schedule10.txt
+          maxLength: 18,
           style: { textAlign: 'right' },
         }}
         sx={{
-          width: '100px', // Adjust width as needed
+          width: '100px',
           '& input': { textAlign: 'right', padding: '6px 8px' },
           backgroundColor: isReadonly ? '#f0f0f0' : 'white',
         }}
@@ -888,116 +810,48 @@ const Schedule10 = () => {
               <StyledTableCell colSpan={30}></StyledTableCell>
             </StyledTableRow>
 
-            {/* Row a. (i) Original cost of items put to use during the year */}
-            <StyledTableRow>
-              <StyledTableCell style={{ textAlign: 'right' }}>(a.i)</StyledTableCell>
-              <StyledTableCell>{formData.particulars3}</StyledTableCell>
-              {renderInputCell('stcNstaff3')}
-              {renderInputCell('offResidenceA3')}
-              {renderInputCell('otherPremisesA3')}
-              {renderInputCell('electricFitting3')}
-              {renderInputCell('totalA3', true)}
-              {renderInputCell('computers3')}
-              {renderInputCell('compSoftwareInt3')}
-              {renderInputCell('compSoftwareNonint3')}
-              {renderInputCell('compSoftwareTotal3', true)}
-              {renderInputCell('motor3')}
-              {renderInputCell('offResidenceB3')}
-              {renderInputCell('stcLho3')}
-              {renderInputCell('otherPremisesB3')}
-              {renderInputCell('otherMachineryPlant3', true)}
-              {renderInputCell('totalB3', true)}
-              {renderInputCell('totalFurnFix3', true)}
-              {renderInputCell('landNotRev3')}
-              {renderInputCell('landRev3')}
-              {renderInputCell('landRevEnh3')}
-              {renderInputCell('offBuildNotRev3')}
-              {renderInputCell('offBuildRev3')}
-              {renderInputCell('offBuildRevEnh3')}
-              {renderInputCell('residQuartNotRev3')}
-              {renderInputCell('residQuartRev3')}
-              {renderInputCell('residQuartRevEnh3')}
-              {renderInputCell('premisTotal3', true)}
-              {renderInputCell('revtotal3', true)}
-              {renderInputCell('totalC3', true)}
-              {renderInputCell('premisesUnderCons3')}
-              {renderInputCell('grandTotal3', true)}
-            </StyledTableRow>
-
-            {/* New row for `particulars4` */}
-            <StyledTableRow>
-              <StyledTableCell style={{ textAlign: 'right' }}>(a.ii)</StyledTableCell>
-              <StyledTableCell>{formData.particulars4}</StyledTableCell>
-              {renderInputCell('stcNstaff4')} {/* Assuming this pattern, adjust as needed */}
-              {renderInputCell('offResidenceA4')}
-              {renderInputCell('otherPremisesA4')}
-              {renderInputCell('electricFitting4')}
-              {renderInputCell('totalA4', true)}
-              {renderInputCell('computers4')}
-              {renderInputCell('compSoftwareInt4')}
-              {renderInputCell('compSoftwareNonint4')}
-              {renderInputCell('compSoftwareTotal4', true)}
-              {renderInputCell('motor4')}
-              {renderInputCell('offResidenceB4')}
-              {renderInputCell('stcLho4')}
-              {renderInputCell('otherPremisesB4')}
-              {renderInputCell('otherMachineryPlant4', true)}
-              {renderInputCell('totalB4', true)}
-              {renderInputCell('totalFurnFix4', true)}
-              {renderInputCell('landNotRev4')}
-              {renderInputCell('landRev4')}
-              {renderInputCell('landRevEnh4')}
-              {renderInputCell('offBuildNotRev4')}
-              {renderInputCell('offBuildRev4')}
-              {renderInputCell('offBuildRevEnh4')}
-              {renderInputCell('residQuartNotRev4')}
-              {renderInputCell('residQuartRev4')}
-              {renderInputCell('residQuartRevEnh4')}
-              {renderInputCell('premisTotal4', true)}
-              {renderInputCell('revtotal4', true)}
-              {renderInputCell('totalC4', true)}
-              {renderInputCell('premisesUnderCons4')}
-              {renderInputCell('grandTotal4', true)}
-            </StyledTableRow>
-
-
-            {/* Example of adding one of the many new rows from the payload, e.g., row 7 */}
-            <StyledTableRow>
-                <StyledTableCell style={{ textAlign: 'right' }}>7</StyledTableCell>
-                <StyledTableCell>Example Row for new data</StyledTableCell> {/* Replace with actual particular name */}
-                {renderInputCell('stcNstaff7')}
-                {renderInputCell('offResidenceA7')}
-                {renderInputCell('otherPremisesA7')}
-                {renderInputCell('electricFitting7')}
-                {renderInputCell('totalA7', true)}
-                {renderInputCell('computers7')}
-                {renderInputCell('compSoftwareInt7')}
-                {renderInputCell('compSoftwareNonint7')}
-                {renderInputCell('compSoftwareTotal7', true)}
-                {renderInputCell('motor7')}
-                {renderInputCell('offResidenceB7')}
-                {renderInputCell('stcLho7')}
-                {renderInputCell('otherPremisesB7')}
-                {renderInputCell('otherMachineryPlant7', true)}
-                {renderInputCell('totalB7', true)}
-                {renderInputCell('totalFurnFix7', true)}
-                {renderInputCell('landNotRev7')}
-                {renderInputCell('landRev7')}
-                {renderInputCell('landRevEnh7')}
-                {renderInputCell('offBuildNotRev7')}
-                {renderInputCell('offBuildRev7')}
-                {renderInputCell('offBuildRevEnh7')}
-                {renderInputCell('residQuartNotRev7')}
-                {renderInputCell('residQuartRev7')}
-                {renderInputCell('residQuartRevEnh7')}
-                {renderInputCell('premisTotal7', true)}
-                {renderInputCell('revtotal7', true)}
-                {renderInputCell('totalC7', true)}
-                {renderInputCell('premisesUnderCons7')}
-                {renderInputCell('grandTotal7', true)}
-            </StyledTableRow>
-
-            {/* ... Continue adding all other rows and sections based on the expanded formData */}
+            {/* Iterating through rowNumbers to render rows dynamically */}
+            {rowNumbers.map(num => (
+              <StyledTableRow key={num}>
+                <StyledTableCell style={{ textAlign: 'right' }}>{num}</StyledTableCell>
+                <StyledTableCell>
+                  {/* Provide a more descriptive label for each row number based on your data */}
+                  {`Row ${num} Details`}
+                  {num === 3 && `: ${formData.particulars3}`}
+                  {num === 4 && `: ${formData.particulars4}`}
+                </StyledTableCell>
+                {renderInputCell(`stcNstaff${num}`)}
+                {renderInputCell(`offResidenceA${num}`)}
+                {renderInputCell(`otherPremisesA${num}`)}
+                {renderInputCell(`electricFitting${num}`)}
+                {renderInputCell(`totalA${num}`, true)}
+                {renderInputCell(`computers${num}`)}
+                {renderInputCell(`compSoftwareInt${num}`)}
+                {renderInputCell(`compSoftwareNonint${num}`)}
+                {renderInputCell(`compSoftwareTotal${num}`, true)}
+                {renderInputCell(`motor${num}`)}
+                {renderInputCell(`offResidenceB${num}`)}
+                {renderInputCell(`stcLho${num}`)}
+                {renderInputCell(`otherPremisesB${num}`)}
+                {renderInputCell(`otherMachineryPlant${num}`, true)}
+                {renderInputCell(`totalB${num}`, true)}
+                {renderInputCell(`totalFurnFix${num}`, true)}
+                {renderInputCell(`landNotRev${num}`)}
+                {renderInputCell(`landRev${num}`)}
+                {renderInputCell(`landRevEnh${num}`)}
+                {renderInputCell(`offBuildNotRev${num}`)}
+                {renderInputCell(`offBuildRev${num}`)}
+                {renderInputCell(`offBuildRevEnh${num}`)}
+                {renderInputCell(`residQuartNotRev${num}`)}
+                {renderInputCell(`residQuartRev${num}`)}
+                {renderInputCell(`residQuartRevEnh${num}`)}
+                {renderInputCell(`premisTotal${num}`, true)}
+                {renderInputCell(`revtotal${num}`, true)}
+                {renderInputCell(`totalC${num}`, true)}
+                {renderInputCell(`premisesUnderCons${num}`)}
+                {renderInputCell(`grandTotal${num}`, true)}
+              </StyledTableRow>
+            ))}
 
           </TableBody>
         </Table>
