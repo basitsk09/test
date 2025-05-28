@@ -7,7 +7,6 @@ import {
   TableRow,
   Paper,
   Box,
-  // Typography, // Typography was imported but not used, can be removed if not needed elsewhere
 } from '@mui/material';
 import TableCell, { tableCellClasses } from '@mui/material/TableCell';
 import { styled } from '@mui/material/styles';
@@ -32,35 +31,40 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
   },
 }));
 
-// MODIFIED: Using transient props (prefixed with $)
-const StyledTableRow = styled(TableRow)(
-  ({ theme, $istotalrow, $issectionheader, $issubsectionheader, $issubsubsectionheader }) => ({
-    backgroundColor: theme.palette.background.paper,
-    ...($issectionheader && { // MODIFIED: Using $issectionheader
-      '& > td': {
-        fontWeight: 'bold',
-        textAlign: 'left',
-      },
-    }),
-    ...($issubsectionheader && { // MODIFIED: Using $issubsectionheader
-      '& > td': {
-        fontWeight: 'bold',
-        fontStyle: 'italic',
-        textAlign: 'left',
-      },
-    }),
-    ...($issubsubsectionheader && { // MODIFIED: Using $issubsubsectionheader
-      '& > td': {
-        textAlign: 'left',
-      },
-    }),
-    ...($istotalrow && { // MODIFIED: Using $istotalrow
-      '& > td': {
-        fontWeight: 'bold',
-      },
-    }),
-  })
-);
+// List of custom props for StyledTableRow that should not be forwarded to the DOM
+const styledTableRowCustomProps = [
+  'istotalrow', 'issectionheader', 'issubsectionheader', 'issubsubsectionheader'
+];
+
+// MODIFIED: Using shouldForwardProp for StyledTableRow
+const StyledTableRow = styled(TableRow, {
+  shouldForwardProp: (prop) => !styledTableRowCustomProps.includes(String(prop))
+})(({ theme, istotalrow, issectionheader, issubsectionheader, issubsubsectionheader }) => ({
+  backgroundColor: theme.palette.background.paper,
+  ...(issectionheader && {
+    '& > td': {
+      fontWeight: 'bold',
+      textAlign: 'left',
+    },
+  }),
+  ...(issubsectionheader && {
+    '& > td': {
+      fontWeight: 'bold',
+      fontStyle: 'italic',
+      textAlign: 'left',
+    },
+  }),
+  ...(issubsubsectionheader && {
+    '& > td': {
+      textAlign: 'left',
+    },
+  }),
+  ...(istotalrow && {
+    '& > td': {
+      fontWeight: 'bold',
+    },
+  }),
+}));
 
 const baseFieldKeys = [
   'stcNstaff', 'offResidenceA', 'otherPremisesA', 'electricFitting', 'totalA',
@@ -83,7 +87,6 @@ const nonTotalBaseFieldKeys = [
   'residQuartNotRev', 'residQuartRev', 'residQuartRevEnh',
   'premisesUnderCons'
 ];
-
 
 const rowSuffixes = [
   '1', '3', '4', '5', '6', '7', '9', '10', '11', '12', '13', '14', '18', '19',
@@ -115,13 +118,11 @@ const generateInitialFormData = () => {
   };
 };
 
-
 const Schedule10 = () => {
   const [formData, setFormData] = useState(generateInitialFormData);
 
   const year1 = formData.finyearOne ? parseInt(formData.finyearOne) : new Date().getFullYear();
   const currentYearEnd = formData.finyearTwo;
-
 
   const parseAndFormat = (value) => {
     const num = parseFloat(value);
@@ -131,51 +132,21 @@ const Schedule10 = () => {
   const calculateRowTotals = (data, suffix) => {
     const updatedData = { ...data };
     const p = (fieldPath) => parseFloat(updatedData[fieldPath]) || 0;
-
-    updatedData[`totalA${suffix}`] = parseAndFormat(
-      p(`stcNstaff${suffix}`) + p(`offResidenceA${suffix}`) +
-      p(`otherPremisesA${suffix}`) + p(`electricFitting${suffix}`)
-    );
-
-    updatedData[`compSoftwareTotal${suffix}`] = parseAndFormat(
-      p(`compSoftwareInt${suffix}`) + p(`compSoftwareNonint${suffix}`)
-    );
-    updatedData[`otherMachineryPlant${suffix}`] = parseAndFormat(
-      p(`offResidenceB${suffix}`) + p(`stcLho${suffix}`) + p(`otherPremisesB${suffix}`)
-    );
-    updatedData[`totalB${suffix}`] = parseAndFormat(
-      p(`computers${suffix}`) + p(updatedData[`compSoftwareTotal${suffix}`]) +
-      p(`motor${suffix}`) + p(updatedData[`otherMachineryPlant${suffix}`])
-    );
-
-    updatedData[`totalFurnFix${suffix}`] = parseAndFormat(
-      p(updatedData[`totalA${suffix}`]) + p(updatedData[`totalB${suffix}`])
-    );
-
-    updatedData[`premisTotal${suffix}`] = parseAndFormat(
-      p(`landNotRev${suffix}`) + p(`landRev${suffix}`) +
-      p(`offBuildNotRev${suffix}`) + p(`offBuildRev${suffix}`) +
-      p(`residQuartNotRev${suffix}`) + p(`residQuartRev${suffix}`)
-    );
-    updatedData[`revtotal${suffix}`] = parseAndFormat(
-      p(`landRevEnh${suffix}`) + p(`offBuildRevEnh${suffix}`) + p(`residQuartRevEnh${suffix}`)
-    );
-    updatedData[`totalC${suffix}`] = parseAndFormat(
-      p(updatedData[`premisTotal${suffix}`]) + p(updatedData[`revtotal${suffix}`])
-    );
-
-    updatedData[`grandTotal${suffix}`] = parseAndFormat(
-      p(updatedData[`totalA${suffix}`]) + p(updatedData[`totalB${suffix}`]) +
-      p(updatedData[`totalC${suffix}`]) + p(`premisesUnderCons${suffix}`)
-    );
+    updatedData[`totalA${suffix}`] = parseAndFormat(p(`stcNstaff${suffix}`) + p(`offResidenceA${suffix}`) + p(`otherPremisesA${suffix}`) + p(`electricFitting${suffix}`));
+    updatedData[`compSoftwareTotal${suffix}`] = parseAndFormat(p(`compSoftwareInt${suffix}`) + p(`compSoftwareNonint${suffix}`));
+    updatedData[`otherMachineryPlant${suffix}`] = parseAndFormat(p(`offResidenceB${suffix}`) + p(`stcLho${suffix}`) + p(`otherPremisesB${suffix}`));
+    updatedData[`totalB${suffix}`] = parseAndFormat(p(`computers${suffix}`) + p(updatedData[`compSoftwareTotal${suffix}`]) + p(`motor${suffix}`) + p(updatedData[`otherMachineryPlant${suffix}`]));
+    updatedData[`totalFurnFix${suffix}`] = parseAndFormat(p(updatedData[`totalA${suffix}`]) + p(updatedData[`totalB${suffix}`]));
+    updatedData[`premisTotal${suffix}`] = parseAndFormat(p(`landNotRev${suffix}`) + p(`landRev${suffix}`) + p(`offBuildNotRev${suffix}`) + p(`offBuildRev${suffix}`) + p(`residQuartNotRev${suffix}`) + p(`residQuartRev${suffix}`));
+    updatedData[`revtotal${suffix}`] = parseAndFormat(p(`landRevEnh${suffix}`) + p(`offBuildRevEnh${suffix}`) + p(`residQuartRevEnh${suffix}`));
+    updatedData[`totalC${suffix}`] = parseAndFormat(p(updatedData[`premisTotal${suffix}`]) + p(updatedData[`revtotal${suffix}`]));
+    updatedData[`grandTotal${suffix}`] = parseAndFormat(p(updatedData[`totalA${suffix}`]) + p(updatedData[`totalB${suffix}`]) + p(updatedData[`totalC${suffix}`]) + p(`premisesUnderCons${suffix}`));
     return updatedData;
   };
 
   const sumAcrossRows = (data, fieldBaseName, suffixesToSum) => {
     let total = 0;
-    suffixesToSum.forEach(sfx => {
-      total += parseFloat(data[`${fieldBaseName}${sfx}`]) || 0;
-    });
+    suffixesToSum.forEach(sfx => { total += parseFloat(data[`${fieldBaseName}${sfx}`]) || 0; });
     return parseAndFormat(total);
   };
 
@@ -188,11 +159,7 @@ const Schedule10 = () => {
   const inputFieldValues = useMemo(() => {
     const relevantValues = [];
     const inputRowSuffixes = ['1', '3', '4', '5', '6', '9', '10', '11', '18', '19', '20', '21', '24', '25', '26', '30', '33', '34', '35', '36', '37', '38', '39', '40'];
-    inputRowSuffixes.forEach(suffix => {
-      nonTotalBaseFieldKeys.forEach(baseName => {
-        relevantValues.push(formData[`${baseName}${suffix}`]);
-      });
-    });
+    inputRowSuffixes.forEach(suffix => { nonTotalBaseFieldKeys.forEach(baseName => { relevantValues.push(formData[`${baseName}${suffix}`]); }); });
     return relevantValues;
   }, [formData]);
 
@@ -200,12 +167,8 @@ const Schedule10 = () => {
     setFormData(prevData => {
       let newData = { ...prevData };
       const p = (fieldPath) => parseFloat(newData[fieldPath]) || 0;
-
       const editableRowSuffixes = ['1', '3', '4', '5', '6', '9', '10', '11', '18', '19', '20', '21', '24', '25', '26', '30', '33', '34', '35', '36', '37', '38', '39', '40'];
-      editableRowSuffixes.forEach(suffix => {
-        newData = calculateRowTotals(newData, suffix);
-      });
-
+      editableRowSuffixes.forEach(suffix => { newData = calculateRowTotals(newData, suffix); });
       nonTotalBaseFieldKeys.forEach(key => {
         newData[`${key}7`] = sumAcrossRows(newData, key, ['3', '4', '36', '5', '6']);
         newData[`${key}12`] = sumAcrossRows(newData, key, ['37', '9', '33', '10', '11']);
@@ -216,127 +179,34 @@ const Schedule10 = () => {
         newData[`${key}28`] = subtractAcrossRows(newData, key, '22', '27');
         newData[`${key}29`] = subtractAcrossRows(newData, key, '14', '28');
         newData[`${key}31`] = subtractAcrossRows(newData, key, '9', '24');
-
-        const val30 = p(`${key}30`);
-        const val31 = p(newData[`${key}31`]);
-        const val35 = p(`${key}35`);
+        const val30 = p(`${key}30`); const val31 = p(newData[`${key}31`]); const val35 = p(`${key}35`);
         newData[`${key}32`] = parseAndFormat(val30 - (val31 + val35));
       });
-
       const aggregatedRowSuffixes = ['7', '12', '13', '14', '22', '27', '28', '29', '31', '32'];
-      aggregatedRowSuffixes.forEach(suffix => {
-        newData = calculateRowTotals(newData, suffix);
-      });
-
+      aggregatedRowSuffixes.forEach(suffix => { newData = calculateRowTotals(newData, suffix); });
       return newData;
     });
   }, [inputFieldValues]);
-
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     const regex = /^-?\d*\.?\d{0,2}$/;
     if (value === '' || regex.test(value) || value === '-') {
-      setFormData((prevData) => ({
-        ...prevData,
-        [name]: value,
-      }));
+      setFormData((prevData) => ({ ...prevData, [name]: value, }));
     }
   };
 
   const columnDefinitions = [
-    { id: 'stcNstaff', header: <>i) At STCs & Staff Colleges <br /> (For Local Head Office only)</> },
-    { id: 'offResidenceA', header: "ii) At Officers' Residences" },
-    { id: 'otherPremisesA', header: "iii) At Other Premises" },
-    { id: 'electricFitting', header: <>iv) Electric Fittings <br /> (include electric wiring, <br /> switches, sockets, other <br /> fittings & fans etc.)</> },
-    { id: 'totalA', header: 'TOTAL (A) (i+ii+iii+iv)', isReadOnly: true },
-    { id: 'computers', header: 'i) Computer Hardware' },
-    { id: 'compSoftwareInt', header: <>a. Computer Software <br /> (forming integral part of <br /> Hardware)</> },
-    { id: 'compSoftwareNonint', header: <>b. Computer Software <br /> (not forming integral <br /> of Hardware)</> },
-    { id: 'compSoftwareTotal', header: <>ii) Computer Software <br /> Total (a+b)</>, isReadOnly: true },
-    { id: 'motor', header: 'iii) Motor Vehicles' },
-    { id: 'offResidenceB', header: "a) At Officers' Residences" },
-    { id: 'stcLho', header: <>b) At STCs <br /> (For Local Head Office)</> },
-    { id: 'otherPremisesB', header: 'c) At other Premises' },
-    { id: 'otherMachineryPlant', header: <>iv) Other Machinery & Plant <br />( a+b+c)</>, isReadOnly: true },
-    { id: 'totalB', header: 'TOTAL (B= i+ii+iii+iv)', isReadOnly: true },
-    { id: 'totalFurnFix', header: <> Total Furniture & Fixtures <br /> (A+B)</>, isReadOnly: true },
-    { id: 'landNotRev', header: <>(a) Land (Not Revalued): <br /> Cost</> },
-    { id: 'landRev', header: <>(b) Land (Revalued): <br /> Cost</> },
-    { id: 'landRevEnh', header: <>(c) Land (Revalued): <br /> Enhancement due to <br /> Revaluation</> },
-    { id: 'offBuildNotRev', header: <>(d) Office Building <br /> (Not revalued): Cost</> },
-    { id: 'offBuildRev', header: <>(e) Office Building <br /> (Revalued): Cost</> },
-    { id: 'offBuildRevEnh', header: <>(f) Office Building <br /> (Revalued): Enhancement <br /> due to Revaluation</> },
-    { id: 'residQuartNotRev', header: <>(g) Residential Building <br /> (Not revalued): Cost</> },
-    { id: 'residQuartRev', header: <>(h) Residential Building <br /> (Revalued): Cost</> },
-    { id: 'residQuartRevEnh', header: <>(i) Residential Building <br /> (Revalued): Enhancement <br /> due to Revaluation</> },
-    { id: 'premisTotal', header: <>(j) Premises Total <br /> (a+b+d+e+g+h)</>, isReadOnly: true },
-    { id: 'revtotal', header: <>(k) Revaluation Total <br /> (c+f+i)</>, isReadOnly: true },
-    { id: 'totalC', header: 'TOTAL (C=j+k)', isReadOnly: true },
-    { id: 'premisesUnderCons', header: <>(D) Projects under <br /> construction</> },
-    { id: 'grandTotal', header: <>Grand Total <br /> (A + B + C + D)</>, isReadOnly: true },
+    { id: 'stcNstaff', header: <>i) At STCs & Staff Colleges <br /> (For Local Head Office only)</> }, { id: 'offResidenceA', header: "ii) At Officers' Residences" }, { id: 'otherPremisesA', header: "iii) At Other Premises" }, { id: 'electricFitting', header: <>iv) Electric Fittings <br /> (include electric wiring, <br /> switches, sockets, other <br /> fittings & fans etc.)</> }, { id: 'totalA', header: 'TOTAL (A) (i+ii+iii+iv)', isReadOnly: true }, { id: 'computers', header: 'i) Computer Hardware' }, { id: 'compSoftwareInt', header: <>a. Computer Software <br /> (forming integral part of <br /> Hardware)</> }, { id: 'compSoftwareNonint', header: <>b. Computer Software <br /> (not forming integral <br /> of Hardware)</> }, { id: 'compSoftwareTotal', header: <>ii) Computer Software <br /> Total (a+b)</>, isReadOnly: true }, { id: 'motor', header: 'iii) Motor Vehicles' }, { id: 'offResidenceB', header: "a) At Officers' Residences" }, { id: 'stcLho', header: <>b) At STCs <br /> (For Local Head Office)</> }, { id: 'otherPremisesB', header: 'c) At other Premises' }, { id: 'otherMachineryPlant', header: <>iv) Other Machinery & Plant <br />( a+b+c)</>, isReadOnly: true }, { id: 'totalB', header: 'TOTAL (B= i+ii+iii+iv)', isReadOnly: true }, { id: 'totalFurnFix', header: <> Total Furniture & Fixtures <br /> (A+B)</>, isReadOnly: true }, { id: 'landNotRev', header: <>(a) Land (Not Revalued): <br /> Cost</> }, { id: 'landRev', header: <>(b) Land (Revalued): <br /> Cost</> }, { id: 'landRevEnh', header: <>(c) Land (Revalued): <br /> Enhancement due to <br /> Revaluation</> }, { id: 'offBuildNotRev', header: <>(d) Office Building <br /> (Not revalued): Cost</> }, { id: 'offBuildRev', header: <>(e) Office Building <br /> (Revalued): Cost</> }, { id: 'offBuildRevEnh', header: <>(f) Office Building <br /> (Revalued): Enhancement <br /> due to Revaluation</> }, { id: 'residQuartNotRev', header: <>(g) Residential Building <br /> (Not revalued): Cost</> }, { id: 'residQuartRev', header: <>(h) Residential Building <br /> (Revalued): Cost</> }, { id: 'residQuartRevEnh', header: <>(i) Residential Building <br /> (Revalued): Enhancement <br /> due to Revaluation</> }, { id: 'premisTotal', header: <>(j) Premises Total <br /> (a+b+d+e+g+h)</>, isReadOnly: true }, { id: 'revtotal', header: <>(k) Revaluation Total <br /> (c+f+i)</>, isReadOnly: true }, { id: 'totalC', header: 'TOTAL (C=j+k)', isReadOnly: true }, { id: 'premisesUnderCons', header: <>(D) Projects under <br /> construction</> }, { id: 'grandTotal', header: <>Grand Total <br /> (A + B + C + D)</>, isReadOnly: true },
   ];
 
   const rowDefinitions = [
-    { srNo: 'A', particular: `Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March ${year1}`, suffix: '1', type: 'data', isSectionHeader: true },
-    { type: 'subheader', label: 'Addition' },
-    { type: 'subsubsectionheader', srNo: '(a)', particular: 'Original cost of items put to use during the year:' },
-    { srNo: '(i)', particular: formData.particulars3, suffix: '3', type: 'data', parentSrNo: '(a)' },
-    { srNo: '(ii)', particular: formData.particulars4, suffix: '4', type: 'data', parentSrNo: '(a)' },
-    { srNo: '(b)', particular: 'Increase in value of Fixed Assets due to Current Revaluation', suffix: '36', type: 'data' },
-    { srNo: '(c)', particular: 'Original cost of items transferred from other Circles/Groups/CC Departments', suffix: '5', type: 'data' },
-    { srNo: '(d)', particular: 'Original cost of items transferred from other branches of the same Circle', suffix: '6', type: 'data' },
-    { srNo: 'I', particular: 'Total [a(i)+a(ii)+b+c+d]', suffix: '7', type: 'total', isTotalRow: true, isReadOnly: true },
-    { type: 'subheader', label: 'Deduction' },
-    { srNo: '(i)', particular: 'Short Valuation charged to Revaluation Reserve due to Current Downward Revaluation', suffix: '37', type: 'data', parentSrNo: 'Deduction' },
-    { srNo: '(ii)', particular: 'Original cost of items sold/ discarded during the year', suffix: '9', type: 'data', parentSrNo: 'Deduction' },
-    { srNo: '(iii)', particular: 'Projects under construction capitalised during the year', suffix: '33', type: 'data', parentSrNo: 'Deduction' },
-    { srNo: '(iv)', particular: 'Original cost of items transferred to other Circles/Groups/CC Departments', suffix: '10', type: 'data', parentSrNo: 'Deduction' },
-    { srNo: '(v)', particular: 'Original cost of items transferred to other branches in the same circle', suffix: '11', type: 'data', parentSrNo: 'Deduction' },
-    { srNo: 'II', particular: 'Total (i+ii+iii+iv+v)', suffix: '12', type: 'total', isTotalRow: true, isReadOnly: true },
-    { srNo: 'B', particular: 'Net Addition (I-II)', suffix: '13', type: 'total', isTotalRow: true, isReadOnly: true, isSectionHeader: true },
-    { srNo: 'C', particular: `Total Original Cost/ Revalued Value as at 31st March ${currentYearEnd} (A+B)`, suffix: '14', type: 'total', isTotalRow: true, isReadOnly: true, isSectionHeader: true },
-    { type: 'subheader', label: 'Depreciation' },
-    { srNo: '(i)', particular: `Depreciation upto the end of previous year i.e. 31st March ${year1}`, suffix: '18', type: 'data', parentSrNo: 'Depreciation' },
-    { srNo: '(ii)', particular: `Short Valuation charged to depreciation upto end of previous year i.e.31st March ${year1}`, suffix: '34', type: 'data', parentSrNo: 'Depreciation' },
-    { srNo: '(iii)', particular: 'Depreciation on repatriation of Officials from Subsidiaries/ Associates', suffix: '38', type: 'data', parentSrNo: 'Depreciation' },
-    { srNo: '(iv)', particular: 'Depreciation transferred from other Circles/Groups/CC Departments', suffix: '19', type: 'data', parentSrNo: 'Depreciation' },
-    { srNo: '(v)', particular: 'Depreciation transferred from other branches of the same circle.', suffix: '20', type: 'data', parentSrNo: 'Depreciation' },
-    { srNo: '(vi)', particular: 'Depreciation charged during the current year', suffix: '21', type: 'data', parentSrNo: 'Depreciation' },
-    { srNo: '(vii)', particular: 'Short Valuation charged to Depreciation during the current year due to Current Revaluation', suffix: '39', type: 'data', parentSrNo: 'Depreciation' },
-    { srNo: 'D', particular: 'Total (i+ii+iii+iv+v+vi+vii)', suffix: '22', type: 'total', isTotalRow: true, isReadOnly: true },
-    { type: 'subheader', label: 'Less :' },
-    { srNo: '(i)', particular: 'Past Short Valuation credited to Depreciation during the current year due to Current Upward Revaluation', suffix: '40', type: 'data', parentSrNo: 'Less' },
-    { srNo: '(ii)', particular: 'Depreciation previously provided on fixed assets sold/ discarded', suffix: '24', type: 'data', parentSrNo: 'Less' },
-    { srNo: '(iii)', particular: 'Depreciation transferred to other Circles/Groups/CC Departments', suffix: '25', type: 'data', parentSrNo: 'Less' },
-    { srNo: '(iv)', particular: 'Depreciation transferred to other branches of the same Circle.', suffix: '26', type: 'data', parentSrNo: 'Less' },
-    { srNo: 'E', particular: 'Total (i+ii+iii+iv)', suffix: '27', type: 'total', isTotalRow: true, isReadOnly: true },
-    { srNo: 'F', particular: 'Net Depreciation (D-E)', suffix: '28', type: 'total', isTotalRow: true, isReadOnly: true },
-    { srNo: 'G', particular: `Net Book Value as at 31st March ${currentYearEnd} (C-F)`, suffix: '29', type: 'total', isTotalRow: true, isReadOnly: true },
-    { srNo: 'H', particular: 'Sale Price of fixed assets', suffix: '30', type: 'data' },
-    { srNo: 'I', particular: 'Book Value of fixed assets sold [II (ii)-E(ii)]', suffix: '31', type: 'total', isTotalRow: true, isReadOnly: true },
-    { srNo: 'J', particular: 'GST on Sale of fixed assets', suffix: '35', type: 'data' },
-    { srNo: 'K', particular: 'Profit/ (Loss) on sale of fixed assets [H-(I+J)]', suffix: '32', type: 'total', isTotalRow: true, isReadOnly: true },
+    { srNo: 'A', particular: `Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March ${year1}`, suffix: '1', type: 'data', isSectionHeader: true }, { type: 'subheader', label: 'Addition' }, { type: 'subsubsectionheader', srNo: '(a)', particular: 'Original cost of items put to use during the year:' }, { srNo: '(i)', particular: formData.particulars3, suffix: '3', type: 'data', parentSrNo: '(a)' }, { srNo: '(ii)', particular: formData.particulars4, suffix: '4', type: 'data', parentSrNo: '(a)' }, { srNo: '(b)', particular: 'Increase in value of Fixed Assets due to Current Revaluation', suffix: '36', type: 'data' }, { srNo: '(c)', particular: 'Original cost of items transferred from other Circles/Groups/CC Departments', suffix: '5', type: 'data' }, { srNo: '(d)', particular: 'Original cost of items transferred from other branches of the same Circle', suffix: '6', type: 'data' }, { srNo: 'I', particular: 'Total [a(i)+a(ii)+b+c+d]', suffix: '7', type: 'total', isTotalRow: true, isReadOnly: true }, { type: 'subheader', label: 'Deduction' }, { srNo: '(i)', particular: 'Short Valuation charged to Revaluation Reserve due to Current Downward Revaluation', suffix: '37', type: 'data', parentSrNo: 'Deduction' }, { srNo: '(ii)', particular: 'Original cost of items sold/ discarded during the year', suffix: '9', type: 'data', parentSrNo: 'Deduction' }, { srNo: '(iii)', particular: 'Projects under construction capitalised during the year', suffix: '33', type: 'data', parentSrNo: 'Deduction' }, { srNo: '(iv)', particular: 'Original cost of items transferred to other Circles/Groups/CC Departments', suffix: '10', type: 'data', parentSrNo: 'Deduction' }, { srNo: '(v)', particular: 'Original cost of items transferred to other branches in the same circle', suffix: '11', type: 'data', parentSrNo: 'Deduction' }, { srNo: 'II', particular: 'Total (i+ii+iii+iv+v)', suffix: '12', type: 'total', isTotalRow: true, isReadOnly: true }, { srNo: 'B', particular: 'Net Addition (I-II)', suffix: '13', type: 'total', isTotalRow: true, isReadOnly: true, isSectionHeader: true }, { srNo: 'C', particular: `Total Original Cost/ Revalued Value as at 31st March ${currentYearEnd} (A+B)`, suffix: '14', type: 'total', isTotalRow: true, isReadOnly: true, isSectionHeader: true }, { type: 'subheader', label: 'Depreciation' }, { srNo: '(i)', particular: `Depreciation upto the end of previous year i.e. 31st March ${year1}`, suffix: '18', type: 'data', parentSrNo: 'Depreciation' }, { srNo: '(ii)', particular: `Short Valuation charged to depreciation upto end of previous year i.e.31st March ${year1}`, suffix: '34', type: 'data', parentSrNo: 'Depreciation' }, { srNo: '(iii)', particular: 'Depreciation on repatriation of Officials from Subsidiaries/ Associates', suffix: '38', type: 'data', parentSrNo: 'Depreciation' }, { srNo: '(iv)', particular: 'Depreciation transferred from other Circles/Groups/CC Departments', suffix: '19', type: 'data', parentSrNo: 'Depreciation' }, { srNo: '(v)', particular: 'Depreciation transferred from other branches of the same circle.', suffix: '20', type: 'data', parentSrNo: 'Depreciation' }, { srNo: '(vi)', particular: 'Depreciation charged during the current year', suffix: '21', type: 'data', parentSrNo: 'Depreciation' }, { srNo: '(vii)', particular: 'Short Valuation charged to Depreciation during the current year due to Current Revaluation', suffix: '39', type: 'data', parentSrNo: 'Depreciation' }, { srNo: 'D', particular: 'Total (i+ii+iii+iv+v+vi+vii)', suffix: '22', type: 'total', isTotalRow: true, isReadOnly: true }, { type: 'subheader', label: 'Less :' }, { srNo: '(i)', particular: 'Past Short Valuation credited to Depreciation during the current year due to Current Upward Revaluation', suffix: '40', type: 'data', parentSrNo: 'Less' }, { srNo: '(ii)', particular: 'Depreciation previously provided on fixed assets sold/ discarded', suffix: '24', type: 'data', parentSrNo: 'Less' }, { srNo: '(iii)', particular: 'Depreciation transferred to other Circles/Groups/CC Departments', suffix: '25', type: 'data', parentSrNo: 'Less' }, { srNo: '(iv)', particular: 'Depreciation transferred to other branches of the same Circle.', suffix: '26', type: 'data', parentSrNo: 'Less' }, { srNo: 'E', particular: 'Total (i+ii+iii+iv)', suffix: '27', type: 'total', isTotalRow: true, isReadOnly: true }, { srNo: 'F', particular: 'Net Depreciation (D-E)', suffix: '28', type: 'total', isTotalRow: true, isReadOnly: true }, { srNo: 'G', particular: `Net Book Value as at 31st March ${currentYearEnd} (C-F)`, suffix: '29', type: 'total', isTotalRow: true, isReadOnly: true }, { srNo: 'H', particular: 'Sale Price of fixed assets', suffix: '30', type: 'data' }, { srNo: 'I', particular: 'Book Value of fixed assets sold [II (ii)-E(ii)]', suffix: '31', type: 'total', isTotalRow: true, isReadOnly: true }, { srNo: 'J', particular: 'GST on Sale of fixed assets', suffix: '35', type: 'data' }, { srNo: 'K', particular: 'Profit/ (Loss) on sale of fixed assets [H-(I+J)]', suffix: '32', type: 'total', isTotalRow: true, isReadOnly: true },
   ];
 
   const RenderInputCell = ({ fieldName, isReadOnly }) => (
     <StyledTableCell>
-      <FormInput
-        name={fieldName}
-        value={formData[fieldName] === undefined ? '0.00' : formData[fieldName]}
-        onChange={handleChange}
-        inputProps={{
-          style: { textAlign: 'right' },
-        }}
-        sx={{
-          width: '100px',
-          '& input': { textAlign: 'right', padding: '6px 8px' },
-          backgroundColor: isReadOnly ? '#f0f0f0' : 'white',
-        }}
-        readOnly={isReadOnly}
-        variant="outlined"
-        size="small"
-      />
+      <FormInput name={fieldName} value={formData[fieldName] === undefined ? '0.00' : formData[fieldName]} onChange={handleChange} inputProps={{ style: { textAlign: 'right' }, }} sx={{ width: '100px', '& input': { textAlign: 'right', padding: '6px 8px' }, backgroundColor: isReadOnly ? '#f0f0f0' : 'white', }} readOnly={isReadOnly} variant="outlined" size="small" />
     </StyledTableCell>
   );
 
@@ -346,29 +216,20 @@ const Schedule10 = () => {
         <Table sx={{ minWidth: 3000 }} aria-label="schedule 10 table">
           <TableHead>
             <TableRow>
-              <StyledTableCell rowSpan={2}><b>Sr.No</b></StyledTableCell>
-              <StyledTableCell rowSpan={2}><b>Particulars</b></StyledTableCell>
-              <StyledTableCell colSpan={5}><b>(A) FURNITURE & FITTINGS</b></StyledTableCell>
-              <StyledTableCell colSpan={10}><b>(B) MACHINERY & PLANT</b></StyledTableCell>
-              <StyledTableCell rowSpan={2}><b>Total Furniture & Fixtures <br />(A+B)</b></StyledTableCell>
-              <StyledTableCell colSpan={12}><b>(C) PREMISES</b></StyledTableCell>
-              <StyledTableCell rowSpan={2}><b>(D) Projects under <br />construction</b></StyledTableCell>
-              <StyledTableCell rowSpan={2}><b>Grand Total <br /> (A + B + C + D)</b></StyledTableCell>
+              <StyledTableCell rowSpan={2}><b>Sr.No</b></StyledTableCell><StyledTableCell rowSpan={2}><b>Particulars</b></StyledTableCell><StyledTableCell colSpan={5}><b>(A) FURNITURE & FITTINGS</b></StyledTableCell><StyledTableCell colSpan={10}><b>(B) MACHINERY & PLANT</b></StyledTableCell><StyledTableCell rowSpan={2}><b>Total Furniture & Fixtures <br />(A+B)</b></StyledTableCell><StyledTableCell colSpan={12}><b>(C) PREMISES</b></StyledTableCell><StyledTableCell rowSpan={2}><b>(D) Projects under <br />construction</b></StyledTableCell><StyledTableCell rowSpan={2}><b>Grand Total <br /> (A + B + C + D)</b></StyledTableCell>
             </TableRow>
             <TableRow>
-              {columnDefinitions.slice(0, 5).map(col => <StyledTableCell key={col.id}><b>{col.header}</b></StyledTableCell>)}
-              {columnDefinitions.slice(5, 15).map(col => <StyledTableCell key={col.id}><b>{col.header}</b></StyledTableCell>)}
-              {columnDefinitions.slice(16, 28).map(col => <StyledTableCell key={col.id}><b>{col.header}</b></StyledTableCell>)}
+              {columnDefinitions.slice(0, 5).map(col => <StyledTableCell key={col.id}><b>{col.header}</b></StyledTableCell>)}{columnDefinitions.slice(5, 15).map(col => <StyledTableCell key={col.id}><b>{col.header}</b></StyledTableCell>)}{columnDefinitions.slice(16, 28).map(col => <StyledTableCell key={col.id}><b>{col.header}</b></StyledTableCell>)}
             </TableRow>
           </TableHead>
           <TableBody>
             {rowDefinitions.map((row, rowIndex) => {
               if (row.type === 'subheader' || row.type === 'subsubsectionheader') {
                 return (
-                  <StyledTableRow // MODIFIED: Passing transient props
+                  <StyledTableRow // MODIFIED: Passing props without $ prefix
                     key={`header-${rowIndex}`}
-                    $issubsectionheader={row.type === 'subheader'} // Propagating as transient if needed, or check usage
-                    $issubsubsectionheader={row.type === 'subsubsectionheader'} // Propagating as transient if needed
+                    issubsectionheader={row.type === 'subheader'} // No $
+                    issubsubsectionheader={row.type === 'subsubsectionheader'} // No $
                   >
                     <StyledTableCell>{row.srNo || ''}</StyledTableCell>
                     <StyledTableCell><b>{row.label || row.particular}</b></StyledTableCell>
@@ -377,25 +238,22 @@ const Schedule10 = () => {
                 );
               } else if (row.type === 'data' || row.type === 'total') {
                 return (
-                  <StyledTableRow // MODIFIED: Passing transient props
+                  <StyledTableRow // MODIFIED: Passing props without $ prefix
                     key={row.suffix}
-                    $istotalrow={row.isTotalRow}
-                    $issectionheader={row.isSectionHeader}
+                    istotalrow={row.isTotalRow} // No $
+                    issectionheader={row.isSectionHeader} // No $
                   >
-                    <StyledTableCell // MODIFIED: Removed issectionheader prop
+                    {/* IMPORTANT: Ensure issectionheader is NOT passed to these StyledTableCell instances */}
+                    <StyledTableCell
                         style={row.parentSrNo && !row.isSectionHeader ? { textAlign: 'right' } : (row.isSectionHeader ? {textAlign: 'left'} : { textAlign: 'center' })}
                     >
                       <b>{row.srNo}</b>
                     </StyledTableCell>
-                    <StyledTableCell> {/* MODIFIED: Removed issectionheader prop */}
+                    <StyledTableCell>
                       <b>{row.particular}</b>
                     </StyledTableCell>
                     {columnDefinitions.map(col => (
-                      <RenderInputCell
-                        key={`${row.suffix}-${col.id}`}
-                        fieldName={`${col.id}${row.suffix}`}
-                        isReadOnly={row.isReadOnly || col.isReadOnly}
-                      />
+                      <RenderInputCell key={`${row.suffix}-${col.id}`} fieldName={`${col.id}${row.suffix}`} isReadOnly={row.isReadOnly || col.isReadOnly} />
                     ))}
                   </StyledTableRow>
                 );
