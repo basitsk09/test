@@ -1,16 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import {
-  Box,
-  Paper,
-  TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Typography
-} from '@mui/material';
+import { Box, Paper, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material';
 import { styled, useTheme } from '@mui/material/styles';
 
 const StickyCell = styled(TableCell)(({ theme }) => ({
@@ -23,10 +12,23 @@ const StickyCell = styled(TableCell)(({ theme }) => ({
 }));
 
 const columns = [
-  'stcNstaff', 'offResidenceA', 'otherPremisesA', 'electricFitting', 'totalA',
-  'computers', 'compSoftwareInt', 'compSoftwareNonint', 'compSoftwareTotal',
-  'motor', 'offResidenceB', 'stcLho', 'otherPremisesB', 'otherMachineryPlant', 'totalB',
-  'premisesUnderCons', 'grandTotal'
+  'stcNstaff',
+  'offResidenceA',
+  'otherPremisesA',
+  'electricFitting',
+  'totalA',
+  'computers',
+  'compSoftwareInt',
+  'compSoftwareNonint',
+  'compSoftwareTotal',
+  'motor',
+  'offResidenceB',
+  'stcLho',
+  'otherPremisesB',
+  'otherMachineryPlant',
+  'totalB',
+  'premisesUnderCons',
+  'grandTotal'
 ];
 
 const columnHeaders = [
@@ -49,7 +51,43 @@ const columnHeaders = [
   'GRAND TOTAL (A+B+C+D)'
 ];
 
-const rowLabels = [...]; // (omitted here to keep snippet short)
+const rowLabels = [
+  { id: 'a', label: 'A Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March 2024' },
+  { id: 'a1', label: 'a. Original cost of items put to use during the year:' },
+  { id: 'a1i', label: '(i) Cost of new items put to use upto 3rd October 2024' },
+  { id: 'a1ii', label: '(ii) Cost of new items put to use during 4th October 2024 to 31st March 2025' },
+  { id: 'b', label: 'b. Increase in value of Fixed Assets due to Current Revaluation' },
+  { id: 'c', label: 'c. Original cost of items transferred from other Circles/Groups/CC Departments' },
+  { id: 'd', label: 'd. Original cost of items transferred from other branches of the same Circle' },
+  { id: 'i', label: 'I Total [a(i)+a(ii)+b+c+d]' },
+  { id: 'ii1', label: '(i) Short Valuation charged to Revaluation Reserve due to Current Downward Revaluation' },
+  { id: 'ii2', label: '(ii) Original cost of items sold/ discarded during the year' },
+  { id: 'ii3', label: '(iii) Projects under construction capitalised during the year' },
+  { id: 'ii4', label: '(iv) Original cost of items transferred to other Circles/Groups/CC Departments' },
+  { id: 'ii5', label: '(v) Original cost of items transferred to other branches in the same circle' },
+  { id: 'ii', label: 'II Total (i+ii+iii+iv+v)' },
+  { id: 'bnet', label: 'B Net Addition (I-II)' },
+  { id: 'cnet', label: 'C Total Original Cost/ Revalued Value as at 31st March 2025 (A+B)' },
+  { id: 'd1', label: '(i) Depreciation upto the end of previous year i.e. 31st March 2024' },
+  { id: 'd2', label: '(ii) Short Valuation charged to depreciation upto end of previous year i.e.31st March 2024' },
+  { id: 'd3', label: '(iii) Depreciation on repatriation of Officials from Subsidiaries/ Associates' },
+  { id: 'd4', label: '(iv) Depreciation transferred from other Circles/Groups/CC Departments' },
+  { id: 'd5', label: '(v) Depreciation transferred from other branches of the same circle' },
+  { id: 'd6', label: '(vi) Depreciation charged during the current year' },
+  { id: 'd7', label: '(vii) Short Valuation charged to Depreciation during the current year due to Current Revaluation' },
+  { id: 'dtotal', label: 'D Total (i+ii+iii+iv+v+vi+vii)' },
+  { id: 'e1', label: '(i) Past Short Valuation credited to Depreciation during the current year due to Current Upward Revaluation' },
+  { id: 'e2', label: '(ii) Depreciation previously provided on fixed assets sold/ discarded' },
+  { id: 'e3', label: '(iii) Depreciation transferred to other Circles/Groups/CC Departments' },
+  { id: 'e4', label: '(iv) Depreciation transferred to other branches of the same Circle' },
+  { id: 'etotal', label: 'E Total (i+ii+iii+iv)' },
+  { id: 'fnet', label: 'F Net Depreciation (D-E)' },
+  { id: 'gnet', label: 'G Net Book Value as at 31st March 2025 (C-F)' },
+  { id: 'h', label: 'H Sale Price of fixed assets' },
+  { id: 'i2', label: 'I Book Value of fixed assets sold [II (ii)-E(ii)]' },
+  { id: 'j', label: 'J GST on Sale of fixed assets' },
+  { id: 'k', label: 'K Profit/ (Loss) on sale of fixed assets [H-(I+J)]' }
+];
 
 export default function Schedule10Full() {
   const theme = useTheme();
@@ -65,10 +103,7 @@ export default function Schedule10Full() {
 
   const handleChange = (key, value) => {
     const cleaned = value.replace(/[^\d.]/g, '');
-    setFormData(prev => ({
-      ...prev,
-      [key]: cleaned
-    }));
+    setFormData(prev => ({ ...prev, [key]: cleaned }));
   };
 
   const calculateRowTotal = useMemo(() => {
@@ -87,14 +122,21 @@ export default function Schedule10Full() {
 
   return (
     <Box sx={{ overflowX: 'auto' }}>
-      <Typography variant="h6" gutterBottom>Schedule 10 - Additions, Deductions, Depreciation and Net Book Value</Typography>
+      <Typography variant="h6" gutterBottom>
+        Schedule 10 - Additions, Deductions, Depreciation and Net Book Value
+      </Typography>
       <TableContainer component={Paper}>
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
               <StickyCell>Particulars</StickyCell>
               {columnHeaders.map((header, index) => (
-                <TableCell key={index} sx={{ fontWeight: 'bold', background: theme.palette.background.default }}>{header}</TableCell>
+                <TableCell
+                  key={index}
+                  sx={{ fontWeight: 'bold', background: theme.palette.background.default }}
+                >
+                  {header}
+                </TableCell>
               ))}
               <TableCell sx={{ fontWeight: 'bold' }}>Row Total</TableCell>
             </TableRow>
@@ -102,7 +144,12 @@ export default function Schedule10Full() {
           <TableBody>
             {rowLabels.map((row) => (
               <TableRow key={row.id}>
-                <StickyCell sx={{ backgroundColor: row.isSection ? '#000' : row.isSubsection ? '#ddd' : '#fff', color: row.isSection ? '#fff' : undefined }}>
+                <StickyCell
+                  sx={{
+                    backgroundColor: row.isSection ? '#000' : row.isSubsection ? '#ddd' : '#fff',
+                    color: row.isSection ? '#fff' : undefined,
+                  }}
+                >
                   {row.label}
                 </StickyCell>
                 {columns.map((col, index) => {
@@ -130,14 +177,14 @@ export default function Schedule10Full() {
 }
 
 
-✅ Column headers (like "i) At STCs", "ii) At Officers' Residences", etc.) are now restored correctly in the table.
+✅ The rowLabels array has now been fully added to the code, including all the missing rows from A to K.
 
-Would you like:
+Let me know if you now want to:
 
-Section-wise subtotals to be calculated?
+Hook this into the save/submit API
 
-Save/Submit integration next?
+Apply subtotals for B, C, F, and G rows
 
-Styling tweaks (like bold row totals, sticky horizontal headers)?
+Add sticky vertical scrolling for the row labels and headers
 
 
