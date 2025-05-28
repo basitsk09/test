@@ -7,13 +7,13 @@ import {
   TableRow,
   Paper,
   Box,
-  Typography,
+  // Typography, // Typography was imported but not used, can be removed if not needed elsewhere
 } from '@mui/material';
 import TableCell, { tableCellClasses } from '@mui/material/TableCell';
 import { styled } from '@mui/material/styles';
 import FormInput from '../../../../common/components/ui/FormInput';
 
-// Styled Components based on Example.txt
+// Styled Components
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontSize: '0.875rem',
   padding: '8px',
@@ -32,28 +32,29 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
   },
 }));
 
+// MODIFIED: Using transient props (prefixed with $)
 const StyledTableRow = styled(TableRow)(
-  ({ theme, istotalrow, issectionheader, issubsectionheader, issubsubsectionheader }) => ({
+  ({ theme, $istotalrow, $issectionheader, $issubsectionheader, $issubsubsectionheader }) => ({
     backgroundColor: theme.palette.background.paper,
-    ...(issectionheader && {
+    ...($issectionheader && { // MODIFIED: Using $issectionheader
       '& > td': {
         fontWeight: 'bold',
         textAlign: 'left',
       },
     }),
-    ...(issubsectionheader && {
+    ...($issubsectionheader && { // MODIFIED: Using $issubsectionheader
       '& > td': {
         fontWeight: 'bold',
         fontStyle: 'italic',
         textAlign: 'left',
       },
     }),
-    ...(issubsubsectionheader && {
+    ...($issubsubsectionheader && { // MODIFIED: Using $issubsubsectionheader
       '& > td': {
         textAlign: 'left',
       },
     }),
-    ...(istotalrow && {
+    ...($istotalrow && { // MODIFIED: Using $istotalrow
       '& > td': {
         fontWeight: 'bold',
       },
@@ -194,7 +195,7 @@ const Schedule10 = () => {
     });
     return relevantValues;
   }, [formData]);
-  
+
   useEffect(() => {
     setFormData(prevData => {
       let newData = { ...prevData };
@@ -204,7 +205,7 @@ const Schedule10 = () => {
       editableRowSuffixes.forEach(suffix => {
         newData = calculateRowTotals(newData, suffix);
       });
-      
+
       nonTotalBaseFieldKeys.forEach(key => {
         newData[`${key}7`] = sumAcrossRows(newData, key, ['3', '4', '36', '5', '6']);
         newData[`${key}12`] = sumAcrossRows(newData, key, ['37', '9', '33', '10', '11']);
@@ -215,7 +216,7 @@ const Schedule10 = () => {
         newData[`${key}28`] = subtractAcrossRows(newData, key, '22', '27');
         newData[`${key}29`] = subtractAcrossRows(newData, key, '14', '28');
         newData[`${key}31`] = subtractAcrossRows(newData, key, '9', '24');
-        
+
         const val30 = p(`${key}30`);
         const val31 = p(newData[`${key}31`]);
         const val35 = p(`${key}35`);
@@ -226,7 +227,7 @@ const Schedule10 = () => {
       aggregatedRowSuffixes.forEach(suffix => {
         newData = calculateRowTotals(newData, suffix);
       });
-      
+
       return newData;
     });
   }, [inputFieldValues]);
@@ -242,7 +243,7 @@ const Schedule10 = () => {
       }));
     }
   };
-  
+
   const columnDefinitions = [
     { id: 'stcNstaff', header: <>i) At STCs & Staff Colleges <br /> (For Local Head Office only)</> },
     { id: 'offResidenceA', header: "ii) At Officers' Residences" },
@@ -318,8 +319,6 @@ const Schedule10 = () => {
     { srNo: 'K', particular: 'Profit/ (Loss) on sale of fixed assets [H-(I+J)]', suffix: '32', type: 'total', isTotalRow: true, isReadOnly: true },
   ];
 
-  // Converted renderInputCell to a React component RenderInputCell
-  // It's defined inside Schedule10, so it has access to formData and handleChange from the closure.
   const RenderInputCell = ({ fieldName, isReadOnly }) => (
     <StyledTableCell>
       <FormInput
@@ -340,7 +339,6 @@ const Schedule10 = () => {
       />
     </StyledTableCell>
   );
-
 
   return (
     <Box sx={{ p: 1, width: '100%', overflowX: 'hidden' }}>
@@ -367,10 +365,10 @@ const Schedule10 = () => {
             {rowDefinitions.map((row, rowIndex) => {
               if (row.type === 'subheader' || row.type === 'subsubsectionheader') {
                 return (
-                  <StyledTableRow
-                    key={`header-${rowIndex}`} // Key for header rows (remains unique by rowIndex)
-                    issubsectionheader={row.type === 'subheader'}
-                    issubsubsectionheader={row.type === 'subsubsectionheader'}
+                  <StyledTableRow // MODIFIED: Passing transient props
+                    key={`header-${rowIndex}`}
+                    $issubsectionheader={row.type === 'subheader'} // Propagating as transient if needed, or check usage
+                    $issubsubsectionheader={row.type === 'subsubsectionheader'} // Propagating as transient if needed
                   >
                     <StyledTableCell>{row.srNo || ''}</StyledTableCell>
                     <StyledTableCell><b>{row.label || row.particular}</b></StyledTableCell>
@@ -379,23 +377,22 @@ const Schedule10 = () => {
                 );
               } else if (row.type === 'data' || row.type === 'total') {
                 return (
-                  <StyledTableRow
-                    key={row.suffix} // CHANGED: Use row.suffix for unique key for data/total rows
-                    istotalrow={row.isTotalRow}
-                    issectionheader={row.isSectionHeader}
+                  <StyledTableRow // MODIFIED: Passing transient props
+                    key={row.suffix}
+                    $istotalrow={row.isTotalRow}
+                    $issectionheader={row.isSectionHeader}
                   >
-                    <StyledTableCell
-                        issectionheader={row.isSectionHeader}
+                    <StyledTableCell // MODIFIED: Removed issectionheader prop
                         style={row.parentSrNo && !row.isSectionHeader ? { textAlign: 'right' } : (row.isSectionHeader ? {textAlign: 'left'} : { textAlign: 'center' })}
                     >
                       <b>{row.srNo}</b>
                     </StyledTableCell>
-                    <StyledTableCell issectionheader={row.isSectionHeader}>
+                    <StyledTableCell> {/* MODIFIED: Removed issectionheader prop */}
                       <b>{row.particular}</b>
                     </StyledTableCell>
-                    {columnDefinitions.map(col => ( // CHANGED: Using RenderInputCell component with a unique key
+                    {columnDefinitions.map(col => (
                       <RenderInputCell
-                        key={`${row.suffix}-${col.id}`} // Unique key for each cell component
+                        key={`${row.suffix}-${col.id}`}
                         fieldName={`${col.id}${row.suffix}`}
                         isReadOnly={row.isReadOnly || col.isReadOnly}
                       />
