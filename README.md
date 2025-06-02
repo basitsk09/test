@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Table,
   TableBody,
@@ -10,11 +10,72 @@ import {
 } from '@mui/material';
 import TableCell, { tableCellClasses } from '@mui/material/TableCell';
 import { styled } from '@mui/material/styles';
-// Assuming this path is correct for your project structure
-import FormInput from '../../../../common/components/ui/FormInput';
+import FormInput from '../../../../common/components/ui/FormInput'; // Ensure path is correct
+
+// --- Stable Helper Functions (defined outside component) ---
+const parseFloatOrDefault = (value) => parseFloat(value) || 0;
+
+const globalParseAndFormat = (value) => {
+  const num = parseFloat(value);
+  return isNaN(num) ? '0.00' : num.toFixed(2);
+};
+
+// Modified to work "in-place" on targetData
+const calculateRowTotalsInPlace = (targetData, suffix) => {
+  const p = (fieldPath) => parseFloatOrDefault(targetData[fieldPath]);
+
+  targetData[`totalA${suffix}`] = globalParseAndFormat(
+    p(`stcNstaff${suffix}`) + p(`offResidenceA${suffix}`) +
+    p(`otherPremisesA${suffix}`) + p(`electricFitting${suffix}`)
+  );
+  targetData[`compSoftwareTotal${suffix}`] = globalParseAndFormat(
+    p(`compSoftwareInt${suffix}`) + p(`compSoftwareNonint${suffix}`)
+  );
+  targetData[`otherMachineryPlant${suffix}`] = globalParseAndFormat(
+    p(`offResidenceB${suffix}`) + p(`stcLho${suffix}`) + p(`otherPremisesB${suffix}`)
+  );
+  targetData[`totalB${suffix}`] = globalParseAndFormat(
+    p(`computers${suffix}`) + p(targetData[`compSoftwareTotal${suffix}`]) + // Use already parsed value if available or re-parse
+    p(`motor${suffix}`) + p(targetData[`otherMachineryPlant${suffix}`])
+  );
+  targetData[`totalFurnFix${suffix}`] = globalParseAndFormat(
+    p(targetData[`totalA${suffix}`]) + p(targetData[`totalB${suffix}`])
+  );
+  targetData[`premisTotal${suffix}`] = globalParseAndFormat(
+    p(`landNotRev${suffix}`) + p(`landRev${suffix}`) +
+    p(`offBuildNotRev${suffix}`) + p(`offBuildRev${suffix}`) +
+    p(`residQuartNotRev${suffix}`) + p(`residQuartRev${suffix}`)
+  );
+  targetData[`revtotal${suffix}`] = globalParseAndFormat(
+    p(`landRevEnh${suffix}`) + p(`offBuildRevEnh${suffix}`) + p(`residQuartRevEnh${suffix}`)
+  );
+  targetData[`totalC${suffix}`] = globalParseAndFormat(
+    p(targetData[`premisTotal${suffix}`]) + p(targetData[`revtotal${suffix}`])
+  );
+  targetData[`grandTotal${suffix}`] = globalParseAndFormat(
+    p(targetData[`totalA${suffix}`]) + p(targetData[`totalB${suffix}`]) +
+    p(targetData[`totalC${suffix}`]) + p(`premisesUnderCons${suffix}`)
+  );
+  // No return needed as targetData is modified directly
+};
+
+// Returns value, for direct assignment
+const sumAcrossRowsForField = (sourceData, fieldBaseName, suffixesToSum) => {
+  let total = 0;
+  suffixesToSum.forEach((sfx) => {
+    total += parseFloatOrDefault(sourceData[`${fieldBaseName}${sfx}`]);
+  });
+  return globalParseAndFormat(total);
+};
+
+const subtractAcrossRowsForField = (sourceData, fieldBaseName, minuendSuffix, subtrahendSuffix) => {
+  const minuend = parseFloatOrDefault(sourceData[`${fieldBaseName}${minuendSuffix}`]);
+  const subtrahend = parseFloatOrDefault(sourceData[`${fieldBaseName}${subtrahendSuffix}`]);
+  return globalParseAndFormat(minuend - subtrahend);
+};
 
 
-// Styled Components
+// Styled Components (assuming these are fine and correctly handle transient props with MUI v5+)
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontSize: '0.875rem',
   padding: '8px',
@@ -39,38 +100,10 @@ const StyledTableRow = styled(TableRow)(
     '&:hover': {
       backgroundColor: theme.palette.action.hover,
     },
-    // Styles driven by transient props
-    ...($issectionheader && {
-      '& > td': {
-        fontWeight: 'bold',
-        textAlign: 'left',
-        backgroundColor: theme.palette.grey[200],
-      },
-    }),
-    ...($issubsectionheader && {
-      '& > td': {
-        // fontWeight: 'bold', // Already applied by subheader potentially
-        fontStyle: 'italic',
-        textAlign: 'left',
-        backgroundColor: theme.palette.grey[100],
-      },
-    }),
-    ...($issubsubsectionheader && { // This was for type: 'subsubsectionheader'
-      '& > td': { // Applied to all cells in that row
-        // Example: specific styling for subsubsection data cells if needed, 
-        // but particular/label cell is more common target.
-        // For the label cell of subsubsectionheader:
-        '&:nth-of-type(2)': { // Assuming second cell is the particular/label
-            paddingLeft: theme.spacing(4), // Indent particular
-        }
-      },
-    }),
-    ...($istotalrow && {
-      '& > td': {
-        fontWeight: 'bold',
-        backgroundColor: theme.palette.grey[300],
-      },
-    }),
+    ...($issectionheader && { '& > td': { fontWeight: 'bold', textAlign: 'left', backgroundColor: theme.palette.grey[200] } }),
+    ...($issubsectionheader && { '& > td': { fontStyle: 'italic', textAlign: 'left', backgroundColor: theme.palette.grey[100] } }),
+    ...($issubsubsectionheader && { '& > td:nth-of-type(2)': { paddingLeft: theme.spacing(4) } }), // Style particular cell
+    ...($istotalrow && { '& > td': { fontWeight: 'bold', backgroundColor: theme.palette.grey[300] } }),
   })
 );
 
@@ -102,7 +135,6 @@ const inputRowSuffixes = [
     '24', '25', '26', '30', '33', '34', '35', '36', '37', '38', '39', '40',
 ];
 
-
 const generateInitialFormData = () => {
   const initialNumericFields = {};
   rowSuffixes.forEach((suffix) => {
@@ -114,82 +146,19 @@ const generateInitialFormData = () => {
     particulars3: 'Cost of new items put to use upto 3rd October 2024',
     particulars4: 'Cost of new items put to use during 4th October 2024 to 31st March 2025',
     ...initialNumericFields,
-    save: true,
-    finyearOne: '2024',
-    finyearTwo: '2025',
-    circleCode: '001',
-    quarterEndDate: '31/03/2025',
-    userId: '1111111',
-    reportName: 'Schedule 10',
-    reportId: null,
-    reportMasterId: '310010',
-    status: null,
+    save: true, finyearOne: '2024', finyearTwo: '2025', circleCode: '001',
+    quarterEndDate: '31/03/2025', userId: '1111111', reportName: 'Schedule 10',
+    reportId: null, reportMasterId: '310010', status: null,
   };
 };
+
+const DEBOUNCE_DELAY = 300; // milliseconds
 
 const Schedule10 = () => {
   const [formData, setFormData] = useState(generateInitialFormData);
 
   const year1 = formData.finyearOne ? parseInt(formData.finyearOne) : new Date().getFullYear();
   const currentYearEnd = formData.finyearTwo;
-
-  const parseAndFormat = (value) => {
-    const num = parseFloat(value);
-    return isNaN(num) ? '0.00' : num.toFixed(2);
-  };
-
-  const calculateRowTotals = (data, suffix) => {
-    const updatedData = { ...data };
-    const p = (fieldPath) => parseFloat(updatedData[fieldPath]) || 0;
-
-    updatedData[`totalA${suffix}`] = parseAndFormat(
-      p(`stcNstaff${suffix}`) + p(`offResidenceA${suffix}`) +
-      p(`otherPremisesA${suffix}`) + p(`electricFitting${suffix}`)
-    );
-    updatedData[`compSoftwareTotal${suffix}`] = parseAndFormat(
-      p(`compSoftwareInt${suffix}`) + p(`compSoftwareNonint${suffix}`)
-    );
-    updatedData[`otherMachineryPlant${suffix}`] = parseAndFormat(
-      p(`offResidenceB${suffix}`) + p(`stcLho${suffix}`) + p(`otherPremisesB${suffix}`)
-    );
-    updatedData[`totalB${suffix}`] = parseAndFormat(
-      p(`computers${suffix}`) + p(updatedData[`compSoftwareTotal${suffix}`]) +
-      p(`motor${suffix}`) + p(updatedData[`otherMachineryPlant${suffix}`])
-    );
-    updatedData[`totalFurnFix${suffix}`] = parseAndFormat(
-      p(updatedData[`totalA${suffix}`]) + p(updatedData[`totalB${suffix}`])
-    );
-    updatedData[`premisTotal${suffix}`] = parseAndFormat(
-      p(`landNotRev${suffix}`) + p(`landRev${suffix}`) +
-      p(`offBuildNotRev${suffix}`) + p(`offBuildRev${suffix}`) +
-      p(`residQuartNotRev${suffix}`) + p(`residQuartRev${suffix}`)
-    );
-    updatedData[`revtotal${suffix}`] = parseAndFormat(
-      p(`landRevEnh${suffix}`) + p(`offBuildRevEnh${suffix}`) + p(`residQuartRevEnh${suffix}`)
-    );
-    updatedData[`totalC${suffix}`] = parseAndFormat(
-      p(updatedData[`premisTotal${suffix}`]) + p(updatedData[`revtotal${suffix}`])
-    );
-    updatedData[`grandTotal${suffix}`] = parseAndFormat(
-      p(updatedData[`totalA${suffix}`]) + p(updatedData[`totalB${suffix}`]) +
-      p(updatedData[`totalC${suffix}`]) + p(`premisesUnderCons${suffix}`)
-    );
-    return updatedData;
-  };
-
-  const sumAcrossRows = (currentData, fieldBaseName, suffixesToSum) => {
-    let total = 0;
-    suffixesToSum.forEach((sfx) => {
-      total += parseFloat(currentData[`${fieldBaseName}${sfx}`]) || 0;
-    });
-    return parseAndFormat(total);
-  };
-
-  const subtractAcrossRows = (currentData, fieldBaseName, minuendSuffix, subtrahendSuffix) => {
-    const minuend = parseFloat(currentData[`${fieldBaseName}${minuendSuffix}`]) || 0;
-    const subtrahend = parseFloat(currentData[`${fieldBaseName}${subtrahendSuffix}`]) || 0;
-    return parseAndFormat(minuend - subtrahend);
-  };
 
   const relevantInputDataString = useMemo(() => {
     const dataToWatch = {};
@@ -203,41 +172,60 @@ const Schedule10 = () => {
 
 
   useEffect(() => {
-    setFormData((prevData) => {
-      let newData = { ...prevData };
-      const p = (fieldPath) => parseFloat(newData[fieldPath]) || 0;
+    const performCalculations = () => {
+      setFormData((prevData) => {
+        // It's crucial to work on a copy of prevData if calculations are extensive
+        // to avoid issues if another update is somehow queued.
+        // Here, prevData is the most up-to-date state at the time of this debounced execution.
+        let newData = { ...prevData };
 
-      inputRowSuffixes.forEach((suffix) => {
-        newData = calculateRowTotals(newData, suffix);
+        // Calculate totals for rows that might have direct inputs
+        inputRowSuffixes.forEach((suffix) => {
+          calculateRowTotalsInPlace(newData, suffix);
+        });
+
+        // Calculate aggregated fields (cross-row calculations)
+        nonTotalBaseFieldKeys.forEach((key) => {
+          newData[`${key}7`] = sumAcrossRowsForField(newData, key, ['3', '4', '36', '5', '6']);
+          newData[`${key}12`] = sumAcrossRowsForField(newData, key, ['37', '9', '33', '10', '11']);
+          newData[`${key}13`] = subtractAcrossRowsForField(newData, key, '7', '12');
+          newData[`${key}14`] = sumAcrossRowsForField(newData, key, ['1', '13']); // '13' uses the just-calculated value in newData
+          newData[`${key}22`] = sumAcrossRowsForField(newData, key, ['18', '34', '38', '19', '20', '21', '39']);
+          newData[`${key}27`] = sumAcrossRowsForField(newData, key, ['40', '24', '25', '26']);
+          newData[`${key}28`] = subtractAcrossRowsForField(newData, key, '22', '27');
+          newData[`${key}29`] = subtractAcrossRowsForField(newData, key, '14', '28');
+          newData[`${key}31`] = subtractAcrossRowsForField(newData, key, '9', '24');
+
+          const val30 = parseFloatOrDefault(newData[`${key}30`]);
+          const val31 = parseFloatOrDefault(newData[`${key}31`]); // Uses the just-calculated value in newData
+          const val35 = parseFloatOrDefault(newData[`${key}35`]);
+          newData[`${key}32`] = globalParseAndFormat(val30 - (val31 + val35));
+        });
+
+        // Calculate totals for aggregated rows (e.g., row '7', '12', etc.)
+        const aggregatedRowSuffixes = ['7', '12', '13', '14', '22', '27', '28', '29', '31', '32'];
+        aggregatedRowSuffixes.forEach((suffix) => {
+          calculateRowTotalsInPlace(newData, suffix);
+        });
+        
+        // Only return newData if it has actually changed from prevData
+        // This is a shallow comparison, for deep objects, a deep equality check would be needed,
+        // but React's setFormData already bails out of renders if the new state is identical.
+        // The main benefit here is that we've mutated newData in place.
+        return newData;
       });
+    };
+    
+    // Debounce the execution of performCalculations
+    const handler = setTimeout(performCalculations, DEBOUNCE_DELAY);
 
-      nonTotalBaseFieldKeys.forEach((key) => {
-        newData[`${key}7`] = sumAcrossRows(newData, key, ['3', '4', '36', '5', '6']);
-        newData[`${key}12`] = sumAcrossRows(newData, key, ['37', '9', '33', '10', '11']);
-        newData[`${key}13`] = subtractAcrossRows(newData, key, '7', '12');
-        newData[`${key}14`] = sumAcrossRows(newData, key, ['1', '13']);
-        newData[`${key}22`] = sumAcrossRows(newData, key, ['18', '34', '38', '19', '20', '21', '39']);
-        newData[`${key}27`] = sumAcrossRows(newData, key, ['40', '24', '25', '26']);
-        newData[`${key}28`] = subtractAcrossRows(newData, key, '22', '27');
-        newData[`${key}29`] = subtractAcrossRows(newData, key, '14', '28');
-        newData[`${key}31`] = subtractAcrossRows(newData, key, '9', '24'); 
+    return () => {
+      clearTimeout(handler); // Clear timeout if effect re-runs or component unmounts
+    };
+  }, [relevantInputDataString]); // Only re-run when relevant input data changes
 
-        const val30 = p(`${key}30`);
-        const val31 = p(newData[`${key}31`]);
-        const val35 = p(`${key}35`);
-        newData[`${key}32`] = parseAndFormat(val30 - (val31 + val35));
-      });
 
-      const aggregatedRowSuffixes = ['7', '12', '13', '14', '22', '27', '28', '29', '31', '32'];
-      aggregatedRowSuffixes.forEach((suffix) => {
-        newData = calculateRowTotals(newData, suffix);
-      });
-
-      return newData;
-    });
-  }, [relevantInputDataString]); 
-
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value } = e.target;
     const regex = /^-?\d*\.?\d{0,2}$/;
     if (value === '' || value === '-' || regex.test(value)) {
@@ -246,7 +234,7 @@ const Schedule10 = () => {
         [name]: value,
       }));
     }
-  };
+  }, []); // Empty dependency array as handleChange doesn't depend on component state/props directly
   
   const columnDefinitions = useMemo(() => [
     { id: 'stcNstaff', header: (<>i) At STCs & Staff Colleges <br /> (For Local Head Office only)</>) },
@@ -323,13 +311,13 @@ const Schedule10 = () => {
     { srNo: 'K', particular: 'Profit/ (Loss) on sale of fixed assets [H-(I+J)]', suffix: '32', type: 'total', isTotalRow: true, isReadOnly: true },
   ], [year1, currentYearEnd, formData.particulars3, formData.particulars4]);
 
-
-  const RenderInputCell = React.memo(({ fieldName, isReadOnly }) => (
+  // RenderInputCell uses React.memo for optimization
+  const RenderInputCell = React.memo(({ fieldName, isReadOnly, value, onChange }) => (
     <StyledTableCell>
       <FormInput
         name={fieldName}
-        value={formData[fieldName] === undefined ? '0.00' : formData[fieldName]}
-        onChange={handleChange}
+        value={value} // Pass value directly as prop
+        onChange={onChange} // Pass handleChange as prop
         inputProps={{
           style: { textAlign: 'right' },
           readOnly: isReadOnly, 
@@ -374,8 +362,8 @@ const Schedule10 = () => {
                 return (
                   <StyledTableRow
                     key={`header-${rowIndex}-${row.label || row.particular}`}
-                    $issubsectionheader={(row.type === 'subheader') ? true : undefined} // MODIFIED
-                    $issubsubsectionheader={(row.type === 'subsubsectionheader') ? true : undefined} // MODIFIED
+                    $issubsectionheader={(row.type === 'subheader') ? true : undefined}
+                    $issubsubsectionheader={(row.type === 'subsubsectionheader') ? true : undefined}
                   >
                     <StyledTableCell sx={{ textAlign: row.srNo ? 'center' : 'left', fontWeight: 'bold' }}>{row.srNo || ''}</StyledTableCell>
                     <StyledTableCell sx={{fontWeight: 'bold'}}>
@@ -388,8 +376,8 @@ const Schedule10 = () => {
                 return (
                   <StyledTableRow
                     key={row.suffix}
-                    $istotalrow={row.isTotalRow ? true : undefined} // MODIFIED
-                    $issectionheader={row.isSectionHeader ? true : undefined} // MODIFIED
+                    $istotalrow={row.isTotalRow ? true : undefined}
+                    $issectionheader={row.isSectionHeader ? true : undefined}
                   >
                     <StyledTableCell
                       style={{
@@ -407,6 +395,8 @@ const Schedule10 = () => {
                         key={`${row.suffix}-${col.id}`}
                         fieldName={`${col.id}${row.suffix}`}
                         isReadOnly={!!row.isReadOnly || !!col.isReadOnly}
+                        value={formData[`${col.id}${row.suffix}`] === undefined ? '0.00' : formData[`${col.id}${row.suffix}`]}
+                        onChange={handleChange}
                       />
                     ))}
                   </StyledTableRow>
