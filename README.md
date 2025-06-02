@@ -7,11 +7,12 @@ import {
   TableRow,
   Paper,
   Box,
-  // Typography, // Typography was imported but not used, can be removed if not needed elsewhere
 } from '@mui/material';
 import TableCell, { tableCellClasses } from '@mui/material/TableCell';
 import { styled } from '@mui/material/styles';
-import FormInput from '../../../../common/components/ui/FormInput'; // Assuming this path is correct
+// Assuming this path is correct for your project structure
+import FormInput from '../../../../common/components/ui/FormInput';
+
 
 // Styled Components
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
@@ -38,31 +39,36 @@ const StyledTableRow = styled(TableRow)(
     '&:hover': {
       backgroundColor: theme.palette.action.hover,
     },
+    // Styles driven by transient props
     ...($issectionheader && {
       '& > td': {
         fontWeight: 'bold',
         textAlign: 'left',
-        backgroundColor: theme.palette.grey[200], // Example: distinct background for section headers
+        backgroundColor: theme.palette.grey[200],
       },
     }),
     ...($issubsectionheader && {
       '& > td': {
-        fontWeight: 'bold',
+        // fontWeight: 'bold', // Already applied by subheader potentially
         fontStyle: 'italic',
         textAlign: 'left',
-        backgroundColor: theme.palette.grey[100], // Example: distinct background for subsection headers
+        backgroundColor: theme.palette.grey[100],
       },
     }),
-    ...($issubsubsectionheader && {
-      '& > td': {
-        textAlign: 'left',
-        paddingLeft: theme.spacing(4), // Example: indent subsubsection headers
+    ...($issubsubsectionheader && { // This was for type: 'subsubsectionheader'
+      '& > td': { // Applied to all cells in that row
+        // Example: specific styling for subsubsection data cells if needed, 
+        // but particular/label cell is more common target.
+        // For the label cell of subsubsectionheader:
+        '&:nth-of-type(2)': { // Assuming second cell is the particular/label
+            paddingLeft: theme.spacing(4), // Indent particular
+        }
       },
     }),
     ...($istotalrow && {
       '& > td': {
         fontWeight: 'bold',
-        backgroundColor: theme.palette.grey[300], // Example: distinct background for total rows
+        backgroundColor: theme.palette.grey[300],
       },
     }),
   })
@@ -91,7 +97,6 @@ const rowSuffixes = [
   '32', '33', '34', '35', '36', '37', '38', '39', '40',
 ];
 
-// Suffixes for rows where users can input data directly into non-total fields
 const inputRowSuffixes = [
     '1', '3', '4', '5', '6', '9', '10', '11', '18', '19', '20', '21',
     '24', '25', '26', '30', '33', '34', '35', '36', '37', '38', '39', '40',
@@ -134,7 +139,7 @@ const Schedule10 = () => {
   };
 
   const calculateRowTotals = (data, suffix) => {
-    const updatedData = { ...data }; // Work on a copy
+    const updatedData = { ...data };
     const p = (fieldPath) => parseFloat(updatedData[fieldPath]) || 0;
 
     updatedData[`totalA${suffix}`] = parseAndFormat(
@@ -186,7 +191,6 @@ const Schedule10 = () => {
     return parseAndFormat(minuend - subtrahend);
   };
 
-  // MODIFICATION: Create a string representation of the input data for useEffect dependency
   const relevantInputDataString = useMemo(() => {
     const dataToWatch = {};
     inputRowSuffixes.forEach((suffix) => {
@@ -203,12 +207,10 @@ const Schedule10 = () => {
       let newData = { ...prevData };
       const p = (fieldPath) => parseFloat(newData[fieldPath]) || 0;
 
-      // Calculate totals for rows that might have direct inputs
       inputRowSuffixes.forEach((suffix) => {
         newData = calculateRowTotals(newData, suffix);
       });
 
-      // Calculate aggregated fields (cross-row calculations)
       nonTotalBaseFieldKeys.forEach((key) => {
         newData[`${key}7`] = sumAcrossRows(newData, key, ['3', '4', '36', '5', '6']);
         newData[`${key}12`] = sumAcrossRows(newData, key, ['37', '9', '33', '10', '11']);
@@ -218,15 +220,14 @@ const Schedule10 = () => {
         newData[`${key}27`] = sumAcrossRows(newData, key, ['40', '24', '25', '26']);
         newData[`${key}28`] = subtractAcrossRows(newData, key, '22', '27');
         newData[`${key}29`] = subtractAcrossRows(newData, key, '14', '28');
-        newData[`${key}31`] = subtractAcrossRows(newData, key, '9', '24'); // Book Value: OriginalCost(9) - DepreciationOnSold(24)
+        newData[`${key}31`] = subtractAcrossRows(newData, key, '9', '24'); 
 
-        const val30 = p(`${key}30`); // Sale Price
-        const val31 = p(newData[`${key}31`]); // Book Value
-        const val35 = p(`${key}35`); // GST
-        newData[`${key}32`] = parseAndFormat(val30 - (val31 + val35)); // Profit/(Loss)
+        const val30 = p(`${key}30`);
+        const val31 = p(newData[`${key}31`]);
+        const val35 = p(`${key}35`);
+        newData[`${key}32`] = parseAndFormat(val30 - (val31 + val35));
       });
 
-      // Calculate totals for aggregated rows
       const aggregatedRowSuffixes = ['7', '12', '13', '14', '22', '27', '28', '29', '31', '32'];
       aggregatedRowSuffixes.forEach((suffix) => {
         newData = calculateRowTotals(newData, suffix);
@@ -234,11 +235,10 @@ const Schedule10 = () => {
 
       return newData;
     });
-  }, [relevantInputDataString]); // MODIFICATION: Use the stringified data as dependency
+  }, [relevantInputDataString]); 
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // Regex allows empty string, a single hyphen, numbers, numbers ending with a decimal, and numbers with up to 2 decimal places.
     const regex = /^-?\d*\.?\d{0,2}$/;
     if (value === '' || value === '-' || regex.test(value)) {
       setFormData((prevData) => ({
@@ -332,14 +332,13 @@ const Schedule10 = () => {
         onChange={handleChange}
         inputProps={{
           style: { textAlign: 'right' },
-          readOnly: isReadOnly, // Make sure readOnly is passed to the actual input element
+          readOnly: isReadOnly, 
         }}
         sx={{
-          width: '100px', // Consider adjusting width or making it more flexible
-          '& .MuiInputBase-input': { textAlign: 'right', padding: '6px 8px' }, // Target inner input
-          backgroundColor: isReadOnly ? '#f0f0f0' : 'white', // Visual cue for read-only
+          width: '100px', 
+          '& .MuiInputBase-input': { textAlign: 'right', padding: '6px 8px' }, 
+          backgroundColor: isReadOnly ? '#f0f0f0' : 'white', 
         }}
-        // readOnly={isReadOnly} // This might be specific to FormInput's API; inputProps is more standard for MUI
         variant="outlined"
         size="small"
       />
@@ -350,7 +349,7 @@ const Schedule10 = () => {
 
   return (
     <Box sx={{ p: 1, width: '100%', overflowX: 'hidden' }}>
-      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 150px)' }}> {/* Adjusted maxHeight */}
+      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 150px)' }}>
         <Table stickyHeader sx={{ minWidth: 3000 }} aria-label="schedule 10 table">
           <TableHead>
             <TableRow>
@@ -375,14 +374,13 @@ const Schedule10 = () => {
                 return (
                   <StyledTableRow
                     key={`header-${rowIndex}-${row.label || row.particular}`}
-                    $issubsectionheader={row.type === 'subheader'}
-                    $issubsubsectionheader={row.type === 'subsubsectionheader'}
+                    $issubsectionheader={(row.type === 'subheader') ? true : undefined} // MODIFIED
+                    $issubsubsectionheader={(row.type === 'subsubsectionheader') ? true : undefined} // MODIFIED
                   >
-                    <StyledTableCell sx={{ textAlign: row.srNo ? 'center' : 'left' }}>{row.srNo || ''}</StyledTableCell>
+                    <StyledTableCell sx={{ textAlign: row.srNo ? 'center' : 'left', fontWeight: 'bold' }}>{row.srNo || ''}</StyledTableCell>
                     <StyledTableCell sx={{fontWeight: 'bold'}}>
                       {row.label || row.particular}
                     </StyledTableCell>
-                    {/* Adjust colSpan to account for Sr.No and Particulars columns */}
                     <StyledTableCell colSpan={columnDefinitions.length}></StyledTableCell>
                   </StyledTableRow>
                 );
@@ -390,18 +388,18 @@ const Schedule10 = () => {
                 return (
                   <StyledTableRow
                     key={row.suffix}
-                    $istotalrow={!!row.isTotalRow}
-                    $issectionheader={!!row.isSectionHeader}
+                    $istotalrow={row.isTotalRow ? true : undefined} // MODIFIED
+                    $issectionheader={row.isSectionHeader ? true : undefined} // MODIFIED
                   >
                     <StyledTableCell
                       style={{
                         textAlign: row.parentSrNo && !row.isSectionHeader ? 'right' : row.isSectionHeader ? 'left' : 'center',
-                        fontWeight: row.isSectionHeader || row.isTotalRow ? 'bold' : 'normal',
+                        fontWeight: (row.isSectionHeader || row.isTotalRow) ? 'bold' : 'normal',
                       }}
                     >
                       {row.srNo}
                     </StyledTableCell>
-                    <StyledTableCell style={{ fontWeight: row.isSectionHeader || row.isTotalRow ? 'bold' : 'normal' }}>
+                    <StyledTableCell style={{ fontWeight: (row.isSectionHeader || row.isTotalRow) ? 'bold' : 'normal' }}>
                       {row.particular}
                     </StyledTableCell>
                     {columnDefinitions.map((col) => (
