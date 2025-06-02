@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'; // Added useCallback
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'; // Added useRef
 import {
   Table,
   TableBody,
@@ -12,7 +12,7 @@ import TableCell, { tableCellClasses } from '@mui/material/TableCell';
 import { styled } from '@mui/material/styles';
 import FormInput from '../../../../common/components/ui/FormInput';
 
-// Styled Components (No changes needed here for performance, but good to have)
+// Styled Components (No changes needed)
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontSize: '0.875rem',
   padding: '8px',
@@ -61,110 +61,148 @@ const StyledTableRow = styled(TableRow)(
 );
 
 const baseFieldKeys = [
-  'stcNstaff',
-  'offResidenceA',
-  'otherPremisesA',
-  'electricFitting',
-  'totalA',
-  'computers',
-  'compSoftwareInt',
-  'compSoftwareNonint',
-  'compSoftwareTotal',
-  'motor',
-  'offResidenceB',
-  'stcLho',
-  'otherPremisesB',
-  'otherMachineryPlant',
-  'totalB',
-  'totalFurnFix',
-  'landNotRev',
-  'landRev',
-  'landRevEnh',
-  'offBuildNotRev',
-  'offBuildRev',
-  'offBuildRevEnh',
-  'residQuartNotRev',
-  'residQuartRev',
-  'residQuartRevEnh',
-  'premisTotal',
-  'revtotal',
-  'totalC',
-  'premisesUnderCons',
-  'grandTotal',
+  'stcNstaff', 'offResidenceA', 'otherPremisesA', 'electricFitting', 'totalA',
+  'computers', 'compSoftwareInt', 'compSoftwareNonint', 'compSoftwareTotal', 'motor',
+  'offResidenceB', 'stcLho', 'otherPremisesB', 'otherMachineryPlant', 'totalB',
+  'totalFurnFix', 'landNotRev', 'landRev', 'landRevEnh', 'offBuildNotRev',
+  'offBuildRev', 'offBuildRevEnh', 'residQuartNotRev', 'residQuartRev', 'residQuartRevEnh',
+  'premisTotal', 'revtotal', 'totalC', 'premisesUnderCons', 'grandTotal',
 ];
 
 const nonTotalBaseFieldKeys = [
-  'stcNstaff',
-  'offResidenceA',
-  'otherPremisesA',
-  'electricFitting',
-  'computers',
-  'compSoftwareInt',
-  'compSoftwareNonint',
-  'motor',
-  'offResidenceB',
-  'stcLho',
-  'otherPremisesB',
-  'landNotRev',
-  'landRev',
-  'landRevEnh',
-  'offBuildNotRev',
-  'offBuildRev',
-  'offBuildRevEnh',
-  'residQuartNotRev',
-  'residQuartRev',
-  'residQuartRevEnh',
+  'stcNstaff', 'offResidenceA', 'otherPremisesA', 'electricFitting',
+  'computers', 'compSoftwareInt', 'compSoftwareNonint', 'motor',
+  'offResidenceB', 'stcLho', 'otherPremisesB',
+  'landNotRev', 'landRev', 'landRevEnh', 'offBuildNotRev', 'offBuildRev',
+  'offBuildRevEnh', 'residQuartNotRev', 'residQuartRev', 'residQuartRevEnh',
   'premisesUnderCons',
 ];
 
 const rowSuffixes = [
-  '1',
-  '3',
-  '4',
-  '5',
-  '6',
-  '7',
-  '9',
-  '10',
-  '11',
-  '12',
-  '13',
-  '14',
-  '18',
-  '19',
-  '20',
-  '21',
-  '22',
-  '24',
-  '25',
-  '26',
-  '27',
-  '28',
-  '29',
-  '30',
-  '31',
-  '32',
-  '33',
-  '34',
-  '35',
-  '36',
-  '37',
-  '38',
-  '39',
-  '40',
+  '1', '3', '4', '5', '6', '7', '9', '10', '11', '12', '13', '14', '18', '19', '20',
+  '21', '22', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34',
+  '35', '36', '37', '38', '39', '40',
 ];
 
-const generateInitialFormData = () => {
-  const initialNumericFields = {};
-  rowSuffixes.forEach((suffix) => {
-    baseFieldKeys.forEach((key) => {
-      initialNumericFields[`${key}${suffix}`] = '0.00';
-    });
+// Helper functions (moved outside component to avoid re-creation and memoization issues)
+const parseAndFormat = (value) => {
+  const num = parseFloat(value);
+  return isNaN(num) ? '0.00' : num.toFixed(2);
+};
+
+const calculateRowTotals = (data, suffix) => {
+  const updatedData = { ...data };
+  const p = (fieldPath) => parseFloat(updatedData[fieldPath]) || 0;
+
+  updatedData[`totalA${suffix}`] = parseAndFormat(
+    p(`stcNstaff${suffix}`) +
+    p(`offResidenceA${suffix}`) +
+    p(`otherPremisesA${suffix}`) +
+    p(`electricFitting${suffix}`)
+  );
+
+  updatedData[`compSoftwareTotal${suffix}`] = parseAndFormat(
+    p(`compSoftwareInt${suffix}`) + p(`compSoftwareNonint${suffix}`)
+  );
+  updatedData[`otherMachineryPlant${suffix}`] = parseAndFormat(
+    p(`offResidenceB${suffix}`) + p(`stcLho${suffix}`) + p(`otherPremisesB${suffix}`)
+  );
+  updatedData[`totalB${suffix}`] = parseAndFormat(
+    p(`computers${suffix}`) +
+    p(updatedData[`compSoftwareTotal${suffix}`]) +
+    p(`motor${suffix}`) +
+    p(updatedData[`otherMachineryPlant${suffix}`])
+  );
+
+  updatedData[`totalFurnFix${suffix}`] = parseAndFormat(
+    p(updatedData[`totalA${suffix}`]) + p(updatedData[`totalB${suffix}`])
+  );
+
+  updatedData[`premisTotal${suffix}`] = parseAndFormat(
+    p(`landNotRev${suffix}`) +
+    p(`landRev${suffix}`) +
+    p(`offBuildNotRev${suffix}`) +
+    p(`offBuildRev${suffix}`) +
+    p(`residQuartNotRev${suffix}`) +
+    p(`residQuartRev${suffix}`)
+  );
+  updatedData[`revtotal${suffix}`] = parseAndFormat(
+    p(`landRevEnh${suffix}`) + p(`offBuildRevEnh${suffix}`) + p(`residQuartRevEnh${suffix}`)
+  );
+  updatedData[`totalC${suffix}`] = parseAndFormat(
+    p(updatedData[`premisTotal${suffix}`]) + p(updatedData[`revtotal${suffix}`])
+  );
+
+  updatedData[`grandTotal${suffix}`] = parseAndFormat(
+    p(updatedData[`totalA${suffix}`]) +
+    p(updatedData[`totalB${suffix}`]) +
+    p(updatedData[`totalC${suffix}`]) +
+    p(`premisesUnderCons${suffix}`)
+  );
+  return updatedData;
+};
+
+const sumAcrossRows = (data, fieldBaseName, suffixesToSum) => {
+  let total = 0;
+  suffixesToSum.forEach((sfx) => {
+    total += parseFloat(data[`${fieldBaseName}${sfx}`]) || 0;
   });
-  return {
+  return parseAndFormat(total);
+};
+
+const subtractAcrossRows = (data, fieldBaseName, minuendSuffix, subtrahendSuffix) => {
+  const minuend = parseFloat(data[`${fieldBaseName}${minuendSuffix}`]) || 0;
+  const subtrahend = parseFloat(data[`${fieldBaseName}${subtrahendSuffix}`]) || 0;
+  return parseAndFormat(minuend - subtrahend);
+};
+
+// Main function to perform all calculations
+const performAllCalculations = (initialData) => {
+  let calculatedData = { ...initialData };
+  const p = (fieldPath) => parseFloat(calculatedData[fieldPath]) || 0;
+
+  const editableRowSuffixes = [
+    '1', '3', '4', '5', '6', '9', '10', '11', '18', '19', '20', '21',
+    '24', '25', '26', '30', '33', '34', '35', '36', '37', '38', '39', '40',
+  ];
+
+  // Step 1: Calculate direct row totals for editable rows
+  editableRowSuffixes.forEach((suffix) => {
+    calculatedData = calculateRowTotals(calculatedData, suffix);
+  });
+
+  // Step 2: Calculate sums and subtractions across rows for non-total base fields
+  nonTotalBaseFieldKeys.forEach((key) => {
+    calculatedData[`${key}7`] = sumAcrossRows(calculatedData, key, ['3', '4', '36', '5', '6']);
+    calculatedData[`${key}12`] = sumAcrossRows(calculatedData, key, ['37', '9', '33', '10', '11']);
+    calculatedData[`${key}13`] = subtractAcrossRows(calculatedData, key, '7', '12');
+    calculatedData[`${key}14`] = sumAcrossRows(calculatedData, key, ['1', '13']);
+    calculatedData[`${key}22`] = sumAcrossRows(calculatedData, key, ['18', '34', '38', '19', '20', '21', '39']);
+    calculatedData[`${key}27`] = sumAcrossRows(calculatedData, key, ['40', '24', '25', '26']);
+    calculatedData[`${key}28`] = subtractAcrossRows(calculatedData, key, '22', '27');
+    calculatedData[`${key}29`] = subtractAcrossRows(calculatedData, key, '14', '28');
+    calculatedData[`${key}31`] = subtractAcrossRows(calculatedData, key, '9', '24');
+
+    const val30 = p(`${key}30`);
+    const val31 = p(calculatedData[`${key}31`]);
+    const val35 = p(`${key}35`);
+    calculatedData[`${key}32`] = parseAndFormat(val30 - (val31 + val35));
+  });
+
+  // Step 3: Calculate totals for aggregated rows (these might depend on results from Step 2)
+  const aggregatedRowSuffixes = ['7', '12', '13', '14', '22', '27', '28', '29', '31', '32'];
+  aggregatedRowSuffixes.forEach((suffix) => {
+    calculatedData = calculateRowTotals(calculatedData, suffix);
+  });
+
+  return calculatedData;
+};
+
+// Initial state generation, including all calculations
+const generateFullyCalculatedInitialFormData = () => {
+  const baseForm = {
     particulars3: 'Cost of new items put to use upto 3rd October 2024',
     particulars4: 'Cost of new items put to use during 4th October 2024 to 31st March 2025',
-    ...initialNumericFields,
     save: true,
     finyearOne: '2024',
     finyearTwo: '2025',
@@ -176,346 +214,61 @@ const generateInitialFormData = () => {
     reportMasterId: '310010',
     status: null,
   };
+
+  const initialNumericFields = {};
+  rowSuffixes.forEach((suffix) => {
+    baseFieldKeys.forEach((key) => {
+      // For initial render, set only input fields to 0.00, calculated fields will be overwritten
+      if (!['totalA', 'compSoftwareTotal', 'otherMachineryPlant', 'totalB', 'totalFurnFix',
+             'premisTotal', 'revtotal', 'totalC', 'grandTotal', '31', '32'].includes(key)) { // These are calculated
+        initialNumericFields[`${key}${suffix}`] = '0.00';
+      } else {
+        initialNumericFields[`${key}${suffix}`] = '0.00'; // Still initialize, will be calculated later
+      }
+    });
+  });
+
+  const rawFormData = { ...baseForm, ...initialNumericFields };
+  return performAllCalculations(rawFormData); // Perform all calculations immediately
 };
 
+
 const Schedule10 = () => {
-  const [formData, setFormData] = useState(generateInitialFormData);
+  const [formData, setFormData] = useState(generateFullyCalculatedInitialFormData); // Initialize with full data
 
   const year1 = formData.finyearOne ? parseInt(formData.finyearOne) : new Date().getFullYear();
   const currentYearEnd = formData.finyearTwo;
 
-  const parseAndFormat = useCallback((value) => {
-    const num = parseFloat(value);
-    return isNaN(num) ? '0.00' : num.toFixed(2);
-  }, []); // Memoize parseAndFormat
+  // Ref for debouncing
+  const timeoutRef = useRef(null);
 
-  const calculateRowTotals = useCallback(
-    (data, suffix) => {
-      const updatedData = { ...data };
-      const p = (fieldPath) => parseFloat(updatedData[fieldPath]) || 0;
-
-      updatedData[`totalA${suffix}`] = parseAndFormat(
-        p(`stcNstaff${suffix}`) +
-          p(`offResidenceA${suffix}`) +
-          p(`otherPremisesA${suffix}`) +
-          p(`electricFitting${suffix}`)
-      );
-
-      updatedData[`compSoftwareTotal${suffix}`] = parseAndFormat(
-        p(`compSoftwareInt${suffix}`) + p(`compSoftwareNonint${suffix}`)
-      );
-      updatedData[`otherMachineryPlant${suffix}`] = parseAndFormat(
-        p(`offResidenceB${suffix}`) + p(`stcLho${suffix}`) + p(`otherPremisesB${suffix}`)
-      );
-      updatedData[`totalB${suffix}`] = parseAndFormat(
-        p(`computers${suffix}`) +
-          p(updatedData[`compSoftwareTotal${suffix}`]) +
-          p(`motor${suffix}`) +
-          p(updatedData[`otherMachineryPlant${suffix}`])
-      );
-
-      updatedData[`totalFurnFix${suffix}`] = parseAndFormat(
-        p(updatedData[`totalA${suffix}`]) + p(updatedData[`totalB${suffix}`])
-      );
-
-      updatedData[`premisTotal${suffix}`] = parseAndFormat(
-        p(`landNotRev${suffix}`) +
-          p(`landRev${suffix}`) +
-          p(`offBuildNotRev${suffix}`) +
-          p(`offBuildRev${suffix}`) +
-          p(`residQuartNotRev${suffix}`) +
-          p(`residQuartRev${suffix}`)
-      );
-      updatedData[`revtotal${suffix}`] = parseAndFormat(
-        p(`landRevEnh${suffix}`) + p(`offBuildRevEnh${suffix}`) + p(`residQuartRevEnh${suffix}`)
-      );
-      updatedData[`totalC${suffix}`] = parseAndFormat(
-        p(updatedData[`premisTotal${suffix}`]) + p(updatedData[`revtotal${suffix}`])
-      );
-
-      updatedData[`grandTotal${suffix}`] = parseAndFormat(
-        p(updatedData[`totalA${suffix}`]) +
-          p(updatedData[`totalB${suffix}`]) +
-          p(updatedData[`totalC${suffix}`]) +
-          p(`premisesUnderCons${suffix}`)
-      );
-      return updatedData;
-    },
-    [parseAndFormat]
-  ); // Memoize calculateRowTotals
-
-  const sumAcrossRows = useCallback(
-    (data, fieldBaseName, suffixesToSum) => {
-      let total = 0;
-      suffixesToSum.forEach((sfx) => {
-        total += parseFloat(data[`${fieldBaseName}${sfx}`]) || 0;
-      });
-      return parseAndFormat(total);
-    },
-    [parseAndFormat]
-  ); // Memoize sumAcrossRows
-
-  const subtractAcrossRows = useCallback(
-    (data, fieldBaseName, minuendSuffix, subtrahendSuffix) => {
-      const minuend = parseFloat(data[`${fieldBaseName}${minuendSuffix}`]) || 0;
-      const subtrahend = parseFloat(data[`${fieldBaseName}${subtrahendSuffix}`]) || 0;
-      return parseAndFormat(minuend - subtrahend);
-    },
-    [parseAndFormat]
-  ); // Memoize subtractAcrossRows
-
-  // This useEffect will now run whenever any of the relevant input fields change.
-  // We're making the dependency array more specific by tracking the raw values of non-total base fields for editable rows.
-  // This will still trigger a full recalculation when any editable field changes,
-  // but by memoizing the calculation functions, we ensure they aren't redefined unnecessarily.
-  useEffect(() => {
-    setFormData((prevData) => {
-      let newData = { ...prevData };
-      const p = (fieldPath) => parseFloat(newData[fieldPath]) || 0;
-
-      const editableRowSuffixes = [
-        '1', '3', '4', '5', '6', '9', '10', '11', '18', '19', '20', '21',
-        '24', '25', '26', '30', '33', '34', '35', '36', '37', '38', '39', '40',
-      ];
-
-      // Step 1: Calculate direct row totals for editable rows
-      editableRowSuffixes.forEach((suffix) => {
-        newData = calculateRowTotals(newData, suffix);
-      });
-
-      // Step 2: Calculate sums and subtractions across rows for non-total base fields
-      nonTotalBaseFieldKeys.forEach((key) => {
-        newData[`${key}7`] = sumAcrossRows(newData, key, ['3', '4', '36', '5', '6']);
-        newData[`${key}12`] = sumAcrossRows(newData, key, ['37', '9', '33', '10', '11']);
-        newData[`${key}13`] = subtractAcrossRows(newData, key, '7', '12');
-        newData[`${key}14`] = sumAcrossRows(newData, key, ['1', '13']);
-        newData[`${key}22`] = sumAcrossRows(newData, key, ['18', '34', '38', '19', '20', '21', '39']);
-        newData[`${key}27`] = sumAcrossRows(newData, key, ['40', '24', '25', '26']);
-        newData[`${key}28`] = subtractAcrossRows(newData, key, '22', '27');
-        newData[`${key}29`] = subtractAcrossRows(newData, key, '14', '28');
-        newData[`${key}31`] = subtractAcrossRows(newData, key, '9', '24');
-
-        const val30 = p(`${key}30`);
-        const val31 = p(newData[`${key}31`]);
-        const val35 = p(`${key}35`);
-        newData[`${key}32`] = parseAndFormat(val30 - (val31 + val35));
-      });
-
-      // Step 3: Calculate totals for aggregated rows (these might depend on results from Step 2)
-      const aggregatedRowSuffixes = ['7', '12', '13', '14', '22', '27', '28', '29', '31', '32'];
-      aggregatedRowSuffixes.forEach((suffix) => {
-        newData = calculateRowTotals(newData, suffix);
-      });
-
-      return newData;
-    });
-  }, [
-    formData.stcNstaff1, formData.offResidenceA1, formData.otherPremisesA1, formData.electricFitting1,
-    formData.computers1, formData.compSoftwareInt1, formData.compSoftwareNonint1, formData.motor1,
-    formData.offResidenceB1, formData.stcLho1, formData.otherPremisesB1, formData.landNotRev1,
-    formData.landRev1, formData.landRevEnh1, formData.offBuildNotRev1, formData.offBuildRev1,
-    formData.offBuildRevEnh1, formData.residQuartNotRev1, formData.residQuartRev1, formData.residQuartRevEnh1,
-    formData.premisesUnderCons1,
-
-    formData.stcNstaff3, formData.offResidenceA3, formData.otherPremisesA3, formData.electricFitting3,
-    formData.computers3, formData.compSoftwareInt3, formData.compSoftwareNonint3, formData.motor3,
-    formData.offResidenceB3, formData.stcLho3, formData.otherPremisesB3, formData.landNotRev3,
-    formData.landRev3, formData.landRevEnh3, formData.offBuildNotRev3, formData.offBuildRev3,
-    formData.offBuildRevEnh3, formData.residQuartNotRev3, formData.residQuartRev3, formData.residQuartRevEnh3,
-    formData.premisesUnderCons3,
-
-    formData.stcNstaff4, formData.offResidenceA4, formData.otherPremisesA4, formData.electricFitting4,
-    formData.computers4, formData.compSoftwareInt4, formData.compSoftwareNonint4, formData.motor4,
-    formData.offResidenceB4, formData.stcLho4, formData.otherPremisesB4, formData.landNotRev4,
-    formData.landRev4, formData.landRevEnh4, formData.offBuildNotRev4, formData.offBuildRev4,
-    formData.offBuildRevEnh4, formData.residQuartNotRev4, formData.residQuartRev4, formData.residQuartRevEnh4,
-    formData.premisesUnderCons4,
-
-    formData.stcNstaff5, formData.offResidenceA5, formData.otherPremisesA5, formData.electricFitting5,
-    formData.computers5, formData.compSoftwareInt5, formData.compSoftwareNonint5, formData.motor5,
-    formData.offResidenceB5, formData.stcLho5, formData.otherPremisesB5, formData.landNotRev5,
-    formData.landRev5, formData.landRevEnh5, formData.offBuildNotRev5, formData.offBuildRev5,
-    formData.offBuildRevEnh5, formData.residQuartNotRev5, formData.residQuartRev5, formData.residQuartRevEnh5,
-    formData.premisesUnderCons5,
-
-    formData.stcNstaff6, formData.offResidenceA6, formData.otherPremisesA6, formData.electricFitting6,
-    formData.computers6, formData.compSoftwareInt6, formData.compSoftwareNonint6, formData.motor6,
-    formData.offResidenceB6, formData.stcLho6, formData.otherPremisesB6, formData.landNotRev6,
-    formData.landRev6, formData.landRevEnh6, formData.offBuildNotRev6, formData.offBuildRev6,
-    formData.offBuildRevEnh6, formData.residQuartNotRev6, formData.residQuartRev6, formData.residQuartRevEnh6,
-    formData.premisesUnderCons6,
-
-    formData.stcNstaff9, formData.offResidenceA9, formData.otherPremisesA9, formData.electricFitting9,
-    formData.computers9, formData.compSoftwareInt9, formData.compSoftwareNonint9, formData.motor9,
-    formData.offResidenceB9, formData.stcLho9, formData.otherPremisesB9, formData.landNotRev9,
-    formData.landRev9, formData.landRevEnh9, formData.offBuildNotRev9, formData.offBuildRev9,
-    formData.offBuildRevEnh9, formData.residQuartNotRev9, formData.residQuartRev9, formData.residQuartRevEnh9,
-    formData.premisesUnderCons9,
-
-    formData.stcNstaff10, formData.offResidenceA10, formData.otherPremisesA10, formData.electricFitting10,
-    formData.computers10, formData.compSoftwareInt10, formData.compSoftwareNonint10, formData.motor10,
-    formData.offResidenceB10, formData.stcLho10, formData.otherPremisesB10, formData.landNotRev10,
-    formData.landRev10, formData.landRevEnh10, formData.offBuildNotRev10, formData.offBuildRev10,
-    formData.offBuildRevEnh10, formData.residQuartNotRev10, formData.residQuartRev10, formData.residQuartRevEnh10,
-    formData.premisesUnderCons10,
-
-    formData.stcNstaff11, formData.offResidenceA11, formData.otherPremisesA11, formData.electricFitting11,
-    formData.computers11, formData.compSoftwareInt11, formData.compSoftwareNonint11, formData.motor11,
-    formData.offResidenceB11, formData.stcLho11, formData.otherPremisesB11, formData.landNotRev11,
-    formData.landRev11, formData.landRevEnh11, formData.offBuildNotRev11, formData.offBuildRev11,
-    formData.offBuildRevEnh11, formData.residQuartNotRev11, formData.residQuartRev11, formData.residQuartRevEnh11,
-    formData.premisesUnderCons11,
-
-    formData.stcNstaff18, formData.offResidenceA18, formData.otherPremisesA18, formData.electricFitting18,
-    formData.computers18, formData.compSoftwareInt18, formData.compSoftwareNonint18, formData.motor18,
-    formData.offResidenceB18, formData.stcLho18, formData.otherPremisesB18, formData.landNotRev18,
-    formData.landRev18, formData.landRevEnh18, formData.offBuildNotRev18, formData.offBuildRev18,
-    formData.offBuildRevEnh18, formData.residQuartNotRev18, formData.residQuartRev18, formData.residQuartRevEnh18,
-    formData.premisesUnderCons18,
-
-    formData.stcNstaff19, formData.offResidenceA19, formData.otherPremisesA19, formData.electricFitting19,
-    formData.computers19, formData.compSoftwareInt19, formData.compSoftwareNonint19, formData.motor19,
-    formData.offResidenceB19, formData.stcLho19, formData.otherPremisesB19, formData.landNotRev19,
-    formData.landRev19, formData.landRevEnh19, formData.offBuildNotRev19, formData.offBuildRev19,
-    formData.offBuildRevEnh19, formData.residQuartNotRev19, formData.residQuartRev19, formData.residQuartRevEnh19,
-    formData.premisesUnderCons19,
-
-    formData.stcNstaff20, formData.offResidenceA20, formData.otherPremisesA20, formData.electricFitting20,
-    formData.computers20, formData.compSoftwareInt20, formData.compSoftwareNonint20, formData.motor20,
-    formData.offResidenceB20, formData.stcLho20, formData.otherPremisesB20, formData.landNotRev20,
-    formData.landRev20, formData.landRevEnh20, formData.offBuildNotRev20, formData.offBuildRev20,
-    formData.offBuildRevEnh20, formData.residQuartNotRev20, formData.residQuartRev20, formData.residQuartRevEnh20,
-    formData.premisesUnderCons20,
-
-    formData.stcNstaff21, formData.offResidenceA21, formData.otherPremisesA21, formData.electricFitting21,
-    formData.computers21, formData.compSoftwareInt21, formData.compSoftwareNonint21, formData.motor21,
-    formData.offResidenceB21, formData.stcLho21, formData.otherPremisesB21, formData.landNotRev21,
-    formData.landRev21, formData.landRevEnh21, formData.offBuildNotRev21, formData.offBuildRev21,
-    formData.offBuildRevEnh21, formData.residQuartNotRev21, formData.residQuartRev21, formData.residQuartRevEnh21,
-    formData.premisesUnderCons21,
-
-    formData.stcNstaff24, formData.offResidenceA24, formData.otherPremisesA24, formData.electricFitting24,
-    formData.computers24, formData.compSoftwareInt24, formData.compSoftwareNonint24, formData.motor24,
-    formData.offResidenceB24, formData.stcLho24, formData.otherPremisesB24, formData.landNotRev24,
-    formData.landRev24, formData.landRevEnh24, formData.offBuildNotRev24, formData.offBuildRev24,
-    formData.offBuildRevEnh24, formData.residQuartNotRev24, formData.residQuartRev24, formData.residQuartRevEnh24,
-    formData.premisesUnderCons24,
-
-    formData.stcNstaff25, formData.offResidenceA25, formData.otherPremisesA25, formData.electricFitting25,
-    formData.computers25, formData.compSoftwareInt25, formData.compSoftwareNonint25, formData.motor25,
-    formData.offResidenceB25, formData.stcLho25, formData.otherPremisesB25, formData.landNotRev25,
-    formData.landRev25, formData.landRevEnh25, formData.offBuildNotRev25, formData.offBuildRev25,
-    formData.offBuildRevEnh25, formData.residQuartNotRev25, formData.residQuartRev25, formData.residQuartRevEnh25,
-    formData.premisesUnderCons25,
-
-    formData.stcNstaff26, formData.offResidenceA26, formData.otherPremisesA26, formData.electricFitting26,
-    formData.computers26, formData.compSoftwareInt26, formData.compSoftwareNonint26, formData.motor26,
-    formData.offResidenceB26, formData.stcLho26, formData.otherPremisesB26, formData.landNotRev26,
-    formData.landRev26, formData.landRevEnh26, formData.offBuildNotRev26, formData.offBuildRev26,
-    formData.offBuildRevEnh26, formData.residQuartNotRev26, formData.residQuartRev26, formData.residQuartRevEnh26,
-    formData.premisesUnderCons26,
-
-    formData.stcNstaff30, formData.offResidenceA30, formData.otherPremisesA30, formData.electricFitting30,
-    formData.computers30, formData.compSoftwareInt30, formData.compSoftwareNonint30, formData.motor30,
-    formData.offResidenceB30, formData.stcLho30, formData.otherPremisesB30, formData.landNotRev30,
-    formData.landRev30, formData.landRevEnh30, formData.offBuildNotRev30, formData.offBuildRev30,
-    formData.offBuildRevEnh30, formData.residQuartNotRev30, formData.residQuartRev30, formData.residQuartRevEnh30,
-    formData.premisesUnderCons30,
-
-    formData.stcNstaff33, formData.offResidenceA33, formData.otherPremisesA33, formData.electricFitting33,
-    formData.computers33, formData.compSoftwareInt33, formData.compSoftwareNonint33, formData.motor33,
-    formData.offResidenceB33, formData.stcLho33, formData.otherPremisesB33, formData.landNotRev33,
-    formData.landRev33, formData.landRevEnh33, formData.offBuildNotRev33, formData.offBuildRev33,
-    formData.offBuildRevEnh33, formData.residQuartNotRev33, formData.residQuartRev33, formData.residQuartRevEnh33,
-    formData.premisesUnderCons33,
-
-    formData.stcNstaff34, formData.offResidenceA34, formData.otherPremisesA34, formData.electricFitting34,
-    formData.computers34, formData.compSoftwareInt34, formData.compSoftwareNonint34, formData.motor34,
-    formData.offResidenceB34, formData.stcLho34, formData.otherPremisesB34, formData.landNotRev34,
-    formData.landRev34, formData.landRevEnh34, formData.offBuildNotRev34, formData.offBuildRev34,
-    formData.offBuildRevEnh34, formData.residQuartNotRev34, formData.residQuartRev34, formData.residQuartRevEnh34,
-    formData.premisesUnderCons34,
-
-    formData.stcNstaff35, formData.offResidenceA35, formData.otherPremisesA35, formData.electricFitting35,
-    formData.computers35, formData.compSoftwareInt35, formData.compSoftwareNonint35, formData.motor35,
-    formData.offResidenceB35, formData.stcLho35, formData.otherPremisesB35, formData.landNotRev35,
-    formData.landRev35, formData.landRevEnh35, formData.offBuildNotRev35, formData.offBuildRev35,
-    formData.offBuildRevEnh35, formData.residQuartNotRev35, formData.residQuartRev35, formData.residQuartRevEnh35,
-    formData.premisesUnderCons35,
-
-    formData.stcNstaff36, formData.offResidenceA36, formData.otherPremisesA36, formData.electricFitting36,
-    formData.computers36, formData.compSoftwareInt36, formData.compSoftwareNonint36, formData.motor36,
-    formData.offResidenceB36, formData.stcLho36, formData.otherPremisesB36, formData.landNotRev36,
-    formData.landRev36, formData.landRevEnh36, formData.offBuildNotRev36, formData.offBuildRev36,
-    formData.offBuildRevEnh36, formData.residQuartNotRev36, formData.residQuartRev36, formData.residQuartRevEnh36,
-    formData.premisesUnderCons36,
-
-    formData.stcNstaff37, formData.offResidenceA37, formData.otherPremisesA37, formData.electricFitting37,
-    formData.computers37, formData.compSoftwareInt37, formData.compSoftwareNonint37, formData.motor37,
-    formData.offResidenceB37, formData.stcLho37, formData.otherPremisesB37, formData.landNotRev37,
-    formData.landRev37, formData.landRevEnh37, formData.offBuildNotRev37, formData.offBuildRev37,
-    formData.offBuildRevEnh37, formData.residQuartNotRev37, formData.residQuartRev37, formData.residQuartRevEnh37,
-    formData.premisesUnderCons37,
-
-    formData.stcNstaff38, formData.offResidenceA38, formData.otherPremisesA38, formData.electricFitting38,
-    formData.computers38, formData.compSoftwareInt38, formData.compSoftwareNonint38, formData.motor38,
-    formData.offResidenceB38, formData.stcLho38, formData.otherPremisesB38, formData.landNotRev38,
-    formData.landRev38, formData.landRevEnh38, formData.offBuildNotRev38, formData.offBuildRev38,
-    formData.offBuildRevEnh38, formData.residQuartNotRev38, formData.residQuartRev38, formData.residQuartRevEnh38,
-    formData.premisesUnderCons38,
-
-    formData.stcNstaff39, formData.offResidenceA39, formData.otherPremisesA39, formData.electricFitting39,
-    formData.computers39, formData.compSoftwareInt39, formData.compSoftwareNonint39, formData.motor39,
-    formData.offResidenceB39, formData.stcLho39, formData.otherPremisesB39, formData.landNotRev39,
-    formData.landRev39, formData.landRevEnh39, formData.offBuildNotRev39, formData.offBuildRev39,
-    formData.offBuildRevEnh39, formData.residQuartNotRev39, formData.residQuartRev39, formData.residQuartRevEnh39,
-    formData.premisesUnderCons39,
-
-    formData.stcNstaff40, formData.offResidenceA40, formData.otherPremisesA40, formData.electricFitting40,
-    formData.computers40, formData.compSoftwareInt40, formData.compSoftwareNonint40, formData.motor40,
-    formData.offResidenceB40, formData.stcLho40, formData.otherPremisesB40, formData.landNotRev40,
-    formData.landRev40, formData.landRevEnh40, formData.offBuildNotRev40, formData.offBuildRev40,
-    formData.offBuildRevEnh40, formData.residQuartNotRev40, formData.residQuartRev40, formData.residQuartRevEnh40,
-    formData.premisesUnderCons40,
-
-    calculateRowTotals,
-    sumAcrossRows,
-    subtractAcrossRows,
-  ]);
-
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value } = e.target;
     const regex = /^-?\d*\.?\d{0,2}$/; // Allow negative, decimal with 2 places
+
     if (value === '' || regex.test(value) || value === '-') {
+      // Update the formData immediately for the specific input field
       setFormData((prevData) => ({
         ...prevData,
         [name]: value,
       }));
+
+      // Clear any existing debounce timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      // Set a new debounce timeout to trigger full recalculation after a pause
+      timeoutRef.current = setTimeout(() => {
+        setFormData((currentFormData) => {
+          // Perform all calculations based on the *current* state of formData
+          return performAllCalculations(currentFormData);
+        });
+      }, 300); // Debounce for 300ms
     }
-  };
+  }, []);
 
-  // Memoize the RenderInputCell component
-  const RenderInputCell = React.memo(({ fieldName, isReadOnly }) => (
-    <StyledTableCell>
-      <FormInput
-        name={fieldName}
-        value={formData[fieldName] === undefined ? '0.00' : formData[fieldName]}
-        onChange={handleChange}
-        inputProps={{
-          style: { textAlign: 'right' },
-        }}
-        sx={{
-          width: '100px',
-          '& input': { textAlign: 'right', padding: '6px 8px' },
-          backgroundColor: isReadOnly ? '#f0f0f0' : 'white',
-        }}
-        readOnly={isReadOnly}
-        variant="outlined"
-        size="small"
-      />
-    </StyledTableCell>
-  ));
-
+  // Memoize column and row definitions
   const columnDefinitions = useMemo(() => [
     {
       id: 'stcNstaff',
@@ -702,7 +455,7 @@ const Schedule10 = () => {
       ),
       isReadOnly: true,
     },
-  ], []); // Memoize columnDefinitions as they are static
+  ], []);
 
   const rowDefinitions = useMemo(() => [
     {
@@ -927,7 +680,29 @@ const Schedule10 = () => {
       isTotalRow: true,
       isReadOnly: true,
     },
-  ], [year1, currentYearEnd, formData.particulars3, formData.particulars4]); // Memoize rowDefinitions as they are mostly static, only dependent on years and two particulars fields.
+  ], [year1, currentYearEnd, formData.particulars3, formData.particulars4]);
+
+  // Memoize the RenderInputCell component
+  const RenderInputCell = React.memo(({ fieldName, isReadOnly }) => (
+    <StyledTableCell>
+      <FormInput
+        name={fieldName}
+        value={formData[fieldName] === undefined ? '0.00' : formData[fieldName]}
+        onChange={handleChange} // Use the debounced handleChange
+        inputProps={{
+          style: { textAlign: 'right' },
+        }}
+        sx={{
+          width: '100px',
+          '& input': { textAlign: 'right', padding: '6px 8px' },
+          backgroundColor: isReadOnly ? '#f0f0f0' : 'white',
+        }}
+        readOnly={isReadOnly}
+        variant="outlined"
+        size="small"
+      />
+    </StyledTableCell>
+  ));
 
   return (
     <Box sx={{ p: 1, width: '100%', overflowX: 'hidden' }}>
@@ -996,7 +771,7 @@ const Schedule10 = () => {
                     $issubsubsectionheader={row.type === 'subsubsectionheader'}
                   >
                     <StyledTableCell>{row.srNo || ''}</StyledTableCell>
-                    <StyledTableCell colSpan={columnDefinitions.length + 1}> {/* +1 for the Sr.No cell */}
+                    <StyledTableCell colSpan={columnDefinitions.length + 1}>
                       <b>{row.label || row.particular}</b>
                     </StyledTableCell>
                   </StyledTableRow>
