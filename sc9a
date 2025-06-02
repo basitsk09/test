@@ -1,21 +1,20 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Table,
-  TableBody as MuiTableBody, // Renamed to avoid conflict
+  TableBody as MuiTableBody,
   TableContainer,
   TableHead,
   TableRow,
   Paper,
   Box,
   CircularProgress,
-  TableCell, // Keep for general use if needed elsewhere
 } from '@mui/material';
-import TableCellStyled, { tableCellClasses } from '@mui/material/TableCell'; // Keep your styled one
+import TableCellStyled, { tableCellClasses } from '@mui/material/TableCell';
 import { styled } from '@mui/material/styles';
 import FormInput from '../../../../common/components/ui/FormInput';
-import { VariableSizeList as List } from 'react-window'; // Import for virtualization
+import { VariableSizeList as List } from 'react-window';
 
-// Styled Components (No changes needed from your original)
+// Styled Components (No changes from your previous version)
 const StyledTableCell = styled(TableCellStyled)(({ theme }) => ({
   fontSize: '0.875rem',
   padding: '8px',
@@ -29,21 +28,21 @@ const StyledTableCell = styled(TableCellStyled)(({ theme }) => ({
   },
   [`&.${tableCellClasses.body}`]: {
     color: theme.palette.text.primary,
-    backgroundColor: theme.palette.background.paper, // Default, will be overridden by sticky cells
+    backgroundColor: theme.palette.background.paper,
     textAlign: 'left',
   },
 }));
 
 const StyledTableRow = styled(TableRow)(
   ({ theme, $istotalrow, $issectionheader, $issubsectionheader, $issubsubsectionheader }) => ({
-    backgroundColor: theme.palette.background.paper, // Default background
-    display: 'flex', // Required for react-window with full-width rows
-    width: '100%',   // Required for react-window
+    backgroundColor: theme.palette.background.paper,
+    display: 'flex',
+    width: '100%', // Takes 100% of its parent (MuiTableBody, which will be totalTableWidth)
     ...($issectionheader && {
-      '& > td, & > div': { // Target both direct td and cells within react-window item
+      '& > td, & > div': {
         fontWeight: 'bold',
         textAlign: 'left',
-        backgroundColor: theme.palette.grey[100], // Example section header background
+        backgroundColor: theme.palette.grey[100],
       },
     }),
     ...($issubsectionheader && {
@@ -51,7 +50,7 @@ const StyledTableRow = styled(TableRow)(
         fontWeight: 'bold',
         fontStyle: 'italic',
         textAlign: 'left',
-        backgroundColor: theme.palette.grey[50], // Example subsection header background
+        backgroundColor: theme.palette.grey[50],
       },
     }),
     ...($issubsubsectionheader && {
@@ -62,15 +61,13 @@ const StyledTableRow = styled(TableRow)(
     ...($istotalrow && {
       '& > td, & > div': {
         fontWeight: 'bold',
-        backgroundColor: theme.palette.grey[200], // Example total row background
+        backgroundColor: theme.palette.grey[200],
       },
     }),
   })
 );
 
-
-// --- Helper functions, baseFieldKeys, nonTotalBaseFieldKeys, rowSuffixes, performAllCalculations, generateInitialFormDataStructure ---
-// (These remain unchanged from your provided code)
+// --- Helper functions, baseFieldKeys, etc. (Unchanged) ---
 const parseAndFormat = (value) => {
   const num = parseFloat(value);
   return isNaN(num) ? '0.00' : num.toFixed(2);
@@ -231,11 +228,9 @@ const generateInitialFormDataStructure = () => {
 };
 // --- END of unchanged helper functions ---
 
-
-// Column Widths (adjust as needed)
 const SR_NO_COL_WIDTH = 80;
 const PARTICULARS_COL_WIDTH = 350;
-const DATA_COL_WIDTH = 120; // For input cells
+const DATA_COL_WIDTH = 120;
 
 
 const Schedule10 = () => {
@@ -244,43 +239,20 @@ const Schedule10 = () => {
   const timeoutRef = useRef(null);
   const listRef = useRef(null);
   const tableContainerRef = useRef(null);
-  const [tableDim, setTableDim] = useState({ width: 0, height: 0, headerHeight: 0 });
-
-
-  useEffect(() => {
-    const initialData = generateInitialFormDataStructure();
-    const fullyCalculatedData = performAllCalculations(initialData);
-    setFormData(fullyCalculatedData);
-    setIsLoading(false);
-  }, []);
+  const [tableDim, setTableDim] = useState({ viewportWidth: 0, viewportHeight: 0, headerHeight: 0 });
 
   const year1 = formData.finyearOne ? parseInt(formData.finyearOne) : new Date().getFullYear();
   const currentYearEnd = formData.finyearTwo;
 
-  const handleChange = useCallback((e) => {
-    const { name, value } = e.target;
-    const regex = /^-?\d*\.?\d{0,2}$/;
-
-    if (value === '' || regex.test(value) || value === '-') {
-      setFormData((prevData) => ({ ...prevData, [name]: value }));
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => {
-        setFormData((currentFormData) => performAllCalculations(currentFormData));
-      }, 300);
-    }
-  }, []);
-
   const columnDefinitions = useMemo(() => [
-    // { id: 'srNo', header: 'Sr.No', width: SR_NO_COL_WIDTH, sticky: true }, // Handled separately
-    // { id: 'particulars', header: 'Particulars', width: PARTICULARS_COL_WIDTH, sticky: true }, // Handled separately
     { id: 'stcNstaff', header: (<>i) At STCs & Staff Colleges <br /> (For Local Head Office only)</>), width: DATA_COL_WIDTH },
     { id: 'offResidenceA', header: "ii) At Officers' Residences", width: DATA_COL_WIDTH },
     { id: 'otherPremisesA', header: 'iii) At Other Premises', width: DATA_COL_WIDTH },
-    { id: 'electricFitting', header: (<>iv) Electric Fittings <br /> (include electric wiring, <br /> switches, sockets, other <br /> fittings & fans etc.)</>), width: DATA_COL_WIDTH+20 },
+    { id: 'electricFitting', header: (<>iv) Electric Fittings <br /> (include electric wiring, <br /> switches, sockets, other <br /> fittings & fans etc.)</>), width: DATA_COL_WIDTH + 20 },
     { id: 'totalA', header: 'TOTAL (A) (i+ii+iii+iv)', isReadOnly: true, width: DATA_COL_WIDTH },
     { id: 'computers', header: 'i) Computer Hardware', width: DATA_COL_WIDTH },
-    { id: 'compSoftwareInt', header: (<>a. Computer Software <br /> (forming integral part of <br /> Hardware)</>), width: DATA_COL_WIDTH+20 },
-    { id: 'compSoftwareNonint', header: (<>b. Computer Software <br /> (not forming integral <br /> of Hardware)</>), width: DATA_COL_WIDTH+20 },
+    { id: 'compSoftwareInt', header: (<>a. Computer Software <br /> (forming integral part of <br /> Hardware)</>), width: DATA_COL_WIDTH + 20 },
+    { id: 'compSoftwareNonint', header: (<>b. Computer Software <br /> (not forming integral <br /> of Hardware)</>), width: DATA_COL_WIDTH + 20 },
     { id: 'compSoftwareTotal', header: (<>ii) Computer Software <br /> Total (a+b)</>), isReadOnly: true, width: DATA_COL_WIDTH },
     { id: 'motor', header: 'iii) Motor Vehicles', width: DATA_COL_WIDTH },
     { id: 'offResidenceB', header: "a) At Officers' Residences", width: DATA_COL_WIDTH },
@@ -288,36 +260,40 @@ const Schedule10 = () => {
     { id: 'otherPremisesB', header: 'c) At other Premises', width: DATA_COL_WIDTH },
     { id: 'otherMachineryPlant', header: (<>iv) Other Machinery & Plant <br />( a+b+c)</>), isReadOnly: true, width: DATA_COL_WIDTH },
     { id: 'totalB', header: 'TOTAL (B= i+ii+iii+iv)', isReadOnly: true, width: DATA_COL_WIDTH },
-    { id: 'totalFurnFix', header: (<> Total Furniture & Fixtures <br /> (A+B)</>), isReadOnly: true, width: DATA_COL_WIDTH+20 },
+    { id: 'totalFurnFix', header: (<> Total Furniture & Fixtures <br /> (A+B)</>), isReadOnly: true, width: DATA_COL_WIDTH + 20 },
     { id: 'landNotRev', header: (<>(a) Land (Not Revalued): <br /> Cost</>), width: DATA_COL_WIDTH },
     { id: 'landRev', header: (<>(b) Land (Revalued): <br /> Cost</>), width: DATA_COL_WIDTH },
-    { id: 'landRevEnh', header: (<>(c) Land (Revalued): <br /> Enhancement due to <br /> Revaluation</>), width: DATA_COL_WIDTH+20 },
+    { id: 'landRevEnh', header: (<>(c) Land (Revalued): <br /> Enhancement due to <br /> Revaluation</>), width: DATA_COL_WIDTH + 20 },
     { id: 'offBuildNotRev', header: (<>(d) Office Building <br /> (Not revalued): Cost</>), width: DATA_COL_WIDTH },
     { id: 'offBuildRev', header: (<>(e) Office Building <br /> (Revalued): Cost</>), width: DATA_COL_WIDTH },
-    { id: 'offBuildRevEnh', header: (<>(f) Office Building <br /> (Revalued): Enhancement <br /> due to Revaluation</>), width: DATA_COL_WIDTH+20 },
+    { id: 'offBuildRevEnh', header: (<>(f) Office Building <br /> (Revalued): Enhancement <br /> due to Revaluation</>), width: DATA_COL_WIDTH + 20 },
     { id: 'residQuartNotRev', header: (<>(g) Residential Building <br /> (Not revalued): Cost</>), width: DATA_COL_WIDTH },
     { id: 'residQuartRev', header: (<>(h) Residential Building <br /> (Revalued): Cost</>), width: DATA_COL_WIDTH },
-    { id: 'residQuartRevEnh', header: (<>(i) Residential Building <br /> (Revalued): Enhancement <br /> due to Revaluation</>), width: DATA_COL_WIDTH+20 },
+    { id: 'residQuartRevEnh', header: (<>(i) Residential Building <br /> (Revalued): Enhancement <br /> due to Revaluation</>), width: DATA_COL_WIDTH + 20 },
     { id: 'premisTotal', header: (<>(j) Premises Total <br /> (a+b+d+e+g+h)</>), isReadOnly: true, width: DATA_COL_WIDTH },
     { id: 'revtotal', header: (<>(k) Revaluation Total <br /> (c+f+i)</>), isReadOnly: true, width: DATA_COL_WIDTH },
     { id: 'totalC', header: 'TOTAL (C=j+k)', isReadOnly: true, width: DATA_COL_WIDTH },
     { id: 'premisesUnderCons', header: (<>(D) Projects under <br /> construction</>), width: DATA_COL_WIDTH },
-    { id: 'grandTotal', header: (<>Grand Total <br /> (A + B + C + D)</>), isReadOnly: true, width: DATA_COL_WIDTH+20 },
+    { id: 'grandTotal', header: (<>Grand Total <br /> (A + B + C + D)</>), isReadOnly: true, width: DATA_COL_WIDTH + 20 },
   ], []);
 
+  const totalContentWidth = useMemo(() => {
+    return SR_NO_COL_WIDTH + PARTICULARS_COL_WIDTH + columnDefinitions.reduce((sum, col) => sum + (col.width || DATA_COL_WIDTH), 0);
+  }, [columnDefinitions]);
+
   const rowDefinitions = useMemo(() => [
-    // (Unchanged from your original, but ensure `suffix` is unique for keys)
-    // Example:
+    // (Ensure unique suffix and add `height` property to each row definition)
     { srNo: 'A', particular: `Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March ${year1}`, suffix: '1', type: 'data', isSectionHeader: true, height: 55 },
-    { type: 'subheader', label: 'Addition', height: 35 },
-    { type: 'subsubsectionheader', srNo: '(a)', particular: 'Original cost of items put to use during the year:', height: 35 },
+    { type: 'subheader', label: 'Addition', suffix: 'sh1', height: 35 },
+    { type: 'subsubsectionheader', srNo: '(a)', particular: 'Original cost of items put to use during the year:', suffix: 'ssh1', height: 35 },
     { srNo: '(i)', particular: formData.particulars3, suffix: '3', type: 'data', parentSrNo: '(a)', height: 50 },
     { srNo: '(ii)', particular: formData.particulars4, suffix: '4', type: 'data', parentSrNo: '(a)', height: 50 },
+    // ... (all other row definitions with unique suffixes and height)
     { srNo: '(b)', particular: 'Increase in value of Fixed Assets due to Current Revaluation', suffix: '36', type: 'data', height: 50 },
     { srNo: '(c)', particular: 'Original cost of items transferred from other Circles/Groups/CC Departments', suffix: '5', type: 'data', height: 50 },
     { srNo: '(d)', particular: 'Original cost of items transferred from other branches of the same Circle', suffix: '6', type: 'data', height: 50 },
     { srNo: 'I', particular: 'Total [a(i)+a(ii)+b+c+d]', suffix: '7', type: 'total', isTotalRow: true, isReadOnly: true, height: 50 },
-    { type: 'subheader', label: 'Deduction', height: 35 },
+    { type: 'subheader', label: 'Deduction', suffix: 'sh2', height: 35 },
     { srNo: '(i)', particular: 'Short Valuation charged to Revaluation Reserve due to Current Downward Revaluation', suffix: '37', type: 'data', parentSrNo: 'Deduction', height: 50 },
     { srNo: '(ii)', particular: 'Original cost of items sold/ discarded during the year', suffix: '9', type: 'data', parentSrNo: 'Deduction', height: 50 },
     { srNo: '(iii)', particular: 'Projects under construction capitalised during the year', suffix: '33', type: 'data', parentSrNo: 'Deduction', height: 50 },
@@ -326,7 +302,7 @@ const Schedule10 = () => {
     { srNo: 'II', particular: 'Total (i+ii+iii+iv+v)', suffix: '12', type: 'total', isTotalRow: true, isReadOnly: true, height: 50 },
     { srNo: 'B', particular: 'Net Addition (I-II)', suffix: '13', type: 'total', isTotalRow: true, isReadOnly: true, isSectionHeader: true, height: 55 },
     { srNo: 'C', particular: `Total Original Cost/ Revalued Value as at 31st March ${currentYearEnd} (A+B)`, suffix: '14', type: 'total', isTotalRow: true, isReadOnly: true, isSectionHeader: true, height: 55 },
-    { type: 'subheader', label: 'Depreciation', height: 35 },
+    { type: 'subheader', label: 'Depreciation', suffix: 'sh3', height: 35 },
     { srNo: '(i)', particular: `Depreciation upto the end of previous year i.e. 31st March ${year1}`, suffix: '18', type: 'data', parentSrNo: 'Depreciation', height: 50 },
     { srNo: '(ii)', particular: `Short Valuation charged to depreciation upto end of previous year i.e.31st March ${year1}`, suffix: '34', type: 'data', parentSrNo: 'Depreciation', height: 50 },
     { srNo: '(iii)', particular: 'Depreciation on repatriation of Officials from Subsidiaries/ Associates', suffix: '38', type: 'data', parentSrNo: 'Depreciation', height: 50 },
@@ -335,7 +311,7 @@ const Schedule10 = () => {
     { srNo: '(vi)', particular: 'Depreciation charged during the current year', suffix: '21', type: 'data', parentSrNo: 'Depreciation', height: 50 },
     { srNo: '(vii)', particular: 'Short Valuation charged to Depreciation during the current year due to Current Revaluation', suffix: '39', type: 'data', parentSrNo: 'Depreciation', height: 50 },
     { srNo: 'D', particular: 'Total (i+ii+iii+iv+v+vi+vii)', suffix: '22', type: 'total', isTotalRow: true, isReadOnly: true, height: 50 },
-    { type: 'subheader', label: 'Less :', height: 35 },
+    { type: 'subheader', label: 'Less :', suffix: 'sh4', height: 35 },
     { srNo: '(i)', particular: 'Past Short Valuation credited to Depreciation during the current year due to Current Upward Revaluation', suffix: '40', type: 'data', parentSrNo: 'Less', height: 50 },
     { srNo: '(ii)', particular: 'Depreciation previously provided on fixed assets sold/ discarded', suffix: '24', type: 'data', parentSrNo: 'Less', height: 50 },
     { srNo: '(iii)', particular: 'Depreciation transferred to other Circles/Groups/CC Departments', suffix: '25', type: 'data', parentSrNo: 'Less', height: 50 },
@@ -349,7 +325,60 @@ const Schedule10 = () => {
     { srNo: 'K', particular: 'Profit/ (Loss) on sale of fixed assets [H-(I+J)]', suffix: '32', type: 'total', isTotalRow: true, isReadOnly: true, height: 50 },
   ], [year1, currentYearEnd, formData.particulars3, formData.particulars4]);
 
-  const getItemSize = index => rowDefinitions[index].height || 50; // Ensure all rows have a height property or a default
+
+  useEffect(() => {
+    const initialData = generateInitialFormDataStructure();
+    const fullyCalculatedData = performAllCalculations(initialData);
+    setFormData(fullyCalculatedData);
+    setIsLoading(false);
+  }, []);
+
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
+    const regex = /^-?\d*\.?\d{0,2}$/;
+    if (value === '' || regex.test(value) || value === '-') {
+      setFormData((prevData) => ({ ...prevData, [name]: value }));
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        setFormData((currentFormData) => performAllCalculations(currentFormData));
+      }, 300);
+    }
+  }, []);
+
+  useEffect(() => {
+    const headerElement = tableContainerRef.current?.querySelector('thead');
+    const thHeight = headerElement ? headerElement.getBoundingClientRect().height : 110; // Estimate
+
+    const updateDimensions = () => {
+      if (tableContainerRef.current) {
+        setTableDim({
+          viewportWidth: tableContainerRef.current.clientWidth,
+          viewportHeight: tableContainerRef.current.clientHeight,
+          headerHeight: thHeight,
+        });
+        if (listRef.current) {
+          listRef.current.resetAfterIndex(0);
+        }
+      }
+    };
+
+    if (!isLoading) {
+      updateDimensions(); // Initial call
+      const resizeObserver = new ResizeObserver(updateDimensions);
+      if (tableContainerRef.current) {
+        resizeObserver.observe(tableContainerRef.current);
+      }
+      return () => {
+        if (tableContainerRef.current) {
+          resizeObserver.unobserve(tableContainerRef.current);
+        }
+        resizeObserver.disconnect();
+      };
+    }
+  }, [isLoading]);
+
+
+  const getItemSize = index => rowDefinitions[index].height || 50;
 
   const RenderInputCell = React.memo(({ fieldName, isReadOnly, cellWidth }) => (
     <StyledTableCell sx={{ flex: `0 0 ${cellWidth}px`, width: `${cellWidth}px`, minWidth: `${cellWidth}px`, boxSizing: 'border-box' }}>
@@ -358,46 +387,12 @@ const Schedule10 = () => {
         value={formData[fieldName] === undefined ? '0.00' : formData[fieldName]}
         onChange={handleChange}
         inputProps={{ style: { textAlign: 'right' } }}
-        sx={{
-          width: '100%',
-          '& input': { textAlign: 'right', padding: '6px 8px' },
-          backgroundColor: isReadOnly ? '#f0f0f0' : 'white',
-        }}
-        readOnly={isReadOnly}
-        variant="outlined"
-        size="small"
+        sx={{ width: '100%', '& input': { textAlign: 'right', padding: '6px 8px' }, backgroundColor: isReadOnly ? '#f0f0f0' : 'white' }}
+        readOnly={isReadOnly} variant="outlined" size="small"
       />
     </StyledTableCell>
   ));
-
-  // Effect to update table dimensions for react-window
-  useEffect(() => {
-    const calculateHeights = () => {
-      const headerElement = tableContainerRef.current?.querySelector('thead');
-      return headerElement ? headerElement.getBoundingClientRect().height : 110; // Estimate or measure
-    };
-
-    const updateSize = () => {
-      if (tableContainerRef.current) {
-        const newHeaderHeight = calculateHeights();
-        setTableDim({
-          width: tableContainerRef.current.clientWidth,
-          height: tableContainerRef.current.clientHeight,
-          headerHeight: newHeaderHeight,
-        });
-        // If VariableSizeList items might change size, reset after index 0
-        if (listRef.current) {
-            listRef.current.resetAfterIndex(0);
-        }
-      }
-    };
-
-    if (!isLoading) {
-        updateSize(); // Initial size
-        window.addEventListener('resize', updateSize);
-        return () => window.removeEventListener('resize', updateSize);
-    }
-  }, [isLoading, rowDefinitions]); // Re-calculate if isLoading or rowDefinitions (which implies year/particulars changed) changes
+  RenderInputCell.displayName = 'RenderInputCell';
 
 
   const VirtualizedRow = React.memo(({ index, style }) => {
@@ -407,27 +402,17 @@ const Schedule10 = () => {
     if (row.type === 'subheader' || row.type === 'subsubsectionheader') {
       return (
         <StyledTableRow
-          style={style}
+          style={style} // react-window style for positioning
           key={row.suffix || `header-${index}-${row.type}`}
           $issubsectionheader={row.type === 'subheader'}
           $issubsubsectionheader={row.type === 'subsubsectionheader'}
         >
-          <StyledTableCell sx={{ ...commonCellStyle, flex: `0 0 ${SR_NO_COL_WIDTH}px`, width: `${SR_NO_COL_WIDTH}px`, minWidth: `${SR_NO_COL_WIDTH}px`, position: 'sticky', left: 0, zIndex: 3, backgroundColor: (theme)=> theme.palette.grey[row.type === 'subheader' ? 100: 50]}}>
+          <StyledTableCell sx={{ ...commonCellStyle, flex: `0 0 ${SR_NO_COL_WIDTH}px`, position: 'sticky', left: 0, zIndex: 3, backgroundColor: (theme) => theme.palette.grey[row.type === 'subheader' ? 100 : 50] }}>
             {row.srNo || ''}
           </StyledTableCell>
           <StyledTableCell
-            colSpan={columnDefinitions.length} // This cell will span the remaining visual space
-            sx={{
-              ...commonCellStyle,
-              flexGrow: 1, // Allow it to take remaining space
-              position: 'sticky',
-              left: `${SR_NO_COL_WIDTH}px`,
-              zIndex: 3,
-              backgroundColor: (theme)=> theme.palette.grey[row.type === 'subheader' ? 100: 50],
-              fontWeight: 'bold',
-              fontStyle: row.type === 'subheader' ? 'italic' : 'normal',
-              textAlign: 'left',
-            }}
+            colSpan={columnDefinitions.length}
+            sx={{ ...commonCellStyle, flexGrow: 1, position: 'sticky', left: `${SR_NO_COL_WIDTH}px`, zIndex: 3, backgroundColor: (theme) => theme.palette.grey[row.type === 'subheader' ? 100 : 50], fontWeight: 'bold', fontStyle: row.type === 'subheader' ? 'italic' : 'normal', textAlign: 'left' }}
           >
             <b>{row.label || row.particular}</b>
           </StyledTableCell>
@@ -436,104 +421,82 @@ const Schedule10 = () => {
     }
 
     return (
-      <StyledTableRow
-        style={style} // react-window style for positioning
-        key={row.suffix || `row-${index}-${row.type}`}
-        $istotalrow={row.isTotalRow}
-        $issectionheader={row.isSectionHeader}
-      >
-        <StyledTableCell
-          sx={{
-            ...commonCellStyle,
-            flex: `0 0 ${SR_NO_COL_WIDTH}px`, width: `${SR_NO_COL_WIDTH}px`, minWidth: `${SR_NO_COL_WIDTH}px`,
-            textAlign: row.parentSrNo && !row.isSectionHeader ? 'right' : row.isSectionHeader ? 'left' : 'center',
-            position: 'sticky', left: 0, zIndex: 3,
-            backgroundColor: (theme) => row.isSectionHeader ? theme.palette.grey[100] : row.isTotalRow ? theme.palette.grey[200] : theme.palette.background.paper,
-          }}
-        >
+      <StyledTableRow style={style} key={row.suffix || `row-${index}-${row.type}`} $istotalrow={row.isTotalRow} $issectionheader={row.isSectionHeader}>
+        <StyledTableCell sx={{ ...commonCellStyle, flex: `0 0 ${SR_NO_COL_WIDTH}px`, textAlign: row.parentSrNo && !row.isSectionHeader ? 'right' : row.isSectionHeader ? 'left' : 'center', position: 'sticky', left: 0, zIndex: 3, backgroundColor: (theme) => row.isSectionHeader ? theme.palette.grey[100] : row.isTotalRow ? theme.palette.grey[200] : theme.palette.background.paper }}>
           <b>{row.srNo}</b>
         </StyledTableCell>
-        <StyledTableCell
-          sx={{
-            ...commonCellStyle,
-            flex: `0 0 ${PARTICULARS_COL_WIDTH}px`, width: `${PARTICULARS_COL_WIDTH}px`, minWidth: `${PARTICULARS_COL_WIDTH}px`,
-            position: 'sticky', left: `${SR_NO_COL_WIDTH}px`, zIndex: 3,
-            backgroundColor: (theme) => row.isSectionHeader ? theme.palette.grey[100] : row.isTotalRow ? theme.palette.grey[200] : theme.palette.background.paper,
-            fontWeight: row.isSectionHeader || row.isTotalRow || row.type === 'total' ? 'bold' : 'normal',
-          }}
-        >
+        <StyledTableCell sx={{ ...commonCellStyle, flex: `0 0 ${PARTICULARS_COL_WIDTH}px`, position: 'sticky', left: `${SR_NO_COL_WIDTH}px`, zIndex: 3, backgroundColor: (theme) => row.isSectionHeader ? theme.palette.grey[100] : row.isTotalRow ? theme.palette.grey[200] : theme.palette.background.paper, fontWeight: row.isSectionHeader || row.isTotalRow || row.type === 'total' ? 'bold' : 'normal' }}>
           <b>{row.particular}</b>
         </StyledTableCell>
         {columnDefinitions.map((col) => (
-          <RenderInputCell
-            key={`${row.suffix}-${col.id}`}
-            fieldName={`${col.id}${row.suffix}`}
-            isReadOnly={row.isReadOnly || col.isReadOnly}
-            cellWidth={col.width || DATA_COL_WIDTH}
-          />
+          <RenderInputCell key={`${row.suffix}-${col.id}`} fieldName={`${col.id}${row.suffix}`} isReadOnly={row.isReadOnly || col.isReadOnly} cellWidth={col.width || DATA_COL_WIDTH} />
         ))}
       </StyledTableRow>
     );
   });
   VirtualizedRow.displayName = 'VirtualizedRow';
 
+  // Custom inner element for react-window List to control MuiTableBody's width
+  const InnerTableBody = React.forwardRef(({ children, style, ...rest }, ref) => {
+    return (
+      <MuiTableBody
+        ref={ref}
+        style={{
+          ...style,
+          width: totalContentWidth, // Ensure MuiTableBody is full content width
+          height: `${style.height}px`, // react-window controls height for scrolling
+          position: 'relative', // As per react-window's inner element style
+        }}
+        {...rest}
+      >
+        {children}
+      </MuiTableBody>
+    );
+  });
+  InnerTableBody.displayName = 'InnerTableBody';
+
 
   if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 200px)' }}>
-        <CircularProgress />
-        <Box sx={{ ml: 2 }}>Loading Schedule Data...</Box>
-      </Box>
-    );
+    return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 200px)' }}><CircularProgress /><Box sx={{ ml: 2 }}>Loading Schedule Data...</Box></Box>;
   }
-  const totalDynamicColumnWidth = columnDefinitions.reduce((sum, col) => sum + (col.width || DATA_COL_WIDTH), 0);
-  const totalTableWidth = SR_NO_COL_WIDTH + PARTICULARS_COL_WIDTH + totalDynamicColumnWidth;
-
 
   return (
-    <Box sx={{ p: 1, width: '100%', overflowX: 'hidden' }}>
+    <Box sx={{ p: 1, width: '100%', overflowX: 'hidden' }}> {/* Prevents page scroll */}
       <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)', overflowX: 'auto' }} ref={tableContainerRef}>
-        <Table sx={{ minWidth: totalTableWidth /* Ensures horizontal scroll if needed */ }} aria-label="schedule 10 table" stickyHeader>
+        <Table sx={{ width: totalContentWidth, tableLayout: 'fixed' }} aria-label="schedule 10 table" stickyHeader>
           <TableHead>
-            <TableRow sx={{display:'flex', width: '100%'}}> {/* Flex for header alignment with virtualized rows */}
+            <TableRow sx={{ display: 'flex', width: totalContentWidth }}>
               <StyledTableCell rowSpan={2} sx={{ flex: `0 0 ${SR_NO_COL_WIDTH}px`, position: 'sticky', left: 0, top: 0, zIndex: 10 }}><b>Sr.No</b></StyledTableCell>
               <StyledTableCell rowSpan={2} sx={{ flex: `0 0 ${PARTICULARS_COL_WIDTH}px`, position: 'sticky', left: SR_NO_COL_WIDTH, top: 0, zIndex: 10 }}><b>Particulars</b></StyledTableCell>
-              <StyledTableCell colSpan={5} sx={{ flex: `0 0 ${columnDefinitions.slice(0,5).reduce((s,c)=>s+(c.width||DATA_COL_WIDTH),0)}px`, position: 'sticky', top: 0, zIndex: 9 }}><b>(A) FURNITURE & FITTINGS</b></StyledTableCell>
-              <StyledTableCell colSpan={10} sx={{ flex: `0 0 ${columnDefinitions.slice(5,15).reduce((s,c)=>s+(c.width||DATA_COL_WIDTH),0)}px`, position: 'sticky', top: 0, zIndex: 9 }}><b>(B) MACHINERY & PLANT</b></StyledTableCell>
-              <StyledTableCell rowSpan={2} sx={{ flex: `0 0 ${columnDefinitions[15].width || DATA_COL_WIDTH}px`, position: 'sticky', top: 0, zIndex: 9 }}><b>Total Furniture & Fixtures <br/> (A+B)</b></StyledTableCell>
-              <StyledTableCell colSpan={12} sx={{ flex: `0 0 ${columnDefinitions.slice(16,28).reduce((s,c)=>s+(c.width||DATA_COL_WIDTH),0)}px`, position: 'sticky', top: 0, zIndex: 9 }}><b>(C) PREMISES</b></StyledTableCell>
-              <StyledTableCell rowSpan={2} sx={{ flex: `0 0 ${columnDefinitions[28].width || DATA_COL_WIDTH}px`, position: 'sticky', top: 0, zIndex: 9 }}><b>(D) Projects under <br/> construction</b></StyledTableCell>
-              <StyledTableCell rowSpan={2} sx={{ flex: `0 0 ${columnDefinitions[29].width || DATA_COL_WIDTH}px`, position: 'sticky', top: 0, zIndex: 9 }}><b>Grand Total <br/> (A + B + C + D)</b></StyledTableCell>
+              <StyledTableCell colSpan={5} sx={{ flex: `0 0 ${columnDefinitions.slice(0, 5).reduce((s, c) => s + (c.width || DATA_COL_WIDTH), 0)}px`, position: 'sticky', top: 0, zIndex: 9 }}><b>(A) FURNITURE & FITTINGS</b></StyledTableCell>
+              <StyledTableCell colSpan={10} sx={{ flex: `0 0 ${columnDefinitions.slice(5, 15).reduce((s, c) => s + (c.width || DATA_COL_WIDTH), 0)}px`, position: 'sticky', top: 0, zIndex: 9 }}><b>(B) MACHINERY & PLANT</b></StyledTableCell>
+              <StyledTableCell rowSpan={2} sx={{ flex: `0 0 ${columnDefinitions[15].width || DATA_COL_WIDTH}px`, position: 'sticky', top: 0, zIndex: 9 }}><b>Total Furniture & Fixtures <br /> (A+B)</b></StyledTableCell>
+              <StyledTableCell colSpan={12} sx={{ flex: `0 0 ${columnDefinitions.slice(16, 28).reduce((s, c) => s + (c.width || DATA_COL_WIDTH), 0)}px`, position: 'sticky', top: 0, zIndex: 9 }}><b>(C) PREMISES</b></StyledTableCell>
+              <StyledTableCell rowSpan={2} sx={{ flex: `0 0 ${columnDefinitions[28].width || DATA_COL_WIDTH}px`, position: 'sticky', top: 0, zIndex: 9 }}><b>(D) Projects under <br /> construction</b></StyledTableCell>
+              <StyledTableCell rowSpan={2} sx={{ flex: `0 0 ${columnDefinitions[29].width || DATA_COL_WIDTH}px`, position: 'sticky', top: 0, zIndex: 9 }}><b>Grand Total <br /> (A + B + C + D)</b></StyledTableCell>
             </TableRow>
-            <TableRow sx={{display:'flex', width: '100%'}}> {/* Flex for header alignment */}
-              {/* These are children of the rowSpanned cells above, so they need their own flex settings for width */}
-              {/* Skip Sr.No and Particulars placeholders as they are covered by rowSpan */}
-              {columnDefinitions.map((col, idx) => (
-                 // Render header cells only for columns not covered by a rowSpan in the first header row
-                 // The columns covered by rowSpan (Total Furn & Fix, D, Grand Total) don't need a second header cell here.
-                 // And group headers span multiple columns, so individual headers go under them.
-                 <StyledTableCell key={col.id} sx={{ flex: `0 0 ${col.width || DATA_COL_WIDTH}px`, position: 'sticky', top: tableDim.headerHeight / 2 || 50 /* Approx height of first header row */, zIndex: 9 }}>
-                   <b>{col.header}</b>
-                 </StyledTableCell>
+            <TableRow sx={{ display: 'flex', width: totalContentWidth }}>
+              {columnDefinitions.map((col) => (
+                <StyledTableCell key={col.id} sx={{ flex: `0 0 ${col.width || DATA_COL_WIDTH}px`, position: 'sticky', top: tableDim.headerHeight / 2 || 50, zIndex: 9 }}>
+                  <b>{col.header}</b>
+                </StyledTableCell>
               ))}
             </TableRow>
           </TableHead>
-          {tableDim.width > 0 && tableDim.height > 0 && (
-             <List
-                ref={listRef}
-                height={Math.max(200, tableDim.height - tableDim.headerHeight)} // Ensure a minimum height
-                itemCount={rowDefinitions.length}
-                itemSize={getItemSize}
-                width={totalTableWidth} // Use the calculated total width for the list content
-                itemData={rowDefinitions} // Pass data to rows if needed directly (optional)
-                itemKey={(index, data) => data[index].suffix || `row-${index}-${data[index].type}`}
-                // outerElementType and innerElementType are crucial for table structure.
-                // react-window's default div structure for outer/inner can work if rows are styled as table-row like.
-                // For MUI Table, it's best to render into MuiTableBody.
-                innerElementType={React.forwardRef(({style, ...rest}, ref) => <MuiTableBody style={style} {...rest} ref={ref} /> )}
-             >
-                {VirtualizedRow}
-             </List>
+          {tableDim.viewportWidth > 0 && tableDim.viewportHeight > 0 && (
+            <List
+              ref={listRef}
+              height={Math.max(200, tableDim.viewportHeight - tableDim.headerHeight)}
+              itemCount={rowDefinitions.length}
+              itemSize={getItemSize}
+              width={tableDim.viewportWidth} // List's viewport width
+              itemData={rowDefinitions}
+              itemKey={(index, data) => data[index].suffix || `row-${index}-${data[index].type}`}
+              innerElementType={InnerTableBody} // Use the custom InnerTableBody
+              style={{ overflowX: 'hidden !important' }} // Prevent react-window's outer div from horizontal scroll
+            >
+              {VirtualizedRow}
+            </List>
           )}
         </Table>
       </TableContainer>
@@ -542,4 +505,3 @@ const Schedule10 = () => {
 };
 
 export default Schedule10;
-
