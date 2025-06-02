@@ -7,6 +7,7 @@ import {
   TableRow,
   Paper,
   Box,
+  CircularProgress, // Added for loading indicator
 } from '@mui/material';
 import TableCell, { tableCellClasses } from '@mui/material/TableCell';
 import { styled } from '@mui/material/styles';
@@ -198,8 +199,8 @@ const performAllCalculations = (initialData) => {
   return calculatedData;
 };
 
-// Initial state generation, including all calculations
-const generateFullyCalculatedInitialFormData = () => {
+// Initial state structure generation (without full calculation)
+const generateInitialFormDataStructure = () => {
   const baseForm = {
     particulars3: 'Cost of new items put to use upto 3rd October 2024',
     particulars4: 'Cost of new items put to use during 4th October 2024 to 31st March 2025',
@@ -218,29 +219,34 @@ const generateFullyCalculatedInitialFormData = () => {
   const initialNumericFields = {};
   rowSuffixes.forEach((suffix) => {
     baseFieldKeys.forEach((key) => {
-      // For initial render, set only input fields to 0.00, calculated fields will be overwritten
-      if (!['totalA', 'compSoftwareTotal', 'otherMachineryPlant', 'totalB', 'totalFurnFix',
-             'premisTotal', 'revtotal', 'totalC', 'grandTotal', '31', '32'].includes(key)) { // These are calculated
-        initialNumericFields[`${key}${suffix}`] = '0.00';
-      } else {
-        initialNumericFields[`${key}${suffix}`] = '0.00'; // Still initialize, will be calculated later
-      }
+      initialNumericFields[`${key}${suffix}`] = '0.00'; // Initialize all to '0.00'
     });
   });
 
-  const rawFormData = { ...baseForm, ...initialNumericFields };
-  return performAllCalculations(rawFormData); // Perform all calculations immediately
+  return { ...baseForm, ...initialNumericFields };
 };
 
 
 const Schedule10 = () => {
-  const [formData, setFormData] = useState(generateFullyCalculatedInitialFormData); // Initialize with full data
+  // Initialize with basic structure, not fully calculated data yet
+  const [formData, setFormData] = useState(generateInitialFormDataStructure);
+  const [isLoading, setIsLoading] = useState(true); // Added loading state
+
+  // Use a ref for the timeout ID for debouncing
+  const timeoutRef = useRef(null);
+
+  // Effect to perform initial calculations after component mounts
+  useEffect(() => {
+    // Get the initially structured data
+    const initialData = generateInitialFormDataStructure();
+    // Perform calculations
+    const fullyCalculatedData = performAllCalculations(initialData);
+    setFormData(fullyCalculatedData);
+    setIsLoading(false); // Set loading to false once data is ready
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   const year1 = formData.finyearOne ? parseInt(formData.finyearOne) : new Date().getFullYear();
   const currentYearEnd = formData.finyearTwo;
-
-  // Ref for debouncing
-  const timeoutRef = useRef(null);
 
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -262,11 +268,12 @@ const Schedule10 = () => {
       timeoutRef.current = setTimeout(() => {
         setFormData((currentFormData) => {
           // Perform all calculations based on the *current* state of formData
+          // This currentFormData will include the latest user input
           return performAllCalculations(currentFormData);
         });
       }, 300); // Debounce for 300ms
     }
-  }, []);
+  }, []); // No dependencies needed as setFormData and timeoutRef are stable
 
   // Memoize column and row definitions
   const columnDefinitions = useMemo(() => [
@@ -680,7 +687,7 @@ const Schedule10 = () => {
       isTotalRow: true,
       isReadOnly: true,
     },
-  ], [year1, currentYearEnd, formData.particulars3, formData.particulars4]);
+  ], [year1, currentYearEnd, formData.particulars3, formData.particulars4]); // Added formData dependencies for particulars
 
   // Memoize the RenderInputCell component
   const RenderInputCell = React.memo(({ fieldName, isReadOnly }) => (
@@ -688,7 +695,7 @@ const Schedule10 = () => {
       <FormInput
         name={fieldName}
         value={formData[fieldName] === undefined ? '0.00' : formData[fieldName]}
-        onChange={handleChange} // Use the debounced handleChange
+        onChange={handleChange}
         inputProps={{
           style: { textAlign: 'right' },
         }}
@@ -703,6 +710,16 @@ const Schedule10 = () => {
       />
     </StyledTableCell>
   ));
+
+  // Render loading state if data is not ready
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 200px)' }}>
+        <CircularProgress />
+        <Box sx={{ ml: 2 }}>Loading Schedule Data...</Box>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 1, width: '100%', overflowX: 'hidden' }}>
