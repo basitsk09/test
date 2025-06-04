@@ -1,33 +1,28 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
-  Table,
-  TableBody,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Box,
-  CircularProgress,
+  Table, TableBody, TableContainer, TableHead, TableRow, Paper, Box,
+  CircularProgress, TextField
 } from '@mui/material';
 import TableCell, { tableCellClasses } from '@mui/material/TableCell';
 import { styled } from '@mui/material/styles';
-import FormInput from '../../../../common/components/ui/FormInput'; // Assuming path is correct
+import lodashDebounce from 'lodash/debounce';
 
 // Vite-specific worker import (ensure calculation.worker.js is in the same folder)
 import CalculationWorkerConstructor from './calculation.worker.js?worker';
 
-
-// Styled Components (No changes needed from your original)
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontSize: '0.875rem',
   padding: '8px',
   border: '1px solid #e0e0e0',
   whiteSpace: 'nowrap',
   [`&.${tableCellClasses.head}`]: {
-    backgroundColor: theme.palette.common.black,
+    backgroundColor: theme.palette.common.black, // Or your specific header color
     color: theme.palette.common.white,
     fontWeight: 'bold',
     textAlign: 'center',
+    position: 'sticky', // For sticky headers
+    top: 0,
+    zIndex: theme.zIndex.appBar -1, // Ensure headers are above content but below app bar if any
   },
   [`&.${tableCellClasses.body}`]: {
     color: theme.palette.text.primary,
@@ -37,16 +32,15 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 }));
 
 const StyledTableRow = styled(TableRow)(
-  ({ theme, $istotalrow, $issectionheader, $issubsectionheader, $issubsubsectionheader }) => ({
+  ({ theme, $istotalrow, $issectionheader, $issubsectionheader }) => ({ // Removed $issubsubsectionheader as it wasn't used
     backgroundColor: theme.palette.background.paper,
-    ...($issectionheader && { '& > td': { fontWeight: 'bold', textAlign: 'left' } }),
-    ...($issubsectionheader && { '& > td': { fontWeight: 'bold', fontStyle: 'italic', textAlign: 'left' } }),
-    ...($issubsubsectionheader && { '& > td': { textAlign: 'left' } }),
-    ...($istotalrow && { '& > td': { fontWeight: 'bold' } }),
+    ...($issectionheader && { '& > td, & > th': { fontWeight: 'bold', textAlign: 'left', backgroundColor: theme.palette.grey[100] } }),
+    ...($issubsectionheader && { '& > td, & > th': { fontWeight: 'bold', fontStyle: 'italic', textAlign: 'left', backgroundColor: theme.palette.grey[50] } }),
+    ...($istotalrow && { '& > td, & > th': { fontWeight: 'bold', backgroundColor: theme.palette.grey[200] } }),
   })
 );
 
-// Constants needed for generateInitialFormDataStructure
+// These constants must match your JSP structure and worker logic
 const baseFieldKeysForInit = [
   'stcNstaff', 'offResidenceA', 'otherPremisesA', 'electricFitting', 'totalA',
   'computers', 'compSoftwareInt', 'compSoftwareNonint', 'compSoftwareTotal', 'motor',
@@ -61,107 +55,144 @@ const rowSuffixesForInit = [
   '35', '36', '37', '38', '39', '40',
 ];
 
-const generateInitialFormDataStructure = () => {
-  const baseForm = {
-    particulars3: 'Cost of new items put to use upto 3rd October 2024',
-    particulars4: 'Cost of new items put to use during 4th October 2024 to 31st March 2025',
-    save: true, finyearOne: '2024', finyearTwo: '2025', circleCode: '001',
-    quarterEndDate: '31/03/2025', userId: '1111111', reportName: 'Schedule 10',
-    reportId: null, reportMasterId: '310010', status: null,
+// Function to generate the initial structure of formData
+const generateInitialFormData = () => {
+  const initialData = {
+    // Add any non-numeric, non-repeating fields from your JSP if needed
+    // e.g., particulars3, finyearOne etc.
+    particulars3: 'Cost of new items put to use upto 3rd October 2024', // Example
+    particulars4: 'Cost of new items put to use during 4th October 2024 to 31st March 2025', // Example
+    finyearOne: new Date().getFullYear().toString(), // Example: Current year
+    finyearTwo: (new Date().getFullYear() + 1).toString(), // Example: Next year
   };
-  const initialNumericFields = {};
-  rowSuffixesForInit.forEach((suffix) => {
-    baseFieldKeysForInit.forEach((key) => {
-      initialNumericFields[`${key}${suffix}`] = '0.00';
+  rowSuffixesForInit.forEach(suffix => {
+    baseFieldKeysForInit.forEach(key => {
+      initialData[`${key}${suffix}`] = '0.00'; // Initialize all numeric fields to '0.00'
     });
   });
-  return { ...baseForm, ...initialNumericFields };
+  return initialData;
 };
 
-
 const Schedule10 = () => {
-  const [formData, setFormData] = useState(generateInitialFormDataStructure);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRecalculating, setIsRecalculating] = useState(false);
+  const [formData, setFormData] = useState(generateInitialFormData);
+  const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(true); // For initial load
+  const [isCalculating, setIsCalculating] = useState(false); // For subsequent calculations
   const [workerError, setWorkerError] = useState(null);
 
   const calculationWorkerRef = useRef(null);
-  const debounceTimeoutRef = useRef(null);
-  const latestFormDataRef = useRef(formData);
+  const latestFormDataRef = useRef(formData); // To provide current data to debounced function
 
   useEffect(() => {
     latestFormDataRef.current = formData;
   }, [formData]);
 
+  // Initialize and manage Web Worker
   useEffect(() => {
-    console.log('[Main] Initializing worker...');
+    console.log('[Main] Initializing Schedule 10 worker...');
     calculationWorkerRef.current = new CalculationWorkerConstructor();
 
     calculationWorkerRef.current.onmessage = (event) => {
-      const { type, data, error } = event.data;
-      console.log('[Main] Message from worker:', type, data, error);
-      if (type === 'CALCULATE_COMPLETE') {
+      const { type, data, error: workerCalcError } = event.data;
+      console.log('[Main] Message from worker:', type);
+      if (type === 'CALCULATE_SCHEDULE10_COMPLETE') {
         setFormData(data);
         setWorkerError(null);
-      } else if (type === 'CALCULATE_ERROR') {
-        setWorkerError(`Worker calculation error: ${error}`);
-        console.error(`[Main] Worker calculation error: ${error}`);
+      } else if (type === 'CALCULATE_SCHEDULE10_ERROR') {
+        setWorkerError(`Worker calculation error: ${workerCalcError}`);
+        console.error(`[Main] Worker calculation error: ${workerCalcError}`);
       }
       setIsLoading(false);
-      setIsRecalculating(false);
+      setIsCalculating(false);
     };
 
     calculationWorkerRef.current.onerror = (errorEvent) => {
-      console.error('[Main] Worker instantiation or runtime error:', errorEvent);
-      setWorkerError(`Worker error: ${errorEvent.message || 'Unknown worker error'}`);
+      console.error('[Main] Worker instantiation/runtime error:', errorEvent);
+      setWorkerError(`Worker error: ${errorEvent.message || 'A worker error occurred'}`);
       setIsLoading(false);
-      setIsRecalculating(false);
+      setIsCalculating(false);
     };
 
-    const initialData = generateInitialFormDataStructure();
+    // Perform initial calculation
+    const initialData = generateInitialFormData(); // Use the same function for consistency
     setIsLoading(true);
     setWorkerError(null);
     console.log('[Main] Posting initial data to worker.');
-    calculationWorkerRef.current.postMessage({ type: 'CALCULATE', data: initialData });
+    calculationWorkerRef.current.postMessage({ type: 'CALCULATE_SCHEDULE10', data: initialData });
 
     return () => {
-      console.log('[Main] Terminating worker.');
+      console.log('[Main] Terminating Schedule 10 worker.');
       if (calculationWorkerRef.current) {
         calculationWorkerRef.current.terminate();
       }
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
     };
+  }, []); // Empty dependency array: runs once on mount
+
+  // Debounced function to trigger calculations via worker
+  const debouncedTriggerCalculations = useCallback(
+    lodashDebounce((currentData) => {
+      if (calculationWorkerRef.current) {
+        console.log('[Main] Debounced: Posting data to worker for recalculation.');
+        setIsCalculating(true); // Set calculating true when debounce fires
+        setWorkerError(null);
+        calculationWorkerRef.current.postMessage({ type: 'CALCULATE_SCHEDULE10', data: currentData });
+      } else {
+        console.warn('[Main] Debounced: Worker not available.');
+        setIsCalculating(false); // Reset if worker isn't there
+      }
+    }, 500), // 500ms debounce delay, adjust as needed
+    [] // No dependencies as it uses refs and workerRef is stable after init
+  );
+
+  const handleValidation = (name, value, currentFormData) => {
+    // Implement your specific validation logic from Schedule10.txt's JS
+    // This is a placeholder. Example: Numeric validation
+    let error = '';
+    const numericRegex = /^-?\d*\.?\d{0,2}$/; // Allows negative, decimal with 2 places
+
+    // Example: Generic numeric validation if field is expected to be numeric
+    // You'll need to identify which fields are numeric from your JSP
+    const isNumericField = !name.toLowerCase().includes('particulars'); // Crude check, refine this
+
+    if (isNumericField && value !== '' && !numericRegex.test(value) && value !== '-') {
+      error = 'Invalid number format (e.g., 123.45)';
+    }
+
+    // Example: Required field (if applicable, not common for all cells in such tables)
+    // if (value.trim() === '') {
+    //   error = 'This field is required.';
+    // }
+
+    setErrors(prevErrors => ({ ...prevErrors, [name]: error }));
+    return error === ''; // Return true if valid, false otherwise
+  };
+
+  const handleChange = useCallback((event) => {
+    const { name, value } = event.target;
+
+    // Optimistic UI update for responsiveness
+    setFormData(prevData => ({ ...prevData, [name]: value }));
+
+    // Validate on change (optional, can be heavy, consider onBlur mostly)
+    // handleValidation(name, value, latestFormDataRef.current);
+
+    // Trigger debounced calculations with the most recent data
+    // (latestFormDataRef.current will be updated by the useEffect watching formData)
+    debouncedTriggerCalculations(latestFormDataRef.current);
+  }, [debouncedTriggerCalculations]); // Include debounced function in dependencies
+
+  const handleBlur = useCallback((event) => {
+    const { name, value } = event.target;
+    handleValidation(name, value, latestFormDataRef.current);
+    // Calculations are already handled by handleChange's debounce,
+    // but if you had specific onBlur calculations in JSP, you might trigger them here too.
+    // For this setup, debounced handleChange is usually enough.
   }, []);
 
-  const year1 = formData.finyearOne ? parseInt(formData.finyearOne) : new Date().getFullYear();
-  const currentYearEnd = formData.finyearTwo;
 
-  const handleChange = useCallback((e) => {
-    const { name, value } = e.target;
-    const regex = /^-?\d*\.?\d{0,2}$/;
-
-    if (value === '' || regex.test(value) || value === '-') {
-      setFormData((prevData) => ({ ...prevData, [name]: value }));
-
-      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
-      setIsRecalculating(true);
-      setWorkerError(null); // Clear previous worker errors on new calculation
-
-      debounceTimeoutRef.current = setTimeout(() => {
-        if (calculationWorkerRef.current) {
-          console.log('[Main] Posting updated data to worker for recalculation.');
-          calculationWorkerRef.current.postMessage({ type: 'CALCULATE', data: latestFormDataRef.current });
-        } else {
-          console.warn('[Main] Worker not available for handleChange. This should not happen.');
-          setIsRecalculating(false); // Reset if worker isn't there
-        }
-      }, 300);
-    }
-  }, []); // Dependencies are stable refs and setters
-
-  const columnDefinitions = useMemo(() => [ /* ... Same as your original ... */
+  // Define table columns - these correspond to baseFieldKeys
+  // You need to match the exact headers from your Schedule10.txt
+  const columnDefinitions = useMemo(() => [
     { id: 'stcNstaff', header: (<>i) At STCs & Staff Colleges <br /> (For Local Head Office only)</>) },
     { id: 'offResidenceA', header: "ii) At Officers' Residences" },
     { id: 'otherPremisesA', header: 'iii) At Other Premises' },
@@ -194,121 +225,157 @@ const Schedule10 = () => {
     { id: 'grandTotal', header: (<>Grand Total <br /> (A + B + C + D)</>), isReadOnly: true },
   ], []);
 
-  const rowDefinitions = useMemo(() => [ /* ... Same as your original, ensure unique suffixes ... */
-    { srNo: 'A', particular: `Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March ${year1}`, suffix: '1', type: 'data', isSectionHeader: true },
-    { type: 'subheader', label: 'Addition', suffix: 'sh1' },
-    { type: 'subsubsectionheader', srNo: '(a)', particular: 'Original cost of items put to use during the year:', suffix: 'ssh1'},
-    { srNo: '(i)', particular: formData.particulars3, suffix: '3', type: 'data', parentSrNo: '(a)' },
-    { srNo: '(ii)', particular: formData.particulars4, suffix: '4', type: 'data', parentSrNo: '(a)' },
-    { srNo: '(b)', particular: 'Increase in value of Fixed Assets due to Current Revaluation', suffix: '36', type: 'data'},
-    { srNo: '(c)', particular: 'Original cost of items transferred from other Circles/Groups/CC Departments', suffix: '5', type: 'data'},
-    { srNo: '(d)', particular: 'Original cost of items transferred from other branches of the same Circle', suffix: '6', type: 'data'},
-    { srNo: 'I', particular: 'Total [a(i)+a(ii)+b+c+d]', suffix: '7', type: 'total', isTotalRow: true, isReadOnly: true },
-    { type: 'subheader', label: 'Deduction', suffix: 'sh2' },
-    { srNo: '(i)', particular: 'Short Valuation charged to Revaluation Reserve due to Current Downward Revaluation', suffix: '37', type: 'data', parentSrNo: 'Deduction'},
-    { srNo: '(ii)', particular: 'Original cost of items sold/ discarded during the year', suffix: '9', type: 'data', parentSrNo: 'Deduction'},
-    { srNo: '(iii)', particular: 'Projects under construction capitalised during the year', suffix: '33', type: 'data', parentSrNo: 'Deduction'},
-    { srNo: '(iv)', particular: 'Original cost of items transferred to other Circles/Groups/CC Departments', suffix: '10', type: 'data', parentSrNo: 'Deduction'},
-    { srNo: '(v)', particular: 'Original cost of items transferred to other branches in the same circle', suffix: '11', type: 'data', parentSrNo: 'Deduction'},
-    { srNo: 'II', particular: 'Total (i+ii+iii+iv+v)', suffix: '12', type: 'total', isTotalRow: true, isReadOnly: true },
-    { srNo: 'B', particular: 'Net Addition (I-II)', suffix: '13', type: 'total', isTotalRow: true, isReadOnly: true, isSectionHeader: true },
-    { srNo: 'C', particular: `Total Original Cost/ Revalued Value as at 31st March ${currentYearEnd} (A+B)`, suffix: '14', type: 'total', isTotalRow: true, isReadOnly: true, isSectionHeader: true },
-    { type: 'subheader', label: 'Depreciation', suffix: 'sh3' },
-    { srNo: '(i)', particular: `Depreciation upto the end of previous year i.e. 31st March ${year1}`, suffix: '18', type: 'data', parentSrNo: 'Depreciation'},
-    { srNo: '(ii)', particular: `Short Valuation charged to depreciation upto end of previous year i.e.31st March ${year1}`, suffix: '34', type: 'data', parentSrNo: 'Depreciation'},
-    { srNo: '(iii)', particular: 'Depreciation on repatriation of Officials from Subsidiaries/ Associates', suffix: '38', type: 'data', parentSrNo: 'Depreciation'},
-    { srNo: '(iv)', particular: 'Depreciation transferred from other Circles/Groups/CC Departments', suffix: '19', type: 'data', parentSrNo: 'Depreciation'},
-    { srNo: '(v)', particular: 'Depreciation transferred from other branches of the same circle.', suffix: '20', type: 'data', parentSrNo: 'Depreciation'},
-    { srNo: '(vi)', particular: 'Depreciation charged during the current year', suffix: '21', type: 'data', parentSrNo: 'Depreciation'},
-    { srNo: '(vii)', particular: 'Short Valuation charged to Depreciation during the current year due to Current Revaluation', suffix: '39', type: 'data', parentSrNo: 'Depreciation'},
-    { srNo: 'D', particular: 'Total (i+ii+iii+iv+v+vi+vii)', suffix: '22', type: 'total', isTotalRow: true, isReadOnly: true},
-    { type: 'subheader', label: 'Less :', suffix: 'sh4' },
-    { srNo: '(i)', particular: 'Past Short Valuation credited to Depreciation during the current year due to Current Upward Revaluation', suffix: '40', type: 'data', parentSrNo: 'Less'},
-    { srNo: '(ii)', particular: 'Depreciation previously provided on fixed assets sold/ discarded', suffix: '24', type: 'data', parentSrNo: 'Less'},
-    { srNo: '(iii)', particular: 'Depreciation transferred to other Circles/Groups/CC Departments', suffix: '25', type: 'data', parentSrNo: 'Less'},
-    { srNo: '(iv)', particular: 'Depreciation transferred to other branches of the same Circle.', suffix: '26', type: 'data', parentSrNo: 'Less'},
-    { srNo: 'E', particular: 'Total (i+ii+iii+iv)', suffix: '27', type: 'total', isTotalRow: true, isReadOnly: true },
-    { srNo: 'F', particular: 'Net Depreciation (D-E)', suffix: '28', type: 'total', isTotalRow: true, isReadOnly: true },
-    { srNo: 'G', particular: `Net Book Value as at 31st March ${currentYearEnd} (C-F)`, suffix: '29', type: 'total', isTotalRow: true, isReadOnly: true },
-    { srNo: 'H', particular: 'Sale Price of fixed assets', suffix: '30', type: 'data' },
-    { srNo: 'I', particular: 'Book Value of fixed assets sold [II (ii)-E(ii)]', suffix: '31', type: 'total', isTotalRow: true, isReadOnly: true },
-    { srNo: 'J', particular: 'GST on Sale of fixed assets', suffix: '35', type: 'data' },
-    { srNo: 'K', particular: 'Profit/ (Loss) on sale of fixed assets [H-(I+J)]', suffix: '32', type: 'total', isTotalRow: true, isReadOnly: true },
-  ], [year1, currentYearEnd, formData.particulars3, formData.particulars4]);
+  // Define table rows - these correspond to rowSuffixes and particulars from your JSP
+  // You MUST adapt this to your exact Schedule10.txt row structure and particulars.
+  const rowDefinitions = useMemo(() => {
+    const year1 = formData.finyearOne || new Date().getFullYear();
+    const currentYearEnd = formData.finyearTwo || (new Date().getFullYear() + 1);
+    return [
+      { srNo: 'A', particular: `Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March ${year1}`, suffix: '1', type: 'data', isSectionHeader: true },
+      { type: 'subheader', label: 'Addition', keySuffix: 'sh1' },
+      { type: 'subsubsectionheader', srNo: '(a)', particular: 'Original cost of items put to use during the year:', keySuffix: 'ssh1a'},
+      { srNo: '(i)', particular: formData.particulars3 || '', suffix: '3', type: 'data', parentSrNo: '(a)' },
+      { srNo: '(ii)', particular: formData.particulars4 || '', suffix: '4', type: 'data', parentSrNo: '(a)' },
+      { srNo: '(b)', particular: 'Increase in value of Fixed Assets due to Current Revaluation', suffix: '36', type: 'data'},
+      { srNo: '(c)', particular: 'Original cost of items transferred from other Circles/Groups/CC Departments', suffix: '5', type: 'data'},
+      { srNo: '(d)', particular: 'Original cost of items transferred from other branches of the same Circle', suffix: '6', type: 'data'},
+      { srNo: 'I', particular: 'Total [a(i)+a(ii)+b+c+d]', suffix: '7', type: 'total', isTotalRow: true, isReadOnly: true },
 
-  const RenderInputCell = React.memo(({ fieldName, isReadOnly }) => (
-    <StyledTableCell>
-      <FormInput
-        name={fieldName}
-        value={formData[fieldName] === undefined ? '0.00' : formData[fieldName]}
-        onChange={handleChange}
-        inputProps={{ style: { textAlign: 'right' } }}
-        sx={{ width: '100px', '& input': { textAlign: 'right', padding: '6px 8px' }, backgroundColor: isReadOnly ? '#f0f0f0' : 'white' }}
-        readOnly={isReadOnly} variant="outlined" size="small"
-      />
-    </StyledTableCell>
-  ));
+      { type: 'subheader', label: 'Deduction', keySuffix: 'sh2' },
+      { srNo: '(i)', particular: 'Short Valuation charged to Revaluation Reserve due to Current Downward Revaluation', suffix: '37', type: 'data'},
+      { srNo: '(ii)', particular: 'Original cost of items sold/ discarded during the year', suffix: '9', type: 'data'},
+      { srNo: '(iii)', particular: 'Projects under construction capitalised during the year', suffix: '33', type: 'data'},
+      { srNo: '(iv)', particular: 'Original cost of items transferred to other Circles/Groups/CC Departments', suffix: '10', type: 'data'},
+      { srNo: '(v)', particular: 'Original cost of items transferred to other branches in the same circle', suffix: '11', type: 'data'},
+      { srNo: 'II', particular: 'Total (i+ii+iii+iv+v)', suffix: '12', type: 'total', isTotalRow: true, isReadOnly: true },
+
+      { srNo: 'B', particular: 'Net Addition (I-II)', suffix: '13', type: 'total', isTotalRow: true, isReadOnly: true, isSectionHeader: true },
+      { srNo: 'C', particular: `Total Original Cost/ Revalued Value as at 31st March ${currentYearEnd} (A+B)`, suffix: '14', type: 'total', isTotalRow: true, isReadOnly: true, isSectionHeader: true },
+
+      { type: 'subheader', label: 'Depreciation', keySuffix: 'sh3' },
+      { srNo: '(i)', particular: `Depreciation upto the end of previous year i.e. 31st March ${year1}`, suffix: '18', type: 'data'},
+      { srNo: '(ii)', particular: `Short Valuation charged to depreciation upto end of previous year i.e.31st March ${year1}`, suffix: '34', type: 'data'},
+      { srNo: '(iii)', particular: 'Depreciation on repatriation of Officials from Subsidiaries/ Associates', suffix: '38', type: 'data'},
+      { srNo: '(iv)', particular: 'Depreciation transferred from other Circles/Groups/CC Departments', suffix: '19', type: 'data'},
+      { srNo: '(v)', particular: 'Depreciation transferred from other branches of the same circle.', suffix: '20', type: 'data'},
+      { srNo: '(vi)', particular: 'Depreciation charged during the current year', suffix: '21', type: 'data'},
+      { srNo: '(vii)', particular: 'Short Valuation charged to Depreciation during the current year due to Current Revaluation', suffix: '39', type: 'data'},
+      { srNo: 'D', particular: 'Total (i+ii+iii+iv+v+vi+vii)', suffix: '22', type: 'total', isTotalRow: true, isReadOnly: true},
+
+      { type: 'subheader', label: 'Less :', keySuffix: 'sh4' },
+      { srNo: '(i)', particular: 'Past Short Valuation credited to Depreciation during the current year due to Current Upward Revaluation', suffix: '40', type: 'data'},
+      { srNo: '(ii)', particular: 'Depreciation previously provided on fixed assets sold/ discarded', suffix: '24', type: 'data'},
+      { srNo: '(iii)', particular: 'Depreciation transferred to other Circles/Groups/CC Departments', suffix: '25', type: 'data'},
+      { srNo: '(iv)', particular: 'Depreciation transferred to other branches of the same Circle.', suffix: '26', type: 'data'},
+      { srNo: 'E', particular: 'Total (i+ii+iii+iv)', suffix: '27', type: 'total', isTotalRow: true, isReadOnly: true },
+
+      { srNo: 'F', particular: 'Net Depreciation (D-E)', suffix: '28', type: 'total', isTotalRow: true, isReadOnly: true },
+      { srNo: 'G', particular: `Net Book Value as at 31st March ${currentYearEnd} (C-F)`, suffix: '29', type: 'total', isTotalRow: true, isReadOnly: true, isSectionHeader: true }, // Marked as section header for bolding
+      { srNo: 'H', particular: 'Sale Price of fixed assets', suffix: '30', type: 'data' },
+      { srNo: 'I', particular: 'Book Value of fixed assets sold [II (ii)-E(ii)]', suffix: '31', type: 'total', isTotalRow: true, isReadOnly: true },
+      { srNo: 'J', particular: 'GST on Sale of fixed assets', suffix: '35', type: 'data' },
+      { srNo: 'K', particular: 'Profit/ (Loss) on sale of fixed assets [H-(I+J)]', suffix: '32', type: 'total', isTotalRow: true, isReadOnly: true },
+    ];
+  }, [formData.finyearOne, formData.finyearTwo, formData.particulars3, formData.particulars4]); // Dependencies for dynamic particulars/years
+
+  const RenderInputCell = React.memo(({ fieldName, isReadOnly }) => {
+    const fieldError = errors[fieldName];
+    return (
+      <StyledTableCell>
+        <TextField
+          name={fieldName}
+          value={formData[fieldName] === undefined ? '0.00' : formData[fieldName]}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          variant="outlined"
+          size="small"
+          InputProps={{
+            readOnly: isReadOnly,
+            sx: { backgroundColor: isReadOnly ? '#f0f0f0' : 'white' },
+          }}
+          inputProps={{ style: { textAlign: 'right', padding: '6px 8px', width: '84px' } }} // width inside inputProps
+          sx={{ width: '100px' }} // Overall width for TextField
+          error={!!fieldError}
+          helperText={fieldError}
+        />
+      </StyledTableCell>
+    );
+  });
   RenderInputCell.displayName = 'RenderInputCell';
 
-  if (isLoading && !isRecalculating) { // Show full loader only for initial load
+
+  if (isLoading && !isCalculating) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 200px)' }}>
-        <CircularProgress /> <Box sx={{ ml: 2 }}>Loading Schedule Data...</Box>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 150px)' }}>
+        <CircularProgress /> <Box sx={{ ml: 2 }}>Loading Schedule 10...</Box>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ p: 1, width: '100%', overflowX: 'hidden' }}>
+    <Box sx={{ p: 1, width: '100%', boxSizing: 'border-box' }}>
       {workerError && (
-        <Box sx={{ p: 2, backgroundColor: 'error.main', color: 'white', mb: 2, borderRadius: 1 }}>
-          Error with calculations: {workerError} (Check console for more details)
+        <Box sx={{ p: 2, backgroundColor: 'error.light', color: 'error.contrastText', mb: 2, borderRadius: 1 }}>
+          Error: {workerError}
         </Box>
       )}
-      {isRecalculating && !isLoading && ( // Show smaller recalculating indicator
-        <Box sx={{ position: 'fixed', top: 10, right: 10, zIndex: 2000, p: 1, backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', borderRadius: 1, display: 'flex', alignItems: 'center' }}>
-          <CircularProgress size={16} color="inherit" sx={{mr:1}} /> Recalculating...
+      {(isCalculating && !isLoading) && ( // Show recalculating only if not initial loading
+        <Box sx={{ position: 'fixed', top: 'calc(env(safe-area-inset-top, 0px) + 10px)', right: '10px', zIndex: 1301, p: 1, backgroundColor: 'rgba(0,0,0,0.7)', color: 'white', borderRadius: '4px', display: 'flex', alignItems: 'center', fontSize: '0.8rem' }}>
+          <CircularProgress size={14} color="inherit" sx={{ mr: 1 }} /> Calculating...
         </Box>
       )}
-      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)' }}>
+      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 150px)', overflow: 'auto' }}>
         <Table sx={{ minWidth: 3000 }} aria-label="schedule 10 table" stickyHeader>
           <TableHead>
-             {/* ... Same TableHead structure as your original ... */}
             <TableRow>
-              <StyledTableCell rowSpan={2}><b>Sr.No</b></StyledTableCell>
-              <StyledTableCell rowSpan={2}><b>Particulars</b></StyledTableCell>
+              {/* Adjust colSpans and content to EXACTLY match your JSP headers */}
+              <StyledTableCell rowSpan={2} sx={{ minWidth: '50px', left: 0, zIndex: theme => theme.zIndex.appBar -1 + 10 }}><b>Sr.No</b></StyledTableCell>
+              <StyledTableCell rowSpan={2} sx={{ minWidth: '300px', left: '50px', zIndex: theme => theme.zIndex.appBar -1 + 10  }}><b>Particulars</b></StyledTableCell>
               <StyledTableCell colSpan={5}><b>(A) FURNITURE & FITTINGS</b></StyledTableCell>
               <StyledTableCell colSpan={10}><b>(B) MACHINERY & PLANT</b></StyledTableCell>
-              <StyledTableCell rowSpan={2}><b>Total Furniture & Fixtures <br /> (A+B)</b></StyledTableCell>
+              <StyledTableCell rowSpan={2} sx={{ minWidth: '120px' }}><b>Total Furniture & Fixtures <br /> (A+B)</b></StyledTableCell>
               <StyledTableCell colSpan={12}><b>(C) PREMISES</b></StyledTableCell>
-              <StyledTableCell rowSpan={2}><b>(D) Projects under <br /> construction</b></StyledTableCell>
-              <StyledTableCell rowSpan={2}><b>Grand Total <br /> (A + B + C + D)</b></StyledTableCell>
+              <StyledTableCell rowSpan={2} sx={{ minWidth: '120px' }}><b>(D) Projects under <br /> construction</b></StyledTableCell>
+              <StyledTableCell rowSpan={2} sx={{ minWidth: '120px' }}><b>Grand Total <br /> (A + B + C + D)</b></StyledTableCell>
             </TableRow>
             <TableRow>
-              {columnDefinitions.slice(0, 5).map((col) => (<StyledTableCell key={col.id}><b>{col.header}</b></StyledTableCell>))}
-              {columnDefinitions.slice(5, 15).map((col) => (<StyledTableCell key={col.id}><b>{col.header}</b></StyledTableCell>))}
-              {columnDefinitions.slice(16, 28).map((col) => (<StyledTableCell key={col.id}><b>{col.header}</b></StyledTableCell>))}
+              {/* These cells are under the colSpanned groups. Ensure `top` is adjusted for the height of the first header row. */}
+              {columnDefinitions.slice(0, 5).map((col, index) => (<StyledTableCell key={col.id} sx={{ top: '57px' /* Adjust this based on first row height */ }}><b>{col.header}</b></StyledTableCell>))}
+              {columnDefinitions.slice(5, 15).map((col, index) => (<StyledTableCell key={col.id} sx={{ top: '57px' }}><b>{col.header}</b></StyledTableCell>))}
+              {/* Total Furn & Fix is col 15 - covered by rowspan */}
+              {columnDefinitions.slice(16, 28).map((col, index) => (<StyledTableCell key={col.id} sx={{ top: '57px' }}><b>{col.header}</b></StyledTableCell>))}
+              {/* D Projects (col 28) & Grand Total (col 29) - covered by rowspan */}
             </TableRow>
           </TableHead>
           <TableBody>
             {rowDefinitions.map((row, rowIndex) => {
-              const rowKey = row.suffix || `row-${rowIndex}-${row.type || 'unknown'}`;
+              const rowKey = row.suffix || row.keySuffix || `row-${rowIndex}`;
               if (row.type === 'subheader' || row.type === 'subsubsectionheader') {
                 return (
-                  <StyledTableRow key={rowKey} $issubsectionheader={row.type === 'subheader'} $issubsubsectionheader={row.type === 'subsubsectionheader'}>
-                    <StyledTableCell>{row.srNo || ''}</StyledTableCell>
-                    <StyledTableCell colSpan={columnDefinitions.length + 1}><b>{row.label || row.particular}</b></StyledTableCell>
+                  <StyledTableRow key={rowKey} $issubsectionheader={row.type === 'subheader'}>
+                    <StyledTableCell sx={{ position: 'sticky', left: 0, zIndex: 1, backgroundColor: row.type === 'subheader' ? (theme => theme.palette.grey[50]) : undefined  }}>
+                        {row.srNo || ''}
+                    </StyledTableCell>
+                    <StyledTableCell colSpan={columnDefinitions.length +1} sx={{ position: 'sticky', left: '50px', zIndex: 1, backgroundColor: row.type === 'subheader' ? (theme => theme.palette.grey[50]) : undefined }}>
+                      <b>{row.label || row.particular}</b>
+                    </StyledTableCell>
                   </StyledTableRow>
                 );
               } else if (row.type === 'data' || row.type === 'total') {
                 return (
                   <StyledTableRow key={rowKey} $istotalrow={row.isTotalRow} $issectionheader={row.isSectionHeader}>
-                    <StyledTableCell style={row.parentSrNo && !row.isSectionHeader ? { textAlign: 'right' } : row.isSectionHeader ? { textAlign: 'left' } : { textAlign: 'center' }}>
+                    <StyledTableCell sx={{ position: 'sticky', left: 0, zIndex: 1, backgroundColor: row.isSectionHeader ? (theme=>theme.palette.grey[100]) : row.isTotalRow ? (theme=>theme.palette.grey[200]) : (theme => theme.palette.background.paper) }}>
                       <b>{row.srNo}</b>
                     </StyledTableCell>
-                    <StyledTableCell><b>{row.particular}</b></StyledTableCell>
+                    <StyledTableCell sx={{ position: 'sticky', left: '50px', zIndex: 1, backgroundColor: row.isSectionHeader ? (theme=>theme.palette.grey[100]) : row.isTotalRow ? (theme=>theme.palette.grey[200]) : (theme => theme.palette.background.paper) }}>
+                      <b>{row.particular}</b>
+                    </StyledTableCell>
                     {columnDefinitions.map((col) => (
-                      <RenderInputCell key={`${row.suffix}-${col.id}`} fieldName={`${col.id}${row.suffix}`} isReadOnly={row.isReadOnly || col.isReadOnly}/>
+                      <RenderInputCell
+                        key={`${rowKey}-${col.id}`}
+                        fieldName={`${col.id}${row.suffix}`}
+                        isReadOnly={row.isReadOnly || col.isReadOnly}
+                      />
                     ))}
                   </StyledTableRow>
                 );
@@ -323,3 +390,4 @@ const Schedule10 = () => {
 };
 
 export default Schedule10;
+
