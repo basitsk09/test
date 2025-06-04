@@ -1,166 +1,99 @@
-// calculation.worker.js
+Thanks for sharing the updated screenshot — I can now clearly see the problem:
 
-// --- START: All necessary helper functions and constants MUST be in this file ---
-// These are based on common Schedule 10 structures and need to be verified/adjusted
-// against your specific Schedule10.txt JavaScript logic.
 
-const parseAndFormat = (value) => {
-  const num = Number(value); // Using Number() can be slightly more performant
-  return isNaN(num) ? '0.00' : num.toFixed(2);
-};
+---
 
-// These keys should match the 'CODE' part of your input field IDs (e.g., txt{CODE}{Suffix})
-const baseFieldKeys = [
-  'stcNstaff', 'offResidenceA', 'otherPremisesA', 'electricFitting', 'totalA',
-  'computers', 'compSoftwareInt', 'compSoftwareNonint', 'compSoftwareTotal', 'motor',
-  'offResidenceB', 'stcLho', 'otherPremisesB', 'otherMachineryPlant', 'totalB',
-  'totalFurnFix', 'landNotRev', 'landRev', 'landRevEnh', 'offBuildNotRev',
-  'offBuildRev', 'offBuildRevEnh', 'residQuartNotRev', 'residQuartRev', 'residQuartRevEnh',
-  'premisTotal', 'revtotal', 'totalC', 'premisesUnderCons', 'grandTotal',
-];
+❌ Current UI Issues:
 
-const nonTotalBaseFieldKeys = [ // Fields that are direct inputs, not calculated row totals
-  'stcNstaff', 'offResidenceA', 'otherPremisesA', 'electricFitting',
-  'computers', 'compSoftwareInt', 'compSoftwareNonint', 'motor',
-  'offResidenceB', 'stcLho', 'otherPremisesB',
-  'landNotRev', 'landRev', 'landRevEnh', 'offBuildNotRev', 'offBuildRev',
-  'offBuildRevEnh', 'residQuartNotRev', 'residQuartRev', 'residQuartRevEnh',
-  'premisesUnderCons',
-];
+1. TOTAL (C) column shows only 0.00 for all rows – not updating as per calculated value.
 
-// This function structure is based on typical Schedule 10 calculations.
-// You MUST adapt the formulas here to exactly match the JavaScript logic
-// inferred from onblur attributes like sumधाराA, sumधाराB in your Schedule10.txt
-const calculateRowTotalsAndUpdate = (data, suffix, outData) => {
-  const p = (fieldPath) => Number(data[fieldPath]) || 0;
 
-  // Corresponds to sumधाराA(suffix)
-  outData[`totalA${suffix}`] = (
-    p(`stcNstaff${suffix}`) + p(`offResidenceA${suffix}`) +
-    p(`otherPremisesA${suffix}`) + p(`electricFitting${suffix}`)
-  ).toFixed(2);
+2. Projects under construction and Grand Total fields are rendered but have no visible inputs (no text field) – appearing as plain text.
 
-  // Software Total
-  outData[`compSoftwareTotal${suffix}`] = (
-    p(`compSoftwareInt${suffix}`) + p(`compSoftwareNonint${suffix}`)
-  ).toFixed(2);
 
-  // Other Machinery & Plant (Part of section B)
-  const otherMachineryPlantVal = (
-    p(`offResidenceB${suffix}`) + p(`stcLho${suffix}`) + p(`otherPremisesB${suffix}`)
-  );
-  outData[`otherMachineryPlant${suffix}`] = otherMachineryPlantVal.toFixed(2);
 
-  // Corresponds to sumधाराB(suffix)
-  outData[`totalB${suffix}`] = (
-    p(`computers${suffix}`) + Number(outData[`compSoftwareTotal${suffix}`]) +
-    p(`motor${suffix}`) + otherMachineryPlantVal
-  ).toFixed(2);
 
-  // Total Furniture & Fixtures (A+B)
-  outData[`totalFurnFix${suffix}`] = (
-    Number(outData[`totalA${suffix}`]) + Number(outData[`totalB${suffix}`])
-  ).toFixed(2);
+---
 
-  // Premises Total (Part of section C)
-  const premisTotalVal = (
-    p(`landNotRev${suffix}`) + p(`landRev${suffix}`) +
-    p(`offBuildNotRev${suffix}`) + p(`offBuildRev${suffix}`) +
-    p(`residQuartNotRev${suffix}`) + p(`residQuartRev${suffix}`)
-  );
-  outData[`premisTotal${suffix}`] = premisTotalVal.toFixed(2);
+✅ Diagnosis
 
-  // Revaluation Total (Part of section C)
-  const revTotalVal = (
-    p(`landRevEnh${suffix}`) + p(`offBuildRevEnh${suffix}`) + p(`residQuartRevEnh${suffix}`)
-  );
-  outData[`revtotal${suffix}`] = revTotalVal.toFixed(2);
+1. TOTAL (C) shows 0.00:
 
-  // Corresponds to sumधाराC(suffix)
-  outData[`totalC${suffix}`] = (premisTotalVal + revTotalVal).toFixed(2);
+Even though totalC is being calculated correctly in useMemo, your table body is not rendering this cell correctly.
 
-  // Grand Total
-  outData[`grandTotal${suffix}`] = (
-    Number(outData[`totalA${suffix}`]) + Number(outData[`totalB${suffix}`]) +
-    Number(outData[`totalC${suffix}`]) + p(`premisesUnderCons${suffix}`)
-  ).toFixed(2);
-};
+You removed it from columnDisplayHeaders, and now you're manually rendering it.
 
-const sumAcrossRows = (data, fieldBaseName, suffixesToSum) => {
-  let total = 0;
-  for (const sfx of suffixesToSum) {
-    total += Number(data[`${fieldBaseName}${sfx}`]) || 0;
-  }
-  return total.toFixed(2);
-};
+But if you’re using:
 
-const subtractAcrossRows = (data, fieldBaseName, minuendSuffix, subtrahendSuffix) => {
-  return (
-    (Number(data[`${fieldBaseName}${minuendSuffix}`]) || 0) -
-    (Number(data[`${fieldBaseName}${subtrahendSuffix}`]) || 0)
-  ).toFixed(2);
-};
 
-// Main calculation function - ADAPT THIS THOROUGHLY
-// This needs to reflect the exact calculation dependencies and order from your JSP/JS.
-// The suffixes ('1', '3', '4', etc.) and calculation logic for rows '7', '12', '13', etc.
-// must be derived from your existing system.
-const performAllCalculations = (currentData) => {
-  console.log('[Worker] Starting calculations...');
-  const calculatedData = { ...currentData }; // Work on a copy
+<FormInput value={displayDataForRow['totalC'] || '0.00'} readOnly />
 
-  // Suffixes for rows where users can directly input data
-  const editableRowSuffixes = [
-    '1', '3', '4', '5', '6', '9', '10', '11', '18', '19', '20', '21',
-    '24', '25', '26', '30', '33', '34', '35', '36', '37', '38', '39', '40',
-  ];
+…and displayDataForRow is stale or coming from the wrong state (e.g., formData instead of calculatedData), it will always render "0.00".
 
-  // Step 1: Calculate direct row totals for editable rows (based on sumधाराA, B, C logic)
-  for (const suffix of editableRowSuffixes) {
-    calculateRowTotalsAndUpdate(calculatedData, suffix, calculatedData);
-  }
 
-  // Step 2: Calculate sums and subtractions across rows for non-total base fields
-  // This logic for rows 7, 12, 13, etc. is a common pattern but MUST BE VERIFIED
-  // against your specific Schedule10.txt's JavaScript.
-  for (const key of nonTotalBaseFieldKeys) {
-    calculatedData[`${key}7`] = sumAcrossRows(calculatedData, key, ['3', '4', '36', '5', '6']);
-    calculatedData[`${key}12`] = sumAcrossRows(calculatedData, key, ['37', '9', '33', '10', '11']);
-    calculatedData[`${key}13`] = subtractAcrossRows(calculatedData, key, '7', '12');
-    calculatedData[`${key}14`] = sumAcrossRows(calculatedData, key, ['1', '13']);
-    calculatedData[`${key}22`] = sumAcrossRows(calculatedData, key, ['18', '34', '38', '19', '20', '21', '39']);
-    calculatedData[`${key}27`] = sumAcrossRows(calculatedData, key, ['40', '24', '25', '26']);
-    calculatedData[`${key}28`] = subtractAcrossRows(calculatedData, key, '22', '27');
-    calculatedData[`${key}29`] = subtractAcrossRows(calculatedData, key, '14', '28');
-    calculatedData[`${key}31`] = subtractAcrossRows(calculatedData, key, '9', '24'); // Book value of assets sold
+---
 
-    const val30 = Number(calculatedData[`${key}30`]) || 0; // H. Sale Price
-    const val31 = Number(calculatedData[`${key}31`]) || 0; // I. Book Value (calculated above)
-    const val35 = Number(calculatedData[`${key}35`]) || 0; // J. GST on Sale
-    calculatedData[`${key}32`] = (val30 - (val31 + val35)).toFixed(2); // K. Profit/(Loss)
-  }
+✅ Fix for TOTAL (C):
 
-  // Step 3: Recalculate totals for aggregated rows (these depend on results from Step 2)
-  const aggregatedRowSuffixes = ['7', '12', '13', '14', '22', '27', '28', '29', '31', '32'];
-  for (const suffix of aggregatedRowSuffixes) {
-    calculateRowTotalsAndUpdate(calculatedData, suffix, calculatedData);
-  }
+Ensure you're reading from calculatedData (not formData) like so:
 
-  console.log('[Worker] Calculations complete.');
-  return calculatedData;
-};
-// --- END: Calculation Logic ---
+<FormInput
+  name={`${rowKey}-totalC`}
+  value={calculatedData[rowKey]?.totalC || '0.00'}
+  readOnly
+/>
 
-self.onmessage = function(event) {
-  const { type, data } = event.data;
-  if (type === 'CALCULATE_SCHEDULE10') {
-    try {
-      const result = performAllCalculations(data);
-      self.postMessage({ type: 'CALCULATE_SCHEDULE10_COMPLETE', data: result });
-    } catch (error) {
-      console.error('[Worker] Error during calculation:', error);
-      self.postMessage({ type: 'CALCULATE_SCHEDULE10_ERROR', error: error.message });
-    }
-  }
-};
-console.log('[Worker] Schedule 10 Worker Script Loaded.');
+
+---
+
+2. Missing Text Fields for premisesUnderCons and grandTotal:
+
+premisesUnderCons is user input, but you're not rendering a <FormInput> with an onChange.
+
+grandTotal is computed, but you also must use calculatedData[rowKey]?.grandTotal.
+
+
+
+---
+
+✅ Corrected Manual Column Rendering (place inside TableBody after dynamic columns):
+
+Here is the correct version to place after columnDisplayHeaders.map() inside the row rendering block:
+
+{/* TOTAL (C) - readOnly */}
+<StyledTableCell key={`${rowKey}-totalC`}>
+  <FormInput
+    name={`${rowKey}-totalC`}
+    value={calculatedData[rowKey]?.totalC || '0.00'}
+    readOnly
+  />
+</StyledTableCell>
+
+{/* (D) Projects under construction - editable */}
+<StyledTableCell key={`${rowKey}-premisesUnderCons`}>
+  <FormInput
+    name={`${rowKey}-premisesUnderCons`}
+    value={formData[rowKey]?.premisesUnderCons || '0.00'}
+    onChange={(e) => handleChange(rowKey, 'premisesUnderCons', e.target.value)}
+    onBlur={(e) => handleBlur(rowKey, 'premisesUnderCons', e.target.value)}
+  />
+</StyledTableCell>
+
+{/* Grand Total - readOnly */}
+<StyledTableCell key={`${rowKey}-grandTotal`}>
+  <FormInput
+    name={`${rowKey}-grandTotal`}
+    value={calculatedData[rowKey]?.grandTotal || '0.00'}
+    readOnly
+  />
+</StyledTableCell>
+
+> 💡 Note: If you’re using MUI TextField directly, ensure variant, size, and styling props are applied to keep the UI consistent.
+
+
+
+
+---
+
+Let me know if you'd like me to paste this directly into your full code block or if you're using a different FormInput structure.
+
