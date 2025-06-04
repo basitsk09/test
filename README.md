@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -6,447 +6,772 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Button,
+  Alert,
   Box,
+  Stack,
   CircularProgress,
+  Typography,
 } from '@mui/material';
 import TableCell, { tableCellClasses } from '@mui/material/TableCell';
 import { styled } from '@mui/material/styles';
-import FormInput from '../../../../common/components/ui/FormInput'; // Assuming path is correct
+//import debounce from 'lodash/debounce';
+import FormInput from '../../../../common/components/ui/FormInput';
 
-// Styled Components (No changes needed from your original)
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontSize: '0.875rem',
-  padding: '8px',
-  border: '1px solid #e0e0e0',
-  whiteSpace: 'nowrap',
-  [`&.${tableCellClasses.head}`]: {
-    backgroundColor: theme.palette.common.black,
-    color: theme.palette.common.white,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  [`&.${tableCellClasses.body}`]: {
-    color: theme.palette.text.primary,
-    backgroundColor: theme.palette.background.paper,
-    textAlign: 'left',
-  },
-}));
+import useApi from '../../../../common/hooks/useApi';
+// import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
 
-const StyledTableRow = styled(TableRow)(
-  ({ theme, $istotalrow, $issectionheader, $issubsectionheader, $issubsubsectionheader }) => ({
-    backgroundColor: theme.palette.background.paper,
-    ...($issectionheader && {
-      '& > td': {
-        fontWeight: 'bold',
-        textAlign: 'left',
-      },
-    }),
-    ...($issubsectionheader && {
-      '& > td': {
-        fontWeight: 'bold',
-        fontStyle: 'italic',
-        textAlign: 'left',
-      },
-    }),
-    ...($issubsubsectionheader && {
-      '& > td': {
-        textAlign: 'left',
-      },
-    }),
-    ...($istotalrow && {
-      '& > td': {
-        fontWeight: 'bold',
-      },
-    }),
-  })
+const StyledTableCell = React.memo(
+  styled(TableCell)(({ theme }) => ({
+    fontSize: '0.875rem',
+    padding: '8px',
+    border: '1px solid #e0e0e0',
+    whiteSpace: 'nowrap',
+    [`&.${tableCellClasses.head}`]: {
+      // backgroundColor: theme.palette.common.black,
+      // color: theme.palette.common.white,
+      fontWeight: 'bold',
+      textAlign: 'center',
+    },
+    [`&.${tableCellClasses.body}`]: {
+      // color: theme.palette.text.primary,
+      // backgroundColor: theme.palette.background.paper,
+      textAlign: 'left',
+    },
+  }))
 );
 
-// --- Helper functions (moved outside component, same as your original) ---
-const parseAndFormat = (value) => {
-  const num = parseFloat(value);
-  return isNaN(num) ? '0.00' : num.toFixed(2);
+const StyledTableRow = styled(TableRow)(({ theme, istotalrow, issectionheader, issubsectionheader }) => ({
+  // backgroundColor: theme.palette.background.paper, // Default background
+  '&:nth-of-type(odd)': {
+    // backgroundColor: theme.palette.action.hover, // Kept for slight differentiation if desired, can be removed
+  },
+  ...(issectionheader && {
+    // backgroundColor: theme.palette.grey[100], // Very light grey
+    '& > td': {
+      fontWeight: 'bold',
+      textAlign: 'left',
+    },
+  }),
+  ...(issubsectionheader && {
+    // backgroundColor: theme.palette.grey[50], // Even lighter
+    '& > td': {
+      fontWeight: 'bold',
+      fontStyle: 'italic',
+      textAlign: 'left',
+    },
+  }),
+  ...(istotalrow && {
+    '& > td': {
+      fontWeight: 'bold',
+    },
+  }),
+}));
+
+const rowDefinitionsConfig = [
+  { id: 'A1_header', label: 'A-1. Facility Wise Classification', type: 'sectionHeader' },
+  { id: 'A1_i', modelSuffix: '2', label: '[i] Bills Purchased and Discounted', type: 'entry' },
+  {
+    id: 'A1_ii',
+    modelSuffix: '3',
+    label: '[ii] Cash Credits, Overdrafts, loans repayable on Demand and Recalled Assets',
+    type: 'entry',
+  },
+  {
+    id: 'A1_iii',
+    modelSuffix: '4',
+    label: '[iii] Term Loans , Agricultural Term Loans, FCNRB Term Loan',
+    type: 'entry',
+  },
+  {
+    id: 'A1_total',
+    modelSuffix: '5',
+    label: 'Total of Facility wise Classification',
+    type: 'total',
+    subItemIds: ['A1_i', 'A1_ii', 'A1_iii'],
+  },
+
+  { id: 'A2_header', label: 'A-2. Security Wise Classifications', type: 'sectionHeader' },
+  { id: 'A2_i', modelSuffix: '7', label: '[i] Secured by Tangible Assets', type: 'entry' },
+  { id: 'A2_ii', modelSuffix: '8', label: '[ii] Covered by Bank/DICGC/CGTSI / Govt Guarantee', type: 'entry' },
+  { id: 'A2_iii', modelSuffix: '9', label: '[iii] Unsecured', type: 'entry' },
+  {
+    id: 'A2_total',
+    modelSuffix: '10',
+    label: 'Total of Security-wise Classification',
+    type: 'total',
+    subItemIds: ['A2_i', 'A2_ii', 'A2_iii'],
+  },
+
+  { id: 'A3_header', label: 'A-3. Sector-Wise Classifications', type: 'sectionHeader' },
+  { id: 'A3_a_header', label: 'a) In India', type: 'subSectionHeader' },
+  { id: 'A3_a_i', modelSuffix: '13', label: '[i] Priority', type: 'entry' },
+  { id: 'A3_a_ii', modelSuffix: '14', label: '[ii] Public', type: 'entry' },
+  { id: 'A3_a_iii', modelSuffix: '15', label: '[iii] Banks in India', type: 'entry' },
+  { id: 'A3_a_iv', modelSuffix: '16', label: '[iv] Others', type: 'entry' },
+  {
+    id: 'A3_a_total',
+    modelSuffix: '17',
+    label: 'TOTAL IN INDIA (i+ii+iii+iv)',
+    type: 'total',
+    subItemIds: ['A3_a_i', 'A3_a_ii', 'A3_a_iii', 'A3_a_iv'],
+  },
+
+  { id: 'A3_b_header', label: 'b) Outside India (Excluding Foreign LCs and BGs)', type: 'subSectionHeader' },
+  { id: 'A3_b_i', modelSuffix: '19', label: '[i] Due from Banks', type: 'entry' },
+  {
+    id: 'A3_b_ii_1',
+    modelSuffix: '20',
+    label: '[ii] Due from Others [1] Bills Purchased and Discounted',
+    type: 'entry',
+  },
+  { id: 'A3_b_ii_2', modelSuffix: '21', label: '[2] Syndicated Loans', type: 'entry' },
+  { id: 'A3_b_ii_3', modelSuffix: '22', label: '[3] Others', type: 'entry' },
+  {
+    id: 'A3_b_total',
+    modelSuffix: '23',
+    label: 'TOTAL IN OUTSIDE INDIA(i+ii.1+ii.2+ii.3)',
+    type: 'total',
+    subItemIds: ['A3_b_i', 'A3_b_ii_1', 'A3_b_ii_2', 'A3_b_ii_3'],
+  },
+  {
+    id: 'A3_grand_total',
+    modelSuffix: '24',
+    label: 'Total of Sector-wise Classification(a+b)',
+    type: 'total',
+    subItemIds: ['A3_a_total', 'A3_b_total'],
+  },
+
+  { id: 'A4_header', label: 'A-4. Assets-wise Classifications', type: 'sectionHeader' },
+  { id: 'A4_i', modelSuffix: '26', label: '[i] Standard', type: 'entry' },
+  { id: 'A4_ii', modelSuffix: '27', label: '[ii] Sub-standard', type: 'entry' },
+  { id: 'A4_iii', modelSuffix: '28', label: '[iii] Doubtful', type: 'entry' },
+  { id: 'A4_iv', modelSuffix: '29', label: '[iv] Loss', type: 'entry' },
+  {
+    id: 'A4_total',
+    modelSuffix: '30',
+    label: 'Total of Assets-wise Classification',
+    type: 'total',
+    subItemIds: ['A4_i', 'A4_ii', 'A4_iii', 'A4_iv'],
+  },
+];
+
+const columnFieldKeys = {
+  // Maps colKey (e.g. 'col1') to actual field key in formData
+  col1: 'opBalCurYearProvision',
+  col2: 'writOffCurProvision',
+  col3: 'addRedFlucProvision',
+  col5: 'addCurYearProvision',
+  col6: 'addCurDepreciProvision',
+  col8: 'opBalCurYearAccount',
+  col9: 'addRedFlucAccount',
+  col11: 'addCurYearAccount',
+  col12: 'dedRevCurYearAccount',
+  col14: 'intSuspEndOfCurrYearAccount',
+  col16: 'diAndCgcTotalPro',
+  col17: 'standardAssetsTotalPro',
+  col18: 'licraTotalPro',
 };
-
-const baseFieldKeys = [
-  'stcNstaff', 'offResidenceA', 'otherPremisesA', 'electricFitting', 'totalA',
-  'computers', 'compSoftwareInt', 'compSoftwareNonint', 'compSoftwareTotal', 'motor',
-  'offResidenceB', 'stcLho', 'otherPremisesB', 'otherMachineryPlant', 'totalB',
-  'totalFurnFix', 'landNotRev', 'landRev', 'landRevEnh', 'offBuildNotRev',
-  'offBuildRev', 'offBuildRevEnh', 'residQuartNotRev', 'residQuartRev', 'residQuartRevEnh',
-  'premisTotal', 'revtotal', 'totalC', 'premisesUnderCons', 'grandTotal',
+const allColumnKeys = [
+  // Represents all data columns in display order
+  'col1',
+  'col2',
+  'col3',
+  'col4',
+  'col5',
+  'col6',
+  'col7',
+  'col8',
+  'col9',
+  'col10',
+  'col11',
+  'col12',
+  'col13',
+  'col14',
+  'col15',
+  'col16',
+  'col17',
+  'col18',
 ];
+const calculatedColKeys = ['col4', 'col7', 'col10', 'col13', 'col15'];
 
-const nonTotalBaseFieldKeys = [
-  'stcNstaff', 'offResidenceA', 'otherPremisesA', 'electricFitting',
-  'computers', 'compSoftwareInt', 'compSoftwareNonint', 'motor',
-  'offResidenceB', 'stcLho', 'otherPremisesB',
-  'landNotRev', 'landRev', 'landRevEnh', 'offBuildNotRev', 'offBuildRev',
-  'offBuildRevEnh', 'residQuartNotRev', 'residQuartRev', 'residQuartRevEnh',
-  'premisesUnderCons',
-];
+const Schedule9CProvisionTable = ({
+  circleCode = '021',
+  quarterEndDate = '31/03/2025',
+  role = 'Maker',
+  previousYear = '2024',
+  displayQuarterDate = '31/03/2025',
+  initialDataFromApi = null,
+}) => {
+  const showSnackbar = (message, severity) => console.log(`Snackbar: ${message} (${severity})`);
+  const { callApi } = useApi();
+  const [validationErrors, setValidationErrors] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-const rowSuffixes = [
-  '1', '3', '4', '5', '6', '7', '9', '10', '11', '12', '13', '14', '18', '19', '20',
-  '21', '22', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34',
-  '35', '36', '37', '38', '39', '40',
-];
-
-const calculateRowTotals = (data, suffix) => {
-  const updatedData = { ...data };
-  const p = (fieldPath) => parseFloat(updatedData[fieldPath]) || 0;
-
-  updatedData[`totalA${suffix}`] = parseAndFormat(
-    p(`stcNstaff${suffix}`) +
-    p(`offResidenceA${suffix}`) +
-    p(`otherPremisesA${suffix}`) +
-    p(`electricFitting${suffix}`)
-  );
-  updatedData[`compSoftwareTotal${suffix}`] = parseAndFormat(
-    p(`compSoftwareInt${suffix}`) + p(`compSoftwareNonint${suffix}`)
-  );
-  updatedData[`otherMachineryPlant${suffix}`] = parseAndFormat(
-    p(`offResidenceB${suffix}`) + p(`stcLho${suffix}`) + p(`otherPremisesB${suffix}`)
-  );
-  updatedData[`totalB${suffix}`] = parseAndFormat(
-    p(`computers${suffix}`) +
-    p(updatedData[`compSoftwareTotal${suffix}`]) +
-    p(`motor${suffix}`) +
-    p(updatedData[`otherMachineryPlant${suffix}`])
-  );
-  updatedData[`totalFurnFix${suffix}`] = parseAndFormat(
-    p(updatedData[`totalA${suffix}`]) + p(updatedData[`totalB${suffix}`])
-  );
-  updatedData[`premisTotal${suffix}`] = parseAndFormat(
-    p(`landNotRev${suffix}`) +
-    p(`landRev${suffix}`) +
-    p(`offBuildNotRev${suffix}`) +
-    p(`offBuildRev${suffix}`) +
-    p(`residQuartNotRev${suffix}`) +
-    p(`residQuartRev${suffix}`)
-  );
-  updatedData[`revtotal${suffix}`] = parseAndFormat(
-    p(`landRevEnh${suffix}`) + p(`offBuildRevEnh${suffix}`) + p(`residQuartRevEnh${suffix}`)
-  );
-  updatedData[`totalC${suffix}`] = parseAndFormat(
-    p(updatedData[`premisTotal${suffix}`]) + p(updatedData[`revtotal${suffix}`])
-  );
-  updatedData[`grandTotal${suffix}`] = parseAndFormat(
-    p(updatedData[`totalA${suffix}`]) +
-    p(updatedData[`totalB${suffix}`]) +
-    p(updatedData[`totalC${suffix}`]) +
-    p(`premisesUnderCons${suffix}`)
-  );
-  return updatedData;
-};
-
-const sumAcrossRows = (data, fieldBaseName, suffixesToSum) => {
-  let total = 0;
-  suffixesToSum.forEach((sfx) => {
-    total += parseFloat(data[`${fieldBaseName}${sfx}`]) || 0;
+  const [formData, setFormData] = useState(() => {
+    const initial = {};
+    rowDefinitionsConfig.forEach((row) => {
+      if (row.type === 'entry') {
+        initial[row.id] = {};
+        Object.values(columnFieldKeys).forEach((fieldKey) => {
+          // Use fieldKey from columnFieldKeys
+          initial[row.id][fieldKey] = '';
+        });
+      }
+    });
+    return initial;
   });
-  return parseAndFormat(total);
-};
 
-const subtractAcrossRows = (data, fieldBaseName, minuendSuffix, subtrahendSuffix) => {
-  const minuend = parseFloat(data[`${fieldBaseName}${minuendSuffix}`]) || 0;
-  const subtrahend = parseFloat(data[`${fieldBaseName}${subtrahendSuffix}`]) || 0;
-  return parseAndFormat(minuend - subtrahend);
-};
+  // Effect for fetching data from API
+  const modelSuffixToRowIdMap = useMemo(() => {
+    const map = {};
+    rowDefinitionsConfig.forEach((row) => {
+      if (row.modelSuffix) {
+        map[row.modelSuffix] = row.id;
+      }
+    });
+    return map;
+  }, []);
 
-// Main function to perform all calculations (on the main thread)
-const performAllCalculations = (initialData) => {
-  let calculatedData = { ...initialData };
-  const p = (fieldPath) => parseFloat(calculatedData[fieldPath]) || 0;
+  useEffect(() => {
+    console.log('9c starting');
+    const fetchData = async () => {
+      setIsLoading(true);
+      showSnackbar('Loading data...', 'info');
 
-  const editableRowSuffixes = [
-    '1', '3', '4', '5', '6', '9', '10', '11', '18', '19', '20', '21',
-    '24', '25', '26', '30', '33', '34', '35', '36', '37', '38', '39', '40',
+      const requestPayload = {
+        circleCode,
+        quarterEndDate,
+        userId: '1111111',
+        reportName: 'Schedule9C PROVISION',
+        reportId: '125911',
+        reportMasterId: '310021',
+        status: '11',
+        areMocPending: true,
+      };
+
+      try {
+        const response = await callApi('/Maker/getSavedDataNineC', requestPayload, 'POST');
+
+        if (response) {
+          const transformedData = {};
+
+          // Initialize blank structure for all entry rows
+          rowDefinitionsConfig.forEach((row) => {
+            if (row.type === 'entry') {
+              transformedData[row.id] = {};
+              Object.values(columnFieldKeys).forEach((fieldKey) => {
+                transformedData[row.id][fieldKey] = '';
+              });
+            }
+          });
+
+          // Populate with data from API response
+          for (const [apiKey, apiValue] of Object.entries(response)) {
+            for (const fieldKey of Object.values(columnFieldKeys)) {
+              if (apiKey.startsWith(fieldKey)) {
+                const suffix = apiKey.replace(fieldKey, '');
+                const rowId = modelSuffixToRowIdMap[suffix];
+
+                if (rowId && transformedData[rowId] && fieldKey in transformedData[rowId]) {
+                  transformedData[rowId][fieldKey] = apiValue !== null ? String(apiValue) : '';
+                }
+              }
+            }
+          }
+
+          setFormData(transformedData);
+          showSnackbar('Data loaded successfully.', 'success');
+        } else {
+          showSnackbar('No data returned from API.', 'error');
+        }
+      } catch (error) {
+        console.error('Fetch error:', error);
+        showSnackbar('Failed to load data.', 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  //   useEffect(() => {
+  //     if (initialDataFromApi) {
+  //       const newFormData = {};
+  //       rowDefinitionsConfig.forEach((row) => {
+  //         if (row.type === 'entry') {
+  //           newFormData[row.id] = {}; // Ensure object exists
+  //           const apiRowData = initialDataFromApi[row.id] || {};
+  //           Object.values(columnFieldKeys).forEach((fieldKey) => {
+  //             newFormData[row.id][fieldKey] = apiRowData[fieldKey] ?? '';
+  //           });
+  //         }
+  //       });
+  //       setFormData((prev) => ({ ...prev, ...newFormData }));
+  //     }
+  //   }, [initialDataFromApi]);
+
+  //   const debouncedSetFormData = useCallback(
+  //     debounce((rowId, fieldKey, value) => {
+  //       setFormData((prev) => ({
+  //         ...prev,
+  //         [rowId]: { ...prev[rowId], [fieldKey]: value },
+  //       }));
+  //     }, 100),
+  //     []
+  //   );
+
+  const handleChange = (rowId, fieldKey, value) => {
+    if (
+      value === '' ||
+      /^-?\d*\.?\d{0,2}$/.test(value) ||
+      (value === '-' && !(formData[rowId]?.[fieldKey]?.length > 0))
+    ) {
+      setFormData((prev) => ({
+        ...prev,
+        [rowId]: { ...prev[rowId], [fieldKey]: value },
+      }));
+    }
+  };
+
+  const getNum = (value) => parseFloat(value) || 0;
+
+  const calculatedData = useMemo(() => {
+    const newCalculatedData = {};
+
+    rowDefinitionsConfig.forEach((row) => {
+      if (row.type === 'entry' || row.type === 'total') {
+        newCalculatedData[row.id] = {};
+        const currentRowFormData = formData[row.id] || {}; // Data from state for 'entry' rows
+
+        if (row.type === 'entry') {
+          // Step 1: Populate newCalculatedData with direct input values using colX keys
+          Object.entries(columnFieldKeys).forEach(([colKeyAlias, fieldKeyInFormData]) => {
+            newCalculatedData[row.id][colKeyAlias] = currentRowFormData[fieldKeyInFormData] ?? '';
+          });
+          // Step 2: Calculate derived columns (col4, col7, etc.)
+          const col1 = getNum(newCalculatedData[row.id].col1);
+          const col2 = getNum(newCalculatedData[row.id].col2);
+          const col3 = getNum(newCalculatedData[row.id].col3);
+          newCalculatedData[row.id].col4 = (col1 - col2 + col3).toFixed(2);
+
+          const col5 = getNum(newCalculatedData[row.id].col5);
+          const col6 = getNum(newCalculatedData[row.id].col6);
+          newCalculatedData[row.id].col7 = (getNum(newCalculatedData[row.id].col4) + col5 + col6).toFixed(2);
+
+          const col8 = getNum(newCalculatedData[row.id].col8);
+          const col9 = getNum(newCalculatedData[row.id].col9);
+          newCalculatedData[row.id].col10 = (col8 + col9).toFixed(2);
+
+          const col11 = getNum(newCalculatedData[row.id].col11);
+          const col12 = getNum(newCalculatedData[row.id].col12);
+          newCalculatedData[row.id].col13 = (getNum(newCalculatedData[row.id].col10) + col11 - col12).toFixed(2);
+
+          const col14 = getNum(newCalculatedData[row.id].col14);
+          newCalculatedData[row.id].col15 = (
+            getNum(newCalculatedData[row.id].col7) +
+            getNum(newCalculatedData[row.id].col13) +
+            col14
+          ).toFixed(2);
+        } else if (row.type === 'total') {
+          // Calculate for total rows by summing corresponding colX keys from subItemIds
+          allColumnKeys.forEach((colKeyToSum) => {
+            let sum = 0;
+            row.subItemIds.forEach((subItemId) => {
+              sum += getNum(newCalculatedData[subItemId]?.[colKeyToSum]);
+            });
+            newCalculatedData[row.id][colKeyToSum] = sum.toFixed(2);
+          });
+          // For total rows, re-calculate derived columns based on their summed components
+          // This ensures consistency if summed inputs lead to different derived totals
+          const t_col1 = getNum(newCalculatedData[row.id].col1);
+          const t_col2 = getNum(newCalculatedData[row.id].col2);
+          const t_col3 = getNum(newCalculatedData[row.id].col3);
+          newCalculatedData[row.id].col4 = (t_col1 - t_col2 + t_col3).toFixed(2);
+
+          const t_col5 = getNum(newCalculatedData[row.id].col5);
+          const t_col6 = getNum(newCalculatedData[row.id].col6);
+          newCalculatedData[row.id].col7 = (getNum(newCalculatedData[row.id].col4) + t_col5 + t_col6).toFixed(2);
+
+          const t_col8 = getNum(newCalculatedData[row.id].col8);
+          const t_col9 = getNum(newCalculatedData[row.id].col9);
+          newCalculatedData[row.id].col10 = (t_col8 + t_col9).toFixed(2);
+
+          const t_col11 = getNum(newCalculatedData[row.id].col11);
+          const t_col12 = getNum(newCalculatedData[row.id].col12);
+          newCalculatedData[row.id].col13 = (getNum(newCalculatedData[row.id].col10) + t_col11 - t_col12).toFixed(2);
+
+          const t_col14 = getNum(newCalculatedData[row.id].col14);
+          newCalculatedData[row.id].col15 = (
+            getNum(newCalculatedData[row.id].col7) +
+            getNum(newCalculatedData[row.id].col13) +
+            t_col14
+          ).toFixed(2);
+        }
+      }
+    });
+    return newCalculatedData;
+  }, [formData]);
+
+  useEffect(() => {
+    const errors = [];
+    const totalsA1 = calculatedData['A1_total'];
+    const totalsA2 = calculatedData['A2_total'];
+    const totalsA3 = calculatedData['A3_grand_total'];
+    const totalsA4 = calculatedData['A4_total'];
+
+    if (totalsA1 && totalsA2 && totalsA3 && totalsA4) {
+      const colsToValidateEquality = ['col7', 'col13', 'col15'];
+      colsToValidateEquality.forEach((colKey) => {
+        const valA1 = getNum(totalsA1[colKey]);
+        const valA2 = getNum(totalsA2[colKey]);
+        const valA3 = getNum(totalsA3[colKey]);
+        const valA4 = getNum(totalsA4[colKey]);
+        // Check with a small tolerance for floating point issues
+        const tolerance = 0.001;
+        if (
+          !(
+            Math.abs(valA1 - valA2) < tolerance &&
+            Math.abs(valA2 - valA3) < tolerance &&
+            Math.abs(valA3 - valA4) < tolerance
+          )
+        ) {
+          errors.push(
+            `Mismatch in totals for Column ${colKey.replace('col', '')}: A-1 (${valA1.toFixed(
+              2
+            )}), A-2 (${valA2.toFixed(2)}), A-3 (${valA3.toFixed(2)}), A-4 (${valA4.toFixed(2)}) must be equal.`
+          );
+        }
+      });
+    }
+    setValidationErrors(errors);
+  }, [calculatedData]);
+
+  const buildPayload = (isSaveOperation) => {
+    const payload = {
+      circleCode: '021',
+      quarterEndDate: '31/03/2025',
+      userId: '1111111',
+      reportId: '125911',
+      reportMasterId: '310021',
+      reportName: 'Schedule9C PROVISION',
+      status: isSaveOperation ? '11' : '21',
+      save: isSaveOperation,
+    };
+    rowDefinitionsConfig.forEach((row) => {
+      if (row.type === 'entry' && row.modelSuffix) {
+        const rowInputData = formData[row.id] || {};
+        Object.entries(columnFieldKeys).forEach(([_, fieldKeyInFormData]) => {
+          const backendFieldName = `${fieldKeyInFormData}${row.modelSuffix}`;
+          payload[backendFieldName] = parseFloat(rowInputData[fieldKeyInFormData] || 0).toFixed(2);
+        });
+      }
+    });
+    return payload;
+  };
+
+  const handleSave = async () => {
+    try {
+      const payload = buildPayload(true);
+      const response = await callApi('/Maker/submitNineC', payload, 'POST');
+      if (response && response.includes('~11')) {
+        showSnackbar('Data saved successfully', 'success');
+      } else {
+        showSnackbar('Save failed. Please try again.', 'error');
+      }
+    } catch (error) {
+      console.error(error);
+      showSnackbar('An error occurred while saving.', 'error');
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (validationErrors.length > 0) {
+      showSnackbar('Please correct validation errors.', 'error');
+      return;
+    }
+    try {
+      const payload = buildPayload(false);
+      const response = await callApi('/Maker/submitNineC', payload, 'POST');
+      if (response && response.includes('~21')) {
+        showSnackbar('Form submitted successfully', 'success');
+      } else {
+        showSnackbar('Submit failed. Please try again.', 'error');
+      }
+    } catch (error) {
+      console.error(error);
+      showSnackbar('An error occurred while submitting.', 'error');
+    }
+  };
+  const columnHeaders = [
+    {
+      label: `Opening Balance of Provisions <br>for Current Year (closing <br>balance ${previousYear})<br>Rs. P`,
+      key: 'col1',
+    },
+    { label: 'Write-off during the <br>current year for advances only<br>Rs. P', key: 'col2' },
+    { label: 'Addition/Reduction on <br>Account of Exchange <br>Fluctuation (only for IBG) <br>Rs. P', key: 'col3' },
+    {
+      label: 'Net (Adjusted) Opening <br>Balance of Provisions for <br>Current Year <br>Rs. P<br><b>4=(1-2+3)</b>',
+      key: 'col4',
+      isCalculated: true,
+    },
+    { label: 'Additions during <br>the Current Year <br>Rs. P', key: 'col5' },
+    {
+      label:
+        'Addition/Reduction in <br>Depreciation on Account of <br>Exchange Difference in RALOO <br>Rates & Exchange Rates used <br>for P&L (only for IBG)',
+      key: 'col6',
+    },
+    {
+      label: 'Closing balance of Provision <br>at the end of Current Year <br>Rs. P<br><b>7=(4+5+6)</b>',
+      key: 'col7',
+      isCalculated: true,
+    },
+    {
+      label: `Opening Balance of LICRA <br> for Current Year ( prev. year <br>closing balance -write-off ) <br>Rs. P`,
+      key: 'col8',
+    },
+    { label: 'Addition/Reduction on <br> Account of Exchange <br>Fluctuation (only for IBG) <br>Rs. P', key: 'col9' },
+    {
+      label: 'Net (Adjusted) Opening<br> Balance of Provisions for <br>Current Year <br>Rs. P<br><b>10=(8+9)</b>',
+      key: 'col10',
+      isCalculated: true,
+    },
+    { label: 'Additions during <br>the Current Year <br>Rs. P', key: 'col11' },
+    { label: 'Deductions /Reversal <br>during the Current Year <br>Rs. P', key: 'col12' },
+    {
+      label: 'Closing balance at <br>the end of Current Year <br>Rs. P<br><b>13=(10+11-12)</b>',
+      key: 'col13',
+      isCalculated: true,
+    },
+    { label: `Interest Suspense<br> Account As on ${displayQuarterDate} <br>Rs. P`, key: 'col14' },
+    {
+      label: 'Total Provision+LICRA+<br>Interest Suspense<br> Rs.P<br><b>15=(7+13+14)</b>',
+      key: 'col15',
+      isCalculated: true,
+    },
+    { label: `DICGC /ECGC Claims Recd <br>as on ${displayQuarterDate} <br>Rs. P`, key: 'col16' },
+    {
+      label: `Provision on Restructured <br>Standard Asset as on <br>${displayQuarterDate} (included in total <br>Provision in Column 7)`,
+      key: 'col17',
+    },
+    {
+      label: `LICRA on Restructured <br>Standard Asset as on ${displayQuarterDate} <br>(included in total<br> LICRA in Column 13)`,
+      key: 'col18',
+    },
   ];
 
-  editableRowSuffixes.forEach((suffix) => {
-    calculatedData = calculateRowTotals(calculatedData, suffix);
-  });
-
-  nonTotalBaseFieldKeys.forEach((key) => {
-    calculatedData[`${key}7`] = sumAcrossRows(calculatedData, key, ['3', '4', '36', '5', '6']);
-    calculatedData[`${key}12`] = sumAcrossRows(calculatedData, key, ['37', '9', '33', '10', '11']);
-    calculatedData[`${key}13`] = subtractAcrossRows(calculatedData, key, '7', '12');
-    calculatedData[`${key}14`] = sumAcrossRows(calculatedData, key, ['1', '13']);
-    calculatedData[`${key}22`] = sumAcrossRows(calculatedData, key, ['18', '34', '38', '19', '20', '21', '39']);
-    calculatedData[`${key}27`] = sumAcrossRows(calculatedData, key, ['40', '24', '25', '26']);
-    calculatedData[`${key}28`] = subtractAcrossRows(calculatedData, key, '22', '27');
-    calculatedData[`${key}29`] = subtractAcrossRows(calculatedData, key, '14', '28');
-    calculatedData[`${key}31`] = subtractAcrossRows(calculatedData, key, '9', '24');
-
-    const val30 = p(`${key}30`);
-    const val31 = p(calculatedData[`${key}31`]);
-    const val35 = p(`${key}35`);
-    calculatedData[`${key}32`] = parseAndFormat(val30 - (val31 + val35));
-  });
-
-  const aggregatedRowSuffixes = ['7', '12', '13', '14', '22', '27', '28', '29', '31', '32'];
-  aggregatedRowSuffixes.forEach((suffix) => {
-    calculatedData = calculateRowTotals(calculatedData, suffix);
-  });
-
-  return calculatedData;
-};
-
-// Initial state structure generation
-const generateInitialFormDataStructure = () => {
-  const baseForm = {
-    particulars3: 'Cost of new items put to use upto 3rd October 2024',
-    particulars4: 'Cost of new items put to use during 4th October 2024 to 31st March 2025',
-    save: true,
-    finyearOne: '2024',
-    finyearTwo: '2025',
-    circleCode: '001',
-    quarterEndDate: '31/03/2025',
-    userId: '1111111',
-    reportName: 'Schedule 10',
-    reportId: null,
-    reportMasterId: '310010',
-    status: null,
-  };
-  const initialNumericFields = {};
-  rowSuffixes.forEach((suffix) => {
-    baseFieldKeys.forEach((key) => {
-      initialNumericFields[`${key}${suffix}`] = '0.00';
-    });
-  });
-  return { ...baseForm, ...initialNumericFields };
-};
-// --- End of Helper Functions ---
-
-
-const Schedule10 = () => {
-  // Initialize with basic structure, calculations will be deferred
-  const [formData, setFormData] = useState(generateInitialFormDataStructure);
-  const [isLoading, setIsLoading] = useState(true); // For initial deferred calculation
-  const [isRecalculating, setIsRecalculating] = useState(false); // For subsequent debounced calculations
-
-  const debounceTimeoutRef = useRef(null);
-
-  // Effect to perform initial calculations AFTER component first paints
-  useEffect(() => {
-    setIsLoading(true);
-    const timerId = setTimeout(() => {
-      // Get the initially structured data (mostly "0.00" for numeric fields)
-      const initialData = generateInitialFormDataStructure();
-      // Perform heavy calculations on the main thread
-      const fullyCalculatedData = performAllCalculations(initialData);
-      setFormData(fullyCalculatedData);
-      setIsLoading(false);
-    }, 50); // Small delay (e.g., 50ms) to allow UI to paint before heavy calc
-
-    return () => clearTimeout(timerId); // Cleanup timeout if component unmounts
-  }, []); // Empty dependency array ensures this runs only once on mount
-
-  const year1 = formData.finyearOne ? parseInt(formData.finyearOne) : new Date().getFullYear();
-  const currentYearEnd = formData.finyearTwo;
-
-  const handleChange = useCallback((e) => {
-    const { name, value } = e.target;
-    const regex = /^-?\d*\.?\d{0,2}$/;
-
-    if (value === '' || regex.test(value) || value === '-') {
-      // Optimistic UI update for the specific input field for responsiveness
-      setFormData((prevData) => ({
-        ...prevData,
-        [name]: value,
-      }));
-
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-
-      setIsRecalculating(true); // Show recalculating state immediately
-      debounceTimeoutRef.current = setTimeout(() => {
-        setFormData((currentFormData) => {
-          // Perform all calculations based on the current state of formData
-          // This currentFormData will include the latest optimistic user input
-          const newCalculatedData = performAllCalculations(currentFormData);
-          setIsRecalculating(false); // Hide recalculating state
-          return newCalculatedData;
-        });
-      }, 300); // Debounce for 300ms
-    }
-  }, []); // No dependencies needed as setFormData and timeoutRef are stable
-
-  const columnDefinitions = useMemo(() => [
-    { id: 'stcNstaff', header: (<>i) At STCs & Staff Colleges <br /> (For Local Head Office only)</>) },
-    { id: 'offResidenceA', header: "ii) At Officers' Residences" },
-    { id: 'otherPremisesA', header: 'iii) At Other Premises' },
-    { id: 'electricFitting', header: (<>iv) Electric Fittings <br /> (include electric wiring, <br /> switches, sockets, other <br /> fittings & fans etc.)</>) },
-    { id: 'totalA', header: 'TOTAL (A) (i+ii+iii+iv)', isReadOnly: true },
-    { id: 'computers', header: 'i) Computer Hardware' },
-    { id: 'compSoftwareInt', header: (<>a. Computer Software <br /> (forming integral part of <br /> Hardware)</>) },
-    { id: 'compSoftwareNonint', header: (<>b. Computer Software <br /> (not forming integral <br /> of Hardware)</>) },
-    { id: 'compSoftwareTotal', header: (<>ii) Computer Software <br /> Total (a+b)</>), isReadOnly: true },
-    { id: 'motor', header: 'iii) Motor Vehicles' },
-    { id: 'offResidenceB', header: "a) At Officers' Residences" },
-    { id: 'stcLho', header: (<>b) At STCs <br /> (For Local Head Office)</>) },
-    { id: 'otherPremisesB', header: 'c) At other Premises' },
-    { id: 'otherMachineryPlant', header: (<>iv) Other Machinery & Plant <br />( a+b+c)</>), isReadOnly: true },
-    { id: 'totalB', header: 'TOTAL (B= i+ii+iii+iv)', isReadOnly: true },
-    { id: 'totalFurnFix', header: (<> Total Furniture & Fixtures <br /> (A+B)</>), isReadOnly: true },
-    { id: 'landNotRev', header: (<>(a) Land (Not Revalued): <br /> Cost</>) },
-    { id: 'landRev', header: (<>(b) Land (Revalued): <br /> Cost</>) },
-    { id: 'landRevEnh', header: (<>(c) Land (Revalued): <br /> Enhancement due to <br /> Revaluation</>) },
-    { id: 'offBuildNotRev', header: (<>(d) Office Building <br /> (Not revalued): Cost</>) },
-    { id: 'offBuildRev', header: (<>(e) Office Building <br /> (Revalued): Cost</>) },
-    { id: 'offBuildRevEnh', header: (<>(f) Office Building <br /> (Revalued): Enhancement <br /> due to Revaluation</>) },
-    { id: 'residQuartNotRev', header: (<>(g) Residential Building <br /> (Not revalued): Cost</>) },
-    { id: 'residQuartRev', header: (<>(h) Residential Building <br /> (Revalued): Cost</>) },
-    { id: 'residQuartRevEnh', header: (<>(i) Residential Building <br /> (Revalued): Enhancement <br /> due to Revaluation</>) },
-    { id: 'premisTotal', header: (<>(j) Premises Total <br /> (a+b+d+e+g+h)</>), isReadOnly: true },
-    { id: 'revtotal', header: (<>(k) Revaluation Total <br /> (c+f+i)</>), isReadOnly: true },
-    { id: 'totalC', header: 'TOTAL (C=j+k)', isReadOnly: true },
-    { id: 'premisesUnderCons', header: (<>(D) Projects under <br /> construction</>) },
-    { id: 'grandTotal', header: (<>Grand Total <br /> (A + B + C + D)</>), isReadOnly: true },
-  ], []);
-
-  const rowDefinitions = useMemo(() => [
-    { srNo: 'A', particular: `Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March ${year1}`, suffix: '1', type: 'data', isSectionHeader: true },
-    { type: 'subheader', label: 'Addition', suffix: 'sh1' }, // Added unique suffixes for keys
-    { type: 'subsubsectionheader', srNo: '(a)', particular: 'Original cost of items put to use during the year:', suffix: 'ssh1'},
-    { srNo: '(i)', particular: formData.particulars3, suffix: '3', type: 'data', parentSrNo: '(a)' },
-    { srNo: '(ii)', particular: formData.particulars4, suffix: '4', type: 'data', parentSrNo: '(a)' },
-    { srNo: '(b)', particular: 'Increase in value of Fixed Assets due to Current Revaluation', suffix: '36', type: 'data'},
-    { srNo: '(c)', particular: 'Original cost of items transferred from other Circles/Groups/CC Departments', suffix: '5', type: 'data'},
-    { srNo: '(d)', particular: 'Original cost of items transferred from other branches of the same Circle', suffix: '6', type: 'data'},
-    { srNo: 'I', particular: 'Total [a(i)+a(ii)+b+c+d]', suffix: '7', type: 'total', isTotalRow: true, isReadOnly: true },
-    { type: 'subheader', label: 'Deduction', suffix: 'sh2' },
-    { srNo: '(i)', particular: 'Short Valuation charged to Revaluation Reserve due to Current Downward Revaluation', suffix: '37', type: 'data', parentSrNo: 'Deduction'},
-    { srNo: '(ii)', particular: 'Original cost of items sold/ discarded during the year', suffix: '9', type: 'data', parentSrNo: 'Deduction'},
-    { srNo: '(iii)', particular: 'Projects under construction capitalised during the year', suffix: '33', type: 'data', parentSrNo: 'Deduction'},
-    { srNo: '(iv)', particular: 'Original cost of items transferred to other Circles/Groups/CC Departments', suffix: '10', type: 'data', parentSrNo: 'Deduction'},
-    { srNo: '(v)', particular: 'Original cost of items transferred to other branches in the same circle', suffix: '11', type: 'data', parentSrNo: 'Deduction'},
-    { srNo: 'II', particular: 'Total (i+ii+iii+iv+v)', suffix: '12', type: 'total', isTotalRow: true, isReadOnly: true },
-    { srNo: 'B', particular: 'Net Addition (I-II)', suffix: '13', type: 'total', isTotalRow: true, isReadOnly: true, isSectionHeader: true },
-    { srNo: 'C', particular: `Total Original Cost/ Revalued Value as at 31st March ${currentYearEnd} (A+B)`, suffix: '14', type: 'total', isTotalRow: true, isReadOnly: true, isSectionHeader: true },
-    { type: 'subheader', label: 'Depreciation', suffix: 'sh3' },
-    { srNo: '(i)', particular: `Depreciation upto the end of previous year i.e. 31st March ${year1}`, suffix: '18', type: 'data', parentSrNo: 'Depreciation'},
-    { srNo: '(ii)', particular: `Short Valuation charged to depreciation upto end of previous year i.e.31st March ${year1}`, suffix: '34', type: 'data', parentSrNo: 'Depreciation'},
-    { srNo: '(iii)', particular: 'Depreciation on repatriation of Officials from Subsidiaries/ Associates', suffix: '38', type: 'data', parentSrNo: 'Depreciation'},
-    { srNo: '(iv)', particular: 'Depreciation transferred from other Circles/Groups/CC Departments', suffix: '19', type: 'data', parentSrNo: 'Depreciation'},
-    { srNo: '(v)', particular: 'Depreciation transferred from other branches of the same circle.', suffix: '20', type: 'data', parentSrNo: 'Depreciation'},
-    { srNo: '(vi)', particular: 'Depreciation charged during the current year', suffix: '21', type: 'data', parentSrNo: 'Depreciation'},
-    { srNo: '(vii)', particular: 'Short Valuation charged to Depreciation during the current year due to Current Revaluation', suffix: '39', type: 'data', parentSrNo: 'Depreciation'},
-    { srNo: 'D', particular: 'Total (i+ii+iii+iv+v+vi+vii)', suffix: '22', type: 'total', isTotalRow: true, isReadOnly: true},
-    { type: 'subheader', label: 'Less :', suffix: 'sh4' },
-    { srNo: '(i)', particular: 'Past Short Valuation credited to Depreciation during the current year due to Current Upward Revaluation', suffix: '40', type: 'data', parentSrNo: 'Less'},
-    { srNo: '(ii)', particular: 'Depreciation previously provided on fixed assets sold/ discarded', suffix: '24', type: 'data', parentSrNo: 'Less'},
-    { srNo: '(iii)', particular: 'Depreciation transferred to other Circles/Groups/CC Departments', suffix: '25', type: 'data', parentSrNo: 'Less'},
-    { srNo: '(iv)', particular: 'Depreciation transferred to other branches of the same Circle.', suffix: '26', type: 'data', parentSrNo: 'Less'},
-    { srNo: 'E', particular: 'Total (i+ii+iii+iv)', suffix: '27', type: 'total', isTotalRow: true, isReadOnly: true },
-    { srNo: 'F', particular: 'Net Depreciation (D-E)', suffix: '28', type: 'total', isTotalRow: true, isReadOnly: true },
-    { srNo: 'G', particular: `Net Book Value as at 31st March ${currentYearEnd} (C-F)`, suffix: '29', type: 'total', isTotalRow: true, isReadOnly: true },
-    { srNo: 'H', particular: 'Sale Price of fixed assets', suffix: '30', type: 'data' },
-    { srNo: 'I', particular: 'Book Value of fixed assets sold [II (ii)-E(ii)]', suffix: '31', type: 'total', isTotalRow: true, isReadOnly: true },
-    { srNo: 'J', particular: 'GST on Sale of fixed assets', suffix: '35', type: 'data' },
-    { srNo: 'K', particular: 'Profit/ (Loss) on sale of fixed assets [H-(I+J)]', suffix: '32', type: 'total', isTotalRow: true, isReadOnly: true },
-  ], [year1, currentYearEnd, formData.particulars3, formData.particulars4]);
-
-
-  const RenderInputCell = React.memo(({ fieldName, isReadOnly }) => (
-    <StyledTableCell>
-      <FormInput
-        name={fieldName}
-        value={formData[fieldName] === undefined ? '0.00' : formData[fieldName]}
-        onChange={handleChange}
-        inputProps={{ style: { textAlign: 'right' } }}
-        sx={{ width: '100px', '& input': { textAlign: 'right', padding: '6px 8px' }, backgroundColor: isReadOnly ? '#f0f0f0' : 'white' }}
-        readOnly={isReadOnly} variant="outlined" size="small"
-      />
-    </StyledTableCell>
-  ));
-  RenderInputCell.displayName = 'RenderInputCell';
-
-
-  // Render loading state for initial calculation
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 200px)' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <CircularProgress />
-        <Box sx={{ ml: 2 }}>Loading Schedule Data & Performing Initial Calculations...</Box>
+        <Typography sx={{ ml: 2 }}>Loading Data...</Typography>
       </Box>
     );
   }
 
   return (
     <Box sx={{ p: 1, width: '100%', overflowX: 'hidden' }}>
-      {isRecalculating && (
-        <Box sx={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 2000, p: 2, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1, display: 'flex', alignItems: 'center' }}>
-          <CircularProgress size={20} sx={{mr:1}} /> Recalculating...
-        </Box>
+      {/* <Typography variant="h5" gutterBottom sx={{ textAlign: 'center', mb: 2 }}>
+        Schedule 9C - Provisions
+      </Typography> */}
+      {validationErrors.length > 0 && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <ul style={{ margin: 0, paddingLeft: '1.2em' }}>
+            {validationErrors.map((e, i) => (
+              <li key={i}>{e}</li>
+            ))}
+          </ul>
+        </Alert>
       )}
-      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)' }}>
-        <Table sx={{ minWidth: 3000 }} aria-label="schedule 10 table" stickyHeader>
+      <TableContainer component={Paper} sx={{ maxHeight: 'calc(120vh - 250px)' }}>
+        {/* <Table stickyHeader sx={{ minWidth: 3000 }}> */}
+        <Table stickyHeader sx={{ minWidth: 3000 }}>
           <TableHead>
-            <TableRow>
-              <StyledTableCell rowSpan={2}><b>Sr.No</b></StyledTableCell>
-              <StyledTableCell rowSpan={2}><b>Particulars</b></StyledTableCell>
-              <StyledTableCell colSpan={5}><b>(A) FURNITURE & FITTINGS</b></StyledTableCell>
-              <StyledTableCell colSpan={10}><b>(B) MACHINERY & PLANT</b></StyledTableCell>
-              <StyledTableCell rowSpan={2}><b>Total Furniture & Fixtures <br /> (A+B)</b></StyledTableCell>
-              <StyledTableCell colSpan={12}><b>(C) PREMISES</b></StyledTableCell>
-              <StyledTableCell rowSpan={2}><b>(D) Projects under <br /> construction</b></StyledTableCell>
-              <StyledTableCell rowSpan={2}><b>Grand Total <br /> (A + B + C + D)</b></StyledTableCell>
+            <TableRow
+              sx={{
+                position: 'sticky',
+                left: 0,
+                zIndex: 1101,
+                //backgroundColor: '#f5f5f5' /* theme.palette.background.default or similar */,
+              }}
+            >
+              <StyledTableCell
+                rowSpan={3}
+                sx={{
+                  position: 'sticky',
+                  left: 0,
+                  top: 0,
+                  zIndex: 1100,
+                  // backgroundColor: '#f5f5f5' /* theme.palette.background.default or similar */,
+                }}
+              >
+                <b>Classification of PROVISION</b>
+                <br />
+                (Excluding provision relating to : non-advance <br />
+                related items debited to Recalled Assets and interest free Staff Advances ) <br />
+                <b>(A.1=A.2=A.3=A.4)</b>
+              </StyledTableCell>
+              <StyledTableCell colSpan={8}>
+                <b>PROVISIONS</b>
+              </StyledTableCell>
+              <StyledTableCell colSpan={8}>
+                <b>Liability on Interest Capitalisation on Restructurred Account(LICRA)</b>
+              </StyledTableCell>
+              <StyledTableCell colSpan={5}>
+                <b>TOTAL PROVISION AND OTHER DETAILS</b>
+              </StyledTableCell>
             </TableRow>
             <TableRow>
-              {columnDefinitions.slice(0, 5).map((col) => (<StyledTableCell key={col.id}><b>{col.header}</b></StyledTableCell>))}
-              {columnDefinitions.slice(5, 15).map((col) => (<StyledTableCell key={col.id}><b>{col.header}</b></StyledTableCell>))}
-              {/* Total Furn & Fix (column index 15) is covered by rowSpan */}
-              {columnDefinitions.slice(16, 28).map((col) => (<StyledTableCell key={col.id}><b>{col.header}</b></StyledTableCell>))}
-              {/* D Projects (index 28) & Grand Total (index 29) are covered by rowSpan */}
+              {columnHeaders.map((ch) => (
+                <StyledTableCell
+                  key={ch.key}
+                  sx={{
+                    position: 'sticky',
+                    top: 42.5, // adjust if row height differs
+                    zIndex: 1100,
+                    //backgroundColor: '#000',
+                    //color: '#fff',
+                    textAlign: 'center',
+                    whiteSpace: 'normal',
+                  }}
+                  dangerouslySetInnerHTML={{ __html: ch.label }}
+                />
+              ))}
+            </TableRow>
+            <TableRow>
+              {allColumnKeys.map((key, idx) => (
+                <StyledTableCell
+                  key={`colnum_${idx}`}
+                  sx={{
+                    position: 'sticky',
+                    top: 228.5, // 56px + 56px
+                    zIndex: 1000,
+                    //backgroundColor: '#000',
+                    //color: '#fff',
+                    textAlign: 'center',
+                  }}
+                >
+                  <b>{idx + 1}</b>
+                </StyledTableCell>
+              ))}
             </TableRow>
           </TableHead>
           <TableBody>
-            {rowDefinitions.map((row, rowIndex) => {
-              // Ensure unique keys for subheader/subsubsectionheader rows as well
-              const rowKey = row.suffix || `row-${rowIndex}-${row.type || 'unknown'}`;
-              if (row.type === 'subheader' || row.type === 'subsubsectionheader') {
+            {rowDefinitionsConfig.map((row) => {
+              const displayRowData = calculatedData[row.id] || {};
+              const isTotalOrHeader =
+                row.type === 'total' || row.type === 'sectionHeader' || row.type === 'subSectionHeader';
+
+              if (row.type === 'sectionHeader' || row.type === 'subSectionHeader') {
                 return (
                   <StyledTableRow
-                    key={rowKey}
-                    $issubsectionheader={row.type === 'subheader'}
-                    $issubsubsectionheader={row.type === 'subsubsectionheader'}
+                    key={row.id}
+                    isSectionHeader={row.type === 'sectionHeader'}
+                    isSubSectionHeader={row.type === 'subSectionHeader'}
                   >
-                    <StyledTableCell>{row.srNo || ''}</StyledTableCell>
-                    <StyledTableCell colSpan={columnDefinitions.length + 1}> {/* +1 for the particulars column itself */}
-                      <b>{row.label || row.particular}</b>
+                    <StyledTableCell
+                      //colSpan={allColumnKeys.length + 1}
+                      sx={{
+                        textAlign: 'left', // Align text to the left
+                        position: 'sticky', // Make the section header sticky
+                        left: 0, // Stick to the left
+                        zIndex: 100, // Ensure it appears above other elements
+                        // backgroundColor: row.type === 'sectionHeader' ? '#e0e0e0' : '#f0f0f0',
+                      }}
+                    >
+                      {row.label}
                     </StyledTableCell>
-                  </StyledTableRow>
-                );
-              } else if (row.type === 'data' || row.type === 'total') {
-                return (
-                  <StyledTableRow
-                    key={rowKey}
-                    $istotalrow={row.isTotalRow}
-                    $issectionheader={row.isSectionHeader}
-                  >
-                    <StyledTableCell style={row.parentSrNo && !row.isSectionHeader ? { textAlign: 'right' } : row.isSectionHeader ? { textAlign: 'left' } : { textAlign: 'center' }}>
-                      <b>{row.srNo}</b>
-                    </StyledTableCell>
-                    <StyledTableCell><b>{row.particular}</b></StyledTableCell>
-                    {columnDefinitions.map((col) => (
-                      <RenderInputCell
-                        key={`${row.suffix}-${col.id}`}
-                        fieldName={`${col.id}${row.suffix}`}
-                        isReadOnly={row.isReadOnly || col.isReadOnly}
-                      />
-                    ))}
                   </StyledTableRow>
                 );
               }
-              return null;
+
+              return (
+                <StyledTableRow key={row.id} isTotalRow={row.type === 'total'}>
+                  <StyledTableCell
+                    sx={{
+                      textAlign: 'left',
+                      fontWeight: row.type === 'total' ? 'bold' : 'normal',
+                      fontStyle: row.type === 'entry' ? 'normal' : 'italic',
+                      position: 'sticky', // Make the first column sticky
+                      left: 0, // Stick to the left
+                      zIndex: 99,
+                      // backgroundColor: row.type === 'total' ? '#f5f5f5' : row.type === 'entry' ? '#ffffff' : '#f0f0f0',
+                    }}
+                  >
+                    {row.label}
+                  </StyledTableCell>
+                  {allColumnKeys.map((colKey) => {
+                    const isCalculatedField = calculatedColKeys.includes(colKey);
+                    const isEditableField = row.type === 'entry' && !isCalculatedField;
+                    const fieldKeyInFormData = columnFieldKeys[colKey]; // This is undefined for calculated columns
+
+                    const valueToDisplayInTextField = displayRowData[colKey] ?? '';
+
+                    return (
+                      <StyledTableCell key={`${row.id}-${colKey}`}>
+                        {/* <TextField
+                          variant="outlined"
+                          size="small"
+                          value={valueToDisplayInTextField}
+                          onChange={
+                            isEditableField
+                              ? (e) => handleChange(row.id, fieldKeyInFormData, e.target.value)
+                              : undefined
+                          }
+                          disabled={!isEditableField}
+                          InputProps={{
+                            readOnly: !isEditableField,
+                            sx: {
+                              textAlign: 'right',
+                              '& input': { textAlign: 'right', padding: '6px 8px' },
+                              backgroundColor: !isEditableField ? '#f0f0f0' : 'white', // Lighter grey for disabled
+                              color: (theme) => theme.palette.text.primary,
+                            },
+                          }}
+                          sx={{ width: '130px' }}
+                        /> */}
+
+                        <FormInput
+                          name={''}
+                          value={valueToDisplayInTextField}
+                          onChange={
+                            isEditableField
+                              ? (e) => handleChange(row.id, fieldKeyInFormData, e.target.value)
+                              : undefined
+                          }
+                          onBlur={() => {}}
+                          readOnly={!isEditableField}
+                          //  error={!!getFieldError(fieldName)}
+                          customStyles={{
+                            textAlign: 'right',
+                            '& input': { textAlign: 'right', padding: '6px 8px' },
+                            // backgroundColor: !isEditableField ? '#f0f0f0' : 'white', // Lighter grey for disabled
+                            // color: (theme) => theme.palette.text.primary,
+                            width: '200px',
+                          }}
+                          //  focus={focusedErrorField === fieldName}
+                          isNumeric={true} // Treat as numeric unless specified as integer
+                        />
+                      </StyledTableCell>
+                    );
+                  })}
+                </StyledTableRow>
+              );
             })}
           </TableBody>
         </Table>
       </TableContainer>
+      <Stack direction="row" spacing={2} sx={{ mt: 2, justifyContent: 'center' }}>
+        <Button variant="contained" color="warning" onClick={handleSave}>
+          Save
+        </Button>
+        <Button variant="contained" color="success" onClick={handleSubmit} disabled={validationErrors.length > 0}>
+          Submit
+        </Button>
+      </Stack>
     </Box>
   );
 };
 
-export default Schedule10;
+export default Schedule9CProvisionTable;
