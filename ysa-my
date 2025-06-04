@@ -1,5 +1,325 @@
-// FROM (this looks for the worker in the public root):
-// calculationWorkerRef.current = new Worker('/calculation.worker.js');
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import {
+  Table,
+  TableBody,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Box,
+  CircularProgress,
+} from '@mui/material';
+import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import { styled } from '@mui/material/styles';
+import FormInput from '../../../../common/components/ui/FormInput'; // Assuming path is correct
 
-// TO (this correctly references the co-located worker file):
-calculationWorkerRef.current = new Worker(new URL('./calculation.worker.js', import.meta.url));
+// Vite-specific worker import (ensure calculation.worker.js is in the same folder)
+import CalculationWorkerConstructor from './calculation.worker.js?worker';
+
+
+// Styled Components (No changes needed from your original)
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  fontSize: '0.875rem',
+  padding: '8px',
+  border: '1px solid #e0e0e0',
+  whiteSpace: 'nowrap',
+  [`&.${tableCellClasses.head}`]: {
+    backgroundColor: theme.palette.common.black,
+    color: theme.palette.common.white,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  [`&.${tableCellClasses.body}`]: {
+    color: theme.palette.text.primary,
+    backgroundColor: theme.palette.background.paper,
+    textAlign: 'left',
+  },
+}));
+
+const StyledTableRow = styled(TableRow)(
+  ({ theme, $istotalrow, $issectionheader, $issubsectionheader, $issubsubsectionheader }) => ({
+    backgroundColor: theme.palette.background.paper,
+    ...($issectionheader && { '& > td': { fontWeight: 'bold', textAlign: 'left' } }),
+    ...($issubsectionheader && { '& > td': { fontWeight: 'bold', fontStyle: 'italic', textAlign: 'left' } }),
+    ...($issubsubsectionheader && { '& > td': { textAlign: 'left' } }),
+    ...($istotalrow && { '& > td': { fontWeight: 'bold' } }),
+  })
+);
+
+// Constants needed for generateInitialFormDataStructure
+const baseFieldKeysForInit = [
+  'stcNstaff', 'offResidenceA', 'otherPremisesA', 'electricFitting', 'totalA',
+  'computers', 'compSoftwareInt', 'compSoftwareNonint', 'compSoftwareTotal', 'motor',
+  'offResidenceB', 'stcLho', 'otherPremisesB', 'otherMachineryPlant', 'totalB',
+  'totalFurnFix', 'landNotRev', 'landRev', 'landRevEnh', 'offBuildNotRev',
+  'offBuildRev', 'offBuildRevEnh', 'residQuartNotRev', 'residQuartRev', 'residQuartRevEnh',
+  'premisTotal', 'revtotal', 'totalC', 'premisesUnderCons', 'grandTotal',
+];
+const rowSuffixesForInit = [
+  '1', '3', '4', '5', '6', '7', '9', '10', '11', '12', '13', '14', '18', '19', '20',
+  '21', '22', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34',
+  '35', '36', '37', '38', '39', '40',
+];
+
+const generateInitialFormDataStructure = () => {
+  const baseForm = {
+    particulars3: 'Cost of new items put to use upto 3rd October 2024',
+    particulars4: 'Cost of new items put to use during 4th October 2024 to 31st March 2025',
+    save: true, finyearOne: '2024', finyearTwo: '2025', circleCode: '001',
+    quarterEndDate: '31/03/2025', userId: '1111111', reportName: 'Schedule 10',
+    reportId: null, reportMasterId: '310010', status: null,
+  };
+  const initialNumericFields = {};
+  rowSuffixesForInit.forEach((suffix) => {
+    baseFieldKeysForInit.forEach((key) => {
+      initialNumericFields[`${key}${suffix}`] = '0.00';
+    });
+  });
+  return { ...baseForm, ...initialNumericFields };
+};
+
+
+const Schedule10 = () => {
+  const [formData, setFormData] = useState(generateInitialFormDataStructure);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const [workerError, setWorkerError] = useState(null);
+
+  const calculationWorkerRef = useRef(null);
+  const debounceTimeoutRef = useRef(null);
+  const latestFormDataRef = useRef(formData);
+
+  useEffect(() => {
+    latestFormDataRef.current = formData;
+  }, [formData]);
+
+  useEffect(() => {
+    console.log('[Main] Initializing worker...');
+    calculationWorkerRef.current = new CalculationWorkerConstructor();
+
+    calculationWorkerRef.current.onmessage = (event) => {
+      const { type, data, error } = event.data;
+      console.log('[Main] Message from worker:', type, data, error);
+      if (type === 'CALCULATE_COMPLETE') {
+        setFormData(data);
+        setWorkerError(null);
+      } else if (type === 'CALCULATE_ERROR') {
+        setWorkerError(`Worker calculation error: ${error}`);
+        console.error(`[Main] Worker calculation error: ${error}`);
+      }
+      setIsLoading(false);
+      setIsRecalculating(false);
+    };
+
+    calculationWorkerRef.current.onerror = (errorEvent) => {
+      console.error('[Main] Worker instantiation or runtime error:', errorEvent);
+      setWorkerError(`Worker error: ${errorEvent.message || 'Unknown worker error'}`);
+      setIsLoading(false);
+      setIsRecalculating(false);
+    };
+
+    const initialData = generateInitialFormDataStructure();
+    setIsLoading(true);
+    setWorkerError(null);
+    console.log('[Main] Posting initial data to worker.');
+    calculationWorkerRef.current.postMessage({ type: 'CALCULATE', data: initialData });
+
+    return () => {
+      console.log('[Main] Terminating worker.');
+      if (calculationWorkerRef.current) {
+        calculationWorkerRef.current.terminate();
+      }
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const year1 = formData.finyearOne ? parseInt(formData.finyearOne) : new Date().getFullYear();
+  const currentYearEnd = formData.finyearTwo;
+
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
+    const regex = /^-?\d*\.?\d{0,2}$/;
+
+    if (value === '' || regex.test(value) || value === '-') {
+      setFormData((prevData) => ({ ...prevData, [name]: value }));
+
+      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+      setIsRecalculating(true);
+      setWorkerError(null); // Clear previous worker errors on new calculation
+
+      debounceTimeoutRef.current = setTimeout(() => {
+        if (calculationWorkerRef.current) {
+          console.log('[Main] Posting updated data to worker for recalculation.');
+          calculationWorkerRef.current.postMessage({ type: 'CALCULATE', data: latestFormDataRef.current });
+        } else {
+          console.warn('[Main] Worker not available for handleChange. This should not happen.');
+          setIsRecalculating(false); // Reset if worker isn't there
+        }
+      }, 300);
+    }
+  }, []); // Dependencies are stable refs and setters
+
+  const columnDefinitions = useMemo(() => [ /* ... Same as your original ... */
+    { id: 'stcNstaff', header: (<>i) At STCs & Staff Colleges <br /> (For Local Head Office only)</>) },
+    { id: 'offResidenceA', header: "ii) At Officers' Residences" },
+    { id: 'otherPremisesA', header: 'iii) At Other Premises' },
+    { id: 'electricFitting', header: (<>iv) Electric Fittings <br /> (include electric wiring, <br /> switches, sockets, other <br /> fittings & fans etc.)</>) },
+    { id: 'totalA', header: 'TOTAL (A) (i+ii+iii+iv)', isReadOnly: true },
+    { id: 'computers', header: 'i) Computer Hardware' },
+    { id: 'compSoftwareInt', header: (<>a. Computer Software <br /> (forming integral part of <br /> Hardware)</>) },
+    { id: 'compSoftwareNonint', header: (<>b. Computer Software <br /> (not forming integral <br /> of Hardware)</>) },
+    { id: 'compSoftwareTotal', header: (<>ii) Computer Software <br /> Total (a+b)</>), isReadOnly: true },
+    { id: 'motor', header: 'iii) Motor Vehicles' },
+    { id: 'offResidenceB', header: "a) At Officers' Residences" },
+    { id: 'stcLho', header: (<>b) At STCs <br /> (For Local Head Office)</>) },
+    { id: 'otherPremisesB', header: 'c) At other Premises' },
+    { id: 'otherMachineryPlant', header: (<>iv) Other Machinery & Plant <br />( a+b+c)</>), isReadOnly: true },
+    { id: 'totalB', header: 'TOTAL (B= i+ii+iii+iv)', isReadOnly: true },
+    { id: 'totalFurnFix', header: (<> Total Furniture & Fixtures <br /> (A+B)</>), isReadOnly: true },
+    { id: 'landNotRev', header: (<>(a) Land (Not Revalued): <br /> Cost</>) },
+    { id: 'landRev', header: (<>(b) Land (Revalued): <br /> Cost</>) },
+    { id: 'landRevEnh', header: (<>(c) Land (Revalued): <br /> Enhancement due to <br /> Revaluation</>) },
+    { id: 'offBuildNotRev', header: (<>(d) Office Building <br /> (Not revalued): Cost</>) },
+    { id: 'offBuildRev', header: (<>(e) Office Building <br /> (Revalued): Cost</>) },
+    { id: 'offBuildRevEnh', header: (<>(f) Office Building <br /> (Revalued): Enhancement <br /> due to Revaluation</>) },
+    { id: 'residQuartNotRev', header: (<>(g) Residential Building <br /> (Not revalued): Cost</>) },
+    { id: 'residQuartRev', header: (<>(h) Residential Building <br /> (Revalued): Cost</>) },
+    { id: 'residQuartRevEnh', header: (<>(i) Residential Building <br /> (Revalued): Enhancement <br /> due to Revaluation</>) },
+    { id: 'premisTotal', header: (<>(j) Premises Total <br /> (a+b+d+e+g+h)</>), isReadOnly: true },
+    { id: 'revtotal', header: (<>(k) Revaluation Total <br /> (c+f+i)</>), isReadOnly: true },
+    { id: 'totalC', header: 'TOTAL (C=j+k)', isReadOnly: true },
+    { id: 'premisesUnderCons', header: (<>(D) Projects under <br /> construction</>) },
+    { id: 'grandTotal', header: (<>Grand Total <br /> (A + B + C + D)</>), isReadOnly: true },
+  ], []);
+
+  const rowDefinitions = useMemo(() => [ /* ... Same as your original, ensure unique suffixes ... */
+    { srNo: 'A', particular: `Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March ${year1}`, suffix: '1', type: 'data', isSectionHeader: true },
+    { type: 'subheader', label: 'Addition', suffix: 'sh1' },
+    { type: 'subsubsectionheader', srNo: '(a)', particular: 'Original cost of items put to use during the year:', suffix: 'ssh1'},
+    { srNo: '(i)', particular: formData.particulars3, suffix: '3', type: 'data', parentSrNo: '(a)' },
+    { srNo: '(ii)', particular: formData.particulars4, suffix: '4', type: 'data', parentSrNo: '(a)' },
+    { srNo: '(b)', particular: 'Increase in value of Fixed Assets due to Current Revaluation', suffix: '36', type: 'data'},
+    { srNo: '(c)', particular: 'Original cost of items transferred from other Circles/Groups/CC Departments', suffix: '5', type: 'data'},
+    { srNo: '(d)', particular: 'Original cost of items transferred from other branches of the same Circle', suffix: '6', type: 'data'},
+    { srNo: 'I', particular: 'Total [a(i)+a(ii)+b+c+d]', suffix: '7', type: 'total', isTotalRow: true, isReadOnly: true },
+    { type: 'subheader', label: 'Deduction', suffix: 'sh2' },
+    { srNo: '(i)', particular: 'Short Valuation charged to Revaluation Reserve due to Current Downward Revaluation', suffix: '37', type: 'data', parentSrNo: 'Deduction'},
+    { srNo: '(ii)', particular: 'Original cost of items sold/ discarded during the year', suffix: '9', type: 'data', parentSrNo: 'Deduction'},
+    { srNo: '(iii)', particular: 'Projects under construction capitalised during the year', suffix: '33', type: 'data', parentSrNo: 'Deduction'},
+    { srNo: '(iv)', particular: 'Original cost of items transferred to other Circles/Groups/CC Departments', suffix: '10', type: 'data', parentSrNo: 'Deduction'},
+    { srNo: '(v)', particular: 'Original cost of items transferred to other branches in the same circle', suffix: '11', type: 'data', parentSrNo: 'Deduction'},
+    { srNo: 'II', particular: 'Total (i+ii+iii+iv+v)', suffix: '12', type: 'total', isTotalRow: true, isReadOnly: true },
+    { srNo: 'B', particular: 'Net Addition (I-II)', suffix: '13', type: 'total', isTotalRow: true, isReadOnly: true, isSectionHeader: true },
+    { srNo: 'C', particular: `Total Original Cost/ Revalued Value as at 31st March ${currentYearEnd} (A+B)`, suffix: '14', type: 'total', isTotalRow: true, isReadOnly: true, isSectionHeader: true },
+    { type: 'subheader', label: 'Depreciation', suffix: 'sh3' },
+    { srNo: '(i)', particular: `Depreciation upto the end of previous year i.e. 31st March ${year1}`, suffix: '18', type: 'data', parentSrNo: 'Depreciation'},
+    { srNo: '(ii)', particular: `Short Valuation charged to depreciation upto end of previous year i.e.31st March ${year1}`, suffix: '34', type: 'data', parentSrNo: 'Depreciation'},
+    { srNo: '(iii)', particular: 'Depreciation on repatriation of Officials from Subsidiaries/ Associates', suffix: '38', type: 'data', parentSrNo: 'Depreciation'},
+    { srNo: '(iv)', particular: 'Depreciation transferred from other Circles/Groups/CC Departments', suffix: '19', type: 'data', parentSrNo: 'Depreciation'},
+    { srNo: '(v)', particular: 'Depreciation transferred from other branches of the same circle.', suffix: '20', type: 'data', parentSrNo: 'Depreciation'},
+    { srNo: '(vi)', particular: 'Depreciation charged during the current year', suffix: '21', type: 'data', parentSrNo: 'Depreciation'},
+    { srNo: '(vii)', particular: 'Short Valuation charged to Depreciation during the current year due to Current Revaluation', suffix: '39', type: 'data', parentSrNo: 'Depreciation'},
+    { srNo: 'D', particular: 'Total (i+ii+iii+iv+v+vi+vii)', suffix: '22', type: 'total', isTotalRow: true, isReadOnly: true},
+    { type: 'subheader', label: 'Less :', suffix: 'sh4' },
+    { srNo: '(i)', particular: 'Past Short Valuation credited to Depreciation during the current year due to Current Upward Revaluation', suffix: '40', type: 'data', parentSrNo: 'Less'},
+    { srNo: '(ii)', particular: 'Depreciation previously provided on fixed assets sold/ discarded', suffix: '24', type: 'data', parentSrNo: 'Less'},
+    { srNo: '(iii)', particular: 'Depreciation transferred to other Circles/Groups/CC Departments', suffix: '25', type: 'data', parentSrNo: 'Less'},
+    { srNo: '(iv)', particular: 'Depreciation transferred to other branches of the same Circle.', suffix: '26', type: 'data', parentSrNo: 'Less'},
+    { srNo: 'E', particular: 'Total (i+ii+iii+iv)', suffix: '27', type: 'total', isTotalRow: true, isReadOnly: true },
+    { srNo: 'F', particular: 'Net Depreciation (D-E)', suffix: '28', type: 'total', isTotalRow: true, isReadOnly: true },
+    { srNo: 'G', particular: `Net Book Value as at 31st March ${currentYearEnd} (C-F)`, suffix: '29', type: 'total', isTotalRow: true, isReadOnly: true },
+    { srNo: 'H', particular: 'Sale Price of fixed assets', suffix: '30', type: 'data' },
+    { srNo: 'I', particular: 'Book Value of fixed assets sold [II (ii)-E(ii)]', suffix: '31', type: 'total', isTotalRow: true, isReadOnly: true },
+    { srNo: 'J', particular: 'GST on Sale of fixed assets', suffix: '35', type: 'data' },
+    { srNo: 'K', particular: 'Profit/ (Loss) on sale of fixed assets [H-(I+J)]', suffix: '32', type: 'total', isTotalRow: true, isReadOnly: true },
+  ], [year1, currentYearEnd, formData.particulars3, formData.particulars4]);
+
+  const RenderInputCell = React.memo(({ fieldName, isReadOnly }) => (
+    <StyledTableCell>
+      <FormInput
+        name={fieldName}
+        value={formData[fieldName] === undefined ? '0.00' : formData[fieldName]}
+        onChange={handleChange}
+        inputProps={{ style: { textAlign: 'right' } }}
+        sx={{ width: '100px', '& input': { textAlign: 'right', padding: '6px 8px' }, backgroundColor: isReadOnly ? '#f0f0f0' : 'white' }}
+        readOnly={isReadOnly} variant="outlined" size="small"
+      />
+    </StyledTableCell>
+  ));
+  RenderInputCell.displayName = 'RenderInputCell';
+
+  if (isLoading && !isRecalculating) { // Show full loader only for initial load
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 200px)' }}>
+        <CircularProgress /> <Box sx={{ ml: 2 }}>Loading Schedule Data...</Box>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: 1, width: '100%', overflowX: 'hidden' }}>
+      {workerError && (
+        <Box sx={{ p: 2, backgroundColor: 'error.main', color: 'white', mb: 2, borderRadius: 1 }}>
+          Error with calculations: {workerError} (Check console for more details)
+        </Box>
+      )}
+      {isRecalculating && !isLoading && ( // Show smaller recalculating indicator
+        <Box sx={{ position: 'fixed', top: 10, right: 10, zIndex: 2000, p: 1, backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', borderRadius: 1, display: 'flex', alignItems: 'center' }}>
+          <CircularProgress size={16} color="inherit" sx={{mr:1}} /> Recalculating...
+        </Box>
+      )}
+      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)' }}>
+        <Table sx={{ minWidth: 3000 }} aria-label="schedule 10 table" stickyHeader>
+          <TableHead>
+             {/* ... Same TableHead structure as your original ... */}
+            <TableRow>
+              <StyledTableCell rowSpan={2}><b>Sr.No</b></StyledTableCell>
+              <StyledTableCell rowSpan={2}><b>Particulars</b></StyledTableCell>
+              <StyledTableCell colSpan={5}><b>(A) FURNITURE & FITTINGS</b></StyledTableCell>
+              <StyledTableCell colSpan={10}><b>(B) MACHINERY & PLANT</b></StyledTableCell>
+              <StyledTableCell rowSpan={2}><b>Total Furniture & Fixtures <br /> (A+B)</b></StyledTableCell>
+              <StyledTableCell colSpan={12}><b>(C) PREMISES</b></StyledTableCell>
+              <StyledTableCell rowSpan={2}><b>(D) Projects under <br /> construction</b></StyledTableCell>
+              <StyledTableCell rowSpan={2}><b>Grand Total <br /> (A + B + C + D)</b></StyledTableCell>
+            </TableRow>
+            <TableRow>
+              {columnDefinitions.slice(0, 5).map((col) => (<StyledTableCell key={col.id}><b>{col.header}</b></StyledTableCell>))}
+              {columnDefinitions.slice(5, 15).map((col) => (<StyledTableCell key={col.id}><b>{col.header}</b></StyledTableCell>))}
+              {columnDefinitions.slice(16, 28).map((col) => (<StyledTableCell key={col.id}><b>{col.header}</b></StyledTableCell>))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rowDefinitions.map((row, rowIndex) => {
+              const rowKey = row.suffix || `row-${rowIndex}-${row.type || 'unknown'}`;
+              if (row.type === 'subheader' || row.type === 'subsubsectionheader') {
+                return (
+                  <StyledTableRow key={rowKey} $issubsectionheader={row.type === 'subheader'} $issubsubsectionheader={row.type === 'subsubsectionheader'}>
+                    <StyledTableCell>{row.srNo || ''}</StyledTableCell>
+                    <StyledTableCell colSpan={columnDefinitions.length + 1}><b>{row.label || row.particular}</b></StyledTableCell>
+                  </StyledTableRow>
+                );
+              } else if (row.type === 'data' || row.type === 'total') {
+                return (
+                  <StyledTableRow key={rowKey} $istotalrow={row.isTotalRow} $issectionheader={row.isSectionHeader}>
+                    <StyledTableCell style={row.parentSrNo && !row.isSectionHeader ? { textAlign: 'right' } : row.isSectionHeader ? { textAlign: 'left' } : { textAlign: 'center' }}>
+                      <b>{row.srNo}</b>
+                    </StyledTableCell>
+                    <StyledTableCell><b>{row.particular}</b></StyledTableCell>
+                    {columnDefinitions.map((col) => (
+                      <RenderInputCell key={`${row.suffix}-${col.id}`} fieldName={`${col.id}${row.suffix}`} isReadOnly={row.isReadOnly || col.isReadOnly}/>
+                    ))}
+                  </StyledTableRow>
+                );
+              }
+              return null;
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
+  );
+};
+
+export default Schedule10;
