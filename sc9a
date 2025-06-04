@@ -1,11 +1,15 @@
-// calculation.worker.js (ensure this is in the same folder as Schedule10.js)
+// calculation.worker.js
 
 // --- START: All necessary helper functions and constants MUST be in this file ---
+// These are based on common Schedule 10 structures and need to be verified/adjusted
+// against your specific Schedule10.txt JavaScript logic.
+
 const parseAndFormat = (value) => {
-  const num = parseFloat(value);
+  const num = Number(value); // Using Number() can be slightly more performant
   return isNaN(num) ? '0.00' : num.toFixed(2);
 };
 
+// These keys should match the 'CODE' part of your input field IDs (e.g., txt{CODE}{Suffix})
 const baseFieldKeys = [
   'stcNstaff', 'offResidenceA', 'otherPremisesA', 'electricFitting', 'totalA',
   'computers', 'compSoftwareInt', 'compSoftwareNonint', 'compSoftwareTotal', 'motor',
@@ -15,7 +19,7 @@ const baseFieldKeys = [
   'premisTotal', 'revtotal', 'totalC', 'premisesUnderCons', 'grandTotal',
 ];
 
-const nonTotalBaseFieldKeys = [
+const nonTotalBaseFieldKeys = [ // Fields that are direct inputs, not calculated row totals
   'stcNstaff', 'offResidenceA', 'otherPremisesA', 'electricFitting',
   'computers', 'compSoftwareInt', 'compSoftwareNonint', 'motor',
   'offResidenceB', 'stcLho', 'otherPremisesB',
@@ -24,89 +28,102 @@ const nonTotalBaseFieldKeys = [
   'premisesUnderCons',
 ];
 
-// Note: rowSuffixes is not directly used by performAllCalculations but might be by generateInitialFormDataStructure
-// If generateInitialFormDataStructure were also in the worker (it's not in this design), it would need rowSuffixes.
-// For performAllCalculations, only baseFieldKeys and nonTotalBaseFieldKeys are directly needed from these constants.
+// This function structure is based on typical Schedule 10 calculations.
+// You MUST adapt the formulas here to exactly match the JavaScript logic
+// inferred from onblur attributes like sumधाराA, sumधाराB in your Schedule10.txt
+const calculateRowTotalsAndUpdate = (data, suffix, outData) => {
+  const p = (fieldPath) => Number(data[fieldPath]) || 0;
 
-const calculateRowTotals = (data, suffix) => {
-  const updatedData = { ...data };
-  const p = (fieldPath) => parseFloat(updatedData[fieldPath]) || 0;
+  // Corresponds to sumधाराA(suffix)
+  outData[`totalA${suffix}`] = (
+    p(`stcNstaff${suffix}`) + p(`offResidenceA${suffix}`) +
+    p(`otherPremisesA${suffix}`) + p(`electricFitting${suffix}`)
+  ).toFixed(2);
 
-  updatedData[`totalA${suffix}`] = parseAndFormat(
-    p(`stcNstaff${suffix}`) +
-    p(`offResidenceA${suffix}`) +
-    p(`otherPremisesA${suffix}`) +
-    p(`electricFitting${suffix}`)
-  );
-  updatedData[`compSoftwareTotal${suffix}`] = parseAndFormat(
+  // Software Total
+  outData[`compSoftwareTotal${suffix}`] = (
     p(`compSoftwareInt${suffix}`) + p(`compSoftwareNonint${suffix}`)
-  );
-  updatedData[`otherMachineryPlant${suffix}`] = parseAndFormat(
+  ).toFixed(2);
+
+  // Other Machinery & Plant (Part of section B)
+  const otherMachineryPlantVal = (
     p(`offResidenceB${suffix}`) + p(`stcLho${suffix}`) + p(`otherPremisesB${suffix}`)
   );
-  updatedData[`totalB${suffix}`] = parseAndFormat(
-    p(`computers${suffix}`) +
-    p(updatedData[`compSoftwareTotal${suffix}`]) +
-    p(`motor${suffix}`) +
-    p(updatedData[`otherMachineryPlant${suffix}`])
+  outData[`otherMachineryPlant${suffix}`] = otherMachineryPlantVal.toFixed(2);
+
+  // Corresponds to sumधाराB(suffix)
+  outData[`totalB${suffix}`] = (
+    p(`computers${suffix}`) + Number(outData[`compSoftwareTotal${suffix}`]) +
+    p(`motor${suffix}`) + otherMachineryPlantVal
+  ).toFixed(2);
+
+  // Total Furniture & Fixtures (A+B)
+  outData[`totalFurnFix${suffix}`] = (
+    Number(outData[`totalA${suffix}`]) + Number(outData[`totalB${suffix}`])
+  ).toFixed(2);
+
+  // Premises Total (Part of section C)
+  const premisTotalVal = (
+    p(`landNotRev${suffix}`) + p(`landRev${suffix}`) +
+    p(`offBuildNotRev${suffix}`) + p(`offBuildRev${suffix}`) +
+    p(`residQuartNotRev${suffix}`) + p(`residQuartRev${suffix}`)
   );
-  updatedData[`totalFurnFix${suffix}`] = parseAndFormat(
-    p(updatedData[`totalA${suffix}`]) + p(updatedData[`totalB${suffix}`])
-  );
-  updatedData[`premisTotal${suffix}`] = parseAndFormat(
-    p(`landNotRev${suffix}`) +
-    p(`landRev${suffix}`) +
-    p(`offBuildNotRev${suffix}`) +
-    p(`offBuildRev${suffix}`) +
-    p(`residQuartNotRev${suffix}`) +
-    p(`residQuartRev${suffix}`)
-  );
-  updatedData[`revtotal${suffix}`] = parseAndFormat(
+  outData[`premisTotal${suffix}`] = premisTotalVal.toFixed(2);
+
+  // Revaluation Total (Part of section C)
+  const revTotalVal = (
     p(`landRevEnh${suffix}`) + p(`offBuildRevEnh${suffix}`) + p(`residQuartRevEnh${suffix}`)
   );
-  updatedData[`totalC${suffix}`] = parseAndFormat(
-    p(updatedData[`premisTotal${suffix}`]) + p(updatedData[`revtotal${suffix}`])
-  );
-  updatedData[`grandTotal${suffix}`] = parseAndFormat(
-    p(updatedData[`totalA${suffix}`]) +
-    p(updatedData[`totalB${suffix}`]) +
-    p(updatedData[`totalC${suffix}`]) +
-    p(`premisesUnderCons${suffix}`)
-  );
-  return updatedData;
+  outData[`revtotal${suffix}`] = revTotalVal.toFixed(2);
+
+  // Corresponds to sumधाराC(suffix)
+  outData[`totalC${suffix}`] = (premisTotalVal + revTotalVal).toFixed(2);
+
+  // Grand Total
+  outData[`grandTotal${suffix}`] = (
+    Number(outData[`totalA${suffix}`]) + Number(outData[`totalB${suffix}`]) +
+    Number(outData[`totalC${suffix}`]) + p(`premisesUnderCons${suffix}`)
+  ).toFixed(2);
 };
 
 const sumAcrossRows = (data, fieldBaseName, suffixesToSum) => {
   let total = 0;
-  suffixesToSum.forEach((sfx) => {
-    total += parseFloat(data[`${fieldBaseName}${sfx}`]) || 0;
-  });
-  return parseAndFormat(total);
+  for (const sfx of suffixesToSum) {
+    total += Number(data[`${fieldBaseName}${sfx}`]) || 0;
+  }
+  return total.toFixed(2);
 };
 
 const subtractAcrossRows = (data, fieldBaseName, minuendSuffix, subtrahendSuffix) => {
-  const minuend = parseFloat(data[`${fieldBaseName}${minuendSuffix}`]) || 0;
-  const subtrahend = parseFloat(data[`${fieldBaseName}${subtrahendSuffix}`]) || 0;
-  return parseAndFormat(minuend - subtrahend);
+  return (
+    (Number(data[`${fieldBaseName}${minuendSuffix}`]) || 0) -
+    (Number(data[`${fieldBaseName}${subtrahendSuffix}`]) || 0)
+  ).toFixed(2);
 };
-// --- END: Copied helper functions ---
 
-// Main calculation function
-const performAllCalculations = (initialData) => {
-  console.log('[Worker] Starting calculations with data:', initialData);
-  let calculatedData = { ...initialData };
-  const p = (fieldPath) => parseFloat(calculatedData[fieldPath]) || 0;
+// Main calculation function - ADAPT THIS THOROUGHLY
+// This needs to reflect the exact calculation dependencies and order from your JSP/JS.
+// The suffixes ('1', '3', '4', etc.) and calculation logic for rows '7', '12', '13', etc.
+// must be derived from your existing system.
+const performAllCalculations = (currentData) => {
+  console.log('[Worker] Starting calculations...');
+  const calculatedData = { ...currentData }; // Work on a copy
 
+  // Suffixes for rows where users can directly input data
   const editableRowSuffixes = [
     '1', '3', '4', '5', '6', '9', '10', '11', '18', '19', '20', '21',
     '24', '25', '26', '30', '33', '34', '35', '36', '37', '38', '39', '40',
   ];
 
-  editableRowSuffixes.forEach((suffix) => {
-    calculatedData = calculateRowTotals(calculatedData, suffix);
-  });
+  // Step 1: Calculate direct row totals for editable rows (based on sumधाराA, B, C logic)
+  for (const suffix of editableRowSuffixes) {
+    calculateRowTotalsAndUpdate(calculatedData, suffix, calculatedData);
+  }
 
-  nonTotalBaseFieldKeys.forEach((key) => {
+  // Step 2: Calculate sums and subtractions across rows for non-total base fields
+  // This logic for rows 7, 12, 13, etc. is a common pattern but MUST BE VERIFIED
+  // against your specific Schedule10.txt's JavaScript.
+  for (const key of nonTotalBaseFieldKeys) {
     calculatedData[`${key}7`] = sumAcrossRows(calculatedData, key, ['3', '4', '36', '5', '6']);
     calculatedData[`${key}12`] = sumAcrossRows(calculatedData, key, ['37', '9', '33', '10', '11']);
     calculatedData[`${key}13`] = subtractAcrossRows(calculatedData, key, '7', '12');
@@ -115,34 +132,35 @@ const performAllCalculations = (initialData) => {
     calculatedData[`${key}27`] = sumAcrossRows(calculatedData, key, ['40', '24', '25', '26']);
     calculatedData[`${key}28`] = subtractAcrossRows(calculatedData, key, '22', '27');
     calculatedData[`${key}29`] = subtractAcrossRows(calculatedData, key, '14', '28');
-    calculatedData[`${key}31`] = subtractAcrossRows(calculatedData, key, '9', '24');
+    calculatedData[`${key}31`] = subtractAcrossRows(calculatedData, key, '9', '24'); // Book value of assets sold
 
-    const val30 = p(`${key}30`);
-    const val31 = p(calculatedData[`${key}31`]);
-    const val35 = p(`${key}35`);
-    calculatedData[`${key}32`] = parseAndFormat(val30 - (val31 + val35));
-  });
+    const val30 = Number(calculatedData[`${key}30`]) || 0; // H. Sale Price
+    const val31 = Number(calculatedData[`${key}31`]) || 0; // I. Book Value (calculated above)
+    const val35 = Number(calculatedData[`${key}35`]) || 0; // J. GST on Sale
+    calculatedData[`${key}32`] = (val30 - (val31 + val35)).toFixed(2); // K. Profit/(Loss)
+  }
 
+  // Step 3: Recalculate totals for aggregated rows (these depend on results from Step 2)
   const aggregatedRowSuffixes = ['7', '12', '13', '14', '22', '27', '28', '29', '31', '32'];
-  aggregatedRowSuffixes.forEach((suffix) => {
-    calculatedData = calculateRowTotals(calculatedData, suffix);
-  });
+  for (const suffix of aggregatedRowSuffixes) {
+    calculateRowTotalsAndUpdate(calculatedData, suffix, calculatedData);
+  }
+
   console.log('[Worker] Calculations complete.');
   return calculatedData;
 };
+// --- END: Calculation Logic ---
 
-// Worker message handler
 self.onmessage = function(event) {
   const { type, data } = event.data;
-  if (type === 'CALCULATE') {
+  if (type === 'CALCULATE_SCHEDULE10') {
     try {
       const result = performAllCalculations(data);
-      self.postMessage({ type: 'CALCULATE_COMPLETE', data: result });
+      self.postMessage({ type: 'CALCULATE_SCHEDULE10_COMPLETE', data: result });
     } catch (error) {
       console.error('[Worker] Error during calculation:', error);
-      self.postMessage({ type: 'CALCULATE_ERROR', error: error.message });
+      self.postMessage({ type: 'CALCULATE_SCHEDULE10_ERROR', error: error.message });
     }
   }
 };
-console.log('[Worker] Script loaded and ready.');
-
+console.log('[Worker] Schedule 10 Worker Script Loaded.');
