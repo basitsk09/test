@@ -1,122 +1,136 @@
-url- https://bsuat.info.sbi/BS/IFAMSS/SC10SFTP
-payload:
+To implement the SC10 SFTP API call from your latest backend logic, here's how to structure the useEffect in your Schedule 10 React component to match the behavior:
+
+
+---
+
+✅ API Endpoint Details
+
+URL: https://bsuat.info.sbi/BS/IFAMSS/SC10SFTP
+Method: POST
+Payload Example:
+
 {
-    "circleCode": "001",
-    "qed": "31/03/2025",
-    "reportID": "310010",
-    "reportName": "SC10",
-    "reportStatus": "A"
+  "circleCode": "001",
+  "qed": "31/03/2025",
+  "reportID": "310010",
+  "reportName": "SC10",
+  "reportStatus": "A"
 }
 
-@PostMapping("/SC10SFTP")
-    public @ResponseBody Map<String, Object> SC10SFTP(@RequestBody Map<String, Object> map) throws ConfigurationException, SQLException, IOException {
-        Map<String, Object> updatedTabData = new HashMap<>();
-
-        log.info("Map Values Received from FE ::" + map);
-
-        //Check the files at Destination Directory
-//        Boolean getFile = ccdpSftpService.getsftpdata(map);
-        Boolean getFile = ifamsSftpService.getSC10sftpdata(map);
-
-        log.info("IS SC10SFTP FILE RECEIVED  ::" + getFile);
+Key Response Field: fileAndDataStatus
 
 
-        // When get the report name as SC10
-        if (getFile && ((String) map.get("reportName")).equalsIgnoreCase("SC10")) {
+---
 
-            // Add New Method Here for SFTP SC10-Files
-            updatedTabData = ifamsSftpService.getSC10Sftp(map);
-            log.info("updatedTabData SC10:-" + updatedTabData + "updatedTabData status " + updatedTabData.get("status"));
+✅ useEffect Implementation
 
-        } else {
-            log.info("SC10 files not exist");
+Here’s the exact code to insert into your component:
 
-            // Checking is there any TimeStamp Stored in DB for SC10 Report
-            Optional<Integer> count = ifamsSftpService.checkSC10TimeStamp(map);
+useEffect(() => {
+  const checkSC10SftpData = async () => {
+    const payload = {
+      circleCode: userData.circleCode,
+      qed: userData.quarterEndDate,
+      reportID: '310010',
+      reportName: 'SC10',
+      reportStatus: 'A'
+    };
 
-            Optional<Integer> dataCount = ifamsSftpService.getSC10Countdata(map);
+    try {
+      const response = await fetch('https://bsuat.info.sbi/BS/IFAMSS/SC10SFTP', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
 
-            log.info("TimeStamp SFTP checkSC10TimeStamp:-" + count.get().intValue());
+      const data = await response.json();
+      console.log('SFTP response:', data);
 
-            log.info("SC10 SFTP getSC10Countdata:-" + dataCount.get());
-
-
-            if (count.get() == 1 && dataCount.get() >= 1) {
-
-                String timest = ccdpSftpService.getCCDPTimeStamp(map);
-                log.info("Getting getCCDPTimeStamp ::" + timest);
-
-                updatedTabData.put("message", "Please note: \n Data fetched here was generated in IFAMS at " + timest);
-                updatedTabData.put("status", true);
-                updatedTabData.put("fileAndDataStatus", 3);
-
-            } else {
-                updatedTabData.put("message", "Data not received from IFAMS, Kindly wait till IFAMS sends reports");
-                updatedTabData.put("status", false);
-                updatedTabData.put("fileAndDataStatus", 2);
-          /*  if(((String) map.get("reportName")).equalsIgnoreCase("ANX2C")){
-
-            }*/
-            }
-        }
-
-
-        updatedTabData.put("reportID", map.get("reportID"));
-        updatedTabData.put("circleCode", map.get("circleCode"));
-        updatedTabData.put("qed", map.get("qed"));
-        updatedTabData.put("reportName", map.get("reportName"));
-        updatedTabData.put("reportStatus", map.get("reportStatus"));
-
-        if (getFile && ((String) map.get("reportName")).equalsIgnoreCase("SC10") && updatedTabData.get("fileAndDataStatus").toString().equalsIgnoreCase("1")) {
-
-            log.info("inside UpdateSFTPFilesStatus ><><><><><><><>");
-            int Result = ifamsSftpService.UpdateSFTPFilesStatus(updatedTabData);
-
-            log.info("Result for UpdateSFTPFilesStatus ::" + Result);
-        }
-
-
-        return updatedTabData;
+      if (data.fileAndDataStatus === 1) {
+        // SFTP Success
+        setFormData(data?.data || {}); // Assuming `data.data` contains the schedule form values
+        setFieldsDisabled(true); // disables all inputs
+        showSnackbar('Data successfully fetched from IFAMS via SFTP.', 'success');
+      } else if (data.fileAndDataStatus === 2) {
+        // File error or mismatch
+        setFieldsDisabled(true);
+        showDialog({
+          title: 'File Error',
+          message: data.message || 'Error receiving file from IFAMS.',
+          onConfirm: () => navigate(-1) // go back
+        });
+      } else if (data.fileAndDataStatus === 3) {
+        // Data already exists in DB but file was missing
+        setFieldsDisabled(true);
+        showDialog({
+          title: 'Info',
+          message: data.message || 'Data already inserted earlier from IFAMS.',
+          onConfirm: () => navigate(-1)
+        });
+      }
+    } catch (error) {
+      console.error('SC10 SFTP call failed:', error);
+      showSnackbar('Error while checking SC10 SFTP data.', 'error');
     }
-	
-/////////////////////////////////////////////////////////
+  };
 
- if (data.fileAndDataStatus === 1) {
-                            console.log("Inside fileAndDataStatus ::: File Existed & SFTP Successfully Inserted Data");
-                            console.log("SFTP Success Loading Data on Screen ::fileAndDataStatus:1::");
-
-                            console.log("Calling SFTPDataSet Fn.")
-
-                            // Setting Data for Bean -- FOR GETTING DATA FROM TEXT
-                            sc10.SFTPDataSet(data);
-
-                            console.log("Disbaling the Input Firelds");
-                            // Disable Tables Cells
-                            $('#example1 :input').prop("disabled", true);
-                            //sc10.btnDisable();
-
-                        }
-
-                        // Error Or File Mismatch IN Files SFTP
-                        else if (data.fileAndDataStatus === 2) {
-
-                            // Show the Error Model & Redirected back to worklist
-                            console.log("Error While SFTP Data- Inside Else Part ! with Error Message Model ::Status:2::");
-                            sc10.displayModel(data);
-                            $('#example1 :input').prop("disabled", true);
-                            sc10.btnDisable();
-                        }
+  checkSC10SftpData();
+}, []);
 
 
-                        // No Files Existed  or Error Files Received but data already inserted in DB
-                        else {
-//                          alert("Data alredy inserted calling regular data load function")
-                            console.log("No Files Existed  or Error Files Received but data already inserted in DB ::Status:3::");
-                            sc10.displayModel(data);
-                            sc10.getSC10DataRegular(userInfo);
+---
 
-                            // DISABLE ALL THE FIELDS OR CELLS HERE
-                            $('#example1 :input').prop("disabled", true);
-                            console.log(circleCode + " does not exist in the list.");
+✅ Supporting State
 
-                        }
+Add these:
+
+const [fieldsDisabled, setFieldsDisabled] = useState(false);
+
+In your <FormInput ... /> or <TextField ... />, apply:
+
+disabled={fieldsDisabled}
+
+
+---
+
+✅ Dialog Utility
+
+If you don’t already have one:
+
+const showDialog = ({ title, message, onConfirm }) => {
+  setDialogOpen(true);
+  setDialogContent({ title, message, onConfirm });
+};
+
+And a generic dialog component like:
+
+<Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
+  <DialogTitle>{dialogContent.title}</DialogTitle>
+  <DialogContent>{dialogContent.message}</DialogContent>
+  <DialogActions>
+    <Button onClick={() => {
+      setDialogOpen(false);
+      dialogContent.onConfirm();
+    }}>OK</Button>
+  </DialogActions>
+</Dialog>
+
+
+---
+
+✅ Summary
+
+You are calling the /SC10SFTP endpoint on useEffect.
+
+Based on fileAndDataStatus:
+
+1: load data and disable input
+
+2/3: show dialog and disable + redirect
+
+
+
+Let me know if you want me to inject this code directly into your working component file (Working schedule10.txt).
+
