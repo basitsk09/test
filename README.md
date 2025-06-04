@@ -751,10 +751,10 @@ const Schedule10 = () => {
                   Total Furniture & Fixtures <br /> (A+B)
                 </b>
               </StyledTableCell>
-              <StyledTableCell colSpan={12}>
+              <StyledTableCell colSpan={13}>
                 <b>(C) PREMISES</b>
               </StyledTableCell>
-              <StyledTableCell rowSpan={2} sx={{ minWidth: '120px' }}>
+              {/* <StyledTableCell rowSpan={2} sx={{ minWidth: '120px' }}>
                 <b>
                   (D) Projects under <br /> construction
                 </b>
@@ -763,7 +763,7 @@ const Schedule10 = () => {
                 <b>
                   Grand Total <br /> (A + B + C + D)
                 </b>
-              </StyledTableCell>
+              </StyledTableCell> */}
             </TableRow>
             <TableRow>
               {columnDisplayHeaders.map((colDef) => (
