@@ -1,6 +1,8 @@
 const dateStr = "21/12/2025";
 const parts = dateStr.split("/"); // ["21", "12", "2025"]
 const year = parseInt(parts[2], 10);
-const previousYear = year - 1;
+const previousYear = year - 
+console.log(previousYear); // 20
 
-console.log(previousYear); // 2024
+
+const previousYear = () => parseInt(user.quarterEndDate.split('/')[2], 10) - 1;
