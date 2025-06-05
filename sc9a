@@ -1,38 +1,36 @@
 const calculateTotals = useCallback(() => {
-  const addAsCents = (value) => {
-    if (value == null || value === '') return 0;
-    const cleaned = value.toString().replace(/,/g, '');
-    const [intPart, decPart = ''] = cleaned.split('.');
-    const intCents = parseInt(intPart) * 100;
-    const decCents = parseInt((decPart + '00').substring(0, 2));
-    return intCents + (isNaN(decCents) ? 0 : decCents);
+  const addDecimalStrings = (a, b) => {
+    const [aInt, aDec = ''] = a.toString().split('.');
+    const [bInt, bDec = ''] = b.toString().split('.');
+
+    const sumInt = BigInt(aInt) + BigInt(bInt);
+    const dec1 = (aDec + '00').substring(0, 2);
+    const dec2 = (bDec + '00').substring(0, 2);
+    const sumDec = parseInt(dec1) + parseInt(dec2);
+
+    const carry = Math.floor(sumDec / 100);
+    const finalDec = (sumDec % 100).toString().padStart(2, '0');
+    const finalInt = sumInt + BigInt(carry);
+    return `${finalInt.toString()}.${finalDec}`;
   };
 
   const totalsObj = rows.reduce(
     (acc, row) => {
-      acc.aggOutStandTotal += addAsCents(row.aggOutStand);
-      acc.aggSecuritiesTotal += addAsCents(row.aggSecurities);
-      acc.netShortfallTotal += addAsCents(row.netShortfall);
-      acc.provisionTotal += addAsCents(row.provision);
-      acc.balInterestSuspenseAccTotal += addAsCents(row.balInterestSuspenseAcc);
+      acc.aggOutStandTotal = addDecimalStrings(acc.aggOutStandTotal, row.aggOutStand || '0');
+      acc.aggSecuritiesTotal = addDecimalStrings(acc.aggSecuritiesTotal, row.aggSecurities || '0');
+      acc.netShortfallTotal = addDecimalStrings(acc.netShortfallTotal, row.netShortfall || '0');
+      acc.provisionTotal = addDecimalStrings(acc.provisionTotal, row.provision || '0');
+      acc.balInterestSuspenseAccTotal = addDecimalStrings(acc.balInterestSuspenseAccTotal, row.balInterestSuspenseAcc || '0');
       return acc;
     },
     {
-      aggOutStandTotal: 0,
-      aggSecuritiesTotal: 0,
-      netShortfallTotal: 0,
-      provisionTotal: 0,
-      balInterestSuspenseAccTotal: 0,
+      aggOutStandTotal: '0.00',
+      aggSecuritiesTotal: '0.00',
+      netShortfallTotal: '0.00',
+      provisionTotal: '0.00',
+      balInterestSuspenseAccTotal: '0.00',
     }
   );
 
-  const toAmount = (cents) => (cents / 100).toFixed(2);
-
-  setTotals({
-    aggOutStandTotal: toAmount(totalsObj.aggOutStandTotal),
-    aggSecuritiesTotal: toAmount(totalsObj.aggSecuritiesTotal),
-    netShortfallTotal: toAmount(totalsObj.netShortfallTotal),
-    provisionTotal: toAmount(totalsObj.provisionTotal),
-    balInterestSuspenseAccTotal: toAmount(totalsObj.balInterestSuspenseAccTotal),
-  });
+  setTotals(totalsObj);
 }, [rows]);
