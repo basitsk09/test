@@ -1,36 +1,21 @@
-const calculateTotals = useCallback(() => {
-  const addDecimalStrings = (a, b) => {
-    const [aInt, aDec = ''] = a.toString().split('.');
-    const [bInt, bDec = ''] = b.toString().split('.');
+ const updateGlobalState = useMemo(
+    () => (value) => {
+      setRows((prevRows) => {
+        const updatedRows = [...prevRows];
+        if (updatedRows[index]) {
+          const targetRow = { ...updatedRows[index] };
+          targetRow[column.key] = value;
 
-    const sumInt = BigInt(aInt) + BigInt(bInt);
-    const dec1 = (aDec + '00').substring(0, 2);
-    const dec2 = (bDec + '00').substring(0, 2);
-    const sumDec = parseInt(dec1) + parseInt(dec2);
-
-    const carry = Math.floor(sumDec / 100);
-    const finalDec = (sumDec % 100).toString().padStart(2, '0');
-    const finalInt = sumInt + BigInt(carry);
-    return `${finalInt.toString()}.${finalDec}`;
-  };
-
-  const totalsObj = rows.reduce(
-    (acc, row) => {
-      acc.aggOutStandTotal = addDecimalStrings(acc.aggOutStandTotal, row.aggOutStand || '0');
-      acc.aggSecuritiesTotal = addDecimalStrings(acc.aggSecuritiesTotal, row.aggSecurities || '0');
-      acc.netShortfallTotal = addDecimalStrings(acc.netShortfallTotal, row.netShortfall || '0');
-      acc.provisionTotal = addDecimalStrings(acc.provisionTotal, row.provision || '0');
-      acc.balInterestSuspenseAccTotal = addDecimalStrings(acc.balInterestSuspenseAccTotal, row.balInterestSuspenseAcc || '0');
-      return acc;
+          if (column.key === 'aggOutStand' || column.key === 'aggSecurities') {
+            const out = parseFloat(targetRow.aggOutStand) || 0;
+            const sec = parseFloat(targetRow.aggSecurities) || 0;
+            targetRow.netShortfall = (out - sec).toFixed(2);
+          }
+          updatedRows[index] = targetRow;
+          return updatedRows;
+        }
+        return prevRows;
+      });
     },
-    {
-      aggOutStandTotal: '0.00',
-      aggSecuritiesTotal: '0.00',
-      netShortfallTotal: '0.00',
-      provisionTotal: '0.00',
-      balInterestSuspenseAccTotal: '0.00',
-    }
+    [index, column.key, setRows]
   );
-
-  setTotals(totalsObj);
-}, [rows]);
