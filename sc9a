@@ -1,18 +1,20 @@
 const calculateTotals = useCallback(() => {
-  const sanitizeAndScale = (value) => {
+  const addAsCents = (value) => {
     if (value == null || value === '') return 0;
     const cleaned = value.toString().replace(/,/g, '');
-    const floatVal = parseFloat(cleaned);
-    return isNaN(floatVal) ? 0 : Math.round(floatVal * 100); // scale to avoid decimals
+    const [intPart, decPart = ''] = cleaned.split('.');
+    const intCents = parseInt(intPart) * 100;
+    const decCents = parseInt((decPart + '00').substring(0, 2));
+    return intCents + (isNaN(decCents) ? 0 : decCents);
   };
 
   const totalsObj = rows.reduce(
     (acc, row) => {
-      acc.aggOutStandTotal += sanitizeAndScale(row.aggOutStand);
-      acc.aggSecuritiesTotal += sanitizeAndScale(row.aggSecurities);
-      acc.netShortfallTotal += sanitizeAndScale(row.netShortfall);
-      acc.provisionTotal += sanitizeAndScale(row.provision);
-      acc.balInterestSuspenseAccTotal += sanitizeAndScale(row.balInterestSuspenseAcc);
+      acc.aggOutStandTotal += addAsCents(row.aggOutStand);
+      acc.aggSecuritiesTotal += addAsCents(row.aggSecurities);
+      acc.netShortfallTotal += addAsCents(row.netShortfall);
+      acc.provisionTotal += addAsCents(row.provision);
+      acc.balInterestSuspenseAccTotal += addAsCents(row.balInterestSuspenseAcc);
       return acc;
     },
     {
@@ -24,12 +26,13 @@ const calculateTotals = useCallback(() => {
     }
   );
 
-  // Divide back to get correct decimal precision
+  const toAmount = (cents) => (cents / 100).toFixed(2);
+
   setTotals({
-    aggOutStandTotal: (totalsObj.aggOutStandTotal / 100).toFixed(2),
-    aggSecuritiesTotal: (totalsObj.aggSecuritiesTotal / 100).toFixed(2),
-    netShortfallTotal: (totalsObj.netShortfallTotal / 100).toFixed(2),
-    provisionTotal: (totalsObj.provisionTotal / 100).toFixed(2),
-    balInterestSuspenseAccTotal: (totalsObj.balInterestSuspenseAccTotal / 100).toFixed(2),
+    aggOutStandTotal: toAmount(totalsObj.aggOutStandTotal),
+    aggSecuritiesTotal: toAmount(totalsObj.aggSecuritiesTotal),
+    netShortfallTotal: toAmount(totalsObj.netShortfallTotal),
+    provisionTotal: toAmount(totalsObj.provisionTotal),
+    balInterestSuspenseAccTotal: toAmount(totalsObj.balInterestSuspenseAccTotal),
   });
 }, [rows]);
