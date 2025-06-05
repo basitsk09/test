@@ -1,28 +1,34 @@
 const calculateTotals = useCallback(() => {
-    const totalsObj = rows.reduce(
-      (acc, row) => {
-        acc.aggOutStandTotal += parseFloat(row.aggOutStand) || 0;
-        acc.aggSecuritiesTotal += parseFloat(row.aggSecurities) || 0;
-        // netShortfallTotal is calculated from other totals or directly from row.netShortfall if already computed
-        acc.netShortfallTotal += parseFloat(row.netShortfall) || 0;
-        acc.provisionTotal += parseFloat(row.provision) || 0;
-        acc.balInterestSuspenseAccTotal += parseFloat(row.balInterestSuspenseAcc) || 0;
-        return acc;
-      },
-      {
-        aggOutStandTotal: 0,
-        aggSecuritiesTotal: 0,
-        netShortfallTotal: 0,
-        provisionTotal: 0,
-        balInterestSuspenseAccTotal: 0,
-      }
-    );
+  const sanitizeNumber = (value) => {
+    if (value == null) return 0;
+    const cleaned = value.toString().replace(/,/g, '');
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
+  };
 
-    setTotals({
-      aggOutStandTotal: totalsObj.aggOutStandTotal.toFixed(2),
-      aggSecuritiesTotal: totalsObj.aggSecuritiesTotal.toFixed(2),
-      netShortfallTotal: totalsObj.netShortfallTotal.toFixed(2),
-      provisionTotal: totalsObj.provisionTotal.toFixed(2),
-      balInterestSuspenseAccTotal: totalsObj.balInterestSuspenseAccTotal.toFixed(2),
-    });
-  }, [rows]);
+  const totalsObj = rows.reduce(
+    (acc, row) => {
+      acc.aggOutStandTotal += sanitizeNumber(row.aggOutStand);
+      acc.aggSecuritiesTotal += sanitizeNumber(row.aggSecurities);
+      acc.netShortfallTotal += sanitizeNumber(row.netShortfall);
+      acc.provisionTotal += sanitizeNumber(row.provision);
+      acc.balInterestSuspenseAccTotal += sanitizeNumber(row.balInterestSuspenseAcc);
+      return acc;
+    },
+    {
+      aggOutStandTotal: 0,
+      aggSecuritiesTotal: 0,
+      netShortfallTotal: 0,
+      provisionTotal: 0,
+      balInterestSuspenseAccTotal: 0,
+    }
+  );
+
+  setTotals({
+    aggOutStandTotal: totalsObj.aggOutStandTotal.toFixed(2),
+    aggSecuritiesTotal: totalsObj.aggSecuritiesTotal.toFixed(2),
+    netShortfallTotal: totalsObj.netShortfallTotal.toFixed(2),
+    provisionTotal: totalsObj.provisionTotal.toFixed(2),
+    balInterestSuspenseAccTotal: totalsObj.balInterestSuspenseAccTotal.toFixed(2),
+  });
+}, [rows]);
