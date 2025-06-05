@@ -1,8 +1,28 @@
-const dateStr = "21/12/2025";
-const parts = dateStr.split("/"); // ["21", "12", "2025"]
-const year = parseInt(parts[2], 10);
-const previousYear = year - 
-console.log(previousYear); // 20
+const calculateTotals = useCallback(() => {
+    const totalsObj = rows.reduce(
+      (acc, row) => {
+        acc.aggOutStandTotal += parseFloat(row.aggOutStand) || 0;
+        acc.aggSecuritiesTotal += parseFloat(row.aggSecurities) || 0;
+        // netShortfallTotal is calculated from other totals or directly from row.netShortfall if already computed
+        acc.netShortfallTotal += parseFloat(row.netShortfall) || 0;
+        acc.provisionTotal += parseFloat(row.provision) || 0;
+        acc.balInterestSuspenseAccTotal += parseFloat(row.balInterestSuspenseAcc) || 0;
+        return acc;
+      },
+      {
+        aggOutStandTotal: 0,
+        aggSecuritiesTotal: 0,
+        netShortfallTotal: 0,
+        provisionTotal: 0,
+        balInterestSuspenseAccTotal: 0,
+      }
+    );
 
-
-const previousYear = () => parseInt(user.quarterEndDate.split('/')[2], 10) - 1;
+    setTotals({
+      aggOutStandTotal: totalsObj.aggOutStandTotal.toFixed(2),
+      aggSecuritiesTotal: totalsObj.aggSecuritiesTotal.toFixed(2),
+      netShortfallTotal: totalsObj.netShortfallTotal.toFixed(2),
+      provisionTotal: totalsObj.provisionTotal.toFixed(2),
+      balInterestSuspenseAccTotal: totalsObj.balInterestSuspenseAccTotal.toFixed(2),
+    });
+  }, [rows]);
