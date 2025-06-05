@@ -9,6 +9,7 @@ import {
   Button,
   Alert,
   Box,
+  Snackbar,
   Stack,
   CircularProgress,
   Typography,
@@ -484,19 +485,19 @@ const generateInitialSchedule10Data = () => {
   return initialData;
 };
 
-const useCustomSnackbar = () => (message, severity) => console.log(`Snackbar: ${message} (${severity})`);
-
 const Schedule10 = () => {
   const [formData, setFormData] = useState(generateInitialSchedule10Data);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false); // For visual feedback during calculation
   const user = JSON.parse(localStorage.getItem('user'));
-  const showSnackbar = useCustomSnackbar();
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const { callApi } = useApi(); // Mocked for now
   const [fieldsDisabled, setFieldsDisabled] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogContent, setDialogContent] = useState({ title: '', message: '', onConfirm: () => {} });
+  const [openSubmitDialog, setOpenSubmitDialog] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   // Initial data load and calculation (if any from API)
   useEffect(() => {
     const checkSC10SftpData = async () => {
@@ -518,6 +519,11 @@ const Schedule10 = () => {
           setFormData(data?.data || {}); // Assuming `data.data` contains the schedule form values
           setFieldsDisabled(true); // disables all inputs
           showSnackbar('Data successfully fetched from IFAMS via SFTP.', 'success');
+          setSnackbar({
+            open: true,
+            message: 'Data successfully fetched from IFAMS via SFTP.',
+            severity: 'success',
+          });
         } else if (data.fileAndDataStatus === 2) {
           // File error or mismatch
           setFieldsDisabled(true);
@@ -536,8 +542,11 @@ const Schedule10 = () => {
           });
         }
       } catch (error) {
-        console.error('SC10 SFTP call failed:', error);
-        showSnackbar('Error while checking SC10 SFTP data.', 'error');
+        setSnackbar({
+          open: true,
+          message: error.message || 'Error while checking SC10 SFTP data.',
+          severity: 'error',
+        });
       }
     };
 
@@ -668,6 +677,32 @@ const Schedule10 = () => {
     return newCalculatedData;
   }, [formData]); // Dependency: recalculate whenever formData changes
 
+  const handleSubmit = async (isSaveOnly = true) => {
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...formData,
+        save: isSaveOnly,
+      };
+
+      const response = await saveSchedule10.request({ data: payload });
+
+      if (response.status === 200 && response.data?.status === true) {
+        setSnackbar({
+          open: true,
+          message: isSaveOnly ? 'Saved successfully!' : 'Submitted successfully!',
+          severity: 'success',
+        });
+      } else {
+        throw new Error(response.data?.message || 'Unexpected response');
+      }
+    } catch (err) {
+      setSnackbar({ open: true, message: err.message || 'Error occurred during save/submit.', severity: 'error' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleValidation = useCallback((name, value, rowId) => {
     // Extract field key from combined name if necessary, or pass fieldKey directly
     // For Schedule 10, validations are simpler: usually numeric.
@@ -750,6 +785,26 @@ const Schedule10 = () => {
             }}
           >
             OK
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openSubmitDialog} onClose={() => setOpenSubmitDialog(false)}>
+        <DialogTitle>Confirm Submission</DialogTitle>
+        <DialogContent>Are you sure you want to submit Schedule 10 data?</DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenSubmitDialog(false)} color="inherit">
+            Close
+          </Button>
+          <Button
+            onClick={() => {
+              setOpenSubmitDialog(false);
+              handleSaveOrSubmit(false);
+            }}
+            color="success"
+            variant="contained"
+          >
+            Submit
           </Button>
         </DialogActions>
       </Dialog>
@@ -994,13 +1049,16 @@ const Schedule10 = () => {
       </TableContainer>
       {/* Add Save/Submit buttons similar to Schedule9C if needed */}
       <Stack direction="row" spacing={2} sx={{ mt: 2, justifyContent: 'center' }}>
-        <Button variant="contained" color="primary" onClick={() => console.log('Save clicked', calculatedData)}>
+        <Button variant="contained" color="primary" onClick={() => handleSubmit(true)} disabled={isSubmitting}>
           Save
         </Button>
-        <Button variant="contained" color="secondary" onClick={() => console.log('Submit clicked', calculatedData)}>
+        <Button variant="contained" color="secondary" onClick={() => setOpenSubmitDialog(true)} disabled={isSubmitting}>
           Submit
         </Button>
       </Stack>
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
     </Box>
   );
 };
