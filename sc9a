@@ -1,21 +1,42 @@
- const updateGlobalState = useMemo(
-    () => (value) => {
-      setRows((prevRows) => {
-        const updatedRows = [...prevRows];
-        if (updatedRows[index]) {
-          const targetRow = { ...updatedRows[index] };
-          targetRow[column.key] = value;
+const updateGlobalState = useMemo(
+  () => (value) => {
+    setRows((prevRows) => {
+      const updatedRows = [...prevRows];
+      if (updatedRows[index]) {
+        const targetRow = { ...updatedRows[index] };
+        targetRow[column.key] = value;
 
-          if (column.key === 'aggOutStand' || column.key === 'aggSecurities') {
-            const out = parseFloat(targetRow.aggOutStand) || 0;
-            const sec = parseFloat(targetRow.aggSecurities) || 0;
-            targetRow.netShortfall = (out - sec).toFixed(2);
-          }
-          updatedRows[index] = targetRow;
-          return updatedRows;
+        // Helper to sanitize and ensure 2 decimal digits safely
+        const sanitize = (val) => {
+          if (!val) return '0.00';
+          const str = val.toString().replace(/,/g, '');
+          return /^\d+(\.\d+)?$/.test(str) ? str : '0.00';
+        };
+
+        // Safe subtraction without float precision error
+        const subtractDecimalStrings = (a, b) => {
+          const [aInt, aDec = ''] = sanitize(a).split('.');
+          const [bInt, bDec = ''] = sanitize(b).split('.');
+
+          const aCents = BigInt(aInt) * 100n + BigInt((aDec + '00').slice(0, 2));
+          const bCents = BigInt(bInt) * 100n + BigInt((bDec + '00').slice(0, 2));
+
+          const diffCents = aCents - bCents;
+          const intPart = diffCents / 100n;
+          const decPart = (diffCents % 100n).toString().padStart(2, '0');
+          return `${intPart.toString()}.${decPart}`;
+        };
+
+        // Apply calculation only for relevant columns
+        if (column.key === 'aggOutStand' || column.key === 'aggSecurities') {
+          targetRow.netShortfall = subtractDecimalStrings(targetRow.aggOutStand, targetRow.aggSecurities);
         }
-        return prevRows;
-      });
-    },
-    [index, column.key, setRows]
-  );
+
+        updatedRows[index] = targetRow;
+        return updatedRows;
+      }
+      return prevRows;
+    });
+  },
+  [index, column.key, setRows]
+);
