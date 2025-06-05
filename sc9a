@@ -1,18 +1,18 @@
 const calculateTotals = useCallback(() => {
-  const sanitizeNumber = (value) => {
-    if (value == null) return 0;
+  const sanitizeAndScale = (value) => {
+    if (value == null || value === '') return 0;
     const cleaned = value.toString().replace(/,/g, '');
-    const num = parseFloat(cleaned);
-    return isNaN(num) ? 0 : num;
+    const floatVal = parseFloat(cleaned);
+    return isNaN(floatVal) ? 0 : Math.round(floatVal * 100); // scale to avoid decimals
   };
 
   const totalsObj = rows.reduce(
     (acc, row) => {
-      acc.aggOutStandTotal += sanitizeNumber(row.aggOutStand);
-      acc.aggSecuritiesTotal += sanitizeNumber(row.aggSecurities);
-      acc.netShortfallTotal += sanitizeNumber(row.netShortfall);
-      acc.provisionTotal += sanitizeNumber(row.provision);
-      acc.balInterestSuspenseAccTotal += sanitizeNumber(row.balInterestSuspenseAcc);
+      acc.aggOutStandTotal += sanitizeAndScale(row.aggOutStand);
+      acc.aggSecuritiesTotal += sanitizeAndScale(row.aggSecurities);
+      acc.netShortfallTotal += sanitizeAndScale(row.netShortfall);
+      acc.provisionTotal += sanitizeAndScale(row.provision);
+      acc.balInterestSuspenseAccTotal += sanitizeAndScale(row.balInterestSuspenseAcc);
       return acc;
     },
     {
@@ -24,11 +24,12 @@ const calculateTotals = useCallback(() => {
     }
   );
 
+  // Divide back to get correct decimal precision
   setTotals({
-    aggOutStandTotal: totalsObj.aggOutStandTotal.toFixed(2),
-    aggSecuritiesTotal: totalsObj.aggSecuritiesTotal.toFixed(2),
-    netShortfallTotal: totalsObj.netShortfallTotal.toFixed(2),
-    provisionTotal: totalsObj.provisionTotal.toFixed(2),
-    balInterestSuspenseAccTotal: totalsObj.balInterestSuspenseAccTotal.toFixed(2),
+    aggOutStandTotal: (totalsObj.aggOutStandTotal / 100).toFixed(2),
+    aggSecuritiesTotal: (totalsObj.aggSecuritiesTotal / 100).toFixed(2),
+    netShortfallTotal: (totalsObj.netShortfallTotal / 100).toFixed(2),
+    provisionTotal: (totalsObj.provisionTotal / 100).toFixed(2),
+    balInterestSuspenseAccTotal: (totalsObj.balInterestSuspenseAccTotal / 100).toFixed(2),
   });
 }, [rows]);
