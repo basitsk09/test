@@ -1,515 +1,281 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import {
-  Table,
-  TableBody,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Button,
-  Alert,
-  Box,
-  Stack,
-  CircularProgress,
-  Typography,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-} from '@mui/material';
-import TableCell, { tableCellClasses } from '@mui/material/TableCell';
-import { styled } from '@mui/material/styles';
-import lodashDebounce from 'lodash/debounce';
-import FormInput from '../../../../common/components/ui/FormInput';
-import useApi from '../../../../common/hooks/useApi';
+@PostMapping("/SC10SFTP")
+    public @ResponseBody Map<String, Object> SC10SFTP(@RequestBody Map<String, Object> map) throws ConfigurationException, SQLException, IOException {
+        Map<String, Object> updatedTabData = new HashMap<>();
 
-// --- Styled Components (identical to original) ---
-const StyledTableCell = styled(TableCell, {
-  shouldForwardProp: (prop) => prop !== 'isFixedColumn' && prop !== 'isHeaderSticky' && prop !== 'headerBgColor',
-})(({ theme, isFixedColumn, isHeaderSticky, headerBgColor }) => ({
-  fontSize: '0.875rem',
-  padding: '8px',
-  border: '1px solid rgba(224, 224, 224, 0.13)',
-  whiteSpace: 'nowrap',
-  backgroundColor: theme.palette.background.paper,
+        log.info("Map Values Received from FE ::" + map);
 
-  [`&.${tableCellClasses.head}`]: {
-    backgroundColor: headerBgColor || theme.palette.grey[200],
-    fontWeight: 'bold',
-    textAlign: 'center',
-    position: 'sticky',
-    top: 0,
-    zIndex: isFixedColumn ? 4 : 3,
-  },
-  [`&.${tableCellClasses.body}`]: {
-    textAlign: 'left',
-    ...(isFixedColumn && {
-      position: 'sticky',
-      zIndex: 1,
-      backgroundColor: theme.palette.background.paper,
-    }),
-  },
-}));
+        //Check the files at Destination Directory
+//        Boolean getFile = ccdpSftpService.getsftpdata(map);
+        Boolean getFile = ifamsSftpService.getSC10sftpdata(map);
 
-const StyledTableRow = styled(TableRow)(({ theme, $istotalrow, $issectionheader, $issubsectionheader }) => ({
-  '&:nth-of-type(odd)': {
-    // backgroundColor: theme.palette.action.hover,
-  },
-  ...($issectionheader && {
-    backgroundColor: theme.palette.grey[100],
-    '& > td, & > th': { fontWeight: 'bold', textAlign: 'left' },
-  }),
-  ...($issubsectionheader && {
-    backgroundColor: theme.palette.grey[50],
-    '& > td, & > th': { fontWeight: 'bold', fontStyle: 'italic', textAlign: 'left' },
-  }),
-  ...($istotalrow && {
-    backgroundColor: theme.palette.grey[200],
-    '& > td, & > th': { fontWeight: 'bold' },
-  }),
-}));
+        log.info("IS SC10SFTP FILE RECEIVED  ::" + getFile);
 
-// --- Configurations (identical to original) ---
-const schedule10DataFields = [
-  'stcNstaff', 'offResidenceA', 'otherPremisesA', 'electricFitting', 'totalA',
-  'computers', 'compSoftwareInt', 'compSoftwareNonint', 'compSoftwareTotal',
-  'motor', 'offResidenceB', 'stcLho', 'otherPremisesB', 'otherMachineryPlant',
-  'totalB', 'totalFurnFix', 'landNotRev', 'landRev', 'landRevEnh',
-  'offBuildNotRev', 'offBuildRev', 'offBuildRevEnh', 'residQuartNotRev',
-  'residQuartRev', 'residQuartRevEnh', 'premisTotal', 'revtotal', 'totalC',
-  'premisesUnderCons', 'grandTotal',
-];
 
-const intraRowCalculatedFields = [
-  'totalA', 'compSoftwareTotal', 'otherMachineryPlant', 'totalB', 'totalFurnFix',
-  'premisTotal', 'revtotal', 'totalC', 'grandTotal',
-];
+        // When get the report name as SC10
+        if (getFile && ((String) map.get("reportName")).equalsIgnoreCase("SC10")) {
 
-const rowDefinitionsConfig = [
-  // --- Section: Original Cost / Revalued Value ---
-  { id: 'row1', modelSuffix: '1', srNo: 'A', label: (formData) => `Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March ${formData.finyearOne || ''}`, type: 'entry', isSectionHeaderStyle: true },
-  // --- Section: Addition ---
-  { id: 'header_addition', label: 'Addition', type: 'subSectionHeader' },
-  { id: 'header_addition_a', srNo: '(a)', label: 'Original cost of items put to use during the year:', type: 'subSectionHeader', isMinorHeader: true },
-  { id: 'row3', modelSuffix: '3', srNo: '(i)', label: (formData) => formData.particulars3 || '', type: 'entry' },
-  { id: 'row4', modelSuffix: '4', srNo: '(ii)', label: (formData) => formData.particulars4 || '', type: 'entry' },
-  { id: 'row36', modelSuffix: '36', srNo: '(b)', label: 'Increase in value of Fixed Assets due to Current Revaluation', type: 'entry' },
-  { id: 'row5', modelSuffix: '5', srNo: '(c)', label: 'Original cost of items transferred from other Circles/Groups/CC Departments', type: 'entry' },
-  { id: 'row6', modelSuffix: '6', srNo: '(d)', label: 'Original cost of items transferred from other branches of the same Circle', type: 'entry' },
-  { id: 'row7', modelSuffix: '7', srNo: 'I', label: 'Total [a(i)+a(ii)+b+c+d]', type: 'total', subItemIds: ['row3', 'row4', 'row36', 'row5', 'row6'], operation: 'sum', isTotalRowStyle: true },
-  // --- Section: Deduction ---
-  { id: 'header_deduction', label: 'Deduction', type: 'subSectionHeader' },
-  { id: 'row37', modelSuffix: '37', srNo: '(i)', label: 'Short Valuation charged to Revaluation Reserve due to Current Downward Revaluation', type: 'entry' },
-  { id: 'row9', modelSuffix: '9', srNo: '(ii)', label: 'Original cost of items sold/ discarded during the year', type: 'entry' },
-  { id: 'row33', modelSuffix: '33', srNo: '(iii)', label: 'Projects under construction capitalised during the year', type: 'entry' },
-  { id: 'row10', modelSuffix: '10', srNo: '(iv)', label: 'Original cost of items transferred to other Circles/Groups/CC Departments', type: 'entry' },
-  { id: 'row11', modelSuffix: '11', srNo: '(v)', label: 'Original cost of items transferred to other branches in the same circle', type: 'entry' },
-  { id: 'row12', modelSuffix: '12', srNo: 'II', label: 'Total (i+ii+iii+iv+v)', type: 'total', subItemIds: ['row37', 'row9', 'row33', 'row10', 'row11'], operation: 'sum', isTotalRowStyle: true },
-  // --- Section: Net Totals ---
-  { id: 'row13', modelSuffix: '13', srNo: 'B', label: 'Net Addition (I-II)', type: 'total', subItemIds: ['row7', 'row12'], operation: 'subtract', isSectionHeaderStyle: true, isTotalRowStyle: true },
-  { id: 'row14', modelSuffix: '14', srNo: 'C', label: (formData) => `Total Original Cost/ Revalued Value as at 31st March ${formData.finyearTwo || ''} (A+B)`, type: 'total', subItemIds: ['row1', 'row13'], operation: 'sum', isSectionHeaderStyle: true, isTotalRowStyle: true },
-  // --- Section: Depreciation ---
-  { id: 'header_depreciation', label: 'Depreciation', type: 'subSectionHeader' },
-  { id: 'row18', modelSuffix: '18', srNo: '(i)', label: (formData) => `Depreciation upto the end of previous year i.e. 31st March ${formData.finyearOne || ''}`, type: 'entry' },
-  { id: 'row34', modelSuffix: '34', srNo: '(ii)', label: (formData) => `Short Valuation charged to depreciation upto end of previous year i.e.31st March ${formData.finyearOne || ''}`, type: 'entry' },
-  { id: 'row38', modelSuffix: '38', srNo: '(iii)', label: 'Depreciation on repatriation of Officials from Subsidiaries/ Associates', type: 'entry' },
-  { id: 'row19', modelSuffix: '19', srNo: '(iv)', label: 'Depreciation transferred from other Circles/Groups/CC Departments', type: 'entry' },
-  { id: 'row20', modelSuffix: '20', srNo: '(v)', label: 'Depreciation transferred from other branches of the same circle.', type: 'entry' },
-  { id: 'row21', modelSuffix: '21', srNo: '(vi)', label: 'Depreciation charged during the current year', type: 'entry' },
-  { id: 'row39', modelSuffix: '39', srNo: '(vii)', label: 'Short Valuation charged to Depreciation during the current year due to Current Revaluation', type: 'entry' },
-  { id: 'row22', modelSuffix: '22', srNo: 'D', label: 'Total (i+ii+iii+iv+v+vi+vii)', type: 'total', subItemIds: ['row18', 'row34', 'row38', 'row19', 'row20', 'row21', 'row39'], operation: 'sum', isTotalRowStyle: true },
-  // --- Section: Less Depreciation ---
-  { id: 'header_less_depreciation', label: 'Less :', type: 'subSectionHeader' },
-  { id: 'row40', modelSuffix: '40', srNo: '(i)', label: 'Past Short Valuation credited to Depreciation during the current year due to Current Upward Revaluation', type: 'entry' },
-  { id: 'row24', modelSuffix: '24', srNo: '(ii)', label: 'Depreciation previously provided on fixed assets sold/ discarded', type: 'entry' },
-  { id: 'row25', modelSuffix: '25', srNo: '(iii)', label: 'Depreciation transferred to other Circles/Groups/CC Departments', type: 'entry' },
-  { id: 'row26', modelSuffix: '26', srNo: '(iv)', label: 'Depreciation transferred to other branches of the same Circle.', type: 'entry' },
-  { id: 'row27', modelSuffix: '27', srNo: 'E', label: 'Total (i+ii+iii+iv)', type: 'total', subItemIds: ['row40', 'row24', 'row25', 'row26'], operation: 'sum', isTotalRowStyle: true },
-  // --- Section: Net Depreciation & Book Value ---
-  { id: 'row28', modelSuffix: '28', srNo: 'F', label: 'Net Depreciation (D-E)', type: 'total', subItemIds: ['row22', 'row27'], operation: 'subtract', isTotalRowStyle: true },
-  { id: 'row29', modelSuffix: '29', srNo: 'G', label: (formData) => `Net Book Value as at 31st March ${formData.finyearTwo || ''} (C-F)`, type: 'total', subItemIds: ['row14', 'row28'], operation: 'subtract', isSectionHeaderStyle: true, isTotalRowStyle: true },
-  // --- Section: Sale of Assets ---
-  { id: 'row30', modelSuffix: '30', srNo: 'H', label: 'Sale Price of fixed assets', type: 'entry' },
-  { id: 'row31', modelSuffix: '31', srNo: 'I', label: 'Book Value of fixed assets sold [II (ii)-E(ii)]', type: 'total', subItemIds: ['row9', 'row24'], operation: 'subtract_special_IIii_Eii', isTotalRowStyle: true },
-  { id: 'row35', modelSuffix: '35', srNo: 'J', label: 'GST on Sale of fixed assets', type: 'entry' },
-  { id: 'row32', modelSuffix: '32', srNo: 'K', label: 'Profit/ (Loss) on sale of fixed assets [H-(I+J)]', type: 'total', subItemIds: ['row30', 'row31', 'row35'], operation: 'custom_H_minus_IplusJ', isTotalRowStyle: true },
-];
+            // Add New Method Here for SFTP SC10-Files
+            updatedTabData = ifamsSftpService.getSC10Sftp(map);
+            log.info("updatedTabData SC10:-" + updatedTabData + "updatedTabData status " + updatedTabData.get("status"));
 
-const columnDisplayHeaders = [
-  // Group (A) Furniture & Fittings
-  { labelHtml: 'i) At STCs & Staff Colleges <br /> (For Local Head Office only)', dataField: 'stcNstaff' },
-  { labelHtml: "ii) At Officers' Residences", dataField: 'offResidenceA' },
-  { labelHtml: 'iii) At Other Premises', dataField: 'otherPremisesA' },
-  { labelHtml: 'iv) Electric Fittings <br /> (include electric wiring, <br /> switches, sockets, other <br /> fittings & fans etc.)', dataField: 'electricFitting' },
-  { labelHtml: 'TOTAL (A) <br /> (i+ii+iii+iv)', dataField: 'totalA', isCalculated: true },
-  // Group (B) Machinery & Plant
-  { labelHtml: 'i) Computer Hardware', dataField: 'computers' },
-  { labelHtml: 'a. Computer Software <br /> (forming integral part of <br /> Hardware)', dataField: 'compSoftwareInt' },
-  { labelHtml: 'b. Computer Software <br /> (not forming integral <br /> of Hardware)', dataField: 'compSoftwareNonint' },
-  { labelHtml: 'ii) Computer Software <br /> Total (a+b)', dataField: 'compSoftwareTotal', isCalculated: true },
-  { labelHtml: 'iii) Motor Vehicles', dataField: 'motor' },
-  { labelHtml: "a) At Officers' Residences", dataField: 'offResidenceB' },
-  { labelHtml: 'b) At STCs <br /> (For Local Head Office)', dataField: 'stcLho' },
-  { labelHtml: 'c) At other Premises', dataField: 'otherPremisesB' },
-  { labelHtml: 'iv) Other Machinery & Plant <br />(a+b+c)', dataField: 'otherMachineryPlant', isCalculated: true },
-  { labelHtml: 'TOTAL (B) <br /> (i+ii+iii+iv)', dataField: 'totalB', isCalculated: true },
-  // Total Furniture & Fixtures (A+B)
-  { labelHtml: 'Total Furniture & Fixtures <br /> (A+B)', dataField: 'totalFurnFix', isCalculated: true },
-  // Group (C) Premises
-  { labelHtml: '(a) Land (Not Revalued): <br /> Cost', dataField: 'landNotRev' },
-  { labelHtml: '(b) Land (Revalued): <br /> Cost', dataField: 'landRev' },
-  { labelHtml: '(c) Land (Revalued): <br /> Enhancement due to <br /> Revaluation', dataField: 'landRevEnh' },
-  { labelHtml: '(d) Office Building <br /> (Not revalued): Cost', dataField: 'offBuildNotRev' },
-  { labelHtml: '(e) Office Building <br /> (Revalued): Cost', dataField: 'offBuildRev' },
-  { labelHtml: '(f) Office Building <br /> (Revalued): Enhancement <br /> due to Revaluation', dataField: 'offBuildRevEnh' },
-  { labelHtml: '(g) Residential Building <br /> (Not revalued): Cost', dataField: 'residQuartNotRev' },
-  { labelHtml: '(h) Residential Building <br /> (Revalued): Cost', dataField: 'residQuartRev' },
-  { labelHtml: '(i) Residential Building <br /> (Revalued): Enhancement <br /> due to Revaluation', dataField: 'residQuartRevEnh' },
-  { labelHtml: '(j) Premises Total <br /> (a+b+d+e+g+h)', dataField: 'premisTotal', isCalculated: true },
-  { labelHtml: '(k) Revaluation Total <br /> (c+f+i)', dataField: 'revtotal', isCalculated: true },
-  { labelHtml: 'TOTAL (C) <br /> (j+k)', dataField: 'totalC', isCalculated: true },
-  { labelHtml: '(D) Projects under <br /> construction', dataField: 'premisesUnderCons' },
-  { labelHtml: 'Grand Total <br /> (A + B + C + D)', dataField: 'grandTotal', isCalculated: true },
-];
+        } else {
+            log.info("SC10 files not exist");
 
-const generateInitialSchedule10Data = () => {
-  const initialData = {
-    particulars3: 'Cost of new items put to use upto 3rd October 2024',
-    particulars4: 'Cost of new items put to use during 4th October 2024 to 31st March 2025',
-    finyearOne: new Date().getFullYear().toString(),
-    finyearTwo: (new Date().getFullYear() + 1).toString(),
-  };
-  rowDefinitionsConfig.forEach((rowDef) => {
-    if (rowDef.type === 'entry' || rowDef.type === 'total') {
-      initialData[rowDef.id] = {};
-      schedule10DataFields.forEach((fieldKey) => {
-        initialData[rowDef.id][fieldKey] = '0.00';
-      });
-    }
-  });
-  return initialData;
-};
+            // Checking is there any TimeStamp Stored in DB for SC10 Report
+            Optional<Integer> count = ifamsSftpService.checkSC10TimeStamp(map);
 
-// --- OPTIMIZATION: Memoized FormInput Component ---
-const MemoizedFormInput = React.memo(function MemoizedFormInput({
-  name,
-  value,
-  onChange,
-  onBlur,
-  readOnly,
-  error,
-  helperText
-}) {
-  return (
-    <FormInput
-      name={name}
-      value={value}
-      onChange={onChange}
-      onBlur={onBlur}
-      readOnly={readOnly}
-      error={!!error}
-      helperText={helperText}
-    />
-  );
-});
+            Optional<Integer> dataCount = ifamsSftpService.getSC10Countdata(map);
 
-// --- OPTIMIZATION: Virtualized Input using Intersection Observer ---
-const VirtualizedInput = (props) => {
-    const [isInView, setIsInView] = useState(false);
-    const placeholderRef = useRef(null);
+            log.info("TimeStamp SFTP checkSC10TimeStamp:-" + count.get().intValue());
 
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                // If the component is intersecting the viewport, show the real input
-                if (entry.isIntersecting) {
-                    setIsInView(true);
-                    // Stop observing once it's visible
-                    observer.unobserve(entry.target);
-                }
-            },
-            {
-                // Optional: Adjust rootMargin to load inputs slightly before they appear on screen
-                // rootMargin: '100px', 
+            log.info("SC10 SFTP getSC10Countdata:-" + dataCount.get());
+
+
+            if (count.get() == 1 && dataCount.get() >= 1) {
+
+                String timest = ccdpSftpService.getCCDPTimeStamp(map);
+                log.info("Getting getCCDPTimeStamp ::" + timest);
+
+                updatedTabData.put("message", "Please note: \n Data fetched here was generated in IFAMS at " + timest);
+                updatedTabData.put("status", true);
+                updatedTabData.put("fileAndDataStatus", 3);
+
+            } else {
+                updatedTabData.put("message", "Data not received from IFAMS, Kindly wait till IFAMS sends reports");
+                updatedTabData.put("status", false);
+                updatedTabData.put("fileAndDataStatus", 2);
+          /*  if(((String) map.get("reportName")).equalsIgnoreCase("ANX2C")){
+
+            }*/
             }
-        );
-
-        if (placeholderRef.current) {
-            observer.observe(placeholderRef.current);
         }
 
-        return () => {
-            if (placeholderRef.current) {
-                observer.unobserve(placeholderRef.current);
+
+        updatedTabData.put("reportID", map.get("reportID"));
+        updatedTabData.put("circleCode", map.get("circleCode"));
+        updatedTabData.put("qed", map.get("qed"));
+        updatedTabData.put("reportName", map.get("reportName"));
+        updatedTabData.put("reportStatus", map.get("reportStatus"));
+
+        if (getFile && ((String) map.get("reportName")).equalsIgnoreCase("SC10") && updatedTabData.get("fileAndDataStatus").toString().equalsIgnoreCase("1")) {
+
+            log.info("inside UpdateSFTPFilesStatus ><><><><><><><>");
+            int Result = ifamsSftpService.UpdateSFTPFilesStatus(updatedTabData);
+
+            log.info("Result for UpdateSFTPFilesStatus ::" + Result);
+        }
+
+
+        return updatedTabData;
+    }
+
+///////////////////////////////////////////////////////////////
+
+public Map<String, Object> getSC10Sftp(Map<String, Object> map) {
+        log.info("Inside SC10DaoImpl Reading the .TXT File");
+        Map<String, Object> updatedTabData = new HashMap<>();
+
+        // Extract input parameters from the map
+        String quarterEndDate = (String) map.get("qed");
+        String circleCode = (String) map.get("circleCode");
+        String reportName = (String) map.get("reportName");
+
+        log.info("Quarter End Date: " + quarterEndDate);
+
+        // Extract year, month, and day from quarterEndDate (format: dd/MM/yyyy)
+        String[] dateParts = quarterEndDate.split("/");
+        String yyyy = dateParts[2];
+        String mm = dateParts[1];
+        String dd = dateParts[0];
+
+        // Generate required date formats
+        String sessionDate = yyyy + mm + dd;  // Format: YYYYMMDD
+        String qDate = dd + mm + yyyy;  // Format: DDMMYYYY
+
+        log.info("Session Date: " + sessionDate);
+        log.info("Fetching file...");
+
+        try {
+            // Retrieve file path from properties
+            PropertiesConfiguration config = new PropertiesConfiguration("common.properties");
+
+            //Path where file get Read
+            String mainPath = config.getProperty("ReportDirIFAMS").toString();
+
+            // Building the FileName Here with Complete Path
+            String filePath = mainPath + qDate + "/IFAMS_SCH10_" + sessionDate + "_" + circleCode + ".txt";
+
+            log.info("File Reading Path : " + mainPath);
+
+            log.info("File Received Path: " + filePath);
+
+
+            int[] rowNumber = {1, 3, 4, 36, 5, 6, 7, 37, 9, 33, 10, 11, 12, 13, 14, 18, 34,
+                    38, 19, 20, 21, 39, 22, 40, 24, 25, 26, 27, 28,
+                    29, 30, 31, 35, 32};
+            int rowNumberCount = 0;
+
+            List<String> lines = new ArrayList<>();
+
+            // Read the file
+            try (BufferedReader bufferedReader = new BufferedReader(new FileReader(filePath))) {
+                String line;
+                while ((line = bufferedReader.readLine()) != null) {
+                    if (!line.trim().isEmpty()) {
+                        lines.add(line);
+                    }
+                }
             }
-        };
-    }, []);
 
-    // Placeholder has fixed height and alignment to prevent layout shifts when the real input loads
-    const placeholder = (
-        <Box
-            ref={placeholderRef}
-            sx={{
-                height: '38px', // Match typical height of a small TextField
-                textAlign: 'right',
-                width: '100%',
-                padding: '6px 8px',
-                boxSizing: 'border-box'
-            }}
-        >
-            {props.displayValue}
-        </Box>
-    );
+            // Initialize SC10 object and storage for row data
+            SC10 sc10 = new SC10();
+            Map<Integer, String[]> rowData = new HashMap<>();
+            String timeStamp = "";
 
-    return isInView ? <MemoizedFormInput {...props} /> : placeholder;
-};
+            // Process each line from the file
+            for (String line : lines) {
+                String[] columns = line.split("\\|");
+
+                //  Replace null or empty values with "0"
+                for (int i = 0; i < columns.length; i++) {
+                    if (columns[i] == null || columns[i].trim().isEmpty()) {
+//                        log.warn("Empty value found at index " + i + ". Replacing with 0.");
+                        columns[i] = "0";  //  Set empty values to "0"
+                    }
+                }
+
+                // Extract timestamp if present
+                if (columns[0].trim().equalsIgnoreCase("Generated at")) {
+                    timeStamp = columns[1].trim();
+                    log.info("Time Stamp Extracted from .txt File ::" + timeStamp);
+                    updatedTabData.put("FILETIMESTAMP", timeStamp);
+                    continue;
+                }
+
+                // Parse row number and store data
+                int rowNum = rowNumber[rowNumberCount++];
+                rowData.put(rowNum, columns);
+            }
 
 
-const useCustomSnackbar = () => (message, severity) => console.log(`Snackbar: ${message} (${severity})`);
+            // Define field names as per SC10.java (without row numbers)
+            String[] fieldNames = {
+                    "stcNstaff", "offResidenceA", "otherPremisesA", "electricFitting",
+                    "totalA", "computers", "compSoftwareInt", "compSoftwareNonint",
+                    "compSoftwareTotal", "motor", "offResidenceB", "stcLho",
+                    "otherPremisesB", "otherMachineryPlant", "totalB", "totalFurnFix",
+                    "landNotRev", "landRev", "landRevEnh", "offBuildNotRev",
+                    "offBuildRev", "offBuildRevEnh", "residQuartNotRev", "residQuartRev",
+                    "residQuartRevEnh", "premisTotal", "revtotal", "totalC",
+                    "premisesUnderCons", "grandTotal"
+            };
 
-const Schedule10 = () => {
-  const [formData, setFormData] = useState(generateInitialSchedule10Data);
-  const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [isCalculating, setIsCalculating] = useState(false);
-  const user = { circleCode: '123', quarterEndDate: '2025-03-31' }; // Mock user
-  const showSnackbar = useCustomSnackbar();
-  const { callApi } = useApi();
-  const [fieldsDisabled, setFieldsDisabled] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogContent, setDialogContent] = useState({ title: '', message: '', onConfirm: () => {} });
+            // Step 1: Sort row numbers to maintain correct order
+            List<Integer> sortedRows = new ArrayList<>(rowData.keySet());
+            Collections.sort(sortedRows);
 
-  useEffect(() => {
-    setIsLoading(false);
-  }, []);
+            // Step 2: Iterate over sorted rows and set values dynamically
+            for (int row : sortedRows) {
+                log.info("row : " + row);
+                if (!rowData.containsKey(row)) {
+                    log.info("Skipping row " + row + " as it's not present in the file.");
+                    continue;  //  Skip missing row without setting any data
+                }
 
-  const getNum = (value) => parseFloat(value) || 0;
+                String[] data = rowData.get(row);
 
-  const calculatedData = useMemo(() => {
-    console.time('Schedule10 Calculations');
-    const newCalculatedData = JSON.parse(JSON.stringify(formData));
+                //  Retrieve existing row data (guaranteed to be non-null)
 
-    const calculateInternalRowTotals = (rowObj) => {
-      if (!rowObj) return;
-      const p = (fieldKey) => getNum(rowObj[fieldKey]);
-      rowObj.totalA = (p('stcNstaff') + p('offResidenceA') + p('otherPremisesA') + p('electricFitting')).toFixed(2);
-      rowObj.compSoftwareTotal = (p('compSoftwareInt') + p('compSoftwareNonint')).toFixed(2);
-      const otherMachineryPlantVal = p('offResidenceB') + p('stcLho') + p('otherPremisesB');
-      rowObj.otherMachineryPlant = otherMachineryPlantVal.toFixed(2);
-      rowObj.totalB = (p('computers') + getNum(rowObj.compSoftwareTotal) + p('motor') + otherMachineryPlantVal).toFixed(2);
-      rowObj.totalFurnFix = (getNum(rowObj.totalA) + getNum(rowObj.totalB)).toFixed(2);
-      const premisTotalVal = p('landNotRev') + p('landRev') + p('offBuildNotRev') + p('offBuildRev') + p('residQuartNotRev') + p('residQuartRev');
-      rowObj.premisTotal = premisTotalVal.toFixed(2);
-      const revTotalVal = p('landRevEnh') + p('offBuildRevEnh') + p('residQuartRevEnh');
-      rowObj.revtotal = revTotalVal.toFixed(2);
-      rowObj.totalC = (premisTotalVal + revTotalVal).toFixed(2);
-      rowObj.grandTotal = (getNum(rowObj.totalA) + getNum(rowObj.totalB) + getNum(rowObj.totalC) + p('premisesUnderCons')).toFixed(2);
+                for (int index = 1; index <= 30; index++) {  //  Ensure all 30 values are processed
+                    try {
+
+                        String setterName = "set" + capitalize(fieldNames[index - 1]) + row;  //  Adjust index correctly
+                        Method setterMethod = SC10.class.getMethod(setterName, String.class);
+                        setterMethod.invoke(sc10, data[index].trim());  //  Only set values for present rows
+
+                    } catch (NoSuchMethodException e) {
+                        log.warn("No setter found: " + fieldNames[index - 1] + row);
+                    } catch (Exception e) {
+                        log.error("Error setting value for: " + fieldNames[index - 1] + row, e);
+                    }
+                }
+            }
+
+            // Update timestamp in CCDPFiletime Table database
+            log.info("Updating / Inserting Data into CCDPFiletime " + "FILE Extracted timeStamp ::" + timeStamp + "circleCode ::" + circleCode + "quarterEndDate ::" + quarterEndDate + "reportName ::" + reportName);
+            int updateTime = ccdpSftpDao.updateCCDPFiletime(timeStamp, circleCode, quarterEndDate, reportName);
+
+            log.info("TImeStamp Updated for CCDP_FILE_TIME : Status :" + updateTime + "reportName: " + reportName);
+
+
+            // Return response
+            updatedTabData.put("sc10Data", sc10);
+            updatedTabData.put("message", "Data received from IFAMS and imported successfully");
+            updatedTabData.put("status", true);
+            updatedTabData.put("fileAndDataStatus", 1);
+
+        } catch (Exception e) {
+            updatedTabData.put("message", "Error reading file");
+            updatedTabData.put("fileAndDataStatus", 2);
+            updatedTabData.put("status", false);
+            log.error("Error while reading the file :"+e.getCause());
+        }
+
+        return updatedTabData;
+    }
+
+//////////////////////////////////////////////////////////
+
+const checkSC10SftpData = async () => {
+      const payload = {
+        circleCode: user.circleCode,
+        qed: formatDateToSlash(user.quarterEndDate),
+        reportID: '310010',
+        reportName: 'SC10',
+        reportStatus: 'A',
+      };
+
+      try {
+        const data = await callApi('/IFAMSS/SC10SFTP', payload, 'POST');
+
+        console.log('SFTP response:', data);
+
+        if (data.fileAndDataStatus === 1) {
+          // SFTP Success
+          // Assuming `data.data` contains the schedule form values
+          setFormData(data?.sc10Data || {});
+          setFieldsDisabled(true); // disables all inputs
+
+          setSnackbar({
+            open: true,
+            message: 'Data successfully fetched from IFAMS via SFTP.',
+            severity: 'success',
+          });
+        } else if (data.fileAndDataStatus === 2) {
+          // File error or mismatch
+          setFieldsDisabled(true);
+          showDialog({
+            title: 'File Error',
+            message: data.message || 'Data not received from IFAMS, Kindly wait till IFAMS sends reports',
+            onConfirm: () => navigate(-1), // go back
+          });
+        } else if (data.fileAndDataStatus === 3) {
+          // Data already exists in DB but file was missing
+          setFieldsDisabled(true);
+          showDialog({
+            title: 'Info',
+            message: data.message || 'Please note: Data fetched here was generated in IFAMS',
+            onConfirm: () => navigate(-1),
+          });
+        }
+      } catch (error) {
+        setSnackbar({
+          open: true,
+          message: error.message || 'Error while checking SC10 SFTP data.',
+          severity: 'error',
+        });
+      }
     };
 
-    rowDefinitionsConfig.forEach((rowDef) => {
-      if (!newCalculatedData[rowDef.id]) {
-        newCalculatedData[rowDef.id] = {};
-        schedule10DataFields.forEach((fieldKey) => {
-          newCalculatedData[rowDef.id][fieldKey] = '0.00';
-        });
-      }
-      if (rowDef.type === 'entry' && formData[rowDef.id]) {
-        Object.keys(formData[rowDef.id]).forEach((fieldKey) => {
-          if (schedule10DataFields.includes(fieldKey) && !intraRowCalculatedFields.includes(fieldKey)) {
-            newCalculatedData[rowDef.id][fieldKey] = formData[rowDef.id][fieldKey];
-          }
-        });
-      }
-    });
-
-    rowDefinitionsConfig.forEach((rowDef) => {
-      if (rowDef.type === 'entry') {
-        calculateInternalRowTotals(newCalculatedData[rowDef.id]);
-      }
-    });
-
-    rowDefinitionsConfig.forEach((rowDef) => {
-      if (rowDef.type === 'total') {
-        const targetRow = newCalculatedData[rowDef.id];
-        schedule10DataFields.forEach((fieldKey) => {
-          let value = 0;
-          if (rowDef.operation === 'sum') {
-            rowDef.subItemIds.forEach((subId) => {
-              value += getNum(newCalculatedData[subId]?.[fieldKey]);
-            });
-          } else if (rowDef.operation === 'subtract' && rowDef.subItemIds?.length === 2) {
-            const val1 = getNum(newCalculatedData[rowDef.subItemIds[0]]?.[fieldKey]);
-            const val2 = getNum(newCalculatedData[rowDef.subItemIds[1]]?.[fieldKey]);
-            value = val1 - val2;
-          } else if (rowDef.operation === 'subtract_special_IIii_Eii') {
-            const valRow9 = getNum(newCalculatedData['row9']?.[fieldKey]);
-            const valRow24 = getNum(newCalculatedData['row24']?.[fieldKey]);
-            value = valRow9 - valRow24;
-          } else if (rowDef.operation === 'custom_H_minus_IplusJ') {
-            const valH = getNum(newCalculatedData['row30']?.[fieldKey]);
-            const valI = getNum(newCalculatedData['row31']?.[fieldKey]);
-            const valJ = getNum(newCalculatedData['row35']?.[fieldKey]);
-            value = valH - (valI + valJ);
-          }
-          targetRow[fieldKey] = value.toFixed(2);
-        });
-        calculateInternalRowTotals(targetRow);
-      }
-    });
-
-    console.timeEnd('Schedule10 Calculations');
-    return newCalculatedData;
-  }, [formData]);
-
-  useEffect(() => {
-    if (isCalculating) {
-      setIsCalculating(false);
-    }
-  }, [calculatedData, isCalculating]);
-
-  const debouncedRecalculate = useCallback(
-    lodashDebounce((newFormData) => {
-      setIsCalculating(true);
-      setFormData(newFormData);
-    }, 300),
-    []
-  );
-
-  const handleChange = useCallback(
-    (rowId, fieldKey, value) => {
-      const newFormData = {
-        ...formData,
-        [rowId]: { ...(formData[rowId] || {}), [fieldKey]: value },
-      };
-      setFormData(newFormData);
-      debouncedRecalculate(newFormData);
-    },
-    [formData, debouncedRecalculate]
-  );
+    checkSC10SftpData();
   
-  const handleBlur = useCallback((rowId, fieldKey, value) => {
-    const numericRegex = /^-?\d*\.?\d{0,2}$/;
-    let error = '';
-    if (value !== '' && value !== '-' && !numericRegex.test(value)) {
-      error = 'Invalid number';
-    }
-    setErrors((prev) => ({ ...prev, [`${rowId}-${fieldKey}`]: error }));
-  }, []);
-  
-  const showDialog = ({ title, message, onConfirm }) => {
-    setDialogOpen(true);
-    setDialogContent({ title, message, onConfirm });
-  };
-
-  if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 150px)' }}>
-        <CircularProgress /> <Typography sx={{ ml: 2 }}>Loading Schedule 10...</Typography>
-      </Box>
-    );
-  }
-
-  return (
-    <Box sx={{ p: 1, width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
-      {/* Dialog, Calculating Indicator, and Error Alert components remain the same */}
-      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)' }}>
-        <Table sx={{ minWidth: 3000 }} aria-label="schedule 10 table" stickyHeader>
-          <TableHead sx={{ border: '3px solid' }}>
-            {/* Table Headers are unchanged */}
-            <TableRow>
-              <StyledTableCell rowSpan={2} sx={{ minWidth: '50px', position: 'sticky', left: 0, top: 0, zIndex: 1101, border: '2px solid #fff', backgroundColor: (theme) => theme.palette.grey[200] }}>
-                <b>Sr.No</b>
-              </StyledTableCell>
-              <StyledTableCell rowSpan={2} sx={{ minWidth: '350px', position: 'sticky', left: '50px', border: '2px solid #fff', top: 0, zIndex: 1100, backgroundColor: (theme) => theme.palette.grey[200] }}>
-                <b>Particulars</b>
-              </StyledTableCell>
-              <StyledTableCell colSpan={5} sx={{ border: '2px solid #fff' }}>
-                <b>(A) FURNITURE & FITTINGS</b>
-              </StyledTableCell>
-              <StyledTableCell colSpan={10} sx={{ border: '2px solid #fff' }}>
-                <b>(B) MACHINERY & PLANT</b>
-              </StyledTableCell>
-              <StyledTableCell colSpan={13} sx={{ border: '2px solid #fff' }}>
-                <b>(C) PREMISES</b>
-              </StyledTableCell>
-              <StyledTableCell colSpan={2}></StyledTableCell>
-            </TableRow>
-            <TableRow>
-              {columnDisplayHeaders.map((colDef) => (
-                <StyledTableCell
-                  key={colDef.dataField}
-                  sx={{ position: 'sticky', top: '57px', zIndex: 1100, border: '2px solid #fff' }} // Adjusted top for stickiness
-                  dangerouslySetInnerHTML={{ __html: colDef.labelHtml }}
-                />
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rowDefinitionsConfig.map((rowDef) => {
-              const rowKey = rowDef.id;
-              
-              if (rowDef.type === 'sectionHeader' || rowDef.type === 'subSectionHeader') {
-                return (
-                  <StyledTableRow key={rowKey} $issectionheader={rowDef.type === 'sectionHeader'} $issubsectionheader={rowDef.type === 'subSectionHeader'}>
-                    <StyledTableCell sx={{ position: 'sticky', left: 0, zIndex: 1, backgroundColor: (theme) => rowDef.type === 'sectionHeader' ? theme.palette.grey[100] : theme.palette.grey[50] }}>
-                      {rowDef.srNo || ''}
-                    </StyledTableCell>
-                    <StyledTableCell colSpan={columnDisplayHeaders.length + 1} sx={{ position: 'sticky', left: '50px', zIndex: 1, backgroundColor: (theme) => rowDef.type === 'sectionHeader' ? theme.palette.grey[100] : theme.palette.grey[50] }}>
-                      <b>{typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label}</b>
-                    </StyledTableCell>
-                  </StyledTableRow>
-                );
-              }
-
-              return (
-                <StyledTableRow key={rowKey} $istotalrow={rowDef.isTotalRowStyle} $issectionheader={rowDef.isSectionHeaderStyle}>
-                  <StyledTableCell sx={{ position: 'sticky', left: 0, zIndex: 1, backgroundColor: (theme) => rowDef.isSectionHeaderStyle ? theme.palette.grey[100] : rowDef.isTotalRowStyle ? theme.palette.grey[100] : theme.palette.background.paper }}>
-                    <b>{rowDef.srNo || ''}</b>
-                  </StyledTableCell>
-                  <StyledTableCell sx={{ position: 'sticky', left: '50px', zIndex: 1, backgroundColor: (theme) => rowDef.isSectionHeaderStyle ? theme.palette.grey[100] : rowDef.isTotalRowStyle ? theme.palette.grey[100] : theme.palette.background.paper }}>
-                    <b>{typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label}</b>
-                  </StyledTableCell>
-                  
-                  {columnDisplayHeaders.map((colDef) => {
-                    const fieldKey = colDef.dataField;
-                    const cellKey = `${rowKey}-${fieldKey}`;
-                    const isReadOnly = rowDef.type === 'total' || colDef.isCalculated || (rowDef.isReadOnlyGroup && rowDef.isReadOnlyGroup.includes(fieldKey));
-                    const displayValue = calculatedData[rowKey]?.[fieldKey] ?? '0.00';
-                    const inputValue = formData[rowKey]?.[fieldKey] ?? '0.00';
-                    const errorForField = errors[cellKey];
-
-                    return (
-                      <StyledTableCell key={cellKey}>
-                        <VirtualizedInput
-                          name={cellKey}
-                          value={isReadOnly ? displayValue : inputValue}
-                          displayValue={displayValue} // Pass display value for placeholder
-                          onChange={(e) => handleChange(rowDef.id, fieldKey, e.target.value)}
-                          onBlur={(e) => handleBlur(rowDef.id, fieldKey, e.target.value)}
-                          readOnly={isReadOnly || fieldsDisabled}
-                          error={errorForField}
-                          helperText={errorForField}
-                        />
-                      </StyledTableCell>
-                    );
-                  })}
-                </StyledTableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      <Stack direction="row" spacing={2} sx={{ mt: 2, justifyContent: 'center' }}>
-        <Button variant="contained" color="primary" onClick={() => console.log('Save clicked', calculatedData)}>
-          Save
-        </Button>
-        <Button variant="contained" color="secondary" onClick={() => console.log('Submit clicked', calculatedData)}>
-          Submit
-        </Button>
-      </Stack>
-    </Box>
-  );
-};
-
-export default Schedule10;
