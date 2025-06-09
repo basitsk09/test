@@ -26,49 +26,59 @@ import FormInput from '../../../../common/components/ui/FormInput';
 import useApi from '../../../../common/hooks/useApi';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-// --- Styled Components (identical to original) ---
+// --- Styled Components (Updated for Theming) ---
 const StyledTableCell = styled(TableCell, {
-  shouldForwardProp: (prop) => prop !== 'isFixedColumn' && prop !== 'isHeaderSticky' && prop !== 'headerBgColor',
-})(({ theme, isFixedColumn, isHeaderSticky, headerBgColor }) => ({
+  shouldForwardProp: (prop) => prop !== 'isFixedColumn',
+})(({ theme }) => ({
   fontSize: '0.875rem',
   padding: '8px',
-  border: '1px solid rgba(224, 224, 224, 0.13)',
+  border: `1px solid ${theme.palette.divider}`,
   whiteSpace: 'nowrap',
-  backgroundColor: theme.palette.mode.dark,
 
   [`&.${tableCellClasses.head}`]: {
     backgroundColor: theme.palette.grey[50],
+    color: theme.palette.text.primary,
     fontWeight: 'bold',
     textAlign: 'center',
-    // position: 'sticky',
-    // top: 50,
-    // zIndex: 4,
   },
   [`&.${tableCellClasses.body}`]: {
     textAlign: 'left',
-    ...(isFixedColumn && {
-      // position: 'sticky',
-      // zIndex: 1,
-      backgroundColor: theme.palette.background.paper,
-    }),
   },
 }));
 
-const StyledTableRow = styled(TableRow)(({ theme, $istotalrow, $issectionheader, $issubsectionheader }) => ({
+const StyledTableRow = styled(TableRow, {
+  shouldForwardProp: (prop) => prop !== '$istotalrow' && prop !== '$issectionheader' && prop !== '$issubsectionheader',
+})(({ theme, $istotalrow, $issectionheader, $issubsectionheader }) => ({
   '&:nth-of-type(odd)': {
-    // backgroundColor: theme.palette.action.hover,
+    backgroundColor: theme.palette.action.hover,
+  },
+  // Hide the last border
+  '&:last-child td, &:last-child th': {
+    border: 0,
   },
   ...($issectionheader && {
     backgroundColor: theme.palette.grey[100],
-    '& > td, & > th': { fontWeight: 'bold', textAlign: 'left' },
+    '& > td, & > th': {
+      fontWeight: 'bold',
+      textAlign: 'left',
+      color: theme.palette.text.primary,
+    },
   }),
   ...($issubsectionheader && {
     backgroundColor: theme.palette.grey[50],
-    '& > td, & > th': { fontWeight: 'bold', fontStyle: 'italic', textAlign: 'left' },
+    '& > td, & > th': {
+      fontWeight: 'bold',
+      fontStyle: 'italic',
+      textAlign: 'left',
+      color: theme.palette.text.primary,
+    },
   }),
   ...($istotalrow && {
     backgroundColor: theme.palette.grey[200],
-    '& > td, & > th': { fontWeight: 'bold' },
+    '& > td, & > th': {
+      fontWeight: 'bold',
+      color: theme.palette.text.primary,
+    },
   }),
 }));
 
@@ -622,7 +632,7 @@ const Schedule10 = () => {
             onConfirm: () => navigate(-1),
           });
         }
-      } catch (error) {
+      } catch (error). {
         setSnackbar({
           open: true,
           message: error.message || 'Error while checking SC10 SFTP data.',
@@ -815,7 +825,7 @@ const Schedule10 = () => {
   }
 
   return (
-    <Box sx={{ p: 1, width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
+    <Box sx={{ p: 1, width: '100%', boxSizing: 'border-box', overflowX: 'hidden', bgcolor: 'background.default' }}>
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
         <DialogTitle>{dialogContent.title}</DialogTitle>
         <DialogContent>{dialogContent.message}</DialogContent>
@@ -850,33 +860,22 @@ const Schedule10 = () => {
           </Button>
         </DialogActions>
       </Dialog>
-      {/* Dialog, Calculating Indicator, and Error Alert components remain the same */}
+
       <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)' }}>
         <Table sx={{ minWidth: 3000 }} aria-label="schedule 10 table" stickyHeader>
-          <TableHead sx={{ border: '1px solid' }}>
-            {/* Table Headers are unchanged */}
-            <TableRow
-              sx={{
-                position: 'sticky',
-                left: 0,
-                top: 0,
-                zIndex: 1101,
-                //backgroundColor: '#f5f5f5' /* theme.palette.background.default or similar */,
-              }}
-            >
+          <TableHead>
+            <TableRow>
               <StyledTableCell
                 rowSpan={2}
                 sx={{
                   minWidth: '50px',
                   position: 'sticky',
                   left: 0,
-                  top: 0,
                   zIndex: 1101,
-                  border: '2px solid #fff',
-                  // backgroundColor: (theme) => theme.palette.grey[200],
+                  backgroundColor: 'background.paper',
                 }}
               >
-                <b>Sr.No</b>
+                Sr.No
               </StyledTableCell>
               <StyledTableCell
                 rowSpan={2}
@@ -884,30 +883,27 @@ const Schedule10 = () => {
                   minWidth: '350px',
                   position: 'sticky',
                   left: '50px',
-                  border: '2px solid #fff',
-                  top: 0,
                   zIndex: 1100,
-                  // backgroundColor: (theme) => theme.palette.grey[200],
+                  backgroundColor: 'background.paper',
                 }}
               >
-                <b>Particulars</b>
+                Particulars
               </StyledTableCell>
-              <StyledTableCell colSpan={5} sx={{ border: '2px solid #fff' }}>
-                <b>(A) FURNITURE & FITTINGS</b>
-              </StyledTableCell>
-              <StyledTableCell colSpan={10} sx={{ border: '2px solid #fff' }}>
-                <b>(B) MACHINERY & PLANT</b>
-              </StyledTableCell>
-              <StyledTableCell colSpan={13} sx={{ border: '2px solid #fff' }}>
-                <b>(C) PREMISES</b>
-              </StyledTableCell>
+              <StyledTableCell colSpan={5}> (A) FURNITURE & FITTINGS</StyledTableCell>
+              <StyledTableCell colSpan={10}> (B) MACHINERY & PLANT</StyledTableCell>
+              <StyledTableCell colSpan={13}> (C) PREMISES</StyledTableCell>
               <StyledTableCell colSpan={2}></StyledTableCell>
             </TableRow>
             <TableRow>
               {columnDisplayHeaders.map((colDef) => (
                 <StyledTableCell
                   key={colDef.dataField}
-                  sx={{ position: 'sticky', top: '42px', zIndex: 1100, border: '2px solid #fff' }} // Adjusted top for stickiness
+                  sx={{
+                    position: 'sticky',
+                    top: '56px', // Adjust this value based on your row height
+                    zIndex: 1100,
+                    backgroundColor: 'background.paper',
+                  }}
                   dangerouslySetInnerHTML={{ __html: colDef.labelHtml }}
                 />
               ))}
@@ -917,35 +913,29 @@ const Schedule10 = () => {
             {rowDefinitionsConfig.map((rowDef) => {
               const rowKey = rowDef.id;
 
-              if (rowDef.type === 'sectionHeader' || rowDef.type === 'subSectionHeader') {
+              if (rowDef.type === 'subSectionHeader') {
                 return (
-                  <StyledTableRow
-                    key={rowKey}
-                    $issectionheader={rowDef.type === 'sectionHeader'}
-                    $issubsectionheader={rowDef.type === 'subSectionHeader'}
-                  >
+                  <StyledTableRow key={rowKey} $issubsectionheader>
                     <StyledTableCell
                       sx={{
                         position: 'sticky',
                         left: 0,
                         zIndex: 1,
-                        backgroundColor: (theme) =>
-                          rowDef.type === 'sectionHeader' ? theme.palette.grey[100] : theme.palette.grey[50],
+                        backgroundColor: (theme) => theme.palette.grey[50],
                       }}
                     >
                       {rowDef.srNo || ''}
                     </StyledTableCell>
                     <StyledTableCell
-                      //colSpan={columnDisplayHeaders.length + 1}
+                      colSpan={columnDisplayHeaders.length + 1}
                       sx={{
                         position: 'sticky',
                         left: '50px',
                         zIndex: 1,
-                        backgroundColor: (theme) =>
-                          rowDef.type === 'sectionHeader' ? theme.palette.grey[100] : theme.palette.grey[50],
+                        backgroundColor: (theme) => theme.palette.grey[50],
                       }}
                     >
-                      <b>{typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label}</b>
+                      {typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label}
                     </StyledTableCell>
                   </StyledTableRow>
                 );
@@ -962,30 +952,20 @@ const Schedule10 = () => {
                       position: 'sticky',
                       left: 0,
                       zIndex: 1,
-                      backgroundColor: (theme) =>
-                        rowDef.isSectionHeaderStyle
-                          ? theme.palette.grey[100]
-                          : rowDef.isTotalRowStyle
-                          ? theme.palette.grey[100]
-                          : theme.palette.background.paper,
+                      bgcolor: 'background.paper',
                     }}
                   >
-                    <b>{rowDef.srNo || ''}</b>
+                    {rowDef.srNo || ''}
                   </StyledTableCell>
                   <StyledTableCell
                     sx={{
                       position: 'sticky',
                       left: '50px',
                       zIndex: 1,
-                      backgroundColor: (theme) =>
-                        rowDef.isSectionHeaderStyle
-                          ? theme.palette.grey[100]
-                          : rowDef.isTotalRowStyle
-                          ? theme.palette.grey[100]
-                          : theme.palette.background.paper,
+                      bgcolor: 'background.paper',
                     }}
                   >
-                    <b>{typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label}</b>
+                    {typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label}
                   </StyledTableCell>
 
                   {columnDisplayHeaders.map((colDef) => {
@@ -1024,7 +1004,7 @@ const Schedule10 = () => {
         <Button variant="contained" color="primary" onClick={() => handleSaveOrSubmit(true)} disabled={isSubmitting}>
           Save
         </Button>
-        <Button variant="contained" color="secondary" onClick={() => setOpenSubmitDialog(true)} disabled={isSubmitting}>
+        <Button variant="contained" color="success" onClick={() => setOpenSubmitDialog(true)} disabled={isSubmitting}>
           Submit
         </Button>
       </Stack>
@@ -1034,7 +1014,9 @@ const Schedule10 = () => {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
       </Snackbar>
     </Box>
   );
