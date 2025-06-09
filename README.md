@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -6,1020 +6,614 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Button,
-  Alert,
-  Box,
-  Stack,
-  CircularProgress,
-  Typography,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Snackbar,
   TextField,
+  Checkbox,
+  Snackbar,
+  Alert,
+  Stack,
+  Box,
+  Typography,
+  CircularProgress,
+  TableCell,
 } from '@mui/material';
-import TableCell, { tableCellClasses } from '@mui/material/TableCell';
 import { styled } from '@mui/material/styles';
-import lodashDebounce from 'lodash/debounce';
+import { CustomButton } from '../../../../common/components/ui/Buttons'; // Assuming path is correct
+import useApi from '../../../../common/hooks/useApi'; // Assuming path is correct
+import { FixedSizeList as List } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
 import FormInput from '../../../../common/components/ui/FormInput';
-import useApi from '../../../../common/hooks/useApi';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
-// --- Styled Components (Updated for Theming) ---
-const StyledTableCell = styled(TableCell, {
-  shouldForwardProp: (prop) => prop !== 'isFixedColumn',
-})(({ theme }) => ({
-  fontSize: '0.875rem',
-  padding: '8px',
-  border: `1px solid ${theme.palette.divider}`,
-  whiteSpace: 'nowrap',
-
-  [`&.${tableCellClasses.head}`]: {
-    backgroundColor: theme.palette.grey[50],
-    color: theme.palette.text.primary,
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  fontSize: '1rem',
+  padding: theme.spacing(1), // Adjust padding as needed for fit
+  '&.MuiTableCell-head': {
+    backgroundColor: theme.palette.common.black,
+    color: theme.palette.common.white,
     fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  [`&.${tableCellClasses.body}`]: {
-    textAlign: 'left',
   },
 }));
 
-const StyledTableRow = styled(TableRow, {
-  shouldForwardProp: (prop) => prop !== '$istotalrow' && prop !== '$issectionheader' && prop !== '$issubsectionheader',
-})(({ theme, $istotalrow, $issectionheader, $issubsectionheader }) => ({
-  '&:nth-of-type(odd)': {
-    backgroundColor: theme.palette.action.hover,
-  },
-  // Hide the last border
-  '&:last-child td, &:last-child th': {
-    border: 0,
-  },
-  ...($issectionheader && {
-    backgroundColor: theme.palette.grey[100],
-    '& > td, & > th': {
-      fontWeight: 'bold',
-      textAlign: 'left',
-      color: theme.palette.text.primary,
-    },
-  }),
-  ...($issubsectionheader && {
-    backgroundColor: theme.palette.grey[50],
-    '& > td, & > th': {
-      fontWeight: 'bold',
-      fontStyle: 'italic',
-      textAlign: 'left',
-      color: theme.palette.text.primary,
-    },
-  }),
-  ...($istotalrow && {
-    backgroundColor: theme.palette.grey[200],
-    '& > td, & > th': {
-      fontWeight: 'bold',
-      color: theme.palette.text.primary,
-    },
-  }),
-}));
+const numericRegex = /^-?\d*(\.\d{0,2})?$/;
+const alphanumericRegex = /^[A-Za-z0-9\s]*$/;
 
-// --- Configurations (identical to original) ---
-const schedule10DataFields = [
-  'stcNstaff',
-  'offResidenceA',
-  'otherPremisesA',
-  'electricFitting',
-  'totalA',
-  'computers',
-  'compSoftwareInt',
-  'compSoftwareNonint',
-  'compSoftwareTotal',
-  'motor',
-  'offResidenceB',
-  'stcLho',
-  'otherPremisesB',
-  'otherMachineryPlant',
-  'totalB',
-  'totalFurnFix',
-  'landNotRev',
-  'landRev',
-  'landRevEnh',
-  'offBuildNotRev',
-  'offBuildRev',
-  'offBuildRevEnh',
-  'residQuartNotRev',
-  'residQuartRev',
-  'residQuartRevEnh',
-  'premisTotal',
-  'revtotal',
-  'totalC',
-  'premisesUnderCons',
-  'grandTotal',
-];
-
-const intraRowCalculatedFields = [
-  'totalA',
-  'compSoftwareTotal',
-  'otherMachineryPlant',
-  'totalB',
-  'totalFurnFix',
-  'premisTotal',
-  'revtotal',
-  'totalC',
-  'grandTotal',
-];
-
-const rowDefinitionsConfig = [
-  // --- Section: Original Cost / Revalued Value ---
+// Define columns with width and alignment
+const columns = [
+  { key: 'isDelete', label: 'Select', type: 'checkbox', editable: false, align: 'center', subHeading: '', width: '5%' },
   {
-    id: 'row1',
-    modelSuffix: '1',
-    srNo: 'A',
-    label: (formData) =>
-      `Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March ${formData.finyearOne || ''}`,
-    type: 'entry',
-    isSectionHeaderStyle: true,
-  },
-  // --- Section: Addition ---
-  { id: 'header_addition', label: 'Addition', type: 'subSectionHeader' },
-  {
-    id: 'header_addition_a',
-    srNo: '(a)',
-    label: 'Original cost of items put to use during the year:',
-    type: 'subSectionHeader',
-    isMinorHeader: true,
-  },
-  { id: 'row3', modelSuffix: '3', srNo: '(i)', label: (formData) => formData.particulars3 || '', type: 'entry' },
-  { id: 'row4', modelSuffix: '4', srNo: '(ii)', label: (formData) => formData.particulars4 || '', type: 'entry' },
-  {
-    id: 'row36',
-    modelSuffix: '36',
-    srNo: '(b)',
-    label: 'Increase in value of Fixed Assets due to Current Revaluation',
-    type: 'entry',
+    key: 'borrowerName',
+    label: "Branch & Borrower's Name",
+    type: 'alphaNumericWithSpace',
+    editable: true,
+    align: 'center', // Text columns usually left-aligned
+    pattern: alphanumericRegex,
+    subHeading: '',
+    width: '25%',
   },
   {
-    id: 'row5',
-    modelSuffix: '5',
-    srNo: '(c)',
-    label: 'Original cost of items transferred from other Circles/Groups/CC Departments',
-    type: 'entry',
+    key: 'aggOutStand',
+    label: 'Aggregate outstanding',
+    type: 'amountDecimal',
+    editable: true,
+    align: 'center', // Numeric columns usually right-aligned
+    pattern: numericRegex,
+    subHeading: '( 1 )',
+    width: '14%', // Adjusted for sum
   },
   {
-    id: 'row6',
-    modelSuffix: '6',
-    srNo: '(d)',
-    label: 'Original cost of items transferred from other branches of the same Circle',
-    type: 'entry',
+    key: 'aggSecurities',
+    label: 'Aggregate value of realisable securities',
+    type: 'amountDecimal',
+    editable: true,
+    align: 'center', // Numeric
+    pattern: numericRegex,
+    subHeading: '( 2 )',
+    width: '14%', // Adjusted for sum
   },
   {
-    id: 'row7',
-    modelSuffix: '7',
-    srNo: 'I',
-    label: 'Total [a(i)+a(ii)+b+c+d]',
-    type: 'total',
-    subItemIds: ['row3', 'row4', 'row36', 'row5', 'row6'],
-    operation: 'sum',
-    isTotalRowStyle: true,
-  },
-  // --- Section: Deduction ---
-  { id: 'header_deduction', label: 'Deduction', type: 'subSectionHeader' },
-  {
-    id: 'row37',
-    modelSuffix: '37',
-    srNo: '(i)',
-    label: 'Short Valuation charged to Revaluation Reserve due to Current Downward Revaluation',
-    type: 'entry',
+    key: 'netShortfall',
+    label: 'Net Shortfall',
+    type: 'amountDecimal',
+    editable: false,
+    align: 'center', // Numeric
+    subHeading: '( 3 = 1 - 2 )',
+    width: '14%', // Adjusted for sum
   },
   {
-    id: 'row9',
-    modelSuffix: '9',
-    srNo: '(ii)',
-    label: 'Original cost of items sold/ discarded during the year',
-    type: 'entry',
+    key: 'provision',
+    label: 'Provision',
+    type: 'amountDecimal',
+    editable: true,
+    align: 'center', // Numeric
+    pattern: numericRegex,
+    subHeading: '( 4 )',
+    width: '14%', // Adjusted for sum
   },
   {
-    id: 'row33',
-    modelSuffix: '33',
-    srNo: '(iii)',
-    label: 'Projects under construction capitalised during the year',
-    type: 'entry',
-  },
-  {
-    id: 'row10',
-    modelSuffix: '10',
-    srNo: '(iv)',
-    label: 'Original cost of items transferred to other Circles/Groups/CC Departments',
-    type: 'entry',
-  },
-  {
-    id: 'row11',
-    modelSuffix: '11',
-    srNo: '(v)',
-    label: 'Original cost of items transferred to other branches in the same circle',
-    type: 'entry',
-  },
-  {
-    id: 'row12',
-    modelSuffix: '12',
-    srNo: 'II',
-    label: 'Total (i+ii+iii+iv+v)',
-    type: 'total',
-    subItemIds: ['row37', 'row9', 'row33', 'row10', 'row11'],
-    operation: 'sum',
-    isTotalRowStyle: true,
-  },
-  // --- Section: Net Totals ---
-  {
-    id: 'row13',
-    modelSuffix: '13',
-    srNo: 'B',
-    label: 'Net Addition (I-II)',
-    type: 'total',
-    subItemIds: ['row7', 'row12'],
-    operation: 'subtract',
-    isSectionHeaderStyle: true,
-    isTotalRowStyle: true,
-  },
-  {
-    id: 'row14',
-    modelSuffix: '14',
-    srNo: 'C',
-    label: (formData) => `Total Original Cost/ Revalued Value as at 31st March ${formData.finyearTwo || ''} (A+B)`,
-    type: 'total',
-    subItemIds: ['row1', 'row13'],
-    operation: 'sum',
-    isSectionHeaderStyle: true,
-    isTotalRowStyle: true,
-  },
-  // --- Section: Depreciation ---
-  { id: 'header_depreciation', label: 'Depreciation', type: 'subSectionHeader' },
-  {
-    id: 'row18',
-    modelSuffix: '18',
-    srNo: '(i)',
-    label: (formData) => `Depreciation upto the end of previous year i.e. 31st March ${formData.finyearOne || ''}`,
-    type: 'entry',
-  },
-  {
-    id: 'row34',
-    modelSuffix: '34',
-    srNo: '(ii)',
-    label: (formData) =>
-      `Short Valuation charged to depreciation upto end of previous year i.e.31st March ${formData.finyearOne || ''}`,
-    type: 'entry',
-  },
-  {
-    id: 'row38',
-    modelSuffix: '38',
-    srNo: '(iii)',
-    label: 'Depreciation on repatriation of Officials from Subsidiaries/ Associates',
-    type: 'entry',
-  },
-  {
-    id: 'row19',
-    modelSuffix: '19',
-    srNo: '(iv)',
-    label: 'Depreciation transferred from other Circles/Groups/CC Departments',
-    type: 'entry',
-  },
-  {
-    id: 'row20',
-    modelSuffix: '20',
-    srNo: '(v)',
-    label: 'Depreciation transferred from other branches of the same circle.',
-    type: 'entry',
-  },
-  {
-    id: 'row21',
-    modelSuffix: '21',
-    srNo: '(vi)',
-    label: 'Depreciation charged during the current year',
-    type: 'entry',
-  },
-  {
-    id: 'row39',
-    modelSuffix: '39',
-    srNo: '(vii)',
-    label: 'Short Valuation charged to Depreciation during the current year due to Current Revaluation',
-    type: 'entry',
-  },
-  {
-    id: 'row22',
-    modelSuffix: '22',
-    srNo: 'D',
-    label: 'Total (i+ii+iii+iv+v+vi+vii)',
-    type: 'total',
-    subItemIds: ['row18', 'row34', 'row38', 'row19', 'row20', 'row21', 'row39'],
-    operation: 'sum',
-    isTotalRowStyle: true,
-  },
-  // --- Section: Less Depreciation ---
-  { id: 'header_less_depreciation', label: 'Less :', type: 'subSectionHeader' },
-  {
-    id: 'row40',
-    modelSuffix: '40',
-    srNo: '(i)',
-    label: 'Past Short Valuation credited to Depreciation during the current year due to Current Upward Revaluation',
-    type: 'entry',
-  },
-  {
-    id: 'row24',
-    modelSuffix: '24',
-    srNo: '(ii)',
-    label: 'Depreciation previously provided on fixed assets sold/ discarded',
-    type: 'entry',
-  },
-  {
-    id: 'row25',
-    modelSuffix: '25',
-    srNo: '(iii)',
-    label: 'Depreciation transferred to other Circles/Groups/CC Departments',
-    type: 'entry',
-  },
-  {
-    id: 'row26',
-    modelSuffix: '26',
-    srNo: '(iv)',
-    label: 'Depreciation transferred to other branches of the same Circle.',
-    type: 'entry',
-  },
-  {
-    id: 'row27',
-    modelSuffix: '27',
-    srNo: 'E',
-    label: 'Total (i+ii+iii+iv)',
-    type: 'total',
-    subItemIds: ['row40', 'row24', 'row25', 'row26'],
-    operation: 'sum',
-    isTotalRowStyle: true,
-  },
-  // --- Section: Net Depreciation & Book Value ---
-  {
-    id: 'row28',
-    modelSuffix: '28',
-    srNo: 'F',
-    label: 'Net Depreciation (D-E)',
-    type: 'total',
-    subItemIds: ['row22', 'row27'],
-    operation: 'subtract',
-    isTotalRowStyle: true,
-  },
-  {
-    id: 'row29',
-    modelSuffix: '29',
-    srNo: 'G',
-    label: (formData) => `Net Book Value as at 31st March ${formData.finyearTwo || ''} (C-F)`,
-    type: 'total',
-    subItemIds: ['row14', 'row28'],
-    operation: 'subtract',
-    isSectionHeaderStyle: true,
-    isTotalRowStyle: true,
-  },
-  // --- Section: Sale of Assets ---
-  { id: 'row30', modelSuffix: '30', srNo: 'H', label: 'Sale Price of fixed assets', type: 'entry' },
-  {
-    id: 'row31',
-    modelSuffix: '31',
-    srNo: 'I',
-    label: 'Book Value of fixed assets sold [II (ii)-E(ii)]',
-    type: 'total',
-    subItemIds: ['row9', 'row24'],
-    operation: 'subtract_special_IIii_Eii',
-    isTotalRowStyle: true,
-  },
-  { id: 'row35', modelSuffix: '35', srNo: 'J', label: 'GST on Sale of fixed assets', type: 'entry' },
-  {
-    id: 'row32',
-    modelSuffix: '32',
-    srNo: 'K',
-    label: 'Profit/ (Loss) on sale of fixed assets [H-(I+J)]',
-    type: 'total',
-    subItemIds: ['row30', 'row31', 'row35'],
-    operation: 'custom_H_minus_IplusJ',
-    isTotalRowStyle: true,
+    key: 'balInterestSuspenseAcc',
+    label: 'Balance in Interest Suspense Account',
+    type: 'amountDecimal',
+    editable: true,
+    align: 'center', // Numeric
+    pattern: numericRegex,
+    subHeading: '( 5 )',
+    width: '14%', // Adjusted for sum (5 + 25 + 14*5 = 5 + 25 + 70 = 100%)
   },
 ];
 
-const columnDisplayHeaders = [
-  // Group (A) Furniture & Fittings
-  { labelHtml: 'i) At STCs & Staff Colleges <br /> (For Local Head Office only)', dataField: 'stcNstaff' },
-  { labelHtml: "ii) At Officers' Residences", dataField: 'offResidenceA' },
-  { labelHtml: 'iii) At Other Premises', dataField: 'otherPremisesA' },
-  {
-    labelHtml:
-      'iv) Electric Fittings <br /> (include electric wiring, <br /> switches, sockets, other <br /> fittings & fans etc.)',
-    dataField: 'electricFitting',
-  },
-  { labelHtml: 'TOTAL (A) <br /> (i+ii+iii+iv)', dataField: 'totalA', isCalculated: true },
-  // Group (B) Machinery & Plant
-  { labelHtml: 'i) Computer Hardware', dataField: 'computers' },
-  { labelHtml: 'a. Computer Software <br /> (forming integral part of <br /> Hardware)', dataField: 'compSoftwareInt' },
-  {
-    labelHtml: 'b. Computer Software <br /> (not forming integral <br /> of Hardware)',
-    dataField: 'compSoftwareNonint',
-  },
-  { labelHtml: 'ii) Computer Software <br /> Total (a+b)', dataField: 'compSoftwareTotal', isCalculated: true },
-  { labelHtml: 'iii) Motor Vehicles', dataField: 'motor' },
-  { labelHtml: "a) At Officers' Residences", dataField: 'offResidenceB' },
-  { labelHtml: 'b) At STCs <br /> (For Local Head Office)', dataField: 'stcLho' },
-  { labelHtml: 'c) At other Premises', dataField: 'otherPremisesB' },
-  { labelHtml: 'iv) Other Machinery & Plant <br />(a+b+c)', dataField: 'otherMachineryPlant', isCalculated: true },
-  { labelHtml: 'TOTAL (B) <br /> (i+ii+iii+iv)', dataField: 'totalB', isCalculated: true },
-  // Total Furniture & Fixtures (A+B)
-  { labelHtml: 'Total Furniture & Fixtures <br /> (A+B)', dataField: 'totalFurnFix', isCalculated: true },
-  // Group (C) Premises
-  { labelHtml: '(a) Land (Not Revalued): <br /> Cost', dataField: 'landNotRev' },
-  { labelHtml: '(b) Land (Revalued): <br /> Cost', dataField: 'landRev' },
-  { labelHtml: '(c) Land (Revalued): <br /> Enhancement due to <br /> Revaluation', dataField: 'landRevEnh' },
-  { labelHtml: '(d) Office Building <br /> (Not revalued): Cost', dataField: 'offBuildNotRev' },
-  { labelHtml: '(e) Office Building <br /> (Revalued): Cost', dataField: 'offBuildRev' },
-  {
-    labelHtml: '(f) Office Building <br /> (Revalued): Enhancement <br /> due to Revaluation',
-    dataField: 'offBuildRevEnh',
-  },
-  { labelHtml: '(g) Residential Building <br /> (Not revalued): Cost', dataField: 'residQuartNotRev' },
-  { labelHtml: '(h) Residential Building <br /> (Revalued): Cost', dataField: 'residQuartRev' },
-  {
-    labelHtml: '(i) Residential Building <br /> (Revalued): Enhancement <br /> due to Revaluation',
-    dataField: 'residQuartRevEnh',
-  },
-  { labelHtml: '(j) Premises Total <br /> (a+b+d+e+g+h)', dataField: 'premisTotal', isCalculated: true },
-  { labelHtml: '(k) Revaluation Total <br /> (c+f+i)', dataField: 'revtotal', isCalculated: true },
-  { labelHtml: 'TOTAL (C) <br /> (j+k)', dataField: 'totalC', isCalculated: true },
-  { labelHtml: '(D) Projects under <br /> construction', dataField: 'premisesUnderCons' },
-  { labelHtml: 'Grand Total <br /> (A + B + C + D)', dataField: 'grandTotal', isCalculated: true },
-];
-
-const generateInitialSchedule10Data = () => {
-  const initialData = {
-    particulars3: 'Cost of new items put to use upto 3rd October 2024',
-    particulars4: 'Cost of new items put to use during 4th October 2024 to 31st March 2025',
-    finyearOne: new Date().getFullYear().toString(),
-    finyearTwo: (new Date().getFullYear() + 1).toString(),
-  };
-  rowDefinitionsConfig.forEach((rowDef) => {
-    if (rowDef.type === 'entry' || rowDef.type === 'total') {
-      initialData[rowDef.id] = {};
-      schedule10DataFields.forEach((fieldKey) => {
-        initialData[rowDef.id][fieldKey] = '0.00';
-      });
-    }
-  });
-  return initialData;
+const initialRow = {
+  isDelete: false,
+  borrowerName: '',
+  aggOutStand: '',
+  aggSecurities: '',
+  netShortfall: '',
+  provision: '',
+  balInterestSuspenseAcc: '',
 };
 
-// --- OPTIMIZATION: Memoized FormInput Component ---
-const MemoizedFormInput = React.memo(function MemoizedFormInput({
-  name,
-  value,
-  onChange,
-  onBlur,
-  readOnly,
-  error,
-  helperText,
-}) {
+function debounce(func, delay = 300) {
+  // Increased default delay slightly
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => func(...args), delay);
+  };
+}
+
+// Memoized Cell Component for editable cells
+const MemoizedCellWithLocalState = React.memo(({ row, column, index, setRows }) => {
+  const [localValue, setLocalValue] = useState(row[column.key] || '');
+
+  useEffect(() => {
+    setLocalValue(row[column.key] || '');
+  }, [row, column.key]);
+
+  const updateGlobalState = useMemo(
+    () => (value) => {
+      setRows((prevRows) => {
+        const updatedRows = [...prevRows];
+        if (updatedRows[index]) {
+          const targetRow = { ...updatedRows[index] };
+          targetRow[column.key] = value;
+
+          // Helper to sanitize and ensure 2 decimal digits safely
+          const sanitize = (val) => {
+            if (!val) return '0.00';
+            const str = val.toString().replace(/,/g, '');
+            return /^\d+(\.\d+)?$/.test(str) ? str : '0.00';
+          };
+
+          // Safe subtraction without float precision error
+          const subtractDecimalStrings = (a, b) => {
+            const [aInt, aDec = ''] = sanitize(a).split('.');
+            const [bInt, bDec = ''] = sanitize(b).split('.');
+
+            const aCents = BigInt(aInt) * 100n + BigInt((aDec + '00').slice(0, 2));
+            const bCents = BigInt(bInt) * 100n + BigInt((bDec + '00').slice(0, 2));
+
+            const diffCents = aCents - bCents;
+
+            const sign = diffCents < 0 ? '-' : '';
+            const absCents = diffCents < 0 ? -diffCents : diffCents;
+
+            const intPart = absCents / 100n;
+            const decPart = (absCents % 100n).toString().padStart(2, '0');
+
+            return `${sign}${intPart.toString()}.${decPart}`;
+          };
+
+          // Apply calculation only for relevant columns
+          if (column.key === 'aggOutStand' || column.key === 'aggSecurities') {
+            targetRow.netShortfall = subtractDecimalStrings(targetRow.aggOutStand, targetRow.aggSecurities);
+          }
+
+          updatedRows[index] = targetRow;
+          return updatedRows;
+        }
+        return prevRows;
+      });
+    },
+    [index, column.key, setRows]
+  );
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    // if (column.pattern) {
+    //   if (column.type === 'number' && val !== '' && val !== '-' && !column.pattern.test(val)) {
+    //     return;
+    //   }
+    // }
+    setLocalValue(val);
+    updateGlobalState(val);
+  };
+
   return (
     <FormInput
-      name={name}
-      value={value}
-      onChange={onChange}
-      onBlur={onBlur}
-      readOnly={readOnly}
-      error={!!error}
-      helperText={helperText}
+      value={localValue}
+      onChange={handleChange}
+      // inputProps={{
+      //   style: { textAlign: column.align || 'left' }, // Align text based on column definition
+      //   maxLength: column.key === 'borrowerName' ? 255 : 18,
+      // }}
+      inputType={column.type}
+      maxLength={column.key === 'borrowerName' ? 50 : 18}
+      debounceDuration={250}
     />
   );
 });
+MemoizedCellWithLocalState.displayName = 'MemoizedCellWithLocalState';
 
-// --- OPTIMIZATION: Virtualized Input using Intersection Observer ---
-const VirtualizedInput = (props) => {
-  const [isInView, setIsInView] = useState(false);
-  const placeholderRef = useRef(null);
+// Memoized Row Renderer for react-window
+const RowRenderer = React.memo(({ index, style, data }) => {
+  const { rows, columns: tableColumns, setRows, handleCheckboxChange } = data;
+  const rowItem = rows[index];
 
+  if (!rowItem) {
+    return null;
+  }
+
+  return (
+    <TableRow
+      key={rowItem.id || `row-${index}`} // Ensure unique key
+      style={{ ...style, display: 'flex' }} // react-window provides style, ensure display is flex for TableRow to work with cells
+    >
+      {tableColumns.map((column) => (
+        <StyledTableCell
+          key={`${rowItem.id || index}-${column.key}`}
+          align={column.align || 'center'}
+          style={{
+            width: column.width,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: column.align || 'center',
+          }} // Apply width and flex properties for alignment
+        >
+          {column.type === 'checkbox' ? (
+            <Checkbox checked={!!rowItem.isDelete} onChange={(e) => handleCheckboxChange(index, e.target.checked)} />
+          ) : column.editable ? (
+            <MemoizedCellWithLocalState row={rowItem} column={column} index={index} setRows={setRows} />
+          ) : (
+            <FormInput
+              value={rowItem[column.key] || ''}
+              // inputProps={{
+              //   style: { textAlign: column.align || 'left' }, // Align text based on column definition
+              // }}
+              inputType={'amountDecimal'}
+              readOnly
+            />
+          )}
+        </StyledTableCell>
+      ))}
+    </TableRow>
+  );
+});
+RowRenderer.displayName = 'RowRenderer';
+
+export default function Schedule9ATable() {
+  const { state } = useLocation();
+  const [reportObject, setReportObject] = useState(state?.report || null);
+  const { callApi } = useApi();
+  const [rows, setRows] = useState([]);
+  const [totals, setTotals] = useState({
+    aggOutStandTotal: '0.00',
+    aggSecuritiesTotal: '0.00',
+    netShortfallTotal: '0.00',
+    provisionTotal: '0.00',
+    balInterestSuspenseAccTotal: '0.00',
+  });
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [saveStatus, setSaveStatus] = useState(null);
+  const [submitStatus, setSubmitStatus] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const showSnackbar = (message, severity) => console.log(`Snackbar: ${message} (${severity})`);
+  const user = JSON.parse(localStorage.getItem('user'));
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        // If the component is intersecting the viewport, show the real input
-        if (entry.isIntersecting) {
-          setIsInView(true);
-          // Stop observing once it's visible
-          observer.unobserve(entry.target);
-        }
+    const fetchData = async () => {
+      setIsLoading(true);
+      let isMounted = true;
+      showSnackbar('Loading data...', 'info');
+      console.log('reportObj', reportObject);
+      const payload = { circleCode: user.circleCode, quarterEndDate: user.quarterEndDate };
+      try {
+        const response = await callApi('/Maker/getSavedDataNineA', payload, 'POST');
+        if (!isMounted) return;
+
+        const enriched = response.map((r, i) => ({ ...initialRow, ...r, id: r.id || `row-${Date.now()}-${i}` }));
+        setRows(enriched);
+      } catch (error) {
+        if (!isMounted) return;
+        setSnackbarMessage('Error loading saved data.');
+        setSnackbarOpen(true);
+      } finally {
+        if (!isMounted) return;
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Added callApi to dependency array
+
+  const calculateTotals = useCallback(() => {
+    const addDecimalStrings = (a, b) => {
+      const toCents = (val) => {
+        const str = val.toString().replace(/,/g, '').trim();
+        const isNeg = str.startsWith('-');
+        const num = isNeg ? str.slice(1) : str;
+        const [intPart, decPart = ''] = num.split('.');
+        const cents = BigInt(intPart) * 100n + BigInt((decPart + '00').slice(0, 2));
+        return isNeg ? -cents : cents;
+      };
+
+      const totalCents = toCents(a) + toCents(b);
+
+      const sign = totalCents < 0 ? '-' : '';
+      const absCents = totalCents < 0 ? -totalCents : totalCents;
+
+      const intPart = absCents / 100n;
+      const decPart = (absCents % 100n).toString().padStart(2, '0');
+
+      return `${sign}${intPart.toString()}.${decPart}`;
+    };
+
+    const totalsObj = rows.reduce(
+      (acc, row) => {
+        acc.aggOutStandTotal = addDecimalStrings(acc.aggOutStandTotal, row.aggOutStand || '0');
+        acc.aggSecuritiesTotal = addDecimalStrings(acc.aggSecuritiesTotal, row.aggSecurities || '0');
+        acc.netShortfallTotal = addDecimalStrings(acc.netShortfallTotal, row.netShortfall || '0');
+        acc.provisionTotal = addDecimalStrings(acc.provisionTotal, row.provision || '0');
+        acc.balInterestSuspenseAccTotal = addDecimalStrings(
+          acc.balInterestSuspenseAccTotal,
+          row.balInterestSuspenseAcc || '0'
+        );
+        return acc;
       },
       {
-        // Optional: Adjust rootMargin to load inputs slightly before they appear on screen
-        rootMargin: '200px',
+        aggOutStandTotal: '0.00',
+        aggSecuritiesTotal: '0.00',
+        netShortfallTotal: '0.00',
+        provisionTotal: '0.00',
+        balInterestSuspenseAccTotal: '0.00',
       }
     );
 
-    if (placeholderRef.current) {
-      observer.observe(placeholderRef.current);
-    }
-
-    return () => {
-      if (placeholderRef.current) {
-        observer.unobserve(placeholderRef.current);
-      }
-    };
-  }, []);
-
-  // Placeholder has fixed height and alignment to prevent layout shifts when the real input loads
-  const placeholder = (
-    <Box
-      ref={placeholderRef}
-      sx={{
-        height: '38px', // Match typical height of a small TextField
-        textAlign: 'right',
-        width: '100%',
-        padding: '6px 8px',
-        boxSizing: 'border-box',
-      }}
-    >
-      {props.displayValue}
-    </Box>
-  );
-
-  return isInView ? <MemoizedFormInput {...props} /> : placeholder;
-};
-
-//const useCustomSnackbar = () => (message, severity) => console.log(`Snackbar: ${message} (${severity})`);
-
-const Schedule10 = () => {
-  const [formData, setFormData] = useState(generateInitialSchedule10Data);
-  const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [isCalculating, setIsCalculating] = useState(false);
-  const { state } = useLocation();
-  const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user'));
-  const [reportObject, setReportObject] = useState(state?.report || null);
-  //const showSnackbar = useCustomSnackbar();
-  const { callApi } = useApi();
-  const [fieldsDisabled, setFieldsDisabled] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogContent, setDialogContent] = useState({ title: '', message: '', onConfirm: () => {} });
-  const [openSubmitDialog, setOpenSubmitDialog] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-
-  // const formatDateToSlash = (dateStr) => {
-  //   if (!dateStr || typeof dateStr !== 'string') return dateStr;
-
-  //   const [year, month, day] = dateStr.split('-');
-  //   return `${day}/${month}/${year}`;
-  // };
-
-  const convertFlatSc10DataToFormData = (flatData) => {
-    const structuredData = generateInitialSchedule10Data();
-
-    rowDefinitionsConfig.forEach((rowDef) => {
-      const rowId = rowDef.id;
-      const suffix = rowDef.modelSuffix;
-
-      schedule10DataFields.forEach((field) => {
-        const flatKey = `${field}${suffix}`;
-        if (flatData[flatKey] !== undefined) {
-          structuredData[rowId][field] = flatData[flatKey];
-        }
-      });
-    });
-
-    // Handle additional fields like particulars3, particulars4, finyearOne, finyearTwo if needed
-    return structuredData;
-  };
+    setTotals(totalsObj);
+  }, [rows]);
 
   useEffect(() => {
-    const checkSC10SftpData = async () => {
-      const payload = {
-        circleCode: user.circleCode,
-        qed: user.quarterEndDate,
-        reportStatus: 'A',
-        reportID: reportObject.reportMasterId,
-        reportName: 'SC10',
-      };
-      console.log('payload:', payload);
-      try {
-        const data = await callApi('/IFAMSS/SC10SFTP', payload, 'POST');
+    // Debounce calculateTotals or call it less frequently if performance is an issue
+    calculateTotals();
+  }, [rows, calculateTotals]);
 
-        console.log('SFTP response:', data);
-
-        if (data.fileAndDataStatus === 1) {
-          // SFTP Success
-          // Assuming `data.data` contains the schedule form values
-          const convertedFormData = convertFlatSc10DataToFormData(data.sc10Data);
-          setFormData(convertedFormData);
-          setFieldsDisabled(true); // disables all inputs
-
-          setSnackbar({
-            open: true,
-            message: data.message || 'Data successfully fetched from IFAMS via SFTP.',
-            severity: 'success',
-          });
-        } else if (data.fileAndDataStatus === 2) {
-          // File error or mismatch
-          setFieldsDisabled(true);
-          showDialog({
-            title: 'File Error',
-            message: data.message || 'Data not received from IFAMS, Kindly wait till IFAMS sends reports',
-            onConfirm: () => navigate(-1), // go back
-          });
-        } else if (data.fileAndDataStatus === 3) {
-          // Data already exists in DB but file was missing
-          setFieldsDisabled(true);
-          showDialog({
-            title: 'Info',
-            message: data.message || 'Please note: Data fetched here was generated in IFAMS',
-            onConfirm: () => navigate(-1),
-          });
-        }
-      } catch (error). {
-        setSnackbar({
-          open: true,
-          message: error.message || 'Error while checking SC10 SFTP data.',
-          severity: 'error',
-        });
-      }
-    };
-
-    checkSC10SftpData();
-  }, []);
-
-  const handleSaveOrSubmit = async (isSaveOnly = true) => {
-    setIsSubmitting(true);
-    try {
-      const payload = {
-        ...formData,
-        save: isSaveOnly,
-      };
-
-      console.log('payload', payload);
-
-      const response = await callApi('/Maker/submitTen', payload, 'POST');
-
-      if (response) {
-        if (response && typeof response === 'string') {
-          const [flag, newReportId, newStatus] = response.split('~');
-          setReportObject((prev) => ({
-            ...prev,
-            reportId: newReportId,
-            status: newStatus,
-          }));
-        }
-
-        setSnackbar({
-          open: true,
-          message: isSaveOnly ? 'Saved successfully!' : 'Submitted successfully!',
-          severity: 'success',
-        });
-      } else {
-        throw new Error(response.data?.message || 'Unexpected response');
-      }
-    } catch (err) {
-      setSnackbar({ open: true, message: err.message || 'Error occurred during save/submit.', severity: 'error' });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const addRow = () => {
+    setRows((prev) => [...prev, { ...initialRow, id: `new-${Date.now()}-${Math.random()}` }]);
   };
 
-  const showDialog = ({ title, message, onConfirm }) => {
-    setDialogOpen(true);
-    setDialogContent({ title, message, onConfirm });
+  const deleteSelectedRows = () => {
+    setRows((prevRows) => prevRows.filter((row) => !row.isDelete));
+    setSnackbarMessage(
+      'Row deleted successfully, Deletion of row will refelect in the report after Saving/Submitting the report.'
+    );
+    setSnackbarOpen(true);
   };
 
-  useEffect(() => {
-    setIsLoading(false);
-  }, []);
-
-  const getNum = (value) => parseFloat(value) || 0;
-
-  const calculatedData = useMemo(() => {
-    console.time('Schedule10 Calculations');
-    const newCalculatedData = JSON.parse(JSON.stringify(formData));
-
-    const calculateInternalRowTotals = (rowObj) => {
-      if (!rowObj) return;
-      const p = (fieldKey) => getNum(rowObj[fieldKey]);
-      rowObj.totalA = (p('stcNstaff') + p('offResidenceA') + p('otherPremisesA') + p('electricFitting')).toFixed(2);
-      rowObj.compSoftwareTotal = (p('compSoftwareInt') + p('compSoftwareNonint')).toFixed(2);
-      const otherMachineryPlantVal = p('offResidenceB') + p('stcLho') + p('otherPremisesB');
-      rowObj.otherMachineryPlant = otherMachineryPlantVal.toFixed(2);
-      rowObj.totalB = (p('computers') + getNum(rowObj.compSoftwareTotal) + p('motor') + otherMachineryPlantVal).toFixed(
-        2
+  const validateRows = () => {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const hasData = Object.keys(initialRow).some(
+        (key) => key !== 'isDelete' && row[key] !== initialRow[key] && row[key] !== ''
       );
-      rowObj.totalFurnFix = (getNum(rowObj.totalA) + getNum(rowObj.totalB)).toFixed(2);
-      const premisTotalVal =
-        p('landNotRev') +
-        p('landRev') +
-        p('offBuildNotRev') +
-        p('offBuildRev') +
-        p('residQuartNotRev') +
-        p('residQuartRev');
-      rowObj.premisTotal = premisTotalVal.toFixed(2);
-      const revTotalVal = p('landRevEnh') + p('offBuildRevEnh') + p('residQuartRevEnh');
-      rowObj.revtotal = revTotalVal.toFixed(2);
-      rowObj.totalC = (premisTotalVal + revTotalVal).toFixed(2);
-      rowObj.grandTotal = (
-        getNum(rowObj.totalA) +
-        getNum(rowObj.totalB) +
-        getNum(rowObj.totalC) +
-        p('premisesUnderCons')
-      ).toFixed(2);
-    };
 
-    rowDefinitionsConfig.forEach((rowDef) => {
-      if (!newCalculatedData[rowDef.id]) {
-        newCalculatedData[rowDef.id] = {};
-        schedule10DataFields.forEach((fieldKey) => {
-          newCalculatedData[rowDef.id][fieldKey] = '0.00';
-        });
+      if (hasData && !row.borrowerName) {
+        setSnackbarMessage(`Row ${i + 1}: Please enter Branch & Borrower's Name.`);
+        setSnackbarOpen(true);
+        return false;
       }
-      if (rowDef.type === 'entry' && formData[rowDef.id]) {
-        Object.keys(formData[rowDef.id]).forEach((fieldKey) => {
-          if (schedule10DataFields.includes(fieldKey) && !intraRowCalculatedFields.includes(fieldKey)) {
-            newCalculatedData[rowDef.id][fieldKey] = formData[rowDef.id][fieldKey];
-          }
-        });
+      if (
+        hasData &&
+        ((row.aggOutStand !== '' && isNaN(parseFloat(row.aggOutStand))) ||
+          (row.aggSecurities !== '' && isNaN(parseFloat(row.aggSecurities))) ||
+          (row.provision !== '' && isNaN(parseFloat(row.provision))) ||
+          (row.balInterestSuspenseAcc !== '' && isNaN(parseFloat(row.balInterestSuspenseAcc))))
+      ) {
+        setSnackbarMessage(`Row ${i + 1}: Please enter valid numeric values for amounts.`);
+        setSnackbarOpen(true);
+        return false;
       }
-    });
-
-    rowDefinitionsConfig.forEach((rowDef) => {
-      if (rowDef.type === 'entry') {
-        calculateInternalRowTotals(newCalculatedData[rowDef.id]);
-      }
-    });
-
-    rowDefinitionsConfig.forEach((rowDef) => {
-      if (rowDef.type === 'total') {
-        const targetRow = newCalculatedData[rowDef.id];
-        schedule10DataFields.forEach((fieldKey) => {
-          let value = 0;
-          if (rowDef.operation === 'sum') {
-            rowDef.subItemIds.forEach((subId) => {
-              value += getNum(newCalculatedData[subId]?.[fieldKey]);
-            });
-          } else if (rowDef.operation === 'subtract' && rowDef.subItemIds?.length === 2) {
-            const val1 = getNum(newCalculatedData[rowDef.subItemIds[0]]?.[fieldKey]);
-            const val2 = getNum(newCalculatedData[rowDef.subItemIds[1]]?.[fieldKey]);
-            value = val1 - val2;
-          } else if (rowDef.operation === 'subtract_special_IIii_Eii') {
-            const valRow9 = getNum(newCalculatedData['row9']?.[fieldKey]);
-            const valRow24 = getNum(newCalculatedData['row24']?.[fieldKey]);
-            value = valRow9 - valRow24;
-          } else if (rowDef.operation === 'custom_H_minus_IplusJ') {
-            const valH = getNum(newCalculatedData['row30']?.[fieldKey]);
-            const valI = getNum(newCalculatedData['row31']?.[fieldKey]);
-            const valJ = getNum(newCalculatedData['row35']?.[fieldKey]);
-            value = valH - (valI + valJ);
-          }
-          targetRow[fieldKey] = value.toFixed(2);
-        });
-        calculateInternalRowTotals(targetRow);
-      }
-    });
-
-    console.timeEnd('Schedule10 Calculations');
-    return newCalculatedData;
-  }, [formData]);
-
-  useEffect(() => {
-    if (isCalculating) {
-      setIsCalculating(false);
     }
-  }, [calculatedData, isCalculating]);
+    return true;
+  };
 
-  const debouncedRecalculate = useCallback(
-    lodashDebounce((newFormData) => {
-      setIsCalculating(true);
-      setFormData(newFormData);
-    }, 300),
-    []
-  );
+  const buildPayload = (saveFlag) => ({
+    listToBeSent: rows.map(({ id, isDelete, ...rest }) => rest), // Remove client-side id and isDelete
+    circleCode: user.circleCode,
+    quarterEndDate: user.quarterEndDate,
+    userId: user.userId,
+    reportName: reportObject.name,
+    reportMasterId: reportObject.reportMasterId,
+    status: reportObject.status, // Or determine status based on action
+    save: saveFlag,
+  });
 
-  const handleChange = useCallback(
-    (rowId, fieldKey, value) => {
-      const newFormData = {
-        ...formData,
-        [rowId]: { ...(formData[rowId] || {}), [fieldKey]: value },
-      };
-      setFormData(newFormData);
-      debouncedRecalculate(newFormData);
-    },
-    [formData, debouncedRecalculate]
-  );
+  const handleSave = async () => {
+    if (!validateRows()) return;
+    try {
+      const res = await callApi('/Maker/submitNineA', buildPayload(true), 'POST');
+      if (res && typeof res === 'string') {
+        const [flag, newReportId, newStatus] = res.split('~');
+        setReportObject((prev) => ({
+          ...prev,
+          reportId: newReportId,
+          status: newStatus,
+        }));
+      }
+      console.log('reportObj', reportObject);
 
-  const handleBlur = useCallback((rowId, fieldKey, value) => {
-    const numericRegex = /^-?\d*\.?\d{0,2}$/;
-    let error = '';
-    if (value !== '' && value !== '-' && !numericRegex.test(value)) {
-      error = 'Invalid number';
+      setSaveStatus('success');
+      setSnackbarMessage('Report saved successfully.');
+    } catch (error) {
+      console.error('Error saving report:', error);
+      setSaveStatus('error');
+      setSnackbarMessage(error.message || 'Error saving report.');
     }
-    setErrors((prev) => ({ ...prev, [`${rowId}-${fieldKey}`]: error }));
+    setSnackbarOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!validateRows()) return;
+    try {
+      const res = await callApi('/Maker/submitNineA', buildPayload(false), 'POST');
+
+      if (res && typeof res === 'string') {
+        const [flag, newReportId, newStatus] = res.split('~');
+        setReportObject((prev) => ({
+          ...prev,
+          reportId: newReportId,
+          status: newStatus,
+        }));
+      }
+      setSubmitStatus('success');
+      setSnackbarMessage('Report submitted successfully.');
+    } catch (error) {
+      console.error('Error submitting report:', error);
+      setSubmitStatus('error');
+      setSnackbarMessage(error.message || 'Error submitting report.');
+    }
+    setSnackbarOpen(true);
+  };
+
+  const handleCloseSnackbar = (_, reason) => {
+    if (reason === 'clickaway') return;
+    setSnackbarOpen(false);
+    setSaveStatus(null); // Reset status
+    setSubmitStatus(null); // Reset status
+  };
+
+  const handleCheckboxChange = useCallback((rowIndex, checked) => {
+    setRows((prevRows) => prevRows.map((row, idx) => (idx === rowIndex ? { ...row, isDelete: checked } : row)));
   }, []);
+
+  const itemData = useMemo(
+    () => ({
+      rows,
+      columns, // Pass the updated columns array with widths
+      setRows,
+      handleCheckboxChange,
+    }),
+    [rows, handleCheckboxChange] // columns is stable, but included for completeness if it could change
+  );
 
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 150px)' }}>
-        <CircularProgress /> <Typography sx={{ ml: 2 }}>Loading Schedule 10...</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress />
+        <Typography sx={{ ml: 2 }}>Loading Data...</Typography>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ p: 1, width: '100%', boxSizing: 'border-box', overflowX: 'hidden', bgcolor: 'background.default' }}>
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
-        <DialogTitle>{dialogContent.title}</DialogTitle>
-        <DialogContent>{dialogContent.message}</DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setDialogOpen(false);
-              dialogContent.onConfirm();
-            }}
-          >
-            OK
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={openSubmitDialog} onClose={() => setOpenSubmitDialog(false)}>
-        <DialogTitle>Confirm Submission</DialogTitle>
-        <DialogContent>Are you sure you want to submit Schedule 10 data?</DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenSubmitDialog(false)} color="inherit">
-            Close
-          </Button>
-          <Button
-            onClick={() => {
-              setOpenSubmitDialog(false);
-              handleSaveOrSubmit(false);
-            }}
-            color="success"
-            variant="contained"
-          >
-            Submit
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)' }}>
-        <Table sx={{ minWidth: 3000 }} aria-label="schedule 10 table" stickyHeader>
+    <Box sx={{ p: 2 }}>
+      <Stack direction="row" spacing={2} mb={2} justifyContent="flex-start">
+        <CustomButton label={'Add Row'} buttonType={'create'} onClickHandler={addRow} />
+        <CustomButton
+          label={'Delete Row'}
+          buttonType={'delete'}
+          onClickHandler={deleteSelectedRows}
+          disabled={!rows.some((row) => row.isDelete)}
+        />
+        <CustomButton label={'Save'} buttonType={'save'} onClickHandler={handleSave} />
+        <CustomButton label={'Submit'} buttonType={'submit'} onClickHandler={handleSubmit} disabled={!rows.length} />
+      </Stack>
+      <TableContainer component={Paper} sx={{ width: '100%', mb: 2, overflowX: 'auto' }}>
+        <Table stickyHeader sx={{ tableLayout: 'fixed', width: '100%' }}>
           <TableHead>
-            <TableRow>
-              <StyledTableCell
-                rowSpan={2}
-                sx={{
-                  minWidth: '50px',
-                  position: 'sticky',
-                  left: 0,
-                  zIndex: 1101,
-                  backgroundColor: 'background.paper',
-                }}
-              >
-                Sr.No
-              </StyledTableCell>
-              <StyledTableCell
-                rowSpan={2}
-                sx={{
-                  minWidth: '350px',
-                  position: 'sticky',
-                  left: '50px',
-                  zIndex: 1100,
-                  backgroundColor: 'background.paper',
-                }}
-              >
-                Particulars
-              </StyledTableCell>
-              <StyledTableCell colSpan={5}> (A) FURNITURE & FITTINGS</StyledTableCell>
-              <StyledTableCell colSpan={10}> (B) MACHINERY & PLANT</StyledTableCell>
-              <StyledTableCell colSpan={13}> (C) PREMISES</StyledTableCell>
-              <StyledTableCell colSpan={2}></StyledTableCell>
-            </TableRow>
-            <TableRow>
-              {columnDisplayHeaders.map((colDef) => (
+            <TableRow sx={{ display: 'flex' }}>
+              {/* Ensure header row is also flex */}
+              {columns.map((col) => (
                 <StyledTableCell
-                  key={colDef.dataField}
-                  sx={{
-                    position: 'sticky',
-                    top: '56px', // Adjust this value based on your row height
-                    zIndex: 1100,
-                    backgroundColor: 'background.paper',
-                  }}
-                  dangerouslySetInnerHTML={{ __html: colDef.labelHtml }}
-                />
+                  key={col.key}
+                  align={col.align || 'left'}
+                  style={{
+                    width: col.width,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: col.align || 'left',
+                  }} // Apply width
+                >
+                  {col.label}
+                </StyledTableCell>
+              ))}
+            </TableRow>
+            <TableRow sx={{ display: 'flex' }}>
+              {/* Ensure sub-header row is also flex */}
+              {columns.map((col) => (
+                <StyledTableCell
+                  key={`${col.key}-sub`}
+                  align={col.align || 'left'}
+                  style={{
+                    width: col.width,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: col.align || 'left',
+                  }} // Apply width
+                >
+                  {col.subHeading}
+                </StyledTableCell>
               ))}
             </TableRow>
           </TableHead>
+
+          {rows.length > 0 ? (
+            // TableBody for react-window List. List renders TableRow components.
+            // The TableBody itself is not strictly necessary here if List handles all row rendering.
+            // However, to keep structure similar to non-virtualized table, it can be kept.
+            // AutoSizer will give width to the List.
+            <TableBody component="div">
+              {/* component="div" for TableBody with react-window */}
+              <AutoSizer disableHeight>
+                {({ width }) => (
+                  <List
+                    height={Math.min(500, rows.length * 50 + (rows.length > 0 ? 5 : 0))}
+                    itemCount={rows.length}
+                    itemSize={50} // Height of each row
+                    width={width} // Width from AutoSizer
+                    overscanCount={5}
+                    itemData={itemData}
+                  >
+                    {RowRenderer}
+                  </List>
+                )}
+              </AutoSizer>
+            </TableBody>
+          ) : (
+            <TableBody>
+              <TableRow>
+                <TableCell align="center" sx={{ py: 3 }}>
+                  No data available. Click "Add Row" to begin.
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          )}
+
+          {/* Totals Row - Rendered as a standard TableBody/TableRow */}
           <TableBody>
-            {rowDefinitionsConfig.map((rowDef) => {
-              const rowKey = rowDef.id;
-
-              if (rowDef.type === 'subSectionHeader') {
-                return (
-                  <StyledTableRow key={rowKey} $issubsectionheader>
-                    <StyledTableCell
-                      sx={{
-                        position: 'sticky',
-                        left: 0,
-                        zIndex: 1,
-                        backgroundColor: (theme) => theme.palette.grey[50],
-                      }}
-                    >
-                      {rowDef.srNo || ''}
-                    </StyledTableCell>
-                    <StyledTableCell
-                      colSpan={columnDisplayHeaders.length + 1}
-                      sx={{
-                        position: 'sticky',
-                        left: '50px',
-                        zIndex: 1,
-                        backgroundColor: (theme) => theme.palette.grey[50],
-                      }}
-                    >
-                      {typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label}
-                    </StyledTableCell>
-                  </StyledTableRow>
-                );
-              }
-
-              return (
-                <StyledTableRow
-                  key={rowKey}
-                  $istotalrow={rowDef.isTotalRowStyle}
-                  $issectionheader={rowDef.isSectionHeaderStyle}
-                >
+            <TableRow sx={{ '& .MuiTableCell-root': { fontWeight: 'bold' }, display: 'flex' }}>
+              <StyledTableCell
+                align="center"
+                // Calculate combined width of the first two columns for the "Total" cell
+                style={{
+                  width: `calc(${columns[0].width} + ${columns[1].width})`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                Total
+              </StyledTableCell>
+              {columns.slice(2).map(
+                (
+                  col // Iterate through columns that have totals
+                ) => (
                   <StyledTableCell
-                    sx={{
-                      position: 'sticky',
-                      left: 0,
-                      zIndex: 1,
-                      bgcolor: 'background.paper',
-                    }}
+                    key={`${col.key}-total`}
+                    align={col.align || 'right'}
+                    style={{ width: col.width, display: 'flex', alignItems: 'center' }} // Apply width from column definition
                   >
-                    {rowDef.srNo || ''}
+                    {totals[`${col.key}Total`] !== undefined ? (
+                      <FormInput value={totals[`${col.key}Total`]} inputType={'amountDecimal'} readOnly />
+                    ) : null}
                   </StyledTableCell>
-                  <StyledTableCell
-                    sx={{
-                      position: 'sticky',
-                      left: '50px',
-                      zIndex: 1,
-                      bgcolor: 'background.paper',
-                    }}
-                  >
-                    {typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label}
-                  </StyledTableCell>
-
-                  {columnDisplayHeaders.map((colDef) => {
-                    const fieldKey = colDef.dataField;
-                    const cellKey = `${rowKey}-${fieldKey}`;
-                    const isReadOnly =
-                      rowDef.type === 'total' ||
-                      colDef.isCalculated ||
-                      (rowDef.isReadOnlyGroup && rowDef.isReadOnlyGroup.includes(fieldKey));
-                    const displayValue = calculatedData[rowKey]?.[fieldKey] ?? '0.00';
-                    const inputValue = formData[rowKey]?.[fieldKey] ?? '0.00';
-                    const errorForField = errors[cellKey];
-
-                    return (
-                      <StyledTableCell key={cellKey}>
-                        <VirtualizedInput
-                          name={cellKey}
-                          value={isReadOnly ? displayValue : inputValue}
-                          displayValue={displayValue} // Pass display value for placeholder
-                          onChange={(e) => handleChange(rowDef.id, fieldKey, e.target.value)}
-                          onBlur={(e) => handleBlur(rowDef.id, fieldKey, e.target.value)}
-                          readOnly={isReadOnly || fieldsDisabled}
-                          error={errorForField}
-                          helperText={errorForField}
-                        />
-                      </StyledTableCell>
-                    );
-                  })}
-                </StyledTableRow>
-              );
-            })}
+                )
+              )}
+            </TableRow>
           </TableBody>
         </Table>
       </TableContainer>
-      <Stack direction="row" spacing={2} sx={{ mt: 2, justifyContent: 'center' }}>
-        <Button variant="contained" color="primary" onClick={() => handleSaveOrSubmit(true)} disabled={isSubmitting}>
-          Save
-        </Button>
-        <Button variant="contained" color="success" onClick={() => setOpenSubmitDialog(true)} disabled={isSubmitting}>
-          Submit
-        </Button>
-      </Stack>
+
       <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        open={snackbarOpen}
+        autoHideDuration={10000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={
+            saveStatus === 'error' || submitStatus === 'error'
+              ? 'error'
+              : saveStatus === 'success' || submitStatus === 'success'
+              ? 'success'
+              : 'info'
+          }
+          sx={{ width: '100%', mt: '100px' }}
+          variant="filled"
+        >
+          {snackbarMessage}
         </Alert>
       </Snackbar>
     </Box>
   );
-};
-
-export default Schedule10;
+}
