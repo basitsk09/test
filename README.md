@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-// FIX: Import useNavigate from react-router-dom to handle navigation
-import { useNavigate } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -18,6 +16,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Snackbar,
   TextField,
 } from '@mui/material';
 import TableCell, { tableCellClasses } from '@mui/material/TableCell';
@@ -25,6 +24,7 @@ import { styled } from '@mui/material/styles';
 import lodashDebounce from 'lodash/debounce';
 import FormInput from '../../../../common/components/ui/FormInput';
 import useApi from '../../../../common/hooks/useApi';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 // --- Styled Components (identical to original) ---
 const StyledTableCell = styled(TableCell, {
@@ -34,21 +34,21 @@ const StyledTableCell = styled(TableCell, {
   padding: '8px',
   border: '1px solid rgba(224, 224, 224, 0.13)',
   whiteSpace: 'nowrap',
-  backgroundColor: theme.palette.background.paper,
+  backgroundColor: theme.palette.mode.dark,
 
   [`&.${tableCellClasses.head}`]: {
-    backgroundColor: headerBgColor || theme.palette.grey[200],
+    backgroundColor: theme.palette.grey[50],
     fontWeight: 'bold',
     textAlign: 'center',
-    position: 'sticky',
-    top: 0,
-    zIndex: isFixedColumn ? 4 : 3,
+    // position: 'sticky',
+    // top: 50,
+    // zIndex: 4,
   },
   [`&.${tableCellClasses.body}`]: {
     textAlign: 'left',
     ...(isFixedColumn && {
-      position: 'sticky',
-      zIndex: 1,
+      // position: 'sticky',
+      // zIndex: 1,
       backgroundColor: theme.palette.background.paper,
     }),
   },
@@ -489,14 +489,15 @@ const VirtualizedInput = (props) => {
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
+        // If the component is intersecting the viewport, show the real input
         if (entry.isIntersecting) {
           setIsInView(true);
+          // Stop observing once it's visible
           observer.unobserve(entry.target);
         }
       },
       {
-        // FIX: Add a rootMargin to pre-load inputs 200px before they enter the viewport.
-        // This makes scrolling feel much smoother.
+        // Optional: Adjust rootMargin to load inputs slightly before they appear on screen
         rootMargin: '200px',
       }
     );
@@ -531,64 +532,153 @@ const VirtualizedInput = (props) => {
   return isInView ? <MemoizedFormInput {...props} /> : placeholder;
 };
 
-const useCustomSnackbar = () => (message, severity) => console.log(`Snackbar: ${message} (${severity})`);
+//const useCustomSnackbar = () => (message, severity) => console.log(`Snackbar: ${message} (${severity})`);
 
 const Schedule10 = () => {
   const [formData, setFormData] = useState(generateInitialSchedule10Data);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false);
-  const user = { circleCode: '123', quarterEndDate: '2025-06-06' }; // Mock user
-  const showSnackbar = useCustomSnackbar();
+  const { state } = useLocation();
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem('user'));
+  const [reportObject, setReportObject] = useState(state?.report || null);
+  //const showSnackbar = useCustomSnackbar();
   const { callApi } = useApi();
   const [fieldsDisabled, setFieldsDisabled] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogContent, setDialogContent] = useState({ title: '', message: '', onConfirm: () => {} });
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const navigate = useNavigate();
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
+  // const formatDateToSlash = (dateStr) => {
+  //   if (!dateStr || typeof dateStr !== 'string') return dateStr;
+
+  //   const [year, month, day] = dateStr.split('-');
+  //   return `${day}/${month}/${year}`;
+  // };
+
+  const convertFlatSc10DataToFormData = (flatData) => {
+    const structuredData = generateInitialSchedule10Data();
+
+    rowDefinitionsConfig.forEach((rowDef) => {
+      const rowId = rowDef.id;
+      const suffix = rowDef.modelSuffix;
+
+      schedule10DataFields.forEach((field) => {
+        const flatKey = `${field}${suffix}`;
+        if (flatData[flatKey] !== undefined) {
+          structuredData[rowId][field] = flatData[flatKey];
+        }
+      });
+    });
+
+    // Handle additional fields like particulars3, particulars4, finyearOne, finyearTwo if needed
+    return structuredData;
+  };
 
   useEffect(() => {
     const checkSC10SftpData = async () => {
-      setIsLoading(true);
       const payload = {
         circleCode: user.circleCode,
         qed: user.quarterEndDate,
-        reportID: '310010',
-        reportName: 'SC10',
         reportStatus: 'A',
+        reportID: reportObject.reportMasterId,
+        reportName: 'SC10',
       };
-
+      console.log('payload:', payload);
       try {
         const data = await callApi('/IFAMSS/SC10SFTP', payload, 'POST');
+
+        console.log('SFTP response:', data);
+
         if (data.fileAndDataStatus === 1) {
-          setFormData(data?.data || {});
-          setFieldsDisabled(true);
-          showSnackbar('Data successfully fetched from IFAMS via SFTP.', 'success');
+          // SFTP Success
+          // Assuming `data.data` contains the schedule form values
+          const convertedFormData = convertFlatSc10DataToFormData(data.sc10Data);
+          setFormData(convertedFormData);
+          setFieldsDisabled(true); // disables all inputs
+
+          setSnackbar({
+            open: true,
+            message: data.message || 'Data successfully fetched from IFAMS via SFTP.',
+            severity: 'success',
+          });
         } else if (data.fileAndDataStatus === 2) {
+          // File error or mismatch
           setFieldsDisabled(true);
           showDialog({
             title: 'File Error',
-            message: data.message || 'Error receiving file from IFAMS.',
-            onConfirm: () => navigate(-1),
+            message: data.message || 'Data not received from IFAMS, Kindly wait till IFAMS sends reports',
+            onConfirm: () => navigate(-1), // go back
           });
         } else if (data.fileAndDataStatus === 3) {
+          // Data already exists in DB but file was missing
           setFieldsDisabled(true);
           showDialog({
             title: 'Info',
-            message: data.message || 'Data already inserted earlier from IFAMS.',
+            message: data.message || 'Please note: Data fetched here was generated in IFAMS',
             onConfirm: () => navigate(-1),
           });
         }
       } catch (error) {
-        showSnackbar(error.message || 'Error while checking SC10 SFTP data.', 'error');
-      } finally {
-        setIsLoading(false);
+        setSnackbar({
+          open: true,
+          message: error.message || 'Error while checking SC10 SFTP data.',
+          severity: 'error',
+        });
       }
     };
 
     checkSC10SftpData();
-  }, [callApi, user.circleCode, user.quarterEndDate, navigate]);
+  }, []);
+
+  const handleSaveOrSubmit = async (isSaveOnly = true) => {
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...formData,
+        save: isSaveOnly,
+      };
+
+      console.log('payload', payload);
+
+      const response = await callApi('/Maker/submitTen', payload, 'POST');
+
+      if (response) {
+        if (response && typeof response === 'string') {
+          const [flag, newReportId, newStatus] = response.split('~');
+          setReportObject((prev) => ({
+            ...prev,
+            reportId: newReportId,
+            status: newStatus,
+          }));
+        }
+
+        setSnackbar({
+          open: true,
+          message: isSaveOnly ? 'Saved successfully!' : 'Submitted successfully!',
+          severity: 'success',
+        });
+      } else {
+        throw new Error(response.data?.message || 'Unexpected response');
+      }
+    } catch (err) {
+      setSnackbar({ open: true, message: err.message || 'Error occurred during save/submit.', severity: 'error' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const showDialog = ({ title, message, onConfirm }) => {
+    setDialogOpen(true);
+    setDialogContent({ title, message, onConfirm });
+  };
+
+  useEffect(() => {
+    setIsLoading(false);
+  }, []);
 
   const getNum = (value) => parseFloat(value) || 0;
 
@@ -716,11 +806,6 @@ const Schedule10 = () => {
     setErrors((prev) => ({ ...prev, [`${rowId}-${fieldKey}`]: error }));
   }, []);
 
-  const showDialog = ({ title, message, onConfirm }) => {
-    setDialogOpen(true);
-    setDialogContent({ title, message, onConfirm });
-  };
-
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 150px)' }}>
@@ -756,7 +841,7 @@ const Schedule10 = () => {
           <Button
             onClick={() => {
               setOpenSubmitDialog(false);
-              // handleSaveOrSubmit(false); // This function is not defined
+              handleSaveOrSubmit(false);
             }}
             color="success"
             variant="contained"
@@ -765,7 +850,7 @@ const Schedule10 = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
+      {/* Dialog, Calculating Indicator, and Error Alert components remain the same */}
       <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)' }}>
         <Table sx={{ minWidth: 3000 }} aria-label="schedule 10 table" stickyHeader>
           <TableHead sx={{ border: '1px solid' }}>
@@ -776,6 +861,7 @@ const Schedule10 = () => {
                 left: 0,
                 top: 0,
                 zIndex: 1101,
+                //backgroundColor: '#f5f5f5' /* theme.palette.background.default or similar */,
               }}
             >
               <StyledTableCell
@@ -787,7 +873,7 @@ const Schedule10 = () => {
                   top: 0,
                   zIndex: 1101,
                   border: '2px solid #fff',
-                  backgroundColor: (theme) => theme.palette.grey[200],
+                  // backgroundColor: (theme) => theme.palette.grey[200],
                 }}
               >
                 <b>Sr.No</b>
@@ -801,7 +887,7 @@ const Schedule10 = () => {
                   border: '2px solid #fff',
                   top: 0,
                   zIndex: 1100,
-                  backgroundColor: (theme) => theme.palette.grey[200],
+                  // backgroundColor: (theme) => theme.palette.grey[200],
                 }}
               >
                 <b>Particulars</b>
@@ -821,7 +907,7 @@ const Schedule10 = () => {
               {columnDisplayHeaders.map((colDef) => (
                 <StyledTableCell
                   key={colDef.dataField}
-                  sx={{ position: 'sticky', top: '70px', zIndex: 1100, border: '2px solid #fff' }} // Adjusted top for stickiness
+                  sx={{ position: 'sticky', top: '42px', zIndex: 1100, border: '2px solid #fff' }} // Adjusted top for stickiness
                   dangerouslySetInnerHTML={{ __html: colDef.labelHtml }}
                 />
               ))}
@@ -850,7 +936,7 @@ const Schedule10 = () => {
                       {rowDef.srNo || ''}
                     </StyledTableCell>
                     <StyledTableCell
-                      colSpan={columnDisplayHeaders.length + 1}
+                      //colSpan={columnDisplayHeaders.length + 1}
                       sx={{
                         position: 'sticky',
                         left: '50px',
@@ -935,13 +1021,21 @@ const Schedule10 = () => {
         </Table>
       </TableContainer>
       <Stack direction="row" spacing={2} sx={{ mt: 2, justifyContent: 'center' }}>
-        <Button variant="contained" color="primary" onClick={() => console.log('Save clicked', calculatedData)}>
+        <Button variant="contained" color="primary" onClick={() => handleSaveOrSubmit(true)} disabled={isSubmitting}>
           Save
         </Button>
-        <Button variant="contained" color="secondary" onClick={() => console.log('Submit clicked', calculatedData)}>
+        <Button variant="contained" color="secondary" onClick={() => setOpenSubmitDialog(true)} disabled={isSubmitting}>
           Submit
         </Button>
       </Stack>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
     </Box>
   );
 };
