@@ -1,206 +1,33 @@
-import { useEffect, useRef, useState } from 'react';
-import axios from 'axios';
-import { encrypt } from '../../core/security/AES-GCM256';
-import { useNavigate } from "react-router-dom";
-const iv = crypto.getRandomValues(new Uint8Array(12)); // for encryption
-const ivBase64 = btoa(String.fromCharCode.apply(null, iv)); // for be decryption
-const salt = crypto.getRandomValues(new Uint8Array(16)); // for encryption
-const saltBase64 = btoa(String.fromCharCode.apply(null, salt)); // for encryption
+useEffect(() => {
+  let isMounted = true;
 
-const useApi = () => {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const user = JSON.parse(localStorage.getItem('user'));
-  const navigate=useNavigate();
-  
-  const activeRequestsRef = useRef(new Set());
-
-  const cancelAllRequests = () => {
-    activeRequestsRef.current.forEach((controller) => {
-      if (controller && !controller.signal.aborted) {
-        controller.abort();
-      }
-    });
-    activeRequestsRef.current.clear();
-    setLoading(false);
-  };
-
-  //cancel all requests when component unmounts
-  useEffect(() => {
-    return () => {
-      cancelAllRequests();
-    };
-  }, []);
-
-  const callApi = async (
-    url,
-    payload,
-    method = 'POST',
-    responseType = 'json',
-    contentType = 'application/json',
-    ...props
-  ) => {
-    const controller = new AbortController();
-    activeRequestsRef.current.add(controller);
-    setLoading(true);
-    setError(null);
+  const fetchData = async () => {
+    setIsLoading(true);
+    showSnackbar('Loading data...', 'info');
+    const payload = { circleCode: user.circleCode, quarterEndDate: user.quarterEndDate };
     try {
-      if (contentType !== 'multipart/form-data') {
-        if (payload) {
-          let dataToSend;
-          if (contentType === 'text/plain') dataToSend = payload;
-          else {
-            dataToSend = { ...payload, userCapacity: user?.capacity };
-          }
-          const encryptedData = await encrypt(iv, salt, JSON.stringify(dataToSend));
-          payload = { iv: ivBase64, salt: saltBase64, data: encryptedData };
-        }
-      }
+      const response = await callApi('/Maker/getSavedDataNineA', payload, 'POST');
+      if (!isMounted) return;
 
-      let headers = {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': contentType,
-      };
-      const config = {
-        method,
-        url: import.meta.env.VITE_BASE_SERVICE_URL + url,
-        headers,
-        responseType, // <-- key fix
-        signal: controller.signal,
-        ...props,
-      };
-      //console.log(config);
-      if (payload !== null) {
-        if (method.toUpperCase() === 'GET') {
-          config.params = payload || '';
-        } else {
-          config.data = payload || {};
-        }
-      }
-
-      const response = await axios(config);
-
-      if (!controller.signal.aborted) {
-        setData(response.data);
-        if (typeof response.data === 'string') {
-          if (response.data.includes('JDBC') || response.data.includes('java')) return null;
-        }
-        return response.data;
-      }
-
-      // // activeRequestsRef.current.clear();
-      // if (controller.signal.aborted) {
-      //   console.error('API call aborted:');
-      // } else {
-      //   return null;
-      // }
-    } catch (err) {
-      if(err.status && err.status===401){
-        const message = err.response.statusText;
-        navigate('/session-expired', { state: { message } });
-      }
-      if (!axios.isCancel(err) && !controller.signal.aborted) {
-        console.error('API call error reason abort controller:', err);
-        setError(err);
-      }
-      //rethrow the error for caller to handle if needed
-      if (axios.isCancel(err)) {
-        throw err;
-      }
+      const enriched = response.map((r, i) => ({
+        ...initialRow,
+        ...r,
+        id: r.id || `row-${Date.now()}-${i}`,
+      }));
+      setRows(enriched);
+    } catch (error) {
+      if (!isMounted) return;
+      setSnackbarMessage('Error loading saved data.');
+      setSnackbarOpen(true);
     } finally {
-      activeRequestsRef.current.delete(controller);
-      setLoading(false);
+      if (!isMounted) return;
+      setIsLoading(false);
     }
   };
 
-  return { data, error, loading, callApi, cancelAllRequests };
-};
+  fetchData();
 
-export default useApi;
-
-// import { useState } from 'react';
-// import axios from 'axios';
-// import { encrypt } from '../../core/security/AES-GCM256';
-// const iv = crypto.getRandomValues(new Uint8Array(12)); // for encryption
-// const ivBase64 = btoa(String.fromCharCode.apply(null, iv)); // for be decryption
-// const salt = crypto.getRandomValues(new Uint8Array(16)); // for encryption
-// const saltBase64 = btoa(String.fromCharCode.apply(null, salt)); // for encryption
-
-// const useApi = () => {
-//   const [data, setData] = useState(null);
-//   const [error, setError] = useState(null);
-//   const [loading, setLoading] = useState(false);
-//   const user = JSON.parse(localStorage.getItem('user'));
-
-//   const callApi = async (
-//     url,
-//     payload,
-//     method = 'POST',
-//     responseType = 'json',
-//     contentType = 'application/json',
-//     ...props
-//   ) => {
-//     setLoading(true);
-//     setError(null);
-//     try {
-//       if (contentType !== 'multipart/form-data') {
-//         if (payload) {
-//           const encryptedData = await encrypt(iv, salt, JSON.stringify({ ...payload, userCapacity: user?.capacity }));
-//           payload = { iv: ivBase64, salt: saltBase64, data: encryptedData };
-//         }
-//       }
-
-//       let headers = {
-//         Authorization: `Bearer ${localStorage.getItem('token')}`,
-//         'Content-Type': contentType,
-//       };
-//       const config = {
-//         method,
-//         url: import.meta.env.VITE_BASE_SERVICE_URL + url,
-//         headers,
-//         responseType, // <-- key fix
-//         ...props,
-//       };
-//       if (method.toUpperCase() === 'GET') {
-//         config.params = payload || '';
-//       } else {
-//         config.data = payload || {};
-//       }
-
-//       const response = await axios(config);
-//       setData(response.data);
-//       return response.data;
-//     } catch (err) {
-//       console.error('API call error:', err);
-//       setError(err);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   return { data, error, loading, callApi };
-// };
-
-// export default useApi;
-
-////////////////////////////////////////////////////////////////////////
-useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      showSnackbar('Loading data...', 'info');
-      const payload = { circleCode: user.circleCode, quarterEndDate: user.quarterEndDate };
-      try {
-        const response = await callApi('/Maker/getSavedDataNineA', payload, 'POST');
-
-        const enriched = response.map((r, i) => ({ ...initialRow, ...r, id: r.id || `row-${Date.now()}-${i}` }));
-        setRows(enriched);
-      } catch (error) {
-        setSnackbarMessage('Error loading saved data.');
-        setSnackbarOpen(true);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+  return () => {
+    isMounted = false;
+  };
+}, []);
