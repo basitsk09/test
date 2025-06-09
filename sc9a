@@ -1,6 +1,133 @@
-let isLastEmpty = false;
-if (lastRow && typeof lastRow === 'object') {
-  isLastEmpty = Object.entries(lastRow)
-    .filter(([key]) => key !== 'id')
-    .every(([_, val]) => val === '' || val === false || val === undefined);
-}
+Great! You want a proper Material UI confirmation popup (instead of window.confirm) before submitting Schedule 9A.
+
+Here’s how to implement it:
+
+
+---
+
+✅ Step-by-Step: Add "Are you sure you want to submit?" Popup
+
+🧩 1. Add state to control the Dialog
+
+In your component, add:
+
+const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+
+
+---
+
+🧩 2. Update handleSubmit to open the dialog instead of submitting directly
+
+Rename your current handleSubmit logic to submitFinalReport:
+
+const submitFinalReport = async () => {
+  if (!validateRows()) return;
+
+  const validRows = rows.filter((row) =>
+    Object.keys(initialRow).some(
+      (key) =>
+        key !== 'isDelete' &&
+        row[key] !== initialRow[key] &&
+        row[key] !== '' &&
+        row[key] !== undefined
+    )
+  );
+
+  if (validRows.length === 0) {
+    setSnackbarMessage('Cannot submit. No valid data rows entered.');
+    setSnackbarOpen(true);
+    return;
+  }
+
+  try {
+    const res = await callApi('/Maker/submitNineA', buildPayload(false), 'POST');
+
+    if (res && typeof res === 'string') {
+      const [flag, newReportId, newStatus] = res.split('~');
+      setReportObject((prev) => ({
+        ...prev,
+        reportId: newReportId,
+        status: newStatus,
+      }));
+    }
+
+    setSubmitStatus('success');
+    setSnackbarMessage('Report submitted successfully.');
+  } catch (error) {
+    console.error('Error submitting report:', error);
+    setSubmitStatus('error');
+    setSnackbarMessage(error.message || 'Error submitting report.');
+  } finally {
+    setSnackbarOpen(true);
+    setConfirmDialogOpen(false); // close dialog
+  }
+};
+
+Now replace the onClick of the Submit button with:
+
+<CustomButton
+  label={'Submit'}
+  buttonType={'submit'}
+  onClickHandler={() => setConfirmDialogOpen(true)}
+  disabled={!rows.length}
+/>
+
+
+---
+
+🧩 3. Add the MUI <Dialog> confirmation popup
+
+Add this near the end of your JSX (just before the return’s closing </Box>):
+
+<Dialog
+  open={confirmDialogOpen}
+  onClose={() => setConfirmDialogOpen(false)}
+  aria-labelledby="confirm-submit-title"
+  aria-describedby="confirm-submit-description"
+>
+  <DialogTitle id="confirm-submit-title">Confirm Submission</DialogTitle>
+  <DialogContent>
+    <DialogContentText id="confirm-submit-description">
+      Are you sure you want to submit the Schedule 9A report?
+    </DialogContentText>
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setConfirmDialogOpen(false)} color="inherit">
+      Cancel
+    </Button>
+    <Button onClick={submitFinalReport} color="primary" variant="contained">
+      Yes, Submit
+    </Button>
+  </DialogActions>
+</Dialog>
+
+✅ Import required components:
+
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button
+} from '@mui/material';
+
+
+---
+
+✅ Result
+
+User clicks Submit.
+
+Popup asks "Are you sure you want to submit?"
+
+On Yes, it calls submitFinalReport() and proceeds.
+
+On Cancel, it closes the popup.
+
+
+
+---
+
+Let me know if you want this dialog to also show report metadata (e.g. circle, quarterEndDate) before confirming.
+
