@@ -1,126 +1,169 @@
-Thanks for checking. If it’s still rounding .99 to 1.00, then one of the following is likely happening:
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { TextField } from '@mui/material';
+import { TYPE_VALIDATION } from '../../constants/ValidationConstants';
+import useCustomSnackbar from '../../hooks/useCustomSnackbar';
+import { useTheme } from '@mui/material/styles';
+import _ from 'lodash';
 
-1. You're applying .toFixed(2) or formatting again in render (inside <FormInput />)
+const FormInput = React.memo(
+  ({
+    name = '',
+    label = '',
+    value = '',
+    onChange = () => {},
+    onBlur = () => {},
+    readOnly = false,
+    error = false,
+    helperText = '',
+    inputType = 'amountDecimal', //Input type should be from TYPE_VALIDATION -> /constants/ValidationConstants
+    focus = false,
+    maxLength = 18,
+    validateOnlyOnBlur = false,
+    customStyles = {},
+    debounceDuration = 850,
+    ...props
+  }) => {
+    const inputRef = useRef(null);
+    const snackbar = useCustomSnackbar();
+    const theme = useTheme();
+    const [tempValue, setTempValue] = useState(value);
+    const leftAlignedInputTypes = useMemo(
+      () =>
+        new Set([
+          'text',
+          'inputValue',
+          'alphaInput',
+          'alphaNumeric',
+          'splAlphaNumeric',
+          'emailId',
+          'alphaNumWithSpaceTrim',
+          'alphaNumericWithSpace',
+          'certainSpecialChars',
+          'address',
+          'time',
+          'date-DD-MM-YYYY',
+          'date-YYYY-MM-DD',
+          'noSpecialChar',
+          'panNumber',
+          'tanNumber',
+          'branchCode',
+        ]),
+      []
+    );
 
+    useEffect(() => {
+      if (focus && inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        inputRef.current.style.outline = '2px solid red';
+        inputRef.current.style.borderRadius = theme.shape.borderRadius.toString() + 'px';
+        const timer = setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.style.outline = '';
+            inputRef.current.style.borderRadius = '';
+          }
+        }, 3000);
+        return () => clearTimeout(timer);
+      }
+    }, [focus, theme.shape.borderRadius]);
 
-2. You're converting to string too early
+    useEffect(() => {
+      setTempValue(value);
+    }, [value]);
 
+    // Memoize the styles
+    const inputStyles = useMemo(
+      () => ({
+        '& .MuiOutlinedInput-root': {
+          '&.Mui-focused fieldset': {
+            borderColor: error ? 'red' : 'inherit',
+          },
+        },
+        ...(error && {
+          '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'red',
+          },
+        }),
+      }),
+      [error]
+    );
 
-3. FormInput internally does formatting or rounding
+    // Memoize the debounced function
+    const debouncedHandleChange = useMemo(() => {
+      return _.debounce((event) => {
+        onChange(event);
+      }, debounceDuration);
+    }, [onChange, debounceDuration]);
 
+    const handleChange = (event) => {
+      const { value } = event.target;
 
+      if (!validateOnlyOnBlur) {
+        const result = TYPE_VALIDATION(inputType, value, '');
+        if (result === '') {
+          setTempValue(value);
+          debouncedHandleChange(event);
+        } else {
+          snackbar(result, 'error');
+          return;
+        }
+      } else {
+        setTempValue(value);
+        debouncedHandleChange(event);
+      }
+    };
 
+    const onBlurHandler = useCallback((event) => {
+      const { value } = event.target;
 
----
+      if (!validateOnlyOnBlur) {
+        return onBlur(event);
+      }
 
-✅ Step-by-Step Fix
+      const result = TYPE_VALIDATION(inputType, value, '');
+      if (result === '') {
+        return onBlur(event);
+      }
+      snackbar(result, 'error');
+      return;
+      // Clear the input value if validation fails
+      //event.target.value = ''; // Clear the input field
+      // handleChange(event);
+    }, []);
 
-We'll do three things to fix it completely:
+    const getTextAlignment = useMemo(() => {
+      return (inputType) => {
+        return leftAlignedInputTypes.has(inputType) ? 'left' : 'right';
+      };
+    }, [leftAlignedInputTypes]);
 
+    return (
+      <TextField
+        inputRef={inputRef}
+        fullWidth
+        type="text"
+        inputMode={inputType === 'amountDecimal' ? 'decimal' : 'text'}
+        name={name}
+        label={label}
+        value={readOnly ? value : tempValue ?? ''}
+        onChange={handleChange}
+        onBlur={onBlurHandler}
+        slotProps={{
+          htmlInput: {
+            maxLength: inputType === 'wholeAmountDecimal' ? 19 : maxLength,
+            readOnly: readOnly,
+            sx: { textAlign: getTextAlignment(inputType) },
+          },
+        }}
+        disabled={readOnly}
+        error={error}
+        helperText={error ? helperText : ''}
+        size="small"
+        sx={{ ...inputStyles, ...customStyles }}
+        {...props}
+      />
+    );
+  }
+);
 
----
-
-✅ 1. Remove .toFixed(2) from calculation entirely
-
-Replace the calculation useEffect with this — note: we don’t use .toFixed() anywhere:
-
-useEffect(() => {
-  const parse = (v) => {
-    const num = parseFloat(v);
-    return isNaN(num) ? 0 : num;
-  };
-
-  const updated = { ...data };
-
-  updated.othForeBilPurGrAmt = parse(data.payIndGrAmt) + parse(data.payOutGrAmt);
-  updated.othForeBilPurPro = parse(data.payIndPro) + parse(data.payOutPro);
-
-  updated.foreBilPurGrAmt =
-    parse(data.expBillGrAmt) + parse(data.impBillGrAmt) + updated.othForeBilPurGrAmt;
-  updated.foreBilPurPro =
-    parse(data.expBillPro) + parse(data.impBillPro) + updated.othForeBilPurPro;
-
-  updated.bilPurGrAmt = parse(data.inlBilPurGrAmt) + updated.foreBilPurGrAmt;
-  updated.bilPurPro = parse(data.inlBilPurPro) + updated.foreBilPurPro;
-
-  updated.dueGrAmt =
-    parse(data.coopBankGrAmt) +
-    parse(data.commBankGrAmt) +
-    parse(data.bankOutIndGrAmt);
-  updated.duePro =
-    parse(data.coopBankPro) +
-    parse(data.commBankPro) +
-    parse(data.bankOutIndPro);
-
-  updated.loanAdvGrAmt = parse(data.loanAdvCreGrAmt) + updated.dueGrAmt;
-  updated.loanAdvPro = parse(data.loanAdvCrePro) + updated.duePro;
-
-  updated.grandTotlGrAmt = updated.loanAdvGrAmt + updated.bilPurGrAmt;
-  updated.grandTotlPro = updated.loanAdvPro + updated.bilPurPro;
-
-  // No .toFixed here
-  setData(updated);
-}, [
-  data.payIndGrAmt, data.payOutGrAmt, data.expBillGrAmt, data.impBillGrAmt,
-  data.inlBilPurGrAmt, data.loanAdvCreGrAmt, data.coopBankGrAmt,
-  data.commBankGrAmt, data.bankOutIndGrAmt,
-  data.payIndPro, data.payOutPro, data.expBillPro, data.impBillPro,
-  data.inlBilPurPro, data.loanAdvCrePro, data.coopBankPro, data.commBankPro, data.bankOutIndPro,
-]);
-
-
----
-
-✅ 2. Ensure <FormInput /> doesn’t auto-round
-
-In your FormInput:
-
-<FormInput
-  name={grField}
-  value={data[grField] || ''}
-  ...
-  isNumeric={true}
-/>
-
-If FormInput does auto-rounding for numeric values, it might convert 999999999999999.99 to 1000000000000000.00.
-
-Fix it like this:
-
-✅ Instead of:
-
-value={data[grField] || ''}
-
-Use:
-
-value={data[grField]?.toString() ?? ''}
-
-And double-check FormInput code. It must not call .toFixed() or Math.round() internally for isNumeric={true}.
-
-
----
-
-✅ 3. (Optional) Only apply .toFixed(2) on submission or final display, like this:
-
-const rounded = parseFloat(data.grandTotlGrAmt).toFixed(2);
-
-
----
-
-🔍 If Still Broken:
-
-Please share your <FormInput /> component code, or try replacing it just temporarily with TextField to confirm if it's the culprit.
-
-Example:
-
-<TextField
-  value={data[grField]?.toString() ?? ''}
-  onChange={handleChange(grField)}
-  onBlur={handleChange(grField, true)}
-  inputProps={{ style: { textAlign: 'right' } }}
-/>
-
-
----
-
-Let me know if you want me to refactor the FormInput or share a version that guarantees .99 will never round off.
-
+export default FormInput;
