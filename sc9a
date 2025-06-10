@@ -17,3 +17,25 @@ const flattenSchedule10Data = (formData) => {
 
   return flatData;
 };
+
+
+const flattenSchedule10Data = (formData) => {
+  const flatData = {};
+
+  rowDefinitionsConfig.forEach((rowDef) => {
+    const suffix = rowDef.modelSuffix;
+    if (!suffix) return;
+
+    const row = formData[rowDef.id] || {};
+    schedule10DataFields.forEach((field) => {
+      const key = `${field}${suffix}`;
+      const value = row[field];
+      flatData[key] = value == null || value === '' ? '0.00' : value.toString();
+    });
+  });
+
+  flatData.finyearOne = formData.finyearOne ?? '';
+  flatData.finyearTwo = formData.finyearTwo ?? '';
+
+  return flatData;
+};
