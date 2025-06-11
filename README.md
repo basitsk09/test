@@ -1,73 +1,44 @@
-private String getUserToken(String userID) {
-    String sessionId = null;
-    Connection con = null;
-    PreparedStatement ps = null;
-    ResultSet rs = null;
+const fetchReport = async () => {
+  try {
+    console.log('user', user);
+    console.log('reportObject', reportObject);
 
-    try {
-        con = new DBConn().getConnectionFromJNDI();
+    const requestPayload = {
+      circleCode: user.circleCode,
+      quarterEndDate: user.quarterEndDate,
+      role: user.capacity,
+      reportName: reportObject.name,
+    };
 
-        // Ensure this SELECT runs in autocommit, read-only mode to avoid row locks
-        con.setReadOnly(true);
-        con.setAutoCommit(true); // Optional but safe
+    const data = await callApi('/Maker/getSC09ReportData', requestPayload, 'POST');
 
-        String query = "SELECT USER_SESSION FROM bs_user WHERE user_id = ?";
-        ps = con.prepareStatement(query);
-        ps.setString(1, userID);
-        rs = ps.executeQuery();
+    setValues((prev) => {
+      const nv = { ...prev };
 
-        if (rs.next()) {
-            sessionId = rs.getString("USER_SESSION");
-        }
+      const backendFieldMap = {
+        standard: 'Standard',
+        subStandard: 'SubStandard',
+        doubtful: 'Doubtful',
+        loss: 'Loss',
+        adjustment: 'Adj', // key fix here
+      };
 
-    } catch (SQLException e) {
-        logger.error("SQL Exception in getUserToken: " + e.getMessage(), e);
-    } finally {
-        try {
-            if (rs != null) rs.close();
-        } catch (SQLException e) {
-            logger.warn("Failed to close ResultSet", e);
-        }
-        try {
-            if (ps != null) ps.close();
-        } catch (SQLException e) {
-            logger.warn("Failed to close PreparedStatement", e);
-        }
-        try {
-            if (con != null) con.close();
-        } catch (SQLException e) {
-            logger.warn("Failed to close Connection", e);
-        }
-    }
+      const fields = ['standard', 'subStandard', 'doubtful', 'loss'];
+      if (user.capacity === '61') fields.push('adjustment');
 
-    return sessionId;
-}
+      ['1', '2', '3'].forEach((num) => {
+        fields.forEach((field) => {
+          const suffix = backendFieldMap[field];
+          nv[`fac${num}`][field] = data[`facility_${suffix}_${num}`] || '';
+          nv[`sec${num}`][field] = data[`security_${suffix}_${num}`] || '';
+          nv[`in${num}`][field] = data[`sector_${suffix}_a${num}`] || '';
+          nv[`out${num}`][field] = data[`sector_${suffix}_b${num}`] || '';
+        });
+      });
 
-
-
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-
-@Transactional(propagation = Propagation.REQUIRES_NEW)
-public int saveToken(UserLogin userLogin, String token) {
-    try {
-        // Step 1: Check if update is actually needed
-        String existingToken = jdbcTemplate.queryForObject(
-            "SELECT USER_SESSION FROM bs_user WHERE user_id = ?",
-            new Object[]{userLogin.getUserId()},
-            String.class
-        );
-
-        if (token.equals(existingToken)) {
-            return 0; // No update needed
-        }
-
-        // Step 2: Perform update
-        String updateQuery = "UPDATE bs_user SET USER_SESSION = ?, USER_LAST_LOGIN = SYSDATE WHERE user_id = ?";
-        return jdbcTemplate.update(updateQuery, token, userLogin.getUserId());
-
-    } catch (Exception e) {
-        logger.error("Error in saveToken for user " + userLogin.getUserId() + ": " + e.getMessage(), e);
-        return 0;
-    }
-}
+      return nv;
+    });
+  } catch (e) {
+    console.error('Error in fetchReport:', e);
+  }
+};
