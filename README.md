@@ -1,62 +1,92 @@
-To highlight only the mismatched cells (in your case, likely the Adjustment column for specific rows) with a red border instead of changing the row background, do the following:
+Perfect. You want to:
+
+✅ Highlight the total column cells in rows facTotal, secTotal, and advA3 with a red border if:
+
+A1 (facTotal).total ≠ A2 (secTotal).total ≠ A3 (advA3).total
 
 
 ---
 
-✅ Update Inside <StyledTableCell> Where <FormInput /> Is Rendered
+✅ Step-by-Step Fix
 
-Locate the cell rendering logic for FormInput, and apply a conditional sx style for border like this:
+1. Create columnMismatchFlags using useMemo
 
-<StyledTableCell key={col.key} align="right">
-  <FormInput
-    key={`${row.id}-${col.key}-${data[col.key]}`}
-    name={getFieldName(row.id, col.key)}
-    value={data[col.key] || '0.00'}
-    onBlur={(e) => handleChange(row.id, col.key, e.target.value)}
-    inputProps={{ style: { textAlign: 'right' } }}
-    readOnly={
-      col.key === 'total' ||
-      !col.editable ||
-      Boolean(sectionMap[row.id]) ||
-      (user.capacity === '61' && (
-        col.key !== 'adjustment' || ['fac1', 'fac2', 'fac3'].includes(row.id)
-      ))
+Add this in your component just below computedRowData:
+
+const totalMismatchFlags = useMemo(() => {
+  const a = getRowData('facTotal');
+  const b = getRowData('secTotal');
+  const c = getRowData('advA3');
+
+  const mismatches = {
+    standard: false,
+    subStandard: false,
+    doubtful: false,
+    loss: false,
+    adjustment: false,
+  };
+
+  ['standard', 'subStandard', 'doubtful', 'loss'].forEach((key) => {
+    const aVal = parseFloat(a[key] || 0).toFixed(2);
+    const bVal = parseFloat(b[key] || 0).toFixed(2);
+    const cVal = parseFloat(c[key] || 0).toFixed(2);
+    if (aVal !== bVal || bVal !== cVal || aVal !== cVal) {
+      mismatches[key] = true;
     }
-    sx={
-      // Highlight only the mismatched cell for adjustment
-      col.key === 'adjustment' && data.isMismatch
-        ? { border: '1px solid red', borderRadius: 2 }
-        : undefined
+  });
+
+  if (user.capacity === '61') {
+    const aAdj = parseFloat(a.adjustment || 0).toFixed(2);
+    const bAdj = parseFloat(b.adjustment || 0).toFixed(2);
+    const cAdj = parseFloat(c.adjustment || 0).toFixed(2);
+    if (aAdj !== bAdj || bAdj !== cAdj || aAdj !== cAdj) {
+      mismatches.adjustment = true;
     }
-  />
-</StyledTableCell>
+  }
+
+  return mismatches;
+}, [values, showAdjustment, user.capacity]);
 
 
 ---
 
-🧠 How This Works:
+2. Apply Red Border for Total Cells Conditionally
 
-data.isMismatch is already computed per row in getRowData().
+Update this inside your <FormInput /> render:
 
-This condition:
+<FormInput
+  ...
+  sx={
+    // ✅ For mismatch of A1-A2-A3 totals
+    ['facTotal', 'secTotal', 'advA3'].includes(row.id) && col.key !== 'total' && totalMismatchFlags[col.key]
+      ? { border: '1px solid red', borderRadius: 2 }
+      : undefined
+  }
+/>
 
-col.key === 'adjustment' && data.isMismatch
+> This highlights only standard, subStandard, doubtful, loss, and adjustment columns for rows facTotal, secTotal, and advA3.
 
-ensures only the adjustment cell of the mismatched row gets a red border.
 
 
 
 ---
 
-✅ Optional: Also Apply for Other Columns
+✅ Optional: Highlight Total Column Only
 
-If you want this red border for all columns in the mismatched row, change the condition to:
+If you instead want to highlight only the "Total" column in those rows, update this:
 
 sx={
-  data.isMismatch
+  ['facTotal', 'secTotal', 'advA3'].includes(row.id) &&
+  col.key === 'total' &&
+  Object.values(totalMismatchFlags).some(Boolean)
     ? { border: '1px solid red', borderRadius: 2 }
     : undefined
 }
 
-Let me know if you'd like different styles for read-only vs editable fields when error is present.
+This version applies red border to the total column only if any mismatch is found in any category.
+
+
+---
+
+Let me know which version you'd prefer — only total cell red, or individual column cells red — and I can finalize styles accordingly.
 
