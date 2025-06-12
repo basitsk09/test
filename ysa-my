@@ -1,31 +1,38 @@
-const convertFlatSc10DataToFormData = (flatData) => {
-  const structuredData = generateInitialSchedule10Data();
+@PostMapping("/getAnnexureSftp")
+    public @ResponseBody Map<String, Object> getAnnexureSftp(@RequestBody Map<String,Object> map) throws ConfigurationException, SQLException, IOException {
+        Map<String, Object> updatedTabData = new HashMap<>();
+        Boolean getFile = ccdpSftpService.getsftpdata(map);
 
-  rowDefinitionsConfig.forEach((rowDef) => {
-    const rowId = rowDef.id;
-    const suffix = rowDef.modelSuffix;
+        boolean issave=false;
+        if (getFile && ((String) map.get("reportName")).equalsIgnoreCase("ANX2C")) {
 
-    schedule10DataFields.forEach((field) => {
-      const flatKey = `${field}${suffix}`;
-      if (flatData[flatKey] !== undefined) {
-        structuredData[rowId][field] = flatData[flatKey];
-      }
-    });
-  });
-
-  // Handle additional fields like particulars3, particulars4, finyearOne, finyearTwo if needed
-  return structuredData;
-};
+             updatedTabData = annexure2CReportDao.getSaveBySftp(map);
+//            log.info("annex2cdata:-"+updatedTabData+ "  "+updatedTabData.get("status"));
 
 
-if (data.fileAndDataStatus === 1) {
-  const convertedFormData = convertFlatSc10DataToFormData(data.sc10Data);
-  setFormData(convertedFormData);
-  setFieldsDisabled(true);
 
-  setSnackbar({
-    open: true,
-    message: data.message || 'Data successfully fetched from IFAMS via SFTP.',
-    severity: 'success',
-  });
-}
+        } else if (getFile && ((String) map.get("reportName")).equalsIgnoreCase("SC9")) {
+
+            updatedTabData = sc09Service.getSaveBySftp(map);
+
+
+        }else {    ///file exist no
+            int count = ccdpSftpService.checkCCDPTimeStamp(map);
+            int dataCount= ccdpSftpService.getCountdata(map);
+            if (count == 1 && dataCount >= 1 ) {
+               String timest= ccdpSftpService.getCCDPTimeStamp(map);
+                updatedTabData.put("message", "Please note: \n Data fetched here was generated in CCDP at "+timest);
+                updatedTabData.put("status", true);
+                updatedTabData.put("fileAndDataStatus", 3);
+            } else {
+                updatedTabData.put("message", "Data not received from CCDP, Kindly wait till CCDP sends reports");
+                updatedTabData.put("status", false);
+                updatedTabData.put("fileAndDataStatus", 2);
+          /*  if(((String) map.get("reportName")).equalsIgnoreCase("ANX2C")){
+
+            }*/
+            }
+        }
+//        log.info("updatedTabData:-"+updatedTabData);
+        return updatedTabData;
+    }
