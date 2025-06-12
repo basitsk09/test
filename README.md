@@ -1,85 +1,70 @@
-Yes — based on your code and the fetchReport logic, here’s why "Others" rows under A3 (like in4, out4, out5, etc.) are not showing fetched data:
+Great — here's exactly how to highlight the YSA column cells in A1 section (fac1, fac2, fac3, facTotal) with a red border if the total value doesn't match the ysa value.
 
 
 ---
 
-✅ Root Cause
+✅ Target Condition:
 
-You're only fetching data for rows 1, 2, and 3:
-
-['1', '2', '3'].forEach((num) => {
-  fields.forEach((field) => {
-    const suffix = backendFieldMap[field];
-    nv[`fac${num}`][field] = data[`facility_${suffix}_${num}`] || '';
-    nv[`sec${num}`][field] = data[`security_${suffix}_${num}`] || '';
-    nv[`in${num}`][field] = data[`sector_${suffix}_a${num}`] || '';
-    nv[`out${num}`][field] = data[`sector_${suffix}_b${num}`] || '';
-  });
-});
-
-> ❌ This skips in4, out4, out5, inTotal, outTotal, etc.
-
-
+For each of the following rows:
+fac1, fac2, fac3, facTotal
+→ If parseFloat(row.total) !== parseFloat(row.ysa)
+→ Highlight the YSA <TextField /> with a red border.
 
 
 ---
 
-✅ Fix: Dynamically Handle All Entry Rows
+✅ Step-by-Step Fix:
 
-Replace that loop with one that covers all applicable rowDefinitions dynamically:
+✅ 1. Ensure isMismatch logic is correct in getRowData()
 
-🔧 Replace ['1', '2', '3']... block with:
+You already have this inside your getRowData():
 
-rowDefinitions.forEach(({ id, type }) => {
-  if (type !== 'entry') return;
+const isMismatch =
+  ysa && id.startsWith('fac')
+    ? Number(parseFloat(ysa || 0).toFixed(2)) !== Number(parseFloat(total || 0).toFixed(2))
+    : false;
 
-  const fields = ['standard', 'subStandard', 'doubtful', 'loss'];
-  if (user.capacity === '61') fields.push('adjustment');
-
-  const base =
-    id.startsWith('fac') ? 'facility' :
-    id.startsWith('sec') ? 'security' :
-    'sector';
-
-  const index = getFieldName(id, 'standard').split('_').pop(); // smart extraction
-
-  fields.forEach((field) => {
-    const suffix = backendFieldMap[field];
-    const key = `${base}_${suffix}_${index}`;
-    nv[id][field] = data[key] || '';
-  });
-});
+This is ✅ correct — it marks a mismatch for A1 rows.
 
 
 ---
 
-🧠 Key Notes:
+✅ 2. Update the YSA <TextField /> in JSX to add red border
 
-This works for:
+Update this block inside <StyledTableCell align="right"> for YSA rendering:
 
-fac1 to facTotal
+{ysaRows.includes(row.id) && (
+  <TextField
+    name={`${row.id}_ysa`}
+    size="small"
+    value={data.ysa}
+    inputProps={{ style: { textAlign: 'right' } }}
+    fullWidth
+    disabled
+    sx={
+      data.isMismatch
+        ? { border: '1px solid red', borderRadius: 1 }
+        : {}
+    }
+  />
+)}
 
-sec1 to secTotal
 
-in1 to in4, inTotal
+---
 
-out1, out2, out3, out4, outTotal, etc.
+🧠 Explanation:
 
+This makes sure only rows in ysaRows (fac1, fac2, fac3, facTotal) get the validation.
 
-You reuse your existing getFieldName logic to extract proper field name mapping.
-
-You cover all entry rows dynamically.
+If the computed total doesn’t match the YSA, a red border is shown.
 
 
 
 ---
 
-✅ What You’ll See Working After This:
+✅ Optional: Also show tooltip or icon?
 
-in4 (“[iv] Others”) under A3a will now show values.
+If you want to add a warning icon or tooltip for mismatch, I can help integrate that using MUI Tooltip and ErrorOutlineIcon.
 
-out4, out5, etc. under A3b will also fetch and render data properly.
-
-
-Let me know if you'd like me to paste the complete updated fetchReport function with this fix applied.
+Let me know if you want that enhancement.
 
