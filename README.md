@@ -1,92 +1,85 @@
-Perfect. You want to:
-
-✅ Highlight the total column cells in rows facTotal, secTotal, and advA3 with a red border if:
-
-A1 (facTotal).total ≠ A2 (secTotal).total ≠ A3 (advA3).total
+Yes — based on your code and the fetchReport logic, here’s why "Others" rows under A3 (like in4, out4, out5, etc.) are not showing fetched data:
 
 
 ---
 
-✅ Step-by-Step Fix
+✅ Root Cause
 
-1. Create columnMismatchFlags using useMemo
+You're only fetching data for rows 1, 2, and 3:
 
-Add this in your component just below computedRowData:
-
-const totalMismatchFlags = useMemo(() => {
-  const a = getRowData('facTotal');
-  const b = getRowData('secTotal');
-  const c = getRowData('advA3');
-
-  const mismatches = {
-    standard: false,
-    subStandard: false,
-    doubtful: false,
-    loss: false,
-    adjustment: false,
-  };
-
-  ['standard', 'subStandard', 'doubtful', 'loss'].forEach((key) => {
-    const aVal = parseFloat(a[key] || 0).toFixed(2);
-    const bVal = parseFloat(b[key] || 0).toFixed(2);
-    const cVal = parseFloat(c[key] || 0).toFixed(2);
-    if (aVal !== bVal || bVal !== cVal || aVal !== cVal) {
-      mismatches[key] = true;
-    }
+['1', '2', '3'].forEach((num) => {
+  fields.forEach((field) => {
+    const suffix = backendFieldMap[field];
+    nv[`fac${num}`][field] = data[`facility_${suffix}_${num}`] || '';
+    nv[`sec${num}`][field] = data[`security_${suffix}_${num}`] || '';
+    nv[`in${num}`][field] = data[`sector_${suffix}_a${num}`] || '';
+    nv[`out${num}`][field] = data[`sector_${suffix}_b${num}`] || '';
   });
+});
 
-  if (user.capacity === '61') {
-    const aAdj = parseFloat(a.adjustment || 0).toFixed(2);
-    const bAdj = parseFloat(b.adjustment || 0).toFixed(2);
-    const cAdj = parseFloat(c.adjustment || 0).toFixed(2);
-    if (aAdj !== bAdj || bAdj !== cAdj || aAdj !== cAdj) {
-      mismatches.adjustment = true;
-    }
-  }
-
-  return mismatches;
-}, [values, showAdjustment, user.capacity]);
-
-
----
-
-2. Apply Red Border for Total Cells Conditionally
-
-Update this inside your <FormInput /> render:
-
-<FormInput
-  ...
-  sx={
-    // ✅ For mismatch of A1-A2-A3 totals
-    ['facTotal', 'secTotal', 'advA3'].includes(row.id) && col.key !== 'total' && totalMismatchFlags[col.key]
-      ? { border: '1px solid red', borderRadius: 2 }
-      : undefined
-  }
-/>
-
-> This highlights only standard, subStandard, doubtful, loss, and adjustment columns for rows facTotal, secTotal, and advA3.
+> ❌ This skips in4, out4, out5, inTotal, outTotal, etc.
 
 
 
 
 ---
 
-✅ Optional: Highlight Total Column Only
+✅ Fix: Dynamically Handle All Entry Rows
 
-If you instead want to highlight only the "Total" column in those rows, update this:
+Replace that loop with one that covers all applicable rowDefinitions dynamically:
 
-sx={
-  ['facTotal', 'secTotal', 'advA3'].includes(row.id) &&
-  col.key === 'total' &&
-  Object.values(totalMismatchFlags).some(Boolean)
-    ? { border: '1px solid red', borderRadius: 2 }
-    : undefined
-}
+🔧 Replace ['1', '2', '3']... block with:
 
-This version applies red border to the total column only if any mismatch is found in any category.
+rowDefinitions.forEach(({ id, type }) => {
+  if (type !== 'entry') return;
+
+  const fields = ['standard', 'subStandard', 'doubtful', 'loss'];
+  if (user.capacity === '61') fields.push('adjustment');
+
+  const base =
+    id.startsWith('fac') ? 'facility' :
+    id.startsWith('sec') ? 'security' :
+    'sector';
+
+  const index = getFieldName(id, 'standard').split('_').pop(); // smart extraction
+
+  fields.forEach((field) => {
+    const suffix = backendFieldMap[field];
+    const key = `${base}_${suffix}_${index}`;
+    nv[id][field] = data[key] || '';
+  });
+});
 
 
 ---
 
-Let me know which version you'd prefer — only total cell red, or individual column cells red — and I can finalize styles accordingly.
+🧠 Key Notes:
+
+This works for:
+
+fac1 to facTotal
+
+sec1 to secTotal
+
+in1 to in4, inTotal
+
+out1, out2, out3, out4, outTotal, etc.
+
+
+You reuse your existing getFieldName logic to extract proper field name mapping.
+
+You cover all entry rows dynamically.
+
+
+
+---
+
+✅ What You’ll See Working After This:
+
+in4 (“[iv] Others”) under A3a will now show values.
+
+out4, out5, etc. under A3b will also fetch and render data properly.
+
+
+Let me know if you'd like me to paste the complete updated fetchReport function with this fix applied.
 
