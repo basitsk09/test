@@ -1,77 +1,62 @@
-Thanks for the detailed context. Based on your requirement:
+To highlight only the mismatched cells (in your case, likely the Adjustment column for specific rows) with a red border instead of changing the row background, do the following:
 
 
 ---
 
-🧩 Business Rule Recap:
+✅ Update Inside <StyledTableCell> Where <FormInput /> Is Rendered
 
-1. If user.capacity === '61':
+Locate the cell rendering logic for FormInput, and apply a conditional sx style for border like this:
 
-Only the "adjustment" column is editable.
-
-All other fields (standard, subStandard, etc.) should be disabled.
-
-In section A1 (fac1, fac2, fac3):
-
-Even adjustment should be disabled for these 3 rows.
-
-
-
-
-
-
----
-
-✅ Fix for Conditional Field Editing
-
-Update your <FormInput /> logic inside TableBody like this:
-
-<FormInput
-  key={`${row.id}-${col.key}-${data[col.key]}`}
-  name={getFieldName(row.id, col.key)}
-  value={data[col.key] || '0.00'}
-  onBlur={(e) => handleChange(row.id, col.key, e.target.value)}
-  inputProps={{ style: { textAlign: 'right' } }}
-  readOnly={
-    col.key === 'total' || // totals are always readonly
-    !col.editable ||        // column is not editable (e.g., total)
-    Boolean(sectionMap[row.id]) || // section/summary rows
-    (
-      user.capacity === '61'
-        ? col.key !== 'adjustment' || ['fac1', 'fac2', 'fac3'].includes(row.id)
-        : false
-    ) // ✅ Core condition for capacity 61
-  }
-/>
+<StyledTableCell key={col.key} align="right">
+  <FormInput
+    key={`${row.id}-${col.key}-${data[col.key]}`}
+    name={getFieldName(row.id, col.key)}
+    value={data[col.key] || '0.00'}
+    onBlur={(e) => handleChange(row.id, col.key, e.target.value)}
+    inputProps={{ style: { textAlign: 'right' } }}
+    readOnly={
+      col.key === 'total' ||
+      !col.editable ||
+      Boolean(sectionMap[row.id]) ||
+      (user.capacity === '61' && (
+        col.key !== 'adjustment' || ['fac1', 'fac2', 'fac3'].includes(row.id)
+      ))
+    }
+    sx={
+      // Highlight only the mismatched cell for adjustment
+      col.key === 'adjustment' && data.isMismatch
+        ? { border: '1px solid red', borderRadius: 2 }
+        : undefined
+    }
+  />
+</StyledTableCell>
 
 
 ---
 
-✅ Explanation of Condition:
+🧠 How This Works:
 
-If column is not editable or it's a total/summary → make readOnly.
+data.isMismatch is already computed per row in getRowData().
 
-For capacity 61:
+This condition:
 
-Only "adjustment" column is editable.
+col.key === 'adjustment' && data.isMismatch
 
-Disable "adjustment" for fac1, fac2, fac3.
-
+ensures only the adjustment cell of the mismatched row gets a red border.
 
 
 
 ---
 
-Optional UX Tip:
+✅ Optional: Also Apply for Other Columns
 
-If you want to visually indicate disabled fields (e.g., grayed out), you can use:
+If you want this red border for all columns in the mismatched row, change the condition to:
 
-sx={{
-  backgroundColor:
-    user.capacity === '61' && col.key !== 'adjustment' ? '#f0f0f0' :
-    user.capacity === '61' && ['fac1', 'fac2', 'fac3'].includes(row.id) && col.key === 'adjustment' ? '#f0f0f0' :
-    undefined
-}}
+sx={
+  data.isMismatch
+    ? { border: '1px solid red', borderRadius: 2 }
+    : undefined
+}
 
-Let me know if you'd like to apply this logic globally in a helper function for clarity.
+Let me know if you'd like different styles for read-only vs editable fields when error is present.
 
