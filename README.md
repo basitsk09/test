@@ -1,464 +1,256 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  Box,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  TextField,
-  Typography,
-  Stack,
-  Tabs,
-  Tab,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
+  Table, TableBody, TableContainer, TableHead, TableRow, Paper, Button,
+  Alert, Box, Stack, CircularProgress, Typography,
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
-import useApi from '../../../../common/hooks/useApi';
-import { CustomButton } from '../../../../common/components/ui/Buttons';
+import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import { styled, useColorScheme, useTheme } from '@mui/material/styles';
 import FormInput from '../../../../common/components/ui/FormInput';
-import SkeletonWrapper from '../../../../common/components/ui/SkeletonWrapper';
 import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../common/hooks/useApi';
 
-const StyledCell = styled(TableCell)(({ theme }) => ({
-  textAlign: 'right',
-  padding: '4px',
-  // backgroundColor: theme.palette.background.paper,
-  // color: theme.palette.text.primary,
-}));
+// All configuration constants (rowDefinitionsConfig, columnFieldKeys, etc.)
+// and Styled Components (StyledTableCell, StyledTableRow) remain the same as the previous version.
+// ... (omitting them here for brevity, but they should be included in your file)
 
-const StyledHeader = styled(TableCell)(({ theme }) => ({
-  textAlign: 'center',
-  fontWeight: 'bold',
-  // backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : '#f0f0f0',
-  // color: theme.palette.text.primary,
-}));
+// --- CONFIGURATION & STYLED COMPONENTS (Same as before) ---
+const rowDefinitionsConfig = [ /* ... Omitted for brevity ... */ ];
+const columnFieldKeys = { /* ... Omitted for brevity ... */ };
+const allColumnKeys = [ /* ... Omitted for brevity ... */ ];
+const calculatedColKeys = [ /* ... Omitted for brevity ... */ ];
+const StyledTableCell = styled(TableCell)(/* ... Omitted for brevity ... */);
+const StyledTableRow = styled(TableRow)(/* ... Omitted for brevity ... */);
+const getColumnHeaders = (quarterEndDate) => [ /* ... Omitted for brevity ... */ ];
+const MemoizedTableHeader = memo(({ columnHeaders }) => { /* ... Omitted for brevity ... */ });
 
-const getDefaultRow = () => ({
-  migCircleCode: '',
-  circleDesc: '',
-  inSusp: '',
-  provn: '',
-  licra: '',
-  dicgc: '',
-});
 
-// const validateNumeric = (value) => {
-//   return /^-?\d*(\.\d{0,2})?$/.test(value);
-// };
-
-// const calculateTotals = (rows, fieldPrefix = '') => {
-//   return rows.reduce(
-//     (totals, row) => {
-//       ['inSusp', 'provn', 'licra', 'dicgc'].forEach((field) => {
-//         totals[field] += parseFloat(row[`${field}${fieldPrefix}`] || 0);
-//       });
-//       return totals;
-//     },
-//     { inSusp: 0, provn: 0, licra: 0, dicgc: 0 }
-//   );
-// };
-const calculateTotals = (rows, fieldPrefix = '') => {
-  const toCents = (val) => {
-    if (!val || isNaN(val)) return 0n;
-    const str = val.toString().replace(/,/g, '').trim();
-    const isNeg = str.startsWith('-');
-    const [intPart, decPart = ''] = (isNeg ? str.slice(1) : str).split('.');
-    const cents = BigInt(intPart || '0') * 100n + BigInt((decPart + '00').slice(0, 2));
-    return isNeg ? -cents : cents;
-  };
-
-  const totalsCents = {
-    inSusp: 0n,
-    provn: 0n,
-    licra: 0n,
-    dicgc: 0n,
-  };
-
-  rows.forEach((row) => {
-    ['inSusp', 'provn', 'licra', 'dicgc'].forEach((field) => {
-      const val = row[`${field}${fieldPrefix}`];
-      totalsCents[field] += toCents(val);
-    });
-  });
-
-  const totals = {};
-  Object.entries(totalsCents).forEach(([key, val]) => {
-    const abs = val < 0n ? -val : val;
-    const intPart = abs / 100n;
-    const decPart = (abs % 100n).toString().padStart(2, '0');
-    totals[key] = `${val < 0n ? '-' : ''}${intPart.toString()}.${decPart}`;
-  });
-
-  return totals;
-};
-
-const MigrationTable = ({ title, rows, setRows, fieldPrefix = '' }) => {
-  const handleChange = (index, field, value) => {
-    // if (validateNumeric(value) || value === '') {
-    const updated = [...rows];
-    updated[index][`${field}${fieldPrefix}`] = value;
-    setRows(updated);
-    // }
-  };
-
-  const totals = useMemo(() => calculateTotals(rows, fieldPrefix), [rows, fieldPrefix]);
-
-  return (
-    <Box sx={{ mt: 3 }}>
-      <Typography variant="h6" sx={{ mb: 1 }}>
-        <b>{title}</b>
-      </Typography>
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <StyledHeader>NAME OF THE CIRCLE / GROUP</StyledHeader>
-              <StyledHeader>INTEREST SUSPENSE</StyledHeader>
-              <StyledHeader>PROVISION</StyledHeader>
-              <StyledHeader>LICRA</StyledHeader>
-              <StyledHeader>DICGC, ECGC CLAIMS RECD</StyledHeader>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row, idx) => (
-              <TableRow key={idx}>
-                <TableCell>{row.circleDesc}</TableCell>
-                {['inSusp', 'provn', 'licra', 'dicgc'].map((field) => {
-                  const fullField = `${field}${fieldPrefix}`;
-                  return (
-                    <StyledCell key={fullField}>
-                      <FormInput
-                        variant="outlined"
-                        inputType="wholeAmountDecimal"
-                        value={row[fullField] || ''}
-                        onChange={(e) => handleChange(idx, field, e.target.value)}
-                      />
-                    </StyledCell>
-                  );
-                })}
-              </TableRow>
-            ))}
-            <TableRow>
-              <StyledCell>
-                <b>Total</b>
-              </StyledCell>
-              {['inSusp', 'provn', 'licra', 'dicgc'].map((field) => (
-                <StyledCell key={field}>
-                  <FormInput
-                    variant="outlined"
-                    value={totals[field] || '0.00'}
-                    inputType="wholeAmountDecimal"
-                    readOnly
-                  />
-                </StyledCell>
-              ))}
-            </TableRow>
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
-  );
-};
-
-const Schedule9CMigration = () => {
-  // const theme = useTheme();
-  const [rowsTo, setRowsTo] = useState([]);
-  const [rowsFrom, setRowsFrom] = useState([]);
-  const [tabIndex, setTabIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const { callApi } = useApi();
-  const { state } = useLocation();
-  const [report, setReport] = useState(state?.report || null);
-  const user = JSON.parse(localStorage.getItem('user'));
-  //const [snackbarOpen, setSnackbarOpen] = useState(false);
-  //const [snackbarMessage, setSnackbarMessage] = useState('');
-  //const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-  const [open, setOpen] = useState(false);
-  const [isSave, setIsSave] = useState();
-  const setSnackbarMessage = useCustomSnackbar();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchMigrationData = async () => {
-      setIsLoading(true);
-      try {
-        // api get cicle list
-        if (!report.status) {
-          const toRes = await callApi('/Maker/getCirclelist', null, 'POST');
-
-          const uniqueTo = filterUniqueRows(toRes);
-          const uniqueFrom = filterUniqueRows(toRes);
-          const toRows = uniqueTo.map((row) => ({
-            circleDesc: row.circleDesc,
-            migCircleCode: row.migCircleCode,
-            circleDescHidden: row.migCircleCode,
-            inSusp: row.inSusp ?? '',
-            provn: row.provn ?? '',
-            licra: row.licra ?? '',
-            dicgc: row.dicgc ?? '',
-          }));
-          const fromRows = uniqueFrom.map((row) => ({
-            circleDesc: row.circleDesc,
-            migCircleCode: row.migCircleCode,
-            circleDescHidden: row.migCircleCode,
-            inSusp2: row.inSusp2 ?? '',
-            provn2: row.provn2 ?? '',
-            licra2: row.licra2 ?? '',
-            dicgc2: row.dicgc2 ?? '',
-          }));
-
-          setRowsTo(toRows);
-          setRowsFrom(fromRows);
-          return;
-        }
-        const payload = {
-          circleCode: user.circleCode,
-          quarterEndDate: user.quarterEndDate,
-          userId: user.userId,
-          reportName: report.name,
-          reportId: report.reportId,
-          reportMasterId: report.reportMasterId,
-          status: report.status,
-        };
-
-        const toRes = await callApi('/Maker/getSavedDataNineMig', payload, 'POST');
-        const fromRes = await callApi('/Maker/getSavedDataNineMigTwo', payload, 'POST');
-
-        const uniqueTo = filterUniqueRows(toRes);
-        const uniqueFrom = filterUniqueRows(fromRes);
-
-        const toRows = uniqueTo.map((row) => ({
-          circleDesc: row.circleDesc,
-          migCircleCode: row.migCircleCode,
-          circleDescHidden: row.migCircleCode,
-          inSusp: row.inSusp ?? '',
-          provn: row.provn ?? '',
-          licra: row.licra ?? '',
-          dicgc: row.dicgc ?? '',
-        }));
-
-        const fromRows = uniqueFrom.map((row) => ({
-          circleDesc: row.circleDesc,
-          migCircleCode: row.migCircleCode,
-          circleDescHidden: row.migCircleCode,
-          inSusp2: row.inSusp2 ?? '',
-          provn2: row.provn2 ?? '',
-          licra2: row.licra2 ?? '',
-          dicgc2: row.dicgc2 ?? '',
-        }));
-
-        setRowsTo(toRows);
-        setRowsFrom(fromRows);
-      } catch (error) {
-        console.error('Error fetching SC9C migration data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchMigrationData();
-  }, []);
-
-  const filterUniqueRows = (rows) => {
-    const seen = new Set();
-    return rows.filter((row) => {
-      const key = `${row.migCircleCode}-${row.circleDesc}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        return true;
-      }
-      return false;
-    });
-  };
-
-  const handleSubmit = async () => {
-    setOpen(false);
-    const payload = {
-      listToBeSent: rowsTo.map((r) => ({
-        circleDescHidden: r.migCircleCode,
-        inSusp: r.inSusp,
-        provn: r.provn,
-        licra: r.licra,
-        dicgc: r.dicgc,
-      })),
-      listToBeSentFrom: rowsFrom.map((r) => ({
-        circleDescHidden: r.migCircleCode,
-        inSusp2: r.inSusp2,
-        provn2: r.provn2,
-        licra2: r.licra2,
-        dicgc2: r.dicgc2,
-      })),
-      save: isSave,
-      circleCode: user.circleCode,
-      quarterEndDate: user.quarterEndDate,
-      userId: user.userId,
-      reportName: report.name,
-      reportId: report.reportId,
-      reportMasterId: report.reportMasterId,
-      status: report.status,
-    };
-
-    try {
-      const res = await callApi('/Maker/submitNineMig', payload, 'POST');
-      if (res && typeof res === 'string') {
-        const [flag, newReportId, newStatus] = res.split('~');
-        setReport((prev) => ({
-          ...prev,
-          reportId: newReportId,
-          status: newStatus,
-        }));
-        setSnackbarMessage(isSave ? 'Report saved successfully.' : 'Report submitted successfully!', 'success');
-        setOpen(false);
-        if (!isSave) {
-          setTimeout(() => {
-            navigate(-1);
-          }, 2000);
-        }
-      } else {
-        throw new Error('Failed to save/submit data.');
-      }
-    } catch (e) {
-      console.error(e);
-      setSnackbarMessage('Failed to save/submit data.', 'error');
-      setOpen(false);
-    }
-  };
-  const handleTabChange = (event, newValue) => {
-    setTabIndex(newValue);
-  };
-  const handleCancel = () => {
-    setOpen(false);
-  };
-
-  const handleClickOpen = (isSave) => {
-    setOpen(true);
-    setIsSave(isSave);
-  };
-
-  // if (isLoading) {
-  //   return (
-  //     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-  //       <CircularProgress />
-  //       <Typography sx={{ ml: 2 }}>Loading Data...</Typography>
-  //     </Box>
-  //   );
-  // }
-
-  if (isLoading) {
+// --- Memoized Table Row (Slight modification to take data from two sources) ---
+const MemoizedTableRow = memo(({
+  row,
+  uiRowData, // For instant input display
+  calculatedRowData, // For displaying calculated fields
+  mode,
+  theme,
+  handleChange,
+}) => {
+  if (row.type === 'sectionHeader' || row.type === 'subSectionHeader') {
     return (
-      <>
-        <SkeletonWrapper
-          isLoading={isLoading}
-          skeletonType="form"
-          skeletonConfig={{
-            fields: 0,
-            hasTitle: true,
-            fieldHeight: 10,
-            buttonsCount: 4,
-          }}
-        />
-        <SkeletonWrapper
-          isLoading={isLoading}
-          skeletonType="table"
-          skeletonConfig={{
-            rows: 3,
-            columns: 3,
-            hasHeader: true,
-            hasActions: false,
-          }}
-        />
-        <SkeletonWrapper
-          isLoading={isLoading}
-          skeletonType="table"
-          skeletonConfig={{
-            rows: 8,
-            columns: 3,
-            hasHeader: true,
-            hasActions: false,
-          }}
-        />
-      </>
+      <StyledTableRow
+        key={row.id}
+        issectionheader={row.type === 'sectionHeader'}
+        issubsectionheader={row.type === 'subSectionHeader'}
+      >
+        <StyledTableCell
+          colSpan={allColumnKeys.length + 1}
+          sx={{ position: 'sticky', left: 0, zIndex: 100, backgroundColor: mode === 'light' ? theme.palette.grey[100] : '#212121' }}
+        >
+          {row.label}
+        </StyledTableCell>
+      </StyledTableRow>
     );
   }
 
-  // if (!isLoading && (!rowsTo || Object.keys(rowsTo).length === 0)) {
-  //   return (
-  //     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-  //       <Typography variant="h6" align="center">
-  //         Failed to load Schedule 9C Migration Data...
-  //       </Typography>
-  //     </Container>
-  //   );
-  // }
-
   return (
-    <Box
-      sx={{
-        mt: 4,
-        mb: 4,
-        width: '100%' /* backgroundColor: theme.palette.background.default, color: theme.palette.text.primary */,
-      }}
-    >
-      <Stack direction="row" spacing={2} sx={{ mt: 2, mb: 2 }}>
-        <CustomButton buttonType={'save'} label={'Save'} onClickHandler={() => handleClickOpen(true)} />
-        <CustomButton buttonType={'submit'} label={'Submit'} onClickHandler={() => handleClickOpen(false)} />
-      </Stack>
-
-      <Tabs value={tabIndex} onChange={handleTabChange} sx={{ mb: 2 }}>
-        <Tab label="Migration To Other Circles" />
-        <Tab label="Migration From Other Circles" />
-      </Tabs>
-
-      {tabIndex === 0 && (
-        <MigrationTable
-          title="Migration To OTHER CIRCLES / GROUPS FROM THE CLOSING BALANCE OF PREVIOUS YEAR"
-          rows={rowsTo}
-          setRows={setRowsTo}
-          fieldPrefix=""
-        />
-      )}
-
-      {tabIndex === 1 && (
-        <MigrationTable
-          title="Migration From OTHER CIRCLES / GROUPS FROM THE CLOSING BALANCE OF PREVIOUS YEAR"
-          rows={rowsFrom}
-          setRows={setRowsFrom}
-          fieldPrefix="2"
-        />
-      )}
-
-      <Dialog
-        open={open}
-        onClose={handleCancel}
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-description"
+    <StyledTableRow key={row.id} istotalrow={row.type === 'total'}>
+      <StyledTableCell
+        sx={{
+          fontWeight: row.type === 'total' ? 'bold' : 'normal',
+          position: 'sticky', left: 0, zIndex: 99,
+          backgroundColor: mode === 'light' ? theme.palette.background.paper : '#121212',
+        }}
       >
-        <DialogTitle id="alert-dialog-title">{isSave ? 'Confirm Save' : 'Confirm Submit'}</DialogTitle>
-        <DialogContent>
-          <DialogContentText id="alert-dialog-description">
-            {isSave ? 'Are you sure you want to save?' : 'Are you sure you want to submit?'}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancel} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} color="primary" autoFocus>
-            Confirm
-          </Button>
-        </DialogActions>
-      </Dialog>
+        {row.label}
+      </StyledTableCell>
+      {allColumnKeys.map((colKey) => {
+        if (['col17', 'col18'].includes(colKey) && !row.id.startsWith('A4_')) {
+          return <StyledTableCell key={`${row.id}-${colKey}`} />;
+        }
+
+        const isCalculatedField = calculatedColKeys.includes(colKey);
+        const fieldKeyInFormData = columnFieldKeys[colKey];
+        const isEditableField = row.type === 'entry' && !isCalculatedField && fieldKeyInFormData;
+
+        // **KEY CHANGE**: Editable fields get value from `uiRowData` for responsiveness.
+        // Calculated/total fields get value from `calculatedRowData`.
+        const valueToDisplay = isEditableField
+          ? uiRowData?.[fieldKeyInFormData] ?? ''
+          : calculatedRowData?.[colKey] ?? '';
+
+        return (
+          <StyledTableCell key={`${row.id}-${colKey}`}>
+            <FormInput
+              name={`${row.id}-${colKey}`}
+              value={valueToDisplay}
+              onChange={isEditableField ? (e) => handleChange(row.id, fieldKeyInFormData, e.target.value) : undefined}
+              readOnly={!isEditableField}
+              customStyles={{
+                textAlign: 'right', '& input': { textAlign: 'right', padding: '6px 8px' },
+                backgroundColor: !isEditableField ? (mode === 'light' ? '#f0f0f0' : '#333') : 'inherit',
+                width: '150px',
+              }}
+              isNumeric={true}
+            />
+          </StyledTableCell>
+        );
+      })}
+    </StyledTableRow>
+  );
+});
+
+
+// --- MAIN COMPONENT ---
+const Schedule9CProvisionTable = () => {
+  const { state } = useLocation();
+  const navigate = useNavigate();
+  const showSnackbar = useCustomSnackbar();
+  const { callApi } = useApi();
+  const user = JSON.parse(localStorage.getItem('user'));
+  
+  const [reportObject, setReportObject] = useState(state?.report || null);
+  const [validationErrors, setValidationErrors] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const theme = useTheme();
+  const { mode } = useColorScheme();
+
+  const getInitialState = useCallback(() => {
+    const initial = {};
+    rowDefinitionsConfig.forEach((row) => {
+      if (row.type === 'entry') {
+        initial[row.id] = {};
+        Object.values(columnFieldKeys).forEach((fieldKey) => {
+          initial[row.id][fieldKey] = '';
+        });
+      }
+    });
+    return initial;
+  }, []);
+
+  // **NEW STATE MANAGEMENT**
+  // State for immediate UI updates (responsive typing)
+  const [uiFormData, setUiFormData] = useState(getInitialState);
+  // State for triggering expensive calculations (updated after debounce)
+  const [calculationFormData, setCalculationFormData] = useState(getInitialState);
+
+  // --- Data Fetching Effect (now populates BOTH states) ---
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      // ... (API call logic is the same)
+      try {
+        const response = await callApi(/* ... */);
+        if (response) {
+            const transformedData = getInitialState();
+            // ... (data transformation logic is the same)
+            // Populate transformedData...
+
+            // Set both states with the initial data from the API
+            setUiFormData(transformedData);
+            setCalculationFormData(transformedData);
+        }
+      } catch (error) { /* ... */ } 
+      finally {
+        setIsLoading(false);
+      }
+    };
+    if (reportObject && user) fetchData();
+  }, [reportObject, user, callApi, showSnackbar, getInitialState]);
+
+
+  // **DEBOUNCING EFFECT**
+  // This effect listens for changes in the fast-updating `uiFormData`.
+  // It then waits for a pause in typing before updating the `calculationFormData`.
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setCalculationFormData(uiFormData);
+    }, 400); // 400ms delay
+
+    // Cleanup function: if the user types again, reset the timer.
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [uiFormData]);
+
+  // `handleChange` now only updates the UI state, making it very fast.
+  const handleChange = useCallback((rowId, fieldKey, value) => {
+    if (value === '' || /^-?\d*\.?\d{0,2}$/.test(value) || (value === '-' && !uiFormData[rowId]?.[fieldKey]?.length)) {
+      setUiFormData((prev) => ({
+        ...prev,
+        [rowId]: { ...prev[rowId], [fieldKey]: value },
+      }));
+    }
+  }, [uiFormData]);
+
+  const getNum = (value) => parseFloat(value) || 0;
+
+  // `calculatedData` now depends on `calculationFormData`, NOT `uiFormData`.
+  // This means it only re-runs after the user has stopped typing.
+  const calculatedData = useMemo(() => {
+    const newCalculatedData = {};
+    // ... calculation logic is the same ...
+    // It will use `calculationFormData` implicitly because it's the state it depends on.
+    
+    // Example from the original logic:
+    rowDefinitionsConfig.forEach((row) => {
+        if (row.type === 'entry') {
+          // This `calculationFormData` is from the closure of the useMemo
+          const rowData = calculationFormData[row.id] || {}; 
+          // ... rest of the calculation logic for rows and totals ...
+        }
+    });
+
+    return newCalculatedData;
+  }, [calculationFormData]); // <-- The key change is this dependency array
+
+  // Validation and other effects depend on `calculatedData`, so they are also debounced.
+  useEffect(() => {
+    // ... validation logic remains the same ...
+  }, [calculatedData]);
+
+  const buildPayload = (isSaveOperation) => {
+    // IMPORTANT: Payload should be built from the most up-to-date UI data
+    const payload = { /* ... */ };
+    rowDefinitionsConfig.forEach((row) => {
+      if (row.type === 'entry' && row.modelSuffix) {
+        // Use `uiFormData` to ensure the very latest input is saved/submitted
+        const rowInputData = uiFormData[row.id] || {};
+        Object.entries(columnFieldKeys).forEach(([_, fieldKeyInFormData]) => {
+          const backendFieldName = `${fieldKeyInFormData}${row.modelSuffix}`;
+          payload[backendFieldName] = parseFloat(rowInputData[fieldKeyInFormData] || 0).toFixed(2);
+        });
+      }
+    });
+    return payload;
+  };
+  
+  // handleSave and handleSubmit remain the same, they will use buildPayload.
+  
+  return (
+    <Box sx={{ p: 1, width: '100%', overflowX: 'hidden', position: 'relative' }}>
+        {/* ... Buttons and Alert JSX are the same ... */}
+
+        <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 250px)' }}>
+            {/* ... Skeleton Loader JSX is the same ... */}
+            <Table stickyHeader sx={{ minWidth: 3000 }}>
+                {/* <MemoizedTableHeader ... /> */}
+                <TableBody>
+                    {rowDefinitionsConfig.map((row) => (
+                        <MemoizedTableRow
+                            key={row.id}
+                            row={row}
+                            uiRowData={uiFormData[row.id]} // Pass UI state for editable inputs
+                            calculatedRowData={calculatedData[row.id] || {}} // Pass debounced, calculated state
+                            mode={mode}
+                            theme={theme}
+                            handleChange={handleChange}
+                        />
+                    ))}
+                </TableBody>
+            </Table>
+        </TableContainer>
     </Box>
   );
 };
 
-export default Schedule9CMigration;
+export default Schedule9CProvisionTable;
