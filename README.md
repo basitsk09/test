@@ -1,31 +1,56 @@
 useEffect(() => {
-  const parseToPaise = (val) => Math.round(parseFloat(val || '0') * 100);
-  const toFixedTwo = (paise) => (paise / 100).toFixed(2);
-
-  const sum = (...values) => {
-    const total = values.reduce((acc, val) => acc + parseToPaise(val), 0);
-    return toFixedTwo(total);
+  // Convert rupee string to paise integer
+  const parseToPaise = (val) => {
+    const num = parseFloat(val || '0');
+    if (isNaN(num)) return 0;
+    return Math.round(num * 100); // Convert to paise
   };
+
+  // Convert paise integer back to "Rs.P" formatted string
+  const toRupeeString = (paise) => (paise / 100).toFixed(2);
+
+  // Sum any number of fields safely (accepts either raw numbers or pre-formatted)
+  const sumPaise = (...fields) =>
+    fields.reduce((acc, val) => acc + parseToPaise(val), 0);
 
   const updated = { ...data };
 
-  updated.othForeBilPurGrAmt = sum(data.payIndGrAmt, data.payOutGrAmt);
-  updated.othForeBilPurPro = sum(data.payIndPro, data.payOutPro);
+  const othForeBilPurGrAmt = sumPaise(data.payIndGrAmt, data.payOutGrAmt);
+  const othForeBilPurPro = sumPaise(data.payIndPro, data.payOutPro);
 
-  updated.foreBilPurGrAmt = sum(data.expBillGrAmt, data.impBillGrAmt, updated.othForeBilPurGrAmt);
-  updated.foreBilPurPro = sum(data.expBillPro, data.impBillPro, updated.othForeBilPurPro);
+  const foreBilPurGrAmt = sumPaise(data.expBillGrAmt, data.impBillGrAmt, othForeBilPurGrAmt);
+  const foreBilPurPro = sumPaise(data.expBillPro, data.impBillPro, othForeBilPurPro);
 
-  updated.bilPurGrAmt = sum(data.inlBilPurGrAmt, updated.foreBilPurGrAmt);
-  updated.bilPurPro = sum(data.inlBilPurPro, updated.foreBilPurPro);
+  const bilPurGrAmt = sumPaise(data.inlBilPurGrAmt, foreBilPurGrAmt);
+  const bilPurPro = sumPaise(data.inlBilPurPro, foreBilPurPro);
 
-  updated.dueGrAmt = sum(data.coopBankGrAmt, data.commBankGrAmt, data.bankOutIndGrAmt);
-  updated.duePro = sum(data.coopBankPro, data.commBankPro, data.bankOutIndPro);
+  const dueGrAmt = sumPaise(data.coopBankGrAmt, data.commBankGrAmt, data.bankOutIndGrAmt);
+  const duePro = sumPaise(data.coopBankPro, data.commBankPro, data.bankOutIndPro);
 
-  updated.loanAdvGrAmt = sum(data.loanAdvCreGrAmt, updated.dueGrAmt);
-  updated.loanAdvPro = sum(data.loanAdvCrePro, updated.duePro);
+  const loanAdvGrAmt = sumPaise(data.loanAdvCreGrAmt, dueGrAmt);
+  const loanAdvPro = sumPaise(data.loanAdvCrePro, duePro);
 
-  updated.grandTotlGrAmt = sum(updated.loanAdvGrAmt, updated.bilPurGrAmt);
-  updated.grandTotlPro = sum(updated.loanAdvPro, updated.bilPurPro);
+  const grandTotlGrAmt = sumPaise(loanAdvGrAmt, bilPurGrAmt);
+  const grandTotlPro = sumPaise(loanAdvPro, bilPurPro);
+
+  // Set values as fixed-precision strings
+  updated.othForeBilPurGrAmt = toRupeeString(othForeBilPurGrAmt);
+  updated.othForeBilPurPro = toRupeeString(othForeBilPurPro);
+
+  updated.foreBilPurGrAmt = toRupeeString(foreBilPurGrAmt);
+  updated.foreBilPurPro = toRupeeString(foreBilPurPro);
+
+  updated.bilPurGrAmt = toRupeeString(bilPurGrAmt);
+  updated.bilPurPro = toRupeeString(bilPurPro);
+
+  updated.dueGrAmt = toRupeeString(dueGrAmt);
+  updated.duePro = toRupeeString(duePro);
+
+  updated.loanAdvGrAmt = toRupeeString(loanAdvGrAmt);
+  updated.loanAdvPro = toRupeeString(loanAdvPro);
+
+  updated.grandTotlGrAmt = toRupeeString(grandTotlGrAmt);
+  updated.grandTotlPro = toRupeeString(grandTotlPro);
 
   setData(updated);
 }, [
