@@ -25,7 +25,7 @@ import FormInput from '../../../../common/components/ui/FormInput';
 import useApi from '../../../../common/hooks/useApi';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
-import { safeParseFloat } from '../../../../common/utils/commonUtils'; // Keep this
+import { safeParseFloat } from '../../../../common/utils/commonUtils';
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontSize: '0.875rem',
@@ -128,24 +128,28 @@ const SC9Supplementary = () => {
   const navigate = useNavigate();
 
   // Define a scaling factor for two decimal places (e.g., for Rs. P)
-  const SCALE_FACTOR = 100;
+  const SCALE_FACTOR = 100; // For two decimal places
+
+  // Custom rounding function to avoid native toFixed issues sometimes
+  const roundToTwoDecimals = useCallback((num) => {
+    // Round to 2 decimal places using Math.round and multiplication/division
+    return Math.round(num * SCALE_FACTOR) / SCALE_FACTOR;
+  }, [SCALE_FACTOR]);
 
   // Modified parse function to convert to integer representation
   const parseAndScale = useCallback((v) => {
-    // safeParseFloat ensures we get a number or 0
     const floatValue = safeParseFloat(v);
-    // Multiply by SCALE_FACTOR and then round to nearest integer
-    // This removes floating point inaccuracies before arithmetic
+    // Multiply by SCALE_FACTOR and then round to nearest integer to eliminate tiny fractions
     return Math.round(floatValue * SCALE_FACTOR);
-  }, [SCALE_FACTOR]); // Include SCALE_FACTOR in dependencies
+  }, [SCALE_FACTOR]);
 
   // Helper to scale down and format
   const formatScaledValue = useCallback((scaledInt) => {
     // Divide by SCALE_FACTOR to get the actual float value
     const floatResult = scaledInt / SCALE_FACTOR;
-    // Apply toFixed for desired decimal places and string formatting
-    return floatResult.toFixed(2);
-  }, [SCALE_FACTOR]);
+    // Apply custom rounding, then toFixed for string formatting
+    return roundToTwoDecimals(floatResult).toFixed(2);
+  }, [SCALE_FACTOR, roundToTwoDecimals]); // Add roundToTwoDecimals to dependencies
 
   const handleChange =
     (field) =>
@@ -171,7 +175,8 @@ const SC9Supplementary = () => {
           normalized[key] = '0.00'; // Initialize with two decimal places as string
         } else {
           // Ensure it's a string representation formatted to 2 decimals for consistency
-          normalized[key] = safeParseFloat(normalized[key]).toFixed(2);
+          // Use safeParseFloat and then the custom rounding and toFixed
+          normalized[key] = roundToTwoDecimals(safeParseFloat(normalized[key])).toFixed(2);
         }
       });
       setData(normalized);
@@ -196,8 +201,8 @@ const SC9Supplementary = () => {
             key.endsWith('GrAmt') ||
             key.endsWith('Pro')
           ) {
-            // Convert to a standard float number. This will handle the '.00' formatting too.
-            dataToSubmit[key] = safeParseFloat(dataToSubmit[key]);
+            // Ensure values are properly rounded before converting to number for API
+            dataToSubmit[key] = roundToTwoDecimals(safeParseFloat(dataToSubmit[key]));
           }
         }
       }
@@ -253,51 +258,85 @@ const SC9Supplementary = () => {
 
     const updated = { ...data };
 
+    // --- Start Debugging ---
+    console.group("SC9 Supplementary Calculation Debugging");
+    console.log("Initial data state for calculations:", { ...data });
+
     // Parse all relevant data fields to their scaled integer representation first
     const payIndGrAmtScaled = parseAndScale(data.payIndGrAmt);
+    console.log("payIndGrAmtScaled:", payIndGrAmtScaled);
     const payOutGrAmtScaled = parseAndScale(data.payOutGrAmt);
+    console.log("payOutGrAmtScaled:", payOutGrAmtScaled);
     const expBillGrAmtScaled = parseAndScale(data.expBillGrAmt);
+    console.log("expBillGrAmtScaled:", expBillGrAmtScaled);
     const impBillGrAmtScaled = parseAndScale(data.impBillGrAmt);
+    console.log("impBillGrAmtScaled:", impBillGrAmtScaled);
     const inlBilPurGrAmtScaled = parseAndScale(data.inlBilPurGrAmt);
+    console.log("inlBilPurGrAmtScaled:", inlBilPurGrAmtScaled);
     const loanAdvCreGrAmtScaled = parseAndScale(data.loanAdvCreGrAmt);
+    console.log("loanAdvCreGrAmtScaled:", loanAdvCreGrAmtScaled);
     const coopBankGrAmtScaled = parseAndScale(data.coopBankGrAmt);
+    console.log("coopBankGrAmtScaled:", coopBankGrAmtScaled);
     const commBankGrAmtScaled = parseAndScale(data.commBankGrAmt);
+    console.log("commBankGrAmtScaled:", commBankGrAmtScaled);
     const bankOutIndGrAmtScaled = parseAndScale(data.bankOutIndGrAmt);
+    console.log("bankOutIndGrAmtScaled:", bankOutIndGrAmtScaled);
 
     const payIndProScaled = parseAndScale(data.payIndPro);
+    console.log("payIndProScaled:", payIndProScaled);
     const payOutProScaled = parseAndScale(data.payOutPro);
+    console.log("payOutProScaled:", payOutProScaled);
     const expBillProScaled = parseAndScale(data.expBillPro);
+    console.log("expBillProScaled:", expBillProScaled);
     const impBillProScaled = parseAndScale(data.impBillPro);
+    console.log("impBillProScaled:", impBillProScaled);
     const inlBilPurProScaled = parseAndScale(data.inlBilPurPro);
+    console.log("inlBilPurProScaled:", inlBilPurProScaled);
     const loanAdvCreProScaled = parseAndScale(data.loanAdvCrePro);
+    console.log("loanAdvCreProScaled:", loanAdvCreProScaled);
     const coopBankProScaled = parseAndScale(data.coopBankPro);
+    console.log("coopBankProScaled:", coopBankProScaled);
     const commBankProScaled = parseAndScale(data.commBankPro);
+    console.log("commBankProScaled:", commBankProScaled);
     const bankOutIndProScaled = parseAndScale(data.bankOutIndPro);
+    console.log("bankOutIndProScaled:", bankOutIndProScaled);
 
     // Perform all calculations using the scaled integer values
     // 1.2.3 Other Foreign Bills Purchased and Discounted (1.2.3.1 + 1.2.3.2)
     const othForeBilPurGrAmtComputedScaled = payIndGrAmtScaled + payOutGrAmtScaled;
+    console.log("othForeBilPurGrAmtComputedScaled:", othForeBilPurGrAmtComputedScaled);
     const othForeBilPurProComputedScaled = payIndProScaled + payOutProScaled;
+    console.log("othForeBilPurProComputedScaled:", othForeBilPurProComputedScaled);
 
     // 1.2 Foreign Bills Purchased and Discounted (1.2.1+1.2.2+1.2.3)
     const foreBilPurGrAmtComputedScaled = expBillGrAmtScaled + impBillGrAmtScaled + othForeBilPurGrAmtComputedScaled;
+    console.log("foreBilPurGrAmtComputedScaled:", foreBilPurGrAmtComputedScaled);
     const foreBilPurProComputedScaled = expBillProScaled + impBillProScaled + othForeBilPurProComputedScaled;
+    console.log("foreBilPurProComputedScaled:", foreBilPurProComputedScaled);
 
     // 1. Bills Purchased and discounted (1.1 + 1.2)
     const bilPurGrAmtComputedScaled = inlBilPurGrAmtScaled + foreBilPurGrAmtComputedScaled;
+    console.log("bilPurGrAmtComputedScaled:", bilPurGrAmtComputedScaled);
     const bilPurProComputedScaled = inlBilPurProScaled + foreBilPurProComputedScaled;
+    console.log("bilPurProComputedScaled:", bilPurProComputedScaled);
 
     // 2.2 Due from Banks (2.2.1+2.2.2+2.2.3)
     const dueGrAmtComputedScaled = coopBankGrAmtScaled + commBankGrAmtScaled + bankOutIndGrAmtScaled;
+    console.log("dueGrAmtComputedScaled:", dueGrAmtComputedScaled);
     const dueProComputedScaled = coopBankProScaled + commBankProScaled + bankOutIndProScaled;
+    console.log("dueProComputedScaled:", dueProComputedScaled);
 
     // 2. Loans and Advances (2.1 + 2.2)
     const loanAdvGrAmtComputedScaled = loanAdvCreGrAmtScaled + dueGrAmtComputedScaled;
+    console.log("loanAdvGrAmtComputedScaled:", loanAdvGrAmtComputedScaled);
     const loanAdvProComputedScaled = loanAdvCreProScaled + dueProComputedScaled;
+    console.log("loanAdvProComputedScaled:", loanAdvProComputedScaled);
 
     // 3. Grand Total (1 + 2)
     const grandTotlGrAmtComputedScaled = bilPurGrAmtComputedScaled + loanAdvGrAmtComputedScaled;
+    console.log("grandTotlGrAmtComputedScaled:", grandTotlGrAmtComputedScaled);
     const grandTotlProComputedScaled = bilPurProComputedScaled + loanAdvProComputedScaled;
+    console.log("grandTotlProComputedScaled:", grandTotlProComputedScaled);
 
     // Format the final computed scaled values back to two decimal places
     updated.othForeBilPurGrAmt = formatScaledValue(othForeBilPurGrAmtComputedScaled);
@@ -312,6 +351,10 @@ const SC9Supplementary = () => {
     updated.loanAdvPro = formatScaledValue(loanAdvProComputedScaled);
     updated.grandTotlGrAmt = formatScaledValue(grandTotlGrAmtComputedScaled);
     updated.grandTotlPro = formatScaledValue(grandTotlProComputedScaled);
+
+    console.log("Updated data state after calculations:", { ...updated });
+    console.groupEnd();
+    // --- End Debugging ---
 
     // Compare values as strings to prevent infinite loops due to object reference changes
     const hasChanged = Object.keys(updated).some(key => updated[key] !== data[key]);
@@ -332,6 +375,7 @@ const SC9Supplementary = () => {
     data.coopBankPro, data.commBankPro, data.bankOutIndPro,
     parseAndScale, // Added as a dependency
     formatScaledValue, // Added as a dependency
+    roundToTwoDecimals, // Added as a dependency
     data // Include data itself as a dependency for initial load or full data replacement
   ]);
 
