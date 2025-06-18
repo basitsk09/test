@@ -25,7 +25,7 @@ import FormInput from '../../../../common/components/ui/FormInput';
 import useApi from '../../../../common/hooks/useApi';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
-import { safeParseFloat } from '../../../../common/utils/commonUtils';
+import { safeParseFloat } from '../../../../common/utils/commonUtils'; // Keep this
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontSize: '0.875rem',
@@ -127,10 +127,25 @@ const SC9Supplementary = () => {
   const setSnackbarMessage = useCustomSnackbar();
   const navigate = useNavigate();
 
-  // Parse function for safe float conversion, memoized with useCallback
-  const parse = useCallback((v) => {
-    return safeParseFloat(v);
-  }, []);
+  // Define a scaling factor for two decimal places (e.g., for Rs. P)
+  const SCALE_FACTOR = 100;
+
+  // Modified parse function to convert to integer representation
+  const parseAndScale = useCallback((v) => {
+    // safeParseFloat ensures we get a number or 0
+    const floatValue = safeParseFloat(v);
+    // Multiply by SCALE_FACTOR and then round to nearest integer
+    // This removes floating point inaccuracies before arithmetic
+    return Math.round(floatValue * SCALE_FACTOR);
+  }, [SCALE_FACTOR]); // Include SCALE_FACTOR in dependencies
+
+  // Helper to scale down and format
+  const formatScaledValue = useCallback((scaledInt) => {
+    // Divide by SCALE_FACTOR to get the actual float value
+    const floatResult = scaledInt / SCALE_FACTOR;
+    // Apply toFixed for desired decimal places and string formatting
+    return floatResult.toFixed(2);
+  }, [SCALE_FACTOR]);
 
   const handleChange =
     (field) =>
@@ -152,11 +167,11 @@ const SC9Supplementary = () => {
       const res = await callApi('/Maker/getSavedDataNineSupl', payload, 'POST');
       const normalized = { ...res };
       Object.keys(normalized).forEach((key) => {
-        // Ensure values are strings for input fields, but normalize empty/null to '0'
         if (normalized[key] == null || normalized[key] === '') {
-          normalized[key] = '0';
+          normalized[key] = '0.00'; // Initialize with two decimal places as string
         } else {
-          normalized[key] = String(normalized[key]); // Ensure it's a string for form inputs
+          // Ensure it's a string representation formatted to 2 decimals for consistency
+          normalized[key] = safeParseFloat(normalized[key]).toFixed(2);
         }
       });
       setData(normalized);
@@ -173,24 +188,22 @@ const SC9Supplementary = () => {
       const save = confirmDialog.type === 'save';
       console.log('report obj', reportObject);
 
-      // Create a copy of data and convert relevant fields to numbers for submission
-      // This is crucial to ensure numerical data is sent to the backend,
-      // as input fields manage them as strings.
       const dataToSubmit = { ...data };
       for (const key in dataToSubmit) {
         if (Object.prototype.hasOwnProperty.call(dataToSubmit, key)) {
-          // A simple check to identify fields that should be numbers
+          // Convert all numeric string fields to actual numbers before sending to API
           if (
             key.endsWith('GrAmt') ||
             key.endsWith('Pro')
           ) {
-            dataToSubmit[key] = parse(dataToSubmit[key]);
+            // Convert to a standard float number. This will handle the '.00' formatting too.
+            dataToSubmit[key] = safeParseFloat(dataToSubmit[key]);
           }
         }
       }
 
       const payload = {
-        ...dataToSubmit, // Use the converted data
+        ...dataToSubmit,
         circleCode: user.circleCode,
         quarterEndDate: user.quarterEndDate,
         userId: user.userId,
@@ -203,14 +216,11 @@ const SC9Supplementary = () => {
       const res = await callApi('/Maker/submitNineSupl', payload, 'POST');
       if (res && typeof res === 'string') {
         const [flag, newReportId, newStatus] = res.split('~');
-        // Update reportObject with new ID and status if needed,
-        // and also update the local data state for consistency.
         setReportObject((prev) => ({
           ...prev,
           reportId: newReportId,
           status: newStatus,
         }));
-        // Update the reportId and status in the local data state
         setData((prev) => ({
           ...prev,
           reportId: newReportId,
@@ -233,82 +243,77 @@ const SC9Supplementary = () => {
     }
   };
 
-  // Fetch data on component mount
   useEffect(() => {
     fetchData();
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
   // Recalculate derived fields whenever their dependencies change
   useEffect(() => {
-    // Only perform calculations if data has been loaded/initialized and has keys
     if (Object.keys(data).length === 0) return;
 
     const updated = { ...data };
 
-    // Intermediate numerical values for calculations
-    const payIndGrAmtVal = parse(data.payIndGrAmt);
-    const payOutGrAmtVal = parse(data.payOutGrAmt);
-    const expBillGrAmtVal = parse(data.expBillGrAmt);
-    const impBillGrAmtVal = parse(data.impBillGrAmt);
-    const inlBilPurGrAmtVal = parse(data.inlBilPurGrAmt);
-    const loanAdvCreGrAmtVal = parse(data.loanAdvCreGrAmt);
-    const coopBankGrAmtVal = parse(data.coopBankGrAmt);
-    const commBankGrAmtVal = parse(data.commBankGrAmt);
-    const bankOutIndGrAmtVal = parse(data.bankOutIndGrAmt);
+    // Parse all relevant data fields to their scaled integer representation first
+    const payIndGrAmtScaled = parseAndScale(data.payIndGrAmt);
+    const payOutGrAmtScaled = parseAndScale(data.payOutGrAmt);
+    const expBillGrAmtScaled = parseAndScale(data.expBillGrAmt);
+    const impBillGrAmtScaled = parseAndScale(data.impBillGrAmt);
+    const inlBilPurGrAmtScaled = parseAndScale(data.inlBilPurGrAmt);
+    const loanAdvCreGrAmtScaled = parseAndScale(data.loanAdvCreGrAmt);
+    const coopBankGrAmtScaled = parseAndScale(data.coopBankGrAmt);
+    const commBankGrAmtScaled = parseAndScale(data.commBankGrAmt);
+    const bankOutIndGrAmtScaled = parseAndScale(data.bankOutIndGrAmt);
 
-    const payIndProVal = parse(data.payIndPro);
-    const payOutProVal = parse(data.payOutPro);
-    const expBillProVal = parse(data.expBillPro);
-    const impBilProVal = parse(data.impBillPro); // Corrected property name from impBilPro to impBillPro
-    const inlBilPurProVal = parse(data.inlBilPurPro);
-    const loanAdvCreProVal = parse(data.loanAdvCrePro);
-    const coopBankProVal = parse(data.coopBankPro);
-    const commBankProVal = parse(data.commBankPro);
-    const bankOutIndProVal = parse(data.bankOutIndPro);
+    const payIndProScaled = parseAndScale(data.payIndPro);
+    const payOutProScaled = parseAndScale(data.payOutPro);
+    const expBillProScaled = parseAndScale(data.expBillPro);
+    const impBillProScaled = parseAndScale(data.impBillPro);
+    const inlBilPurProScaled = parseAndScale(data.inlBilPurPro);
+    const loanAdvCreProScaled = parseAndScale(data.loanAdvCrePro);
+    const coopBankProScaled = parseAndScale(data.coopBankPro);
+    const commBankProScaled = parseAndScale(data.commBankPro);
+    const bankOutIndProScaled = parseAndScale(data.bankOutIndPro);
 
-    // Calculations based on row definitions
+    // Perform all calculations using the scaled integer values
     // 1.2.3 Other Foreign Bills Purchased and Discounted (1.2.3.1 + 1.2.3.2)
-    const othForeBilPurGrAmtComputed = payIndGrAmtVal + payOutGrAmtVal;
-    const othForeBilPurProComputed = payIndProVal + payOutProVal;
-
-    updated.othForeBilPurGrAmt = othForeBilPurGrAmtComputed.toFixed(2);
-    updated.othForeBilPurPro = othForeBilPurProComputed.toFixed(2);
+    const othForeBilPurGrAmtComputedScaled = payIndGrAmtScaled + payOutGrAmtScaled;
+    const othForeBilPurProComputedScaled = payIndProScaled + payOutProScaled;
 
     // 1.2 Foreign Bills Purchased and Discounted (1.2.1+1.2.2+1.2.3)
-    const foreBilPurGrAmtComputed = expBillGrAmtVal + impBillGrAmtVal + othForeBilPurGrAmtComputed;
-    const foreBilPurProComputed = expBillProVal + impBilProVal + othForeBilPurProComputed;
-
-    updated.foreBilPurGrAmt = foreBilPurGrAmtComputed.toFixed(2);
-    updated.foreBilPurPro = foreBilPurProComputed.toFixed(2);
+    const foreBilPurGrAmtComputedScaled = expBillGrAmtScaled + impBillGrAmtScaled + othForeBilPurGrAmtComputedScaled;
+    const foreBilPurProComputedScaled = expBillProScaled + impBillProScaled + othForeBilPurProComputedScaled;
 
     // 1. Bills Purchased and discounted (1.1 + 1.2)
-    const bilPurGrAmtComputed = inlBilPurGrAmtVal + foreBilPurGrAmtComputed;
-    const bilPurProComputed = inlBilPurProVal + foreBilPurProComputed;
-
-    updated.bilPurGrAmt = bilPurGrAmtComputed.toFixed(2);
-    updated.bilPurPro = bilPurProComputed.toFixed(2);
+    const bilPurGrAmtComputedScaled = inlBilPurGrAmtScaled + foreBilPurGrAmtComputedScaled;
+    const bilPurProComputedScaled = inlBilPurProScaled + foreBilPurProComputedScaled;
 
     // 2.2 Due from Banks (2.2.1+2.2.2+2.2.3)
-    const dueGrAmtComputed = coopBankGrAmtVal + commBankGrAmtVal + bankOutIndGrAmtVal;
-    const dueProComputed = coopBankProVal + commBankProVal + bankOutIndProVal;
-
-    updated.dueGrAmt = dueGrAmtComputed.toFixed(2);
-    updated.duePro = dueProComputed.toFixed(2);
+    const dueGrAmtComputedScaled = coopBankGrAmtScaled + commBankGrAmtScaled + bankOutIndGrAmtScaled;
+    const dueProComputedScaled = coopBankProScaled + commBankProScaled + bankOutIndProScaled;
 
     // 2. Loans and Advances (2.1 + 2.2)
-    const loanAdvGrAmtComputed = loanAdvCreGrAmtVal + dueGrAmtComputed;
-    const loanAdvProComputed = loanAdvCreProVal + dueProComputed;
-
-    updated.loanAdvGrAmt = loanAdvGrAmtComputed.toFixed(2);
-    updated.loanAdvPro = loanAdvProComputed.toFixed(2);
+    const loanAdvGrAmtComputedScaled = loanAdvCreGrAmtScaled + dueGrAmtComputedScaled;
+    const loanAdvProComputedScaled = loanAdvCreProScaled + dueProComputedScaled;
 
     // 3. Grand Total (1 + 2)
-    updated.grandTotlGrAmt = (bilPurGrAmtComputed + loanAdvGrAmtComputed).toFixed(2);
-    updated.grandTotlPro = (bilPurProComputed + loanAdvProComputed).toFixed(2);
+    const grandTotlGrAmtComputedScaled = bilPurGrAmtComputedScaled + loanAdvGrAmtComputedScaled;
+    const grandTotlProComputedScaled = bilPurProComputedScaled + loanAdvProComputedScaled;
 
-    // Only update state if there are actual changes to prevent unnecessary re-renders
-    // This deep comparison can be resource-intensive for very large objects,
-    // but for this structure, it's generally fine.
+    // Format the final computed scaled values back to two decimal places
+    updated.othForeBilPurGrAmt = formatScaledValue(othForeBilPurGrAmtComputedScaled);
+    updated.othForeBilPurPro = formatScaledValue(othForeBilPurProComputedScaled);
+    updated.foreBilPurGrAmt = formatScaledValue(foreBilPurGrAmtComputedScaled);
+    updated.foreBilPurPro = formatScaledValue(foreBilPurProComputedScaled);
+    updated.bilPurGrAmt = formatScaledValue(bilPurGrAmtComputedScaled);
+    updated.bilPurPro = formatScaledValue(bilPurProComputedScaled);
+    updated.dueGrAmt = formatScaledValue(dueGrAmtComputedScaled);
+    updated.duePro = formatScaledValue(dueProComputedScaled);
+    updated.loanAdvGrAmt = formatScaledValue(loanAdvGrAmtComputedScaled);
+    updated.loanAdvPro = formatScaledValue(loanAdvProComputedScaled);
+    updated.grandTotlGrAmt = formatScaledValue(grandTotlGrAmtComputedScaled);
+    updated.grandTotlPro = formatScaledValue(grandTotlProComputedScaled);
+
+    // Compare values as strings to prevent infinite loops due to object reference changes
     const hasChanged = Object.keys(updated).some(key => updated[key] !== data[key]);
     if (hasChanged) {
       setData(updated);
@@ -316,17 +321,18 @@ const SC9Supplementary = () => {
 
   }, [
     data.payIndGrAmt, data.payOutGrAmt,
-    data.expBillGrAmt, data.impBillGrAmt, // Corrected from impBilGrAmt
+    data.expBillGrAmt, data.impBillGrAmt,
     data.inlBilPurGrAmt,
     data.loanAdvCreGrAmt,
     data.coopBankGrAmt, data.commBankGrAmt, data.bankOutIndGrAmt,
     data.payIndPro, data.payOutPro,
-    data.expBillPro, data.impBillPro, // Corrected from impBilPro
+    data.expBillPro, data.impBillPro,
     data.inlBilPurPro,
     data.loanAdvCrePro,
     data.coopBankPro, data.commBankPro, data.bankOutIndPro,
-    parse, // useCallback dependency
-    data // Include data to ensure re-run if the entire data object reference changes (e.g., after fetchData)
+    parseAndScale, // Added as a dependency
+    formatScaledValue, // Added as a dependency
+    data // Include data itself as a dependency for initial load or full data replacement
   ]);
 
   if (isLoading) {
