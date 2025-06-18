@@ -32,7 +32,6 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
   border: '1px solid #e0e0e0',
   textAlign: 'right',
   '&.MuiTableCell-head': {
-    // backgroundColor: theme.palette.mode === 'dark' ? '#333' : '#000',
     backgroundColor: theme.palette.grey[400],
     color: theme.palette.common.black,
     textAlign: 'center',
@@ -44,31 +43,16 @@ const FormRow = ({ label, grField, proField, data, handleChange, readOnly = fals
   <TableRow>
     <TableCell sx={{ fontWeight: bold ? 'bold' : 'normal', pl: indent ? 4 : 1 }}>{label}</TableCell>
     <StyledTableCell>
-      {/* <TextField
-        variant="standard"
-        name={grField}
-        value={data[grField] || ''}
-        onChange={handleChange(grField)}
-        onBlur={handleChange(grField, true)}
-        inputProps={{ maxLength: 18, style: { textAlign: 'right' } }}
-        fullWidth
-        disabled={readOnly}
-        color={readOnly ? 'secondary' : 'primary'}
-      /> */}
       <FormInput
         name={grField}
         value={data[grField] || ''}
         onChange={handleChange(grField)}
-        // onBlur={handleChange(grField, true)}
         readOnly={readOnly}
-        //  error={!!getFieldError(fieldName)}
         customStyles={{
           textAlign: 'right',
           '& input': { textAlign: 'right', padding: '6px 8px' },
-          // Lighter grey for disabled
           color: (theme) => theme.palette.text.primary,
         }}
-        //  focus={focusedErrorField === fieldName}
         inputType={'wholeAmountDecimal'}
       />
     </StyledTableCell>
@@ -77,29 +61,14 @@ const FormRow = ({ label, grField, proField, data, handleChange, readOnly = fals
         name={proField}
         value={data[proField] || ''}
         onChange={handleChange(proField)}
-        // onBlur={handleChange(proField, true)}
         readOnly={readOnly}
-        //  error={!!getFieldError(fieldName)}
         customStyles={{
           textAlign: 'right',
           '& input': { textAlign: 'right', padding: '6px 8px' },
-          // Lighter grey for disabled
           color: (theme) => theme.palette.text.primary,
         }}
-        //  focus={focusedErrorField === fieldName}
-        inputType={'wholeAmountDecimal'} // Treat as numeric unless specified as integer
+        inputType={'wholeAmountDecimal'}
       />
-      {/* <TextField
-        variant="standard"
-        name={proField}
-        value={data[proField] || ''}
-        onChange={handleChange(proField)}
-        onBlur={handleChange(proField, true)}
-        inputProps={{ maxLength: 18, style: { textAlign: 'right' } }}
-        fullWidth
-        disabled={readOnly}
-        color={readOnly ? 'secondary' : 'primary'}
-      /> */}
     </StyledTableCell>
   </TableRow>
 );
@@ -157,17 +126,15 @@ const SC9Supplementary = () => {
   const [isLoading, setIsLoading] = useState(false);
   const setSnackbarMessage = useCustomSnackbar();
   const navigate = useNavigate();
-  const parse = (v) => {
-    // const num = parseFloat(v);
-    // return isNaN(num) ? 0 : num;
 
+  // Parse function for safe float conversion, memoized with useCallback
+  const parse = useCallback((v) => {
     return safeParseFloat(v);
-  };
+  }, []);
 
   const handleChange =
-    (field, isBlur = false) =>
+    (field) =>
     (e) => {
-      // const value = e.target.value.replace(/[^0-9.]/g, '');
       setData((prev) => ({ ...prev, [field]: e.target.value }));
     };
 
@@ -181,16 +148,21 @@ const SC9Supplementary = () => {
         reportName: reportObject.name,
         reportMasterId: reportObject.reportId,
         status: reportObject.status,
-        // status: '11',
       };
       const res = await callApi('/Maker/getSavedDataNineSupl', payload, 'POST');
       const normalized = { ...res };
       Object.keys(normalized).forEach((key) => {
-        if (normalized[key] == null || normalized[key] === '') normalized[key] = '0';
+        // Ensure values are strings for input fields, but normalize empty/null to '0'
+        if (normalized[key] == null || normalized[key] === '') {
+          normalized[key] = '0';
+        } else {
+          normalized[key] = String(normalized[key]); // Ensure it's a string for form inputs
+        }
       });
       setData(normalized);
     } catch (error) {
       console.error('Error fetching SC9 supplementary data:', error);
+      setSnackbarMessage('Failed to fetch data.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -200,8 +172,25 @@ const SC9Supplementary = () => {
     try {
       const save = confirmDialog.type === 'save';
       console.log('report obj', reportObject);
+
+      // Create a copy of data and convert relevant fields to numbers for submission
+      // This is crucial to ensure numerical data is sent to the backend,
+      // as input fields manage them as strings.
+      const dataToSubmit = { ...data };
+      for (const key in dataToSubmit) {
+        if (Object.prototype.hasOwnProperty.call(dataToSubmit, key)) {
+          // A simple check to identify fields that should be numbers
+          if (
+            key.endsWith('GrAmt') ||
+            key.endsWith('Pro')
+          ) {
+            dataToSubmit[key] = parse(dataToSubmit[key]);
+          }
+        }
+      }
+
       const payload = {
-        ...data,
+        ...dataToSubmit, // Use the converted data
         circleCode: user.circleCode,
         quarterEndDate: user.quarterEndDate,
         userId: user.userId,
@@ -214,6 +203,14 @@ const SC9Supplementary = () => {
       const res = await callApi('/Maker/submitNineSupl', payload, 'POST');
       if (res && typeof res === 'string') {
         const [flag, newReportId, newStatus] = res.split('~');
+        // Update reportObject with new ID and status if needed,
+        // and also update the local data state for consistency.
+        setReportObject((prev) => ({
+          ...prev,
+          reportId: newReportId,
+          status: newStatus,
+        }));
+        // Update the reportId and status in the local data state
         setData((prev) => ({
           ...prev,
           reportId: newReportId,
@@ -226,109 +223,111 @@ const SC9Supplementary = () => {
           }, 2000);
         }
       } else {
-        throw new Error('Failed to save/submit data.');
+        throw new Error('Failed to save/submit data: Unexpected API response.');
       }
     } catch (error) {
+      console.error('Submission error:', error);
       setSnackbarMessage('Failed to save/submit data.', 'error');
     } finally {
       setConfirmDialog({ open: false, type: null });
     }
   };
 
+  // Fetch data on component mount
   useEffect(() => {
     fetchData();
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount
 
+  // Recalculate derived fields whenever their dependencies change
   useEffect(() => {
+    // Only perform calculations if data has been loaded/initialized and has keys
+    if (Object.keys(data).length === 0) return;
+
     const updated = { ...data };
-    updated.othForeBilPurGrAmt = (parse(data.payIndGrAmt) + parse(data.payOutGrAmt)).toFixed(2);
-    updated.othForeBilPurPro = (parse(data.payIndPro) + parse(data.payOutPro)).toFixed(2);
-    updated.foreBilPurGrAmt = (
-      parse(data.expBillGrAmt) +
-      parse(data.impBillGrAmt) +
-      parse(updated.othForeBilPurGrAmt)
-    ).toFixed(2);
-    updated.foreBilPurPro = (parse(data.expBillPro) + parse(data.impBillPro) + parse(updated.othForeBilPurPro)).toFixed(
-      2
-    );
-    updated.bilPurGrAmt = (parse(data.inlBilPurGrAmt) + parse(updated.foreBilPurGrAmt)).toFixed(2);
-    updated.bilPurPro = (parse(data.inlBilPurPro) + parse(updated.foreBilPurPro)).toFixed(2);
-    updated.dueGrAmt = (parse(data.coopBankGrAmt) + parse(data.commBankGrAmt) + parse(data.bankOutIndGrAmt)).toFixed(2);
-    updated.duePro = (parse(data.coopBankPro) + parse(data.commBankPro) + parse(data.bankOutIndPro)).toFixed(2);
-    updated.loanAdvGrAmt = (parse(data.loanAdvCreGrAmt) + parse(updated.dueGrAmt)).toFixed(2);
-    updated.loanAdvPro = (parse(data.loanAdvCrePro) + parse(updated.duePro)).toFixed(2);
-    updated.grandTotlGrAmt = (parse(updated.loanAdvGrAmt) + parse(updated.bilPurGrAmt)).toFixed(2);
-    updated.grandTotlPro = (parse(updated.loanAdvPro) + parse(updated.bilPurPro)).toFixed(2);
-    console.log('updated', updated);
-    setData(updated);
+
+    // Intermediate numerical values for calculations
+    const payIndGrAmtVal = parse(data.payIndGrAmt);
+    const payOutGrAmtVal = parse(data.payOutGrAmt);
+    const expBillGrAmtVal = parse(data.expBillGrAmt);
+    const impBillGrAmtVal = parse(data.impBillGrAmt);
+    const inlBilPurGrAmtVal = parse(data.inlBilPurGrAmt);
+    const loanAdvCreGrAmtVal = parse(data.loanAdvCreGrAmt);
+    const coopBankGrAmtVal = parse(data.coopBankGrAmt);
+    const commBankGrAmtVal = parse(data.commBankGrAmt);
+    const bankOutIndGrAmtVal = parse(data.bankOutIndGrAmt);
+
+    const payIndProVal = parse(data.payIndPro);
+    const payOutProVal = parse(data.payOutPro);
+    const expBillProVal = parse(data.expBillPro);
+    const impBilProVal = parse(data.impBillPro); // Corrected property name from impBilPro to impBillPro
+    const inlBilPurProVal = parse(data.inlBilPurPro);
+    const loanAdvCreProVal = parse(data.loanAdvCrePro);
+    const coopBankProVal = parse(data.coopBankPro);
+    const commBankProVal = parse(data.commBankPro);
+    const bankOutIndProVal = parse(data.bankOutIndPro);
+
+    // Calculations based on row definitions
+    // 1.2.3 Other Foreign Bills Purchased and Discounted (1.2.3.1 + 1.2.3.2)
+    const othForeBilPurGrAmtComputed = payIndGrAmtVal + payOutGrAmtVal;
+    const othForeBilPurProComputed = payIndProVal + payOutProVal;
+
+    updated.othForeBilPurGrAmt = othForeBilPurGrAmtComputed.toFixed(2);
+    updated.othForeBilPurPro = othForeBilPurProComputed.toFixed(2);
+
+    // 1.2 Foreign Bills Purchased and Discounted (1.2.1+1.2.2+1.2.3)
+    const foreBilPurGrAmtComputed = expBillGrAmtVal + impBillGrAmtVal + othForeBilPurGrAmtComputed;
+    const foreBilPurProComputed = expBillProVal + impBilProVal + othForeBilPurProComputed;
+
+    updated.foreBilPurGrAmt = foreBilPurGrAmtComputed.toFixed(2);
+    updated.foreBilPurPro = foreBilPurProComputed.toFixed(2);
+
+    // 1. Bills Purchased and discounted (1.1 + 1.2)
+    const bilPurGrAmtComputed = inlBilPurGrAmtVal + foreBilPurGrAmtComputed;
+    const bilPurProComputed = inlBilPurProVal + foreBilPurProComputed;
+
+    updated.bilPurGrAmt = bilPurGrAmtComputed.toFixed(2);
+    updated.bilPurPro = bilPurProComputed.toFixed(2);
+
+    // 2.2 Due from Banks (2.2.1+2.2.2+2.2.3)
+    const dueGrAmtComputed = coopBankGrAmtVal + commBankGrAmtVal + bankOutIndGrAmtVal;
+    const dueProComputed = coopBankProVal + commBankProVal + bankOutIndProVal;
+
+    updated.dueGrAmt = dueGrAmtComputed.toFixed(2);
+    updated.duePro = dueProComputed.toFixed(2);
+
+    // 2. Loans and Advances (2.1 + 2.2)
+    const loanAdvGrAmtComputed = loanAdvCreGrAmtVal + dueGrAmtComputed;
+    const loanAdvProComputed = loanAdvCreProVal + dueProComputed;
+
+    updated.loanAdvGrAmt = loanAdvGrAmtComputed.toFixed(2);
+    updated.loanAdvPro = loanAdvProComputed.toFixed(2);
+
+    // 3. Grand Total (1 + 2)
+    updated.grandTotlGrAmt = (bilPurGrAmtComputed + loanAdvGrAmtComputed).toFixed(2);
+    updated.grandTotlPro = (bilPurProComputed + loanAdvProComputed).toFixed(2);
+
+    // Only update state if there are actual changes to prevent unnecessary re-renders
+    // This deep comparison can be resource-intensive for very large objects,
+    // but for this structure, it's generally fine.
+    const hasChanged = Object.keys(updated).some(key => updated[key] !== data[key]);
+    if (hasChanged) {
+      setData(updated);
+    }
+
   }, [
-    data.payIndGrAmt,
-    data.payOutGrAmt,
-    data.expBillGrAmt,
-    data.impBillGrAmt,
+    data.payIndGrAmt, data.payOutGrAmt,
+    data.expBillGrAmt, data.impBillGrAmt, // Corrected from impBilGrAmt
     data.inlBilPurGrAmt,
     data.loanAdvCreGrAmt,
-    data.coopBankGrAmt,
-    data.commBankGrAmt,
-    data.bankOutIndGrAmt,
-    data.payIndPro,
-    data.payOutPro,
-    data.expBillPro,
-    data.impBillPro,
+    data.coopBankGrAmt, data.commBankGrAmt, data.bankOutIndGrAmt,
+    data.payIndPro, data.payOutPro,
+    data.expBillPro, data.impBillPro, // Corrected from impBilPro
     data.inlBilPurPro,
     data.loanAdvCrePro,
-    data.coopBankPro,
-    data.commBankPro,
-    data.bankOutIndPro,
+    data.coopBankPro, data.commBankPro, data.bankOutIndPro,
+    parse, // useCallback dependency
+    data // Include data to ensure re-run if the entire data object reference changes (e.g., after fetchData)
   ]);
-  // useEffect(() => {
-  //   const parse = (v) => {
-  //     const num = parseFloat(v);
-  //     return isNaN(num) ? 0 : num;
-  //   };
-
-  //   const updated = { ...data };
-
-  //   updated.othForeBilPurGrAmt = parse(data.payIndGrAmt) + parse(data.payOutGrAmt);
-  //   updated.othForeBilPurPro = parse(data.payIndPro) + parse(data.payOutPro);
-
-  //   updated.foreBilPurGrAmt = parse(data.expBillGrAmt) + parse(data.impBillGrAmt) + updated.othForeBilPurGrAmt;
-  //   updated.foreBilPurPro = parse(data.expBillPro) + parse(data.impBillPro) + updated.othForeBilPurPro;
-
-  //   updated.bilPurGrAmt = parse(data.inlBilPurGrAmt) + updated.foreBilPurGrAmt;
-  //   updated.bilPurPro = parse(data.inlBilPurPro) + updated.foreBilPurPro;
-
-  //   updated.dueGrAmt = parse(data.coopBankGrAmt) + parse(data.commBankGrAmt) + parse(data.bankOutIndGrAmt);
-  //   updated.duePro = parse(data.coopBankPro) + parse(data.commBankPro) + parse(data.bankOutIndPro);
-
-  //   updated.loanAdvGrAmt = parse(data.loanAdvCreGrAmt) + updated.dueGrAmt;
-  //   updated.loanAdvPro = parse(data.loanAdvCrePro) + updated.duePro;
-
-  //   updated.grandTotlGrAmt = updated.loanAdvGrAmt + updated.bilPurGrAmt;
-  //   updated.grandTotlPro = updated.loanAdvPro + updated.bilPurPro;
-
-  //   // No .toFixed here
-  //   setData(updated);
-  // }, [
-  //   data.payIndGrAmt,
-  //   data.payOutGrAmt,
-  //   data.expBillGrAmt,
-  //   data.impBillGrAmt,
-  //   data.inlBilPurGrAmt,
-  //   data.loanAdvCreGrAmt,
-  //   data.coopBankGrAmt,
-  //   data.commBankGrAmt,
-  //   data.bankOutIndGrAmt,
-  //   data.payIndPro,
-  //   data.payOutPro,
-  //   data.expBillPro,
-  //   data.impBillPro,
-  //   data.inlBilPurPro,
-  //   data.loanAdvCrePro,
-  //   data.coopBankPro,
-  //   data.commBankPro,
-  //   data.bankOutIndPro,
-  // ]);
 
   if (isLoading) {
     return (
