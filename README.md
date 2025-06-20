@@ -1,40 +1,11 @@
-public void timerEvent() {
+public AppSession() {
+    timerEvent(); // your thread logic
 
-    SessionService.sessioOutTimeInitializer();
-    f1Obj = new FinanceOne(true);
-
-    executor.submit(() -> {
-        try {
-            Thread.sleep(SessionUtil.msgTime);
-        } catch (InterruptedException e2) {
-            logger.info("***** In InterruptedException *****");
-            Thread.currentThread().interrupt();
-            return;
+    addWindowListener(new java.awt.event.WindowAdapter() {
+        @Override
+        public void windowClosing(java.awt.event.WindowEvent e) {
+            shutdownExecutor();
+            System.exit(0);
         }
-
-        // This ensures GUI updates are done on Swing EDT
-        SwingUtilities.invokeLater(() -> {
-            JOptionPane.getRootFrame().dispose();
-
-            p = JOptionPane.showConfirmDialog(
-                    null,
-                    SessionUtil.str,
-                    SessionConstant.getDialougetitle(),
-                    JOptionPane.YES_NO_OPTION
-            );
-
-            if (p == 0) {
-                closeAllProcess();
-            } else if (p == 1) {
-                a = 0;
-                f1Obj.menuFlag = false;
-                f1Obj.sessionOut.restart();
-            } else if (p == -1) {
-                closeAllProcess();
-            } else {
-                f1Obj.menuFlag = false;
-                f1Obj.initComponents();
-            }
-        });
     });
 }
