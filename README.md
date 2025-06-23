@@ -1,335 +1,106 @@
-// Full RW-04 React Component with Two Tabs
-import React, { useState } from 'react';
-import {
-  Tabs,
-  Tab,
-  Box,
-  Typography,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  TableContainer,
-  Paper,
-  TextField,
-  Button,
-  Snackbar,
-  Alert,
-  Checkbox,
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
+Thanks for sharing the full code. The issue is that you're displaying the error only for row.id === '1' and '3', but you placed the error logic inside the provAmtEnd TextField of rows '1.i', '1.ii', etc., which will never match row.id === '1'.
 
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontSize: '0.875rem',
-  textAlign: 'center',
-  padding: '6px',
-  fontWeight: 'bold',
-}));
 
-const initialDynamicRow = {
-  selected: false,
-  particulars: '',
-  provAmtStart: '',
-  writeOff: '',
-  addition: '',
-  reduction: '',
-  provAmtEnd: '',
-  rate: '100',
-  provRequired: '',
+---
+
+✅ Fix: Move the error logic only to rows 1 and 3, where the check is applicable.
+
+Update your <TextField> for provAmtEnd inside this block:
+
+<TableCell align="right">
+  <TextField
+    value={staticData[`${row.id}_provAmtEnd`]}
+    size="small"
+    onChange={(e) => handleStaticChange(row.id, 'provAmtEnd', e.target.value)}
+    disabled={!['1.i', '1.ii', '3.i', '3.ii'].includes(row.id)}
+    error={
+      (row.id === '1' &&
+        Math.abs(
+          parseFloat(staticData['1_provAmtEnd'] || 0) -
+            (parseFloat(staticData['1.i_provAmtEnd'] || 0) + parseFloat(staticData['1.ii_provAmtEnd'] || 0))
+        ) > 0.01) ||
+      (row.id === '3' &&
+        Math.abs(
+          parseFloat(staticData['3_provAmtEnd'] || 0) -
+            (parseFloat(staticData['3.i_provAmtEnd'] || 0) + parseFloat(staticData['3.ii_provAmtEnd'] || 0))
+        ) > 0.01)
+    }
+    sx={{ width: '150px' }}
+  />
+</TableCell>
+
+🔁 Change it to this:
+
+<TableCell align="right">
+  <TextField
+    value={staticData[`${row.id}_provAmtEnd`]}
+    size="small"
+    onChange={(e) => handleStaticChange(row.id, 'provAmtEnd', e.target.value)}
+    disabled={!['1.i', '1.ii', '3.i', '3.ii'].includes(row.id)}
+    error={
+      row.id === '1'
+        ? Math.abs(
+            parseFloat(staticData['1_provAmtEnd'] || 0) -
+              (parseFloat(staticData['1.i_provAmtEnd'] || 0) + parseFloat(staticData['1.ii_provAmtEnd'] || 0))
+          ) > 0.01
+        : row.id === '3'
+        ? Math.abs(
+            parseFloat(staticData['3_provAmtEnd'] || 0) -
+              (parseFloat(staticData['3.i_provAmtEnd'] || 0) + parseFloat(staticData['3.ii_provAmtEnd'] || 0))
+          ) > 0.01
+        : false
+    }
+    sx={{ width: '150px' }}
+  />
+</TableCell>
+
+
+---
+
+✅ Or cleaner alternative:
+
+Move this condition to a helper function:
+
+const isProvAmtEndMismatch = (id) => {
+  if (id === '1') {
+    const parent = parseFloat(staticData['1_provAmtEnd'] || 0);
+    const children =
+      parseFloat(staticData['1.i_provAmtEnd'] || 0) + parseFloat(staticData['1.ii_provAmtEnd'] || 0);
+    return Math.abs(parent - children) > 0.01;
+  }
+  if (id === '3') {
+    const parent = parseFloat(staticData['3_provAmtEnd'] || 0);
+    const children =
+      parseFloat(staticData['3.i_provAmtEnd'] || 0) + parseFloat(staticData['3.ii_provAmtEnd'] || 0);
+    return Math.abs(parent - children) > 0.01;
+  }
+  return false;
 };
 
-const initialStaticRows = [
-  { id: '1', label: 'FRAUDS - DEBITED TO RECALLED ASSETS A/c (Prod Cd 6998-9981)**' },
-  { id: '1.i', label: 'Frauds reported within time up to 30-09-2024 provision @ 100% ##' },
-  { id: '1.ii', label: 'Delayed Reported frauds Provision @ 100% ##' },
-  { id: '2', label: 'OTHERS LOSSES IN RECALLED ASSETS (Prod cd 6998 - 9982)#' },
-  { id: '3', label: 'FRAUDS - OTHER (NOT DEBITED TO RA A/c)$' },
-  { id: '3.i', label: 'Frauds reported within time up to 30-09-2024 provision @ 100% ##' },
-  { id: '3.ii', label: 'Delayed Reported frauds Provision @ 100% ##' },
-  { id: '4', label: 'REVENUE ITEM IN SYSTEM SUSPENSE' },
-  { id: '5', label: 'PROVISION ON ACCOUNT OF FSLO' },
-  { id: '6', label: 'PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING IN ADJUSTING ACCOUNT FOR PREVIOUS QUARTER(S)' },
-  { id: '7', label: 'PROVISION ON N.P.A. INTEREST FREE STAFF LOANS' },
-];
+Then use this in your JSX:
 
-const RW04 = () => {
-  const [tabIndex, setTabIndex] = useState(0);
-  const [dynamicRows, setDynamicRows] = useState([{ ...initialDynamicRow }]);
-  const [staticData, setStaticData] = useState(
-    Object.fromEntries(
-      initialStaticRows.flatMap((r) =>
-        ['provAmtStart', 'writeOff', 'addition', 'reduction', 'provAmtEnd', 'rate', 'provRequired'].map((key) => [
-          `${r.id}_${key}`,
-          key === 'rate' ? '100' : '',
-        ])
-      )
-    )
-  );
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
+<TextField
+  ...
+  error={isProvAmtEndMismatch(row.id)}
+/>
 
-  const isNumeric = (val) => !isNaN(parseFloat(val)) && isFinite(val);
 
-  const calculateAndSetStatic = (rowId, updated) => {
-    const isManualRow = ['1.i', '1.ii', '3.i', '3.ii'].includes(rowId);
+---
 
-    const start = parseFloat(updated[`${rowId}_provAmtStart`] || 0);
-    const write = parseFloat(updated[`${rowId}_writeOff`] || 0);
-    const add = parseFloat(updated[`${rowId}_addition`] || 0);
-    const reduce = parseFloat(updated[`${rowId}_reduction`] || 0);
-    const rate = parseFloat(updated[`${rowId}_rate`] || 0);
+✅ Bonus: Disable Save/Submit button when mismatch exists
 
-    if (!isManualRow) {
-      const end = start - write + add - reduce;
-      updated[`${rowId}_provAmtEnd`] = end.toFixed(2);
-      updated[`${rowId}_provRequired`] = ((end * rate) / 100).toFixed(2);
-    } else {
-      const end = parseFloat(updated[`${rowId}_provAmtEnd`] || 0);
-      updated[`${rowId}_provRequired`] = ((end * rate) / 100).toFixed(2);
-    }
-  };
+Add:
 
-  const handleStaticChange = (rowId, key, value) => {
-    const updated = { ...staticData, [`${rowId}_${key}`]: value };
-    calculateAndSetStatic(rowId, updated);
-    setStaticData(updated);
-  };
+const isSaveDisabled =
+  isProvAmtEndMismatch('1') || isProvAmtEndMismatch('3');
 
-  const isChildRowDisabled = (rowId, key) => {
-    return (
-      (rowId === '1.i' || rowId === '1.ii' || rowId === '3.i' || rowId === '3.ii') &&
-      !['provAmtEnd', 'rate', 'provRequired'].includes(key)
-    );
-  };
+Then:
 
-  //   const RowMismatchMessage = ({ mainId, parts }) => {
-  //     const mainValue = parseFloat(staticData[`${mainId}_provAmtEnd`] || 0);
-  //     const partsSum = parts.reduce((acc, id) => acc + parseFloat(staticData[`${id}_provAmtEnd`] || 0), 0);
-  //     if (Math.abs(mainValue - partsSum) > 0.01) {
-  //       return (
-  //         <Typography color="error" fontSize={12} ml={12} mt={1}>
-  //           The value do not match
-  //         </Typography>
-  //       );
-  //     }
-  //     return null;
-  //   };
+<Button variant="contained" disabled={isSaveDisabled}>Save</Button>
+<Button variant="contained" color="success" disabled={isSaveDisabled}>Submit</Button>
 
-  const RowMismatchMessage = ({ mainId, parts, field }) => {
-    const mainValue = parseFloat(staticData[`${mainId}_${field}`] || 0);
-    const partsSum = parts.reduce((acc, id) => acc + parseFloat(staticData[`${id}_${field}`] || 0), 0);
 
-    if (Math.abs(mainValue - partsSum) > 0.01) {
-      return (
-        <Typography color="error" fontSize={12} ml={12} mt={1}>
-          The value does not match
-        </Typography>
-      );
-    }
-    return null;
-  };
-  const headers = [
-    ...(tabIndex === 1 ? ['SELECT'] : []),
-    'PARTICULAR(S)',
-    'PROVISIONABLE AMT AS ON 01.04.2025 (3)',
-    'WRITE OFF DURING THE 12 MONTHS PERIOD (4)',
-    'ADDITIONS IN PROVISIONABLE AMT (5)',
-    'REDUCTION IN PROVISIONABLE AMT (6)',
-    'PROVISIONABLE AMT AS ON 31/03/2026 (7)',
-    'RATE OF PROVISION (%) (8)',
-    'PROVISION REQUIREMENT (9)',
-  ];
+---
 
-  const renderHeader = () => (
-    <TableHead>
-      <TableRow>
-        <TableCell sx={{ backgroundColor: 'hsl(220, 20%, 35%)', fontWeight: 'bold' }}>Sr No</TableCell>
-        {headers.map((head, idx) => (
-          <StyledTableCell key={idx}>{head}</StyledTableCell>
-        ))}
-      </TableRow>
-    </TableHead>
-  );
+Let me know if you'd also like to show total below child rows or want to apply this logic to Tab 2 as well.
 
-  return (
-    <Box>
-      <Tabs value={tabIndex} onChange={(e, i) => setTabIndex(i)}>
-        <Tab label="RW-04(A)" />
-        <Tab label="RW-04(B)" />
-      </Tabs>
-
-      {tabIndex === 0 && (
-        <>
-          <TableContainer component={Paper} sx={{ mt: 2 }}>
-            <Table>
-              {renderHeader()}
-              <TableBody>
-                {initialStaticRows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>{row.id}</TableCell>
-                    <TableCell>{row.label}</TableCell>
-                    {['provAmtStart', 'writeOff', 'addition', 'reduction'].map((key) => (
-                      <TableCell key={key} align="right">
-                        <TextField
-                          size="small"
-                          value={staticData[`${row.id}_${key}`] || '0'}
-                          onChange={(e) => handleStaticChange(row.id, key, e.target.value)}
-                          error={!!staticData[`${row.id}_${key}`] && !isNumeric(staticData[`${row.id}_${key}`])}
-                          disabled={isChildRowDisabled(row.id, key)}
-                          sx={{ width: '150px' }}
-                        />
-                      </TableCell>
-                    ))}
-                    <TableCell align="right">
-                      {/* <TextField
-                        value={staticData[`${row.id}_provAmtEnd`]}
-                        size="small"
-                        onChange={(e) => handleStaticChange(row.id, 'provAmtEnd', e.target.value)}
-                        disabled={!['1.i', '1.ii', '3.i', '3.ii'].includes(row.id)}
-                        sx={{ width: '150px' }}
-                      /> */}
-                      <TextField
-                        value={staticData[`${row.id}_provAmtEnd`]}
-                        size="small"
-                        onChange={(e) => handleStaticChange(row.id, 'provAmtEnd', e.target.value)}
-                        disabled={!['1.i', '1.ii', '3.i', '3.ii'].includes(row.id)}
-                        error={
-                          (row.id === '1' &&
-                            Math.abs(
-                              parseFloat(staticData['1_provAmtEnd'] || 0) -
-                                (parseFloat(staticData['1.i_provAmtEnd'] || 0) +
-                                  parseFloat(staticData['1.ii_provAmtEnd'] || 0))
-                            ) > 0.01) ||
-                          (row.id === '3' &&
-                            Math.abs(
-                              parseFloat(staticData['3_provAmtEnd'] || 0) -
-                                (parseFloat(staticData['3.i_provAmtEnd'] || 0) +
-                                  parseFloat(staticData['3.ii_provAmtEnd'] || 0))
-                            ) > 0.01)
-                        }
-                        sx={{ width: '150px' }}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField value={staticData[`${row.id}_rate`]} size="small" disabled sx={{ width: '150px' }} />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        value={staticData[`${row.id}_provRequired`]}
-                        size="small"
-                        disabled
-                        sx={{ width: '150px' }}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          <RowMismatchMessage mainId="1" parts={['1.i', '1.ii']} field="provAmtEnd" />
-          <RowMismatchMessage mainId="3" parts={['3.i', '3.ii']} field="provAmtEnd" />
-          <Box mt={2} display="flex" gap={2}>
-            <Button variant="contained">Save</Button>
-            <Button variant="contained" color="success">
-              Submit
-            </Button>
-          </Box>
-        </>
-      )}
-
-      {tabIndex === 1 && (
-        <>
-          <TableContainer component={Paper} sx={{ mt: 2 }}>
-            <Table>
-              {renderHeader()}
-              <TableBody>
-                {dynamicRows.map((row, i) => (
-                  <TableRow key={i}>
-                    <TableCell>{i + 1}</TableCell>
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        checked={row.selected}
-                        onChange={() => {
-                          const updated = [...dynamicRows];
-                          updated[i].selected = !updated[i].selected;
-                          setDynamicRows(updated);
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        value={row.particulars}
-                        onChange={(e) => {
-                          const updated = [...dynamicRows];
-                          updated[i].particulars = e.target.value;
-                          setDynamicRows(updated);
-                        }}
-                        sx={{ width: '120px' }}
-                      />
-                    </TableCell>
-                    {['provAmtStart', 'writeOff', 'addition', 'reduction'].map((key) => (
-                      <TableCell key={key} align="left">
-                        <TextField
-                          size="small"
-                          value={row[key] || '0'}
-                          onChange={(e) => {
-                            const updated = [...dynamicRows];
-                            updated[i][key] = e.target.value;
-                            const start = parseFloat(updated[i].provAmtStart || 0);
-                            const write = parseFloat(updated[i].writeOff || 0);
-                            const add = parseFloat(updated[i].addition || 0);
-                            const reduce = parseFloat(updated[i].reduction || 0);
-                            const rate = parseFloat(updated[i].rate || 0);
-                            const end = start - write + add - reduce;
-                            updated[i].provAmtEnd = end.toFixed(2);
-                            updated[i].provRequired = ((end * rate) / 100).toFixed(2);
-                            setDynamicRows(updated);
-                          }}
-                          sx={{ width: '150px' }}
-                        />
-                      </TableCell>
-                    ))}
-                    <TableCell align="right">
-                      <TextField size="small" value={row.provAmtEnd} disabled sx={{ width: '150px' }} />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField size="small" value={row.rate} disabled sx={{ width: '150px' }} />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField size="small" value={row.provRequired} disabled sx={{ width: '150px' }} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          <Box mt={2} display="flex" gap={2}>
-            <Button variant="contained" onClick={() => setDynamicRows([...dynamicRows, { ...initialDynamicRow }])}>
-              Add Row
-            </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={() => setDynamicRows(dynamicRows.filter((r) => !r.selected))}
-            >
-              Delete Row
-            </Button>
-            <Button variant="contained">Save</Button>
-            <Button variant="contained" color="success">
-              Submit
-            </Button>
-          </Box>
-        </>
-      )}
-
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
-      </Snackbar>
-    </Box>
-  );
-};
-
-export default RW04;
