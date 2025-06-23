@@ -1,177 +1,113 @@
-Thanks for the image. I see you're using a dynamic table setup from Schedule 9, with structured rowDefinitions, columns, and section/subsection handling using a config-driven model. We'll incorporate this same flexible structure in the RW04 table so it:
+import React, { useState } from 'react'; import { Tabs, Tab, Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, TableContainer, Paper, TextField, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert } from '@mui/material'; import { styled } from '@mui/material/styles';
 
-Supports reuse of logic and styling (MUI styled table)
+const StyledTableCell = styled(TableCell)(({ theme }) => ({ fontSize: '0.875rem', textAlign: 'right', padding: '6px', }));
 
-Allows easy add/delete row handling
+const initialDynamicRow = { particulars: '', provAmtStart: '', writeOff: '', addition: '', reduction: '', provAmtEnd: '', rate: '100', provRequired: '' };
 
-Matches validations like checkNegative, provisionable1, provisionable2
+const RW04 = () => { const [tabIndex, setTabIndex] = useState(0); const [dynamicRows, setDynamicRows] = useState([{ ...initialDynamicRow }]); const [staticData, setStaticData] = useState({ fraudsDebitedProvAfter: '', fraudsDebitedWrite: '', fraudsDebitedAddition: '', fraudsDebitedReduction: '', fraudsDebitedProvOn: '', fraudsDebitedRate: '100', fraudsDebitedProvReq: '', fraudsDebitedPrior100ProvOn: '', fraudsDebitedDelayedProvOn: '', }); const [nilModalOpen, setNilModalOpen] = useState(false); const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
-Is extendable with minimal config changes
+const handleStaticChange = (key, value) => { const updated = { ...staticData, [key]: value }; const start = parseFloat(updated.fraudsDebitedProvAfter || 0); const write = parseFloat(updated.fraudsDebitedWrite || 0); const add = parseFloat(updated.fraudsDebitedAddition || 0); const reduce = parseFloat(updated.fraudsDebitedReduction || 0); const rate = parseFloat(updated.fraudsDebitedRate || 0); const prior = parseFloat(updated.fraudsDebitedPrior100ProvOn || 0); const delayed = parseFloat(updated.fraudsDebitedDelayedProvOn || 0); const end = start - write + add - reduce; const required = (end * rate) / 100; updated.fraudsDebitedProvOn = end.toFixed(2); updated.fraudsDebitedProvReq = required.toFixed(2); setStaticData(updated); };
 
+const handleDynamicChange = (i, field, value) => { const updated = [...dynamicRows]; updated[i][field] = value; const start = parseFloat(updated[i].provAmtStart || 0); const write = parseFloat(updated[i].writeOff || 0); const add = parseFloat(updated[i].addition || 0); const reduce = parseFloat(updated[i].reduction || 0); const rate = parseFloat(updated[i].rate || 0); const end = start - write + add - reduce; updated[i].provAmtEnd = end.toFixed(2); updated[i].provRequired = ((end * rate) / 100).toFixed(2); setDynamicRows(updated); };
 
+const validateAndSubmit = () => { for (let i = 0; i < dynamicRows.length; i++) { if (!dynamicRows[i].particulars.trim()) return setSnackbar({ open: true, message: Row ${i + 1} particulars missing, severity: 'error' }); if (!dynamicRows[i].provAmtEnd || parseFloat(dynamicRows[i].provAmtEnd) === 0) return setSnackbar({ open: true, message: Row ${i + 1} amount invalid, severity: 'error' }); } setSnackbar({ open: true, message: 'Submitted successfully', severity: 'success' }); };
 
----
+return ( <Box> <Tabs value={tabIndex} onChange={(e, i) => setTabIndex(i)}> <Tab label="Static Section" /> <Tab label="Dynamic Section" /> </Tabs>
 
-✅ RW04 Table Adapted Using Schedule 9 Design Pattern
+{tabIndex === 0 && (
+    <TableContainer component={Paper} sx={{ mt: 2 }}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <StyledTableCell>Sr No</StyledTableCell>
+            <StyledTableCell>Particulars</StyledTableCell>
+            <StyledTableCell>Prov Start</StyledTableCell>
+            <StyledTableCell>Write Off</StyledTableCell>
+            <StyledTableCell>Addition</StyledTableCell>
+            <StyledTableCell>Reduction</StyledTableCell>
+            <StyledTableCell>Prov End</StyledTableCell>
+            <StyledTableCell>Rate</StyledTableCell>
+            <StyledTableCell>Prov Required</StyledTableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          <TableRow>
+            <StyledTableCell>1</StyledTableCell>
+            <StyledTableCell>FRAUDS - DEBITED TO RA A/c</StyledTableCell>
+            {["fraudsDebitedProvAfter", "fraudsDebitedWrite", "fraudsDebitedAddition", "fraudsDebitedReduction"]
+              .map(key => (
+                <StyledTableCell key={key}>
+                  <TextField value={staticData[key]} onChange={e => handleStaticChange(key, e.target.value)} />
+                </StyledTableCell>
+              ))}
+            <StyledTableCell><TextField value={staticData.fraudsDebitedProvOn} readOnly /></StyledTableCell>
+            <StyledTableCell><TextField value={staticData.fraudsDebitedRate} readOnly /></StyledTableCell>
+            <StyledTableCell><TextField value={staticData.fraudsDebitedProvReq} readOnly /></StyledTableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </TableContainer>
+  )}
 
-Step 1: rw04RowDefinitions.js
-
-Create a configuration file to define your rows similar to Schedule 9:
-
-export const rw04RowDefinitions = [
-  {
-    id: 'rw04_1', label: 'FRAUDS - DEBITED TO RECALLED ASSETS A/c', type: 'entry', rate: '100',
-    formula: (row) => (row.provAmtStart - row.writeOff + row.addition - row.reduction).toFixed(2)
-  },
-  {
-    id: 'rw04_1i', label: 'Frauds reported within time up to Quarter End (100%)', type: 'sub', readonly: true, rate: '100',
-  },
-  {
-    id: 'rw04_1v', label: 'Delayed Reported frauds (100%)', type: 'sub', readonly: true, rate: '100',
-  },
-  {
-    id: 'rw04_2', label: 'OTHERS LOSSES IN RECALLED ASSETS', type: 'entry', rate: '100',
-    formula: (row) => (row.provAmtStart - row.writeOff + row.addition - row.reduction).toFixed(2)
-  },
-  {
-    id: 'rw04_3', label: 'FRAUDS - OTHER (NOT DEBITED TO RA A/c)', type: 'entry', rate: '',
-    formula: (row) => (row.provAmtStart - row.writeOff + row.addition - row.reduction).toFixed(2)
-  },
-  {
-    id: 'rw04_3i', label: 'Frauds reported within time - Others (100%)', type: 'sub', readonly: true, rate: '100',
-  },
-  {
-    id: 'rw04_3v', label: 'Delayed Reported frauds - Others (100%)', type: 'sub', readonly: true, rate: '100',
-  },
-  {
-    id: 'rw04_4', label: 'REVENUE ITEM IN SYSTEM SUSPENSE', type: 'entry', rate: '100',
-  },
-  {
-    id: 'rw04_5', label: 'PROVISION ON ACCOUNT OF FSLO', type: 'entry', rate: '100',
-  },
-  {
-    id: 'rw04_6', label: 'PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING', type: 'entry', rate: '100',
-  },
-  {
-    id: 'rw04_7', label: 'PROVISION ON N.P.A. INTEREST FREE STAFF LOANS', type: 'entry', rate: '100',
-  },
-  {
-    id: 'rw04_8', label: 'OTHERS (PLEASE SPECIFY BELOW)', type: 'entry', rate: '',
-  },
-];
-
-
----
-
-Step 2: Use with columns and Validation Logic
-
-export const rw04Columns = [
-  { key: 'provAmtStart', label: 'Prov Start', editable: true },
-  { key: 'writeOff', label: 'Write Off', editable: true },
-  { key: 'addition', label: 'Addition', editable: true },
-  { key: 'reduction', label: 'Reduction', editable: true },
-  { key: 'provAmtEnd', label: 'Prov End', editable: false, formula: true },
-  { key: 'rate', label: 'Rate (%)', editable: false },
-  { key: 'provRequired', label: 'Provision Required', editable: false, formula: true },
-];
-
-
----
-
-Step 3: React Table Component
-
-Your RW04Table.jsx will dynamically use these:
-
-import React, { useState, useEffect } from 'react';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Paper, Button } from '@mui/material';
-import { styled } from '@mui/material/styles';
-import { rw04RowDefinitions, rw04Columns } from './rw04RowDefinitions';
-
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontSize: '0.875rem',
-  textAlign: 'right',
-  padding: '6px',
-}));
-
-const RW04Table = () => {
-  const [data, setData] = useState(() => rw04RowDefinitions.map(def => ({ id: def.id, ...rw04Columns.reduce((acc, col) => ({ ...acc, [col.key]: '' }), {}) })));
-
-  const handleInputChange = (rowIdx, key, value) => {
-    const updated = [...data];
-    updated[rowIdx][key] = value;
-
-    const rowDef = rw04RowDefinitions[rowIdx];
-
-    if (rowDef.formula) {
-      const start = parseFloat(updated[rowIdx].provAmtStart || 0);
-      const write = parseFloat(updated[rowIdx].writeOff || 0);
-      const add = parseFloat(updated[rowIdx].addition || 0);
-      const reduce = parseFloat(updated[rowIdx].reduction || 0);
-      const rate = parseFloat(rowDef.rate || 0);
-
-      const provAmtEnd = start - write + add - reduce;
-      const provRequired = (provAmtEnd * rate) / 100;
-
-      updated[rowIdx].provAmtEnd = provAmtEnd.toFixed(2);
-      updated[rowIdx].provRequired = provRequired.toFixed(2);
-    }
-
-    setData(updated);
-  };
-
-  return (
-    <>
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <StyledTableCell>S.No</StyledTableCell>
-              <StyledTableCell>Particulars</StyledTableCell>
-              {rw04Columns.map(col => <StyledTableCell key={col.key}>{col.label}</StyledTableCell>)}
+  {tabIndex === 1 && (
+    <TableContainer component={Paper} sx={{ mt: 2 }}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <StyledTableCell>Sr No</StyledTableCell>
+            <StyledTableCell>Particulars</StyledTableCell>
+            <StyledTableCell>Prov Start</StyledTableCell>
+            <StyledTableCell>Write Off</StyledTableCell>
+            <StyledTableCell>Addition</StyledTableCell>
+            <StyledTableCell>Reduction</StyledTableCell>
+            <StyledTableCell>Prov End</StyledTableCell>
+            <StyledTableCell>Rate</StyledTableCell>
+            <StyledTableCell>Prov Required</StyledTableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {dynamicRows.map((row, i) => (
+            <TableRow key={i}>
+              <StyledTableCell>{i + 1}</StyledTableCell>
+              <StyledTableCell>
+                <TextField fullWidth value={row.particulars} onChange={e => handleDynamicChange(i, 'particulars', e.target.value)} />
+              </StyledTableCell>
+              {["provAmtStart", "writeOff", "addition", "reduction"].map(key => (
+                <StyledTableCell key={key}>
+                  <TextField value={row[key]} onChange={e => handleDynamicChange(i, key, e.target.value)} />
+                </StyledTableCell>
+              ))}
+              <StyledTableCell><TextField value={row.provAmtEnd} readOnly /></StyledTableCell>
+              <StyledTableCell><TextField value={row.rate} readOnly /></StyledTableCell>
+              <StyledTableCell><TextField value={row.provRequired} readOnly /></StyledTableCell>
             </TableRow>
-          </TableHead>
-          <TableBody>
-            {data.map((row, i) => (
-              <TableRow key={i}>
-                <StyledTableCell>{i + 1}</StyledTableCell>
-                <StyledTableCell>{rw04RowDefinitions[i].label}</StyledTableCell>
-                {rw04Columns.map(col => (
-                  <StyledTableCell key={col.key}>
-                    <TextField
-                      fullWidth
-                      value={row[col.key]}
-                      onChange={(e) => handleInputChange(i, col.key, e.target.value)}
-                      inputProps={{ readOnly: !col.editable }}
-                    />
-                  </StyledTableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </>
-  );
-};
+          ))}
+        </TableBody>
+      </Table>
+      <Box mt={2} display="flex" gap={2}>
+        <Button variant="contained" onClick={() => setDynamicRows(prev => [...prev, { ...initialDynamicRow }])}>Add Row</Button>
+        <Button variant="outlined" color="error" onClick={() => setDynamicRows(prev => prev.slice(0, -1))}>Delete Row</Button>
+        <Button variant="contained" color="success" onClick={validateAndSubmit}>Submit</Button>
+        <Button variant="outlined" color="warning" onClick={() => setNilModalOpen(true)}>Mark as Nil</Button>
+      </Box>
+    </TableContainer>
+  )}
 
-export default RW04Table;
+  <Dialog open={nilModalOpen} onClose={() => setNilModalOpen(false)}>
+    <DialogTitle>Caution!</DialogTitle>
+    <DialogContent><Typography>Do you want to submit RW-04 as Nil Report?</Typography></DialogContent>
+    <DialogActions>
+      <Button onClick={() => { setDynamicRows([{ ...initialDynamicRow }]); setSnackbar({ open: true, message: 'Marked as Nil', severity: 'info' }); setNilModalOpen(false); }} color="success">Yes</Button>
+      <Button onClick={() => setNilModalOpen(false)} color="error">No</Button>
+    </DialogActions>
+  </Dialog>
 
+  <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+    <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+  </Snackbar>
+</Box>
 
----
+); };
 
-✅ Benefits of This Approach:
-
-Uniform with Schedule 9 structure.
-
-Validation logic is reusable (checkNegative, provisionableX).
-
-Dynamic input handling using field definitions.
-
-Future-ready for multiple schedules with just config changes.
-
-
-
----
-
-Would you like me to deliver the full final working setup with all parts (including validations, modals, and backend API hooks) as a downloadable zip or GitHub-style repo structure?
+export default RW04;
 
