@@ -99,9 +99,10 @@ const RW04 = () => {
   };
 
   const headers = [
-    'SELECT',
+    ...(tabIndex === 1 ? ['SELECT'] : []),
     'PARTICULAR(S)',
-    'PROVISIONABLE AMT AS ON\n01.04.2025 (3)',
+    'PROVISIONABLE AMT AS ON
+01.04.2025 (3)',
     'WRITE OFF DURING THE 12 MONTHS PERIOD* (4)',
     'ADDITIONS IN PROVISIONABLE AMT DURING THE 12 MONTHS PERIOD (5)',
     'REDUCTION IN PROVISIONABLE AMT (OTHER THAN WRITE OFF) DURING THE 12 MONTHS PERIOD (6)',
@@ -203,21 +204,12 @@ const RW04 = () => {
 export default RW04;
 
 
-✅ "Delete Row" is now checkbox-based:
-
-Each row in RW-04(B) includes a selectable checkbox
-
-Clicking "Delete Row" removes all checked rows
-
-"Sr No" remains unaffected visually
-
+✅ "SELECT" checkbox column now appears only in the second tab (RW-04(B)).
 
 Let me know if you want:
 
-A "Select All" checkbox
+Conditional styling per tab
 
-Confirmation before deletion
-
-Persistent serial numbers even after deletion
+Fixed headers or horizontal scroll behavior enhancements
 
 
