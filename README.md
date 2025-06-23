@@ -89,7 +89,10 @@ const RW04 = () => {
   };
 
   const isChildRowDisabled = (rowId, key) => {
-    return ((rowId === '1.i' || rowId === '1.ii' || rowId === '3.i' || rowId === '3.ii') && !['provAmtEnd', 'rate', 'provRequired'].includes(key));
+    return (
+      (rowId === '1.i' || rowId === '1.ii' || rowId === '3.i' || rowId === '3.ii') &&
+      !['provAmtEnd', 'rate', 'provRequired'].includes(key)
+    );
   };
 
   const RowMismatchMessage = ({ mainId, parts }) => {
@@ -138,41 +141,57 @@ const RW04 = () => {
       {tabIndex === 0 && (
         <>
           <TableContainer component={Paper} sx={{ mt: 2 }}>
-            <Table>{renderHeader()}<TableBody>
-              {initialStaticRows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>{row.id}</TableCell>
-                  <TableCell>{row.label}</TableCell>
-                  {['provAmtStart', 'writeOff', 'addition', 'reduction'].map((key) => (
-                    <TableCell key={key} align="right">
+            <Table>
+              {renderHeader()}
+              <TableBody>
+                {initialStaticRows.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>{row.id}</TableCell>
+                    <TableCell>{row.label}</TableCell>
+                    {['provAmtStart', 'writeOff', 'addition', 'reduction'].map((key) => (
+                      <TableCell key={key} align="right">
+                        <TextField
+                          size="small"
+                          value={staticData[`${row.id}_${key}`] || '0'}
+                          onChange={(e) => handleStaticChange(row.id, key, e.target.value)}
+                          error={!!staticData[`${row.id}_${key}`] && !isNumeric(staticData[`${row.id}_${key}`])}
+                          disabled={isChildRowDisabled(row.id, key)}
+                          sx={{ width: '150px' }}
+                        />
+                      </TableCell>
+                    ))}
+                    <TableCell align="right">
                       <TextField
+                        value={staticData[`${row.id}_provAmtEnd`]}
                         size="small"
-                        value={staticData[`${row.id}_${key}`]}
-                        onChange={(e) => handleStaticChange(row.id, key, e.target.value)}
-                        error={!!staticData[`${row.id}_${key}`] && !isNumeric(staticData[`${row.id}_${key}`])}
-                        disabled={isChildRowDisabled(row.id, key)}
-                        sx={{ width: '120px' }}
+                        onChange={(e) => handleStaticChange(row.id, 'provAmtEnd', e.target.value)}
+                        disabled={!['1.i', '1.ii', '3.i', '3.ii'].includes(row.id)}
+                        sx={{ width: '150px' }}
                       />
                     </TableCell>
-                  ))}
-                  <TableCell align="right">
-                    <TextField value={staticData[`${row.id}_provAmtEnd`]} size="small" readOnly sx={{ width: '120px' }} />
-                  </TableCell>
-                  <TableCell align="right">
-                    <TextField value={staticData[`${row.id}_rate`]} size="small" readOnly sx={{ width: '120px' }} />
-                  </TableCell>
-                  <TableCell align="right">
-                    <TextField value={staticData[`${row.id}_provRequired`]} size="small" readOnly sx={{ width: '120px' }} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody></Table>
+                    <TableCell align="right">
+                      <TextField value={staticData[`${row.id}_rate`]} size="small" disabled sx={{ width: '150px' }} />
+                    </TableCell>
+                    <TableCell align="right">
+                      <TextField
+                        value={staticData[`${row.id}_provRequired`]}
+                        size="small"
+                        disabled
+                        sx={{ width: '150px' }}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </TableContainer>
-          <RowMismatchMessage mainId="1" parts={["1.i", "1.ii"]} />
-          <RowMismatchMessage mainId="3" parts={["3.i", "3.ii"]} />
+          <RowMismatchMessage mainId="1" parts={['1.i', '1.ii']} />
+          <RowMismatchMessage mainId="3" parts={['3.i', '3.ii']} />
           <Box mt={2} display="flex" gap={2}>
             <Button variant="contained">Save</Button>
-            <Button variant="contained" color="success">Submit</Button>
+            <Button variant="contained" color="success">
+              Submit
+            </Button>
           </Box>
         </>
       )}
@@ -180,64 +199,86 @@ const RW04 = () => {
       {tabIndex === 1 && (
         <>
           <TableContainer component={Paper} sx={{ mt: 2 }}>
-            <Table>{renderHeader()}<TableBody>
-              {dynamicRows.map((row, i) => (
-                <TableRow key={i}>
-                  <TableCell>{i + 1}</TableCell>
-                  <TableCell padding="checkbox">
-                    <Checkbox checked={row.selected} onChange={() => {
-                      const updated = [...dynamicRows];
-                      updated[i].selected = !updated[i].selected;
-                      setDynamicRows(updated);
-                    }} />
-                  </TableCell>
-                  <TableCell>
-                    <TextField fullWidth size="small" value={row.particulars} onChange={(e) => {
-                      const updated = [...dynamicRows];
-                      updated[i].particulars = e.target.value;
-                      setDynamicRows(updated);
-                    }} sx={{ width: '120px' }} />
-                  </TableCell>
-                  {['provAmtStart', 'writeOff', 'addition', 'reduction'].map((key) => (
-                    <TableCell key={key} align="left">
+            <Table>
+              {renderHeader()}
+              <TableBody>
+                {dynamicRows.map((row, i) => (
+                  <TableRow key={i}>
+                    <TableCell>{i + 1}</TableCell>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={row.selected}
+                        onChange={() => {
+                          const updated = [...dynamicRows];
+                          updated[i].selected = !updated[i].selected;
+                          setDynamicRows(updated);
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
                       <TextField
+                        fullWidth
                         size="small"
-                        value={row[key]}
+                        value={row.particulars}
                         onChange={(e) => {
                           const updated = [...dynamicRows];
-                          updated[i][key] = e.target.value;
-                          const start = parseFloat(updated[i].provAmtStart || 0);
-                          const write = parseFloat(updated[i].writeOff || 0);
-                          const add = parseFloat(updated[i].addition || 0);
-                          const reduce = parseFloat(updated[i].reduction || 0);
-                          const rate = parseFloat(updated[i].rate || 0);
-                          const end = start - write + add - reduce;
-                          updated[i].provAmtEnd = end.toFixed(2);
-                          updated[i].provRequired = ((end * rate) / 100).toFixed(2);
+                          updated[i].particulars = e.target.value;
                           setDynamicRows(updated);
                         }}
                         sx={{ width: '120px' }}
                       />
                     </TableCell>
-                  ))}
-                  <TableCell align="right">
-                    <TextField size="small" value={row.provAmtEnd} readOnly sx={{ width: '120px' }} />
-                  </TableCell>
-                  <TableCell align="right">
-                    <TextField size="small" value={row.rate} readOnly sx={{ width: '120px' }} />
-                  </TableCell>
-                  <TableCell align="right">
-                    <TextField size="small" value={row.provRequired} readOnly sx={{ width: '120px' }} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody></Table>
+                    {['provAmtStart', 'writeOff', 'addition', 'reduction'].map((key) => (
+                      <TableCell key={key} align="left">
+                        <TextField
+                          size="small"
+                          value={row[key] || '0'}
+                          onChange={(e) => {
+                            const updated = [...dynamicRows];
+                            updated[i][key] = e.target.value;
+                            const start = parseFloat(updated[i].provAmtStart || 0);
+                            const write = parseFloat(updated[i].writeOff || 0);
+                            const add = parseFloat(updated[i].addition || 0);
+                            const reduce = parseFloat(updated[i].reduction || 0);
+                            const rate = parseFloat(updated[i].rate || 0);
+                            const end = start - write + add - reduce;
+                            updated[i].provAmtEnd = end.toFixed(2);
+                            updated[i].provRequired = ((end * rate) / 100).toFixed(2);
+                            setDynamicRows(updated);
+                          }}
+                          sx={{ width: '150px' }}
+                        />
+                      </TableCell>
+                    ))}
+                    <TableCell align="right">
+                      <TextField size="small" value={row.provAmtEnd} disabled sx={{ width: '150px' }} />
+                    </TableCell>
+                    <TableCell align="right">
+                      <TextField size="small" value={row.rate} disabled sx={{ width: '150px' }} />
+                    </TableCell>
+                    <TableCell align="right">
+                      <TextField size="small" value={row.provRequired} disabled sx={{ width: '150px' }} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </TableContainer>
           <Box mt={2} display="flex" gap={2}>
-            <Button variant="contained" onClick={() => setDynamicRows([...dynamicRows, { ...initialDynamicRow }])}>Add Row</Button>
-            <Button variant="outlined" color="error" onClick={() => setDynamicRows(dynamicRows.filter(r => !r.selected))}>Delete Row</Button>
+            <Button variant="contained" onClick={() => setDynamicRows([...dynamicRows, { ...initialDynamicRow }])}>
+              Add Row
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={() => setDynamicRows(dynamicRows.filter((r) => !r.selected))}
+            >
+              Delete Row
+            </Button>
             <Button variant="contained">Save</Button>
-            <Button variant="contained" color="success">Submit</Button>
+            <Button variant="contained" color="success">
+              Submit
+            </Button>
           </Box>
         </>
       )}
@@ -250,25 +291,3 @@ const RW04 = () => {
 };
 
 export default RW04;
-
-
-✅ Tab 2 (RW-04(B)) has now been fully included. You’ll find:
-
-A dynamic table with working Add Row, Delete Row, Save, and Submit buttons
-
-Consistent TextField widths
-
-Calculated columns (provAmtEnd, provRequired)
-
-Row selection via checkboxes
-
-
-Let me know if you want to:
-
-Add API integration for Save/Submit
-
-Apply validations similar to Tab 1
-
-Show total rows or footers for dynamic entries
-
-
