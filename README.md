@@ -156,7 +156,13 @@ const RW04 = () => {
                     <TableCell>{row.label}</TableCell>
                     {["provAmtStart", "writeOff", "addition", "reduction"].map(key => (
                       <TableCell key={key} align="right">
-                        <TextField value={staticData[`${row.id}_${key}`]} onChange={e => handleStaticChange(row.id, key, e.target.value)} size="small" error={!isNumeric(value)} helperText={!isNumeric(value) ? 'Invalid number' : ''}"$1 />
+                        <TextField
+                          size="small"
+                          value={staticData[`${row.id}_${key}`]}
+                          onChange={e => handleStaticChange(row.id, key, e.target.value)}
+                          error={!!staticData[`${row.id}_${key}`] && !isNumeric(staticData[`${row.id}_${key}`])}
+                          helperText={!isNumeric(staticData[`${row.id}_${key}`]) ? 'Invalid number' : ''}
+                        />
                       </TableCell>
                     ))}
                     <TableCell align="right"><TextField value={staticData[`${row.id}_provAmtEnd`]} size="small" readOnly /></TableCell>
@@ -189,7 +195,13 @@ const RW04 = () => {
                     <TableCell><TextField fullWidth size="small" value={row.particulars} onChange={e => handleDynamicChange(i, 'particulars', e.target.value)} /></TableCell>
                     {["provAmtStart", "writeOff", "addition", "reduction"].map(key => (
                       <TableCell key={key} align="right">
-                        <TextField size="small" value={row[key]} onChange={e => handleDynamicChange(i, key, e.target.value)} />
+                        <TextField
+                          size="small"
+                          value={row[key]}
+                          onChange={e => handleDynamicChange(i, key, e.target.value)}
+                          error={!!row[key] && !isNumeric(row[key])}
+                          helperText={!isNumeric(row[key]) ? 'Invalid number' : ''}
+                        />
                       </TableCell>
                     ))}
                     <TableCell align="right"><TextField size="small" value={row.provAmtEnd} readOnly /></TableCell>
@@ -219,19 +231,21 @@ const RW04 = () => {
 export default RW04;
 
 
-✅ Tooltips and red error borders have been added to numeric fields:
+✅ The updated code now includes:
 
-Shows “Invalid number” if a value is non-numeric
+Correct use of values like row[key] or staticData[...] in validation
 
-Highlights the input with a red border for quick visibility
+Red borders and helper text for invalid number entries
+
+No more value is not defined errors
 
 
-Let me know if you’d like to:
+Let me know if you’d like:
 
-Highlight all errors on submit
+Summary panel with all row-level error messages
 
-Add inline success indicators (like green borders)
+Field-level tooltips for better usability
 
-Display a summary error panel at the top
+A shared error state tracker for batch validation
 
 
