@@ -1,30 +1,65 @@
 import React, { useState } from 'react';
 import {
-  Tabs, Tab, Box, Typography, Table, TableHead, TableRow, TableCell, TableBody,
-  TableContainer, Paper, TextField, Button, Snackbar, Alert, Checkbox
+  Tabs,
+  Tab,
+  Box,
+  Typography,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  TableContainer,
+  Paper,
+  TextField,
+  Button,
+  Snackbar,
+  Alert,
+  Checkbox,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
+// const StyledTableCell = styled(TableCell)(({ theme }) => ({
+//   fontSize: '0.875rem',
+//   textAlign: 'center',
+//   padding: '6px',
+//   backgroundColor: '#f5f5f5',
+//   fontWeight: 'bold',
+// }));
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontSize: '0.875rem',
   textAlign: 'center',
   padding: '6px',
-  backgroundColor: '#f5f5f5',
-  fontWeight: 'bold'
+  fontWeight: 'bold',
 }));
 
 const initialDynamicRow = {
   selected: false,
-  particulars: '', provAmtStart: '', writeOff: '', addition: '', reduction: '', provAmtEnd: '', rate: '100', provRequired: ''
+  particulars: '',
+  provAmtStart: '',
+  writeOff: '',
+  addition: '',
+  reduction: '',
+  provAmtEnd: '',
+  rate: '100',
+  provRequired: '',
 };
 
 const initialStaticRows = [
-  { id: '1', label: 'FRAUDS - DEBITED TO RA A/c' },
-  { id: '2', label: 'OTHERS LOSSES IN RECALLED ASSETS' },
-  { id: '3', label: 'FRAUDS - OTHER (NOT DEBITED TO RA A/c)' },
+  { id: '1', label: 'FRAUDS - DEBITED TO RECALLED ASSETS A/c (Prod Cd 6998-9981)**' },
+  { id: 'i', label: 'Frauds reported within time up to 30-09-2024 provision @ 100% ##' },
+  { id: 'ii', label: 'Delayed Reported frauds Provision @ 100% ##' },
+  { id: '2', label: 'OTHERS LOSSES IN RECALLED ASSETS (Prod cd 6998 - 9982)#' },
+  { id: '3', label: 'FRAUDS - OTHER (NOT DEBITED TO RA A/c)$' },
+  { id: 'i', label: 'Frauds reported within time up to 30-09-2024 provision @ 100% ##' },
+  { id: 'ii', label: 'Delayed Reported frauds Provision @ 100% ##' },
   { id: '4', label: 'REVENUE ITEM IN SYSTEM SUSPENSE' },
   { id: '5', label: 'PROVISION ON ACCOUNT OF FSLO' },
-  { id: '6', label: 'PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING' },
+  {
+    id: '6',
+    label:
+      'PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING IN ADJUSTING ACCOUNT FOR PREVIOUS QUARTER(S) (i.e. PRIOR TO CURRENT QUARTER)',
+  },
   { id: '7', label: 'PROVISION ON N.P.A. INTEREST FREE STAFF LOANS' },
 ];
 
@@ -32,15 +67,17 @@ const RW04 = () => {
   const [tabIndex, setTabIndex] = useState(0);
   const [dynamicRows, setDynamicRows] = useState([{ ...initialDynamicRow }]);
   const [staticData, setStaticData] = useState(
-    Object.fromEntries(initialStaticRows.flatMap(r => [
-      [`${r.id}_provAmtStart`, ''],
-      [`${r.id}_writeOff`, ''],
-      [`${r.id}_addition`, ''],
-      [`${r.id}_reduction`, ''],
-      [`${r.id}_provAmtEnd`, ''],
-      [`${r.id}_rate`, '100'],
-      [`${r.id}_provRequired`, '']
-    ]))
+    Object.fromEntries(
+      initialStaticRows.flatMap((r) => [
+        [`${r.id}_provAmtStart`, ''],
+        [`${r.id}_writeOff`, ''],
+        [`${r.id}_addition`, ''],
+        [`${r.id}_reduction`, ''],
+        [`${r.id}_provAmtEnd`, ''],
+        [`${r.id}_rate`, '100'],
+        [`${r.id}_provRequired`, ''],
+      ])
+    )
   );
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
@@ -81,18 +118,29 @@ const RW04 = () => {
   };
 
   const deleteSelectedRows = () => {
-    setDynamicRows(dynamicRows.filter(row => !row.selected));
+    setDynamicRows(dynamicRows.filter((row) => !row.selected));
   };
 
   const validateAndSubmit = (section) => {
     if (section === 'dynamic') {
       for (let i = 0; i < dynamicRows.length; i++) {
         const row = dynamicRows[i];
-        if (!row.particulars.trim()) return setSnackbar({ open: true, message: `Row ${i + 1}: Particulars is required.`, severity: 'error' });
+        if (!row.particulars.trim())
+          return setSnackbar({ open: true, message: `Row ${i + 1}: Particulars is required.`, severity: 'error' });
         for (let key of ['provAmtStart', 'writeOff', 'addition', 'reduction']) {
-          if (!isNumeric(row[key])) return setSnackbar({ open: true, message: `Row ${i + 1}: ${key} must be a valid number.`, severity: 'error' });
+          if (!isNumeric(row[key]))
+            return setSnackbar({
+              open: true,
+              message: `Row ${i + 1}: ${key} must be a valid number.`,
+              severity: 'error',
+            });
         }
-        if (parseFloat(row.provAmtEnd || 0) <= 0) return setSnackbar({ open: true, message: `Row ${i + 1}: Provision end must be greater than 0.`, severity: 'error' });
+        if (parseFloat(row.provAmtEnd || 0) <= 0)
+          return setSnackbar({
+            open: true,
+            message: `Row ${i + 1}: Provision end must be greater than 0.`,
+            severity: 'error',
+          });
       }
       setSnackbar({ open: true, message: 'Dynamic section submitted.', severity: 'success' });
     } else {
@@ -100,18 +148,24 @@ const RW04 = () => {
         const id = row.id;
         for (let key of ['provAmtStart', 'writeOff', 'addition', 'reduction']) {
           const val = staticData[`${id}_${key}`];
-          if (val && !isNumeric(val)) return setSnackbar({ open: true, message: `Row ${id}: ${key} must be a valid number.`, severity: 'error' });
+          if (val && !isNumeric(val))
+            return setSnackbar({ open: true, message: `Row ${id}: ${key} must be a valid number.`, severity: 'error' });
         }
         const provEnd = parseFloat(staticData[`${id}_provAmtEnd`] || 0);
         const provRequired = parseFloat(staticData[`${id}_provRequired`] || 0);
-        if (provEnd < 0 || provRequired < 0) return setSnackbar({ open: true, message: `Row ${id}: Negative values not allowed.`, severity: 'error' });
+        if (provEnd < 0 || provRequired < 0)
+          return setSnackbar({ open: true, message: `Row ${id}: Negative values not allowed.`, severity: 'error' });
       }
       setSnackbar({ open: true, message: 'Static section submitted.', severity: 'success' });
     }
   };
 
   const saveSection = (section) => {
-    setSnackbar({ open: true, message: `${section === 'dynamic' ? 'Dynamic' : 'Static'} section saved.`, severity: 'info' });
+    setSnackbar({
+      open: true,
+      message: `${section === 'dynamic' ? 'Dynamic' : 'Static'} section saved.`,
+      severity: 'info',
+    });
   };
 
   const headers = [
@@ -123,13 +177,13 @@ const RW04 = () => {
     'REDUCTION IN PROVISIONABLE AMT (OTHER THAN WRITE OFF) DURING THE 12 MONTHS PERIOD (6)',
     'PROVISIONABLE AMT AS ON 31/03/2026 (7=3+5-4-6)',
     'RATE OF PROVISION (%) (8)',
-    'PROVISION REQUIREMENT AS ON 31/03/2026 (9=7*8/100)'
+    'PROVISION REQUIREMENT AS ON 31/03/2026 (9=7*8/100)',
   ];
 
   const renderHeader = () => (
     <TableHead>
       <TableRow>
-        <TableCell sx={{ backgroundColor: '#f5f5f5', fontWeight: 'bold' }}>Sr No</TableCell>
+        <TableCell sx={{ backgroundColor: 'hsl(220, 20%, 35%)', fontWeight: 'bold' }}>Sr No</TableCell>
         {headers.map((head, idx) => (
           <StyledTableCell key={idx}>{head}</StyledTableCell>
         ))}
@@ -150,32 +204,42 @@ const RW04 = () => {
             <Table>
               {renderHeader()}
               <TableBody>
-                {initialStaticRows.map(row => (
+                {initialStaticRows.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>{row.id}</TableCell>
                     <TableCell>{row.label}</TableCell>
-                    {["provAmtStart", "writeOff", "addition", "reduction"].map(key => (
+                    {['provAmtStart', 'writeOff', 'addition', 'reduction'].map((key) => (
                       <TableCell key={key} align="right">
                         <TextField
                           size="small"
                           value={staticData[`${row.id}_${key}`]}
-                          onChange={e => handleStaticChange(row.id, key, e.target.value)}
+                          onChange={(e) => handleStaticChange(row.id, key, e.target.value)}
                           error={!!staticData[`${row.id}_${key}`] && !isNumeric(staticData[`${row.id}_${key}`])}
-                          helperText={!isNumeric(staticData[`${row.id}_${key}`]) ? 'Invalid number' : ''}
+                          // helperText={!isNumeric(staticData[`${row.id}_${key}`]) ? '' : ''}
                         />
                       </TableCell>
                     ))}
-                    <TableCell align="right"><TextField value={staticData[`${row.id}_provAmtEnd`]} size="small" readOnly /></TableCell>
-                    <TableCell align="right"><TextField value={staticData[`${row.id}_rate`]} size="small" readOnly /></TableCell>
-                    <TableCell align="right"><TextField value={staticData[`${row.id}_provRequired`]} size="small" readOnly /></TableCell>
+                    <TableCell align="right">
+                      <TextField value={staticData[`${row.id}_provAmtEnd`]} size="small" readOnly />
+                    </TableCell>
+                    <TableCell align="right">
+                      <TextField value={staticData[`${row.id}_rate`]} size="small" readOnly />
+                    </TableCell>
+                    <TableCell align="right">
+                      <TextField value={staticData[`${row.id}_provRequired`]} size="small" readOnly />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </TableContainer>
           <Box mt={2} display="flex" gap={2}>
-            <Button variant="contained" onClick={() => saveSection('static')}>Save</Button>
-            <Button variant="contained" color="success" onClick={() => validateAndSubmit('static')}>Submit</Button>
+            <Button variant="contained" onClick={() => saveSection('static')}>
+              Save
+            </Button>
+            <Button variant="contained" color="success" onClick={() => validateAndSubmit('static')}>
+              Submit
+            </Button>
           </Box>
         </>
       )}
@@ -192,31 +256,52 @@ const RW04 = () => {
                     <TableCell padding="checkbox">
                       <Checkbox checked={row.selected} onChange={() => toggleSelectRow(i)} />
                     </TableCell>
-                    <TableCell><TextField fullWidth size="small" value={row.particulars} onChange={e => handleDynamicChange(i, 'particulars', e.target.value)} /></TableCell>
-                    {["provAmtStart", "writeOff", "addition", "reduction"].map(key => (
-                      <TableCell key={key} align="right">
+                    <TableCell>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        value={row.particulars}
+                        onChange={(e) => handleDynamicChange(i, 'particulars', e.target.value)}
+                      />
+                    </TableCell>
+                    {['provAmtStart', 'writeOff', 'addition', 'reduction'].map((key) => (
+                      <TableCell key={key} align="left">
                         <TextField
                           size="small"
                           value={row[key]}
-                          onChange={e => handleDynamicChange(i, key, e.target.value)}
+                          onChange={(e) => handleDynamicChange(i, key, e.target.value)}
                           error={!!row[key] && !isNumeric(row[key])}
-                          helperText={!isNumeric(row[key]) ? 'Invalid number' : ''}
+                          //helperText={!isNumeric(row[key]) ? 'Invalid number' : ''}
                         />
                       </TableCell>
                     ))}
-                    <TableCell align="right"><TextField size="small" value={row.provAmtEnd} readOnly /></TableCell>
-                    <TableCell align="right"><TextField size="small" value={row.rate} readOnly /></TableCell>
-                    <TableCell align="right"><TextField size="small" value={row.provRequired} readOnly /></TableCell>
+                    <TableCell align="right">
+                      <TextField size="small" value={row.provAmtEnd} readOnly />
+                    </TableCell>
+                    <TableCell align="right">
+                      <TextField size="small" value={row.rate} readOnly />
+                    </TableCell>
+                    <TableCell align="right">
+                      <TextField size="small" value={row.provRequired} readOnly />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </TableContainer>
           <Box mt={2} display="flex" gap={2}>
-            <Button variant="contained" onClick={() => setDynamicRows(prev => [...prev, { ...initialDynamicRow }])}>Add Row</Button>
-            <Button variant="outlined" color="error" onClick={deleteSelectedRows}>Delete Row</Button>
-            <Button variant="contained" onClick={() => saveSection('dynamic')}>Save</Button>
-            <Button variant="contained" color="success" onClick={() => validateAndSubmit('dynamic')}>Submit</Button>
+            <Button variant="contained" onClick={() => setDynamicRows((prev) => [...prev, { ...initialDynamicRow }])}>
+              Add Row
+            </Button>
+            <Button variant="outlined" color="error" onClick={deleteSelectedRows}>
+              Delete Row
+            </Button>
+            <Button variant="contained" onClick={() => saveSection('dynamic')}>
+              Save
+            </Button>
+            <Button variant="contained" color="success" onClick={() => validateAndSubmit('dynamic')}>
+              Submit
+            </Button>
           </Box>
         </>
       )}
@@ -229,23 +314,3 @@ const RW04 = () => {
 };
 
 export default RW04;
-
-
-✅ The updated code now includes:
-
-Correct use of values like row[key] or staticData[...] in validation
-
-Red borders and helper text for invalid number entries
-
-No more value is not defined errors
-
-
-Let me know if you’d like:
-
-Summary panel with all row-level error messages
-
-Field-level tooltips for better usability
-
-A shared error state tracker for batch validation
-
-
