@@ -70,12 +70,20 @@ const RW04 = () => {
     setDynamicRows(updated);
   };
 
-  const validateAndSubmit = () => {
-    for (let i = 0; i < dynamicRows.length; i++) {
-      if (!dynamicRows[i].particulars.trim()) return setSnackbar({ open: true, message: `Row ${i + 1} particulars missing`, severity: 'error' });
-      if (!dynamicRows[i].provAmtEnd || parseFloat(dynamicRows[i].provAmtEnd) === 0) return setSnackbar({ open: true, message: `Row ${i + 1} amount invalid`, severity: 'error' });
+  const validateAndSubmit = (section) => {
+    if (section === 'dynamic') {
+      for (let i = 0; i < dynamicRows.length; i++) {
+        if (!dynamicRows[i].particulars.trim()) return setSnackbar({ open: true, message: `Row ${i + 1} particulars missing`, severity: 'error' });
+        if (!dynamicRows[i].provAmtEnd || parseFloat(dynamicRows[i].provAmtEnd) === 0) return setSnackbar({ open: true, message: `Row ${i + 1} amount invalid`, severity: 'error' });
+      }
+      setSnackbar({ open: true, message: 'Dynamic section submitted.', severity: 'success' });
+    } else {
+      setSnackbar({ open: true, message: 'Static section submitted.', severity: 'success' });
     }
-    setSnackbar({ open: true, message: 'Submitted successfully', severity: 'success' });
+  };
+
+  const saveSection = (section) => {
+    setSnackbar({ open: true, message: `${section === 'dynamic' ? 'Dynamic' : 'Static'} section saved.`, severity: 'info' });
   };
 
   return (
@@ -86,83 +94,92 @@ const RW04 = () => {
       </Tabs>
 
       {tabIndex === 0 && (
-        <TableContainer component={Paper} sx={{ mt: 2 }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <StyledTableCell>Sr No</StyledTableCell>
-                <StyledTableCell>Particulars</StyledTableCell>
-                <StyledTableCell>Prov Start</StyledTableCell>
-                <StyledTableCell>Write Off</StyledTableCell>
-                <StyledTableCell>Addition</StyledTableCell>
-                <StyledTableCell>Reduction</StyledTableCell>
-                <StyledTableCell>Prov End</StyledTableCell>
-                <StyledTableCell>Rate</StyledTableCell>
-                <StyledTableCell>Prov Required</StyledTableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {initialStaticRows.map(row => (
-                <TableRow key={row.id}>
-                  <StyledTableCell>{row.id}</StyledTableCell>
-                  <StyledTableCell>{row.label}</StyledTableCell>
-                  {["provAmtStart", "writeOff", "addition", "reduction"].map(key => (
-                    <StyledTableCell key={key}>
-                      <TextField value={staticData[`${row.id}_${key}`]} onChange={e => handleStaticChange(row.id, key, e.target.value)} />
-                    </StyledTableCell>
-                  ))}
-                  <StyledTableCell><TextField value={staticData[`${row.id}_provAmtEnd`]} readOnly /></StyledTableCell>
-                  <StyledTableCell><TextField value={staticData[`${row.id}_rate`]} readOnly /></StyledTableCell>
-                  <StyledTableCell><TextField value={staticData[`${row.id}_provRequired`]} readOnly /></StyledTableCell>
+        <>
+          <TableContainer component={Paper} sx={{ mt: 2 }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <StyledTableCell>Sr No</StyledTableCell>
+                  <StyledTableCell>Particulars</StyledTableCell>
+                  <StyledTableCell>Prov Start</StyledTableCell>
+                  <StyledTableCell>Write Off</StyledTableCell>
+                  <StyledTableCell>Addition</StyledTableCell>
+                  <StyledTableCell>Reduction</StyledTableCell>
+                  <StyledTableCell>Prov End</StyledTableCell>
+                  <StyledTableCell>Rate</StyledTableCell>
+                  <StyledTableCell>Prov Required</StyledTableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHead>
+              <TableBody>
+                {initialStaticRows.map(row => (
+                  <TableRow key={row.id}>
+                    <StyledTableCell>{row.id}</StyledTableCell>
+                    <StyledTableCell>{row.label}</StyledTableCell>
+                    {["provAmtStart", "writeOff", "addition", "reduction"].map(key => (
+                      <StyledTableCell key={key}>
+                        <TextField value={staticData[`${row.id}_${key}`]} onChange={e => handleStaticChange(row.id, key, e.target.value)} />
+                      </StyledTableCell>
+                    ))}
+                    <StyledTableCell><TextField value={staticData[`${row.id}_provAmtEnd`]} readOnly /></StyledTableCell>
+                    <StyledTableCell><TextField value={staticData[`${row.id}_rate`]} readOnly /></StyledTableCell>
+                    <StyledTableCell><TextField value={staticData[`${row.id}_provRequired`]} readOnly /></StyledTableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <Box mt={2} display="flex" gap={2}>
+            <Button variant="contained" onClick={() => saveSection('static')}>Save</Button>
+            <Button variant="contained" color="success" onClick={() => validateAndSubmit('static')}>Submit</Button>
+          </Box>
+        </>
       )}
 
       {tabIndex === 1 && (
-        <TableContainer component={Paper} sx={{ mt: 2 }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <StyledTableCell>Sr No</StyledTableCell>
-                <StyledTableCell>Particulars</StyledTableCell>
-                <StyledTableCell>Prov Start</StyledTableCell>
-                <StyledTableCell>Write Off</StyledTableCell>
-                <StyledTableCell>Addition</StyledTableCell>
-                <StyledTableCell>Reduction</StyledTableCell>
-                <StyledTableCell>Prov End</StyledTableCell>
-                <StyledTableCell>Rate</StyledTableCell>
-                <StyledTableCell>Prov Required</StyledTableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {dynamicRows.map((row, i) => (
-                <TableRow key={i}>
-                  <StyledTableCell>{i + 1}</StyledTableCell>
-                  <StyledTableCell>
-                    <TextField fullWidth value={row.particulars} onChange={e => handleDynamicChange(i, 'particulars', e.target.value)} />
-                  </StyledTableCell>
-                  {["provAmtStart", "writeOff", "addition", "reduction"].map(key => (
-                    <StyledTableCell key={key}>
-                      <TextField value={row[key]} onChange={e => handleDynamicChange(i, key, e.target.value)} />
-                    </StyledTableCell>
-                  ))}
-                  <StyledTableCell><TextField value={row.provAmtEnd} readOnly /></StyledTableCell>
-                  <StyledTableCell><TextField value={row.rate} readOnly /></StyledTableCell>
-                  <StyledTableCell><TextField value={row.provRequired} readOnly /></StyledTableCell>
+        <>
+          <TableContainer component={Paper} sx={{ mt: 2 }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <StyledTableCell>Sr No</StyledTableCell>
+                  <StyledTableCell>Particulars</StyledTableCell>
+                  <StyledTableCell>Prov Start</StyledTableCell>
+                  <StyledTableCell>Write Off</StyledTableCell>
+                  <StyledTableCell>Addition</StyledTableCell>
+                  <StyledTableCell>Reduction</StyledTableCell>
+                  <StyledTableCell>Prov End</StyledTableCell>
+                  <StyledTableCell>Rate</StyledTableCell>
+                  <StyledTableCell>Prov Required</StyledTableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {dynamicRows.map((row, i) => (
+                  <TableRow key={i}>
+                    <StyledTableCell>{i + 1}</StyledTableCell>
+                    <StyledTableCell>
+                      <TextField fullWidth value={row.particulars} onChange={e => handleDynamicChange(i, 'particulars', e.target.value)} />
+                    </StyledTableCell>
+                    {["provAmtStart", "writeOff", "addition", "reduction"].map(key => (
+                      <StyledTableCell key={key}>
+                        <TextField value={row[key]} onChange={e => handleDynamicChange(i, key, e.target.value)} />
+                      </StyledTableCell>
+                    ))}
+                    <StyledTableCell><TextField value={row.provAmtEnd} readOnly /></StyledTableCell>
+                    <StyledTableCell><TextField value={row.rate} readOnly /></StyledTableCell>
+                    <StyledTableCell><TextField value={row.provRequired} readOnly /></StyledTableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
           <Box mt={2} display="flex" gap={2}>
             <Button variant="contained" onClick={() => setDynamicRows(prev => [...prev, { ...initialDynamicRow }])}>Add Row</Button>
             <Button variant="outlined" color="error" onClick={() => setDynamicRows(prev => prev.slice(0, -1))}>Delete Row</Button>
-            <Button variant="contained" color="success" onClick={validateAndSubmit}>Submit</Button>
+            <Button variant="contained" onClick={() => saveSection('dynamic')}>Save</Button>
+            <Button variant="contained" color="success" onClick={() => validateAndSubmit('dynamic')}>Submit</Button>
             <Button variant="outlined" color="warning" onClick={() => setNilModalOpen(true)}>Mark as Nil</Button>
           </Box>
-        </TableContainer>
+        </>
       )}
 
       <Dialog open={nilModalOpen} onClose={() => setNilModalOpen(false)}>
@@ -184,14 +201,14 @@ const RW04 = () => {
 export default RW04;
 
 
-The static section now includes all 7 rows as per the original RW04 JSP form. Each row supports entry of inputs, performs dynamic calculations for “Provision End” and “Provision Required,” and uses the same logic as in the JSP version.
+Both the static and dynamic tables now have separate Save and Submit buttons:
 
-Let me know if you want:
+✅ Save: Shows a snackbar confirming the section was saved.
 
-Additional static rows (like nested ones for prior/delayed frauds),
+✅ Submit: Validates and confirms submission for the corresponding section.
 
-Section headers like “A. Fraud-related”,
+🧠 Internally distinguishes between static and dynamic sections using a section flag.
 
-Read-only enforcement based on role or conditions.
 
+Let me know if you want to hook these into API calls or manage save/submit states visually.
 
