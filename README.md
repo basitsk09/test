@@ -15,30 +15,44 @@ const initialDynamicRow = {
   particulars: '', provAmtStart: '', writeOff: '', addition: '', reduction: '', provAmtEnd: '', rate: '100', provRequired: ''
 };
 
+const initialStaticRows = [
+  { id: '1', label: 'FRAUDS - DEBITED TO RA A/c' },
+  { id: '2', label: 'OTHERS LOSSES IN RECALLED ASSETS' },
+  { id: '3', label: 'FRAUDS - OTHER (NOT DEBITED TO RA A/c)' },
+  { id: '4', label: 'REVENUE ITEM IN SYSTEM SUSPENSE' },
+  { id: '5', label: 'PROVISION ON ACCOUNT OF FSLO' },
+  { id: '6', label: 'PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING' },
+  { id: '7', label: 'PROVISION ON N.P.A. INTEREST FREE STAFF LOANS' },
+];
+
 const RW04 = () => {
   const [tabIndex, setTabIndex] = useState(0);
   const [dynamicRows, setDynamicRows] = useState([{ ...initialDynamicRow }]);
-  const [staticData, setStaticData] = useState({
-    fraudsDebitedProvAfter: '', fraudsDebitedWrite: '', fraudsDebitedAddition: '', fraudsDebitedReduction: '',
-    fraudsDebitedProvOn: '', fraudsDebitedRate: '100', fraudsDebitedProvReq: '',
-    fraudsDebitedPrior100ProvOn: '', fraudsDebitedDelayedProvOn: '',
-  });
+  const [staticData, setStaticData] = useState(
+    Object.fromEntries(initialStaticRows.flatMap(r => [
+      [`${r.id}_provAmtStart`, ''],
+      [`${r.id}_writeOff`, ''],
+      [`${r.id}_addition`, ''],
+      [`${r.id}_reduction`, ''],
+      [`${r.id}_provAmtEnd`, ''],
+      [`${r.id}_rate`, '100'],
+      [`${r.id}_provRequired`, '']
+    ]))
+  );
   const [nilModalOpen, setNilModalOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
-  const handleStaticChange = (key, value) => {
-    const updated = { ...staticData, [key]: value };
-    const start = parseFloat(updated.fraudsDebitedProvAfter || 0);
-    const write = parseFloat(updated.fraudsDebitedWrite || 0);
-    const add = parseFloat(updated.fraudsDebitedAddition || 0);
-    const reduce = parseFloat(updated.fraudsDebitedReduction || 0);
-    const rate = parseFloat(updated.fraudsDebitedRate || 0);
-    const prior = parseFloat(updated.fraudsDebitedPrior100ProvOn || 0);
-    const delayed = parseFloat(updated.fraudsDebitedDelayedProvOn || 0);
+  const handleStaticChange = (rowId, key, value) => {
+    const updated = { ...staticData, [`${rowId}_${key}`]: value };
+    const start = parseFloat(updated[`${rowId}_provAmtStart`] || 0);
+    const write = parseFloat(updated[`${rowId}_writeOff`] || 0);
+    const add = parseFloat(updated[`${rowId}_addition`] || 0);
+    const reduce = parseFloat(updated[`${rowId}_reduction`] || 0);
+    const rate = parseFloat(updated[`${rowId}_rate`] || 0);
     const end = start - write + add - reduce;
     const required = (end * rate) / 100;
-    updated.fraudsDebitedProvOn = end.toFixed(2);
-    updated.fraudsDebitedProvReq = required.toFixed(2);
+    updated[`${rowId}_provAmtEnd`] = end.toFixed(2);
+    updated[`${rowId}_provRequired`] = required.toFixed(2);
     setStaticData(updated);
   };
 
@@ -88,19 +102,20 @@ const RW04 = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              <TableRow>
-                <StyledTableCell>1</StyledTableCell>
-                <StyledTableCell>FRAUDS - DEBITED TO RA A/c</StyledTableCell>
-                {["fraudsDebitedProvAfter", "fraudsDebitedWrite", "fraudsDebitedAddition", "fraudsDebitedReduction"]
-                  .map(key => (
+              {initialStaticRows.map(row => (
+                <TableRow key={row.id}>
+                  <StyledTableCell>{row.id}</StyledTableCell>
+                  <StyledTableCell>{row.label}</StyledTableCell>
+                  {["provAmtStart", "writeOff", "addition", "reduction"].map(key => (
                     <StyledTableCell key={key}>
-                      <TextField value={staticData[key]} onChange={e => handleStaticChange(key, e.target.value)} />
+                      <TextField value={staticData[`${row.id}_${key}`]} onChange={e => handleStaticChange(row.id, key, e.target.value)} />
                     </StyledTableCell>
                   ))}
-                <StyledTableCell><TextField value={staticData.fraudsDebitedProvOn} readOnly /></StyledTableCell>
-                <StyledTableCell><TextField value={staticData.fraudsDebitedRate} readOnly /></StyledTableCell>
-                <StyledTableCell><TextField value={staticData.fraudsDebitedProvReq} readOnly /></StyledTableCell>
-              </TableRow>
+                  <StyledTableCell><TextField value={staticData[`${row.id}_provAmtEnd`]} readOnly /></StyledTableCell>
+                  <StyledTableCell><TextField value={staticData[`${row.id}_rate`]} readOnly /></StyledTableCell>
+                  <StyledTableCell><TextField value={staticData[`${row.id}_provRequired`]} readOnly /></StyledTableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </TableContainer>
@@ -169,30 +184,14 @@ const RW04 = () => {
 export default RW04;
 
 
-RW04 is now implemented in a single React component with two tabs:
+The static section now includes all 7 rows as per the original RW04 JSP form. Each row supports entry of inputs, performs dynamic calculations for “Provision End” and “Provision Required,” and uses the same logic as in the JSP version.
 
-Tab 1: Static section with auto-calculation (like "Frauds Debited")
+Let me know if you want:
 
-Tab 2: Dynamic add/delete rows with full validations
+Additional static rows (like nested ones for prior/delayed frauds),
 
+Section headers like “A. Fraud-related”,
 
-✅ Includes:
-
-MUI Tabs, Table, Dialog, and Snackbar
-
-Logic from calculateTotal, checkNegative, provisionable1
-
-Nil report modal and submission validation
-
-
-Let me know if you'd like:
-
-Backend integration (POST data to API)
-
-Additional sections from JSP
-
-Excel/PDF download
-
-Dark mode support or optimization for large data sets
+Read-only enforcement based on role or conditions.
 
 
