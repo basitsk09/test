@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Tabs, Tab, Box, Typography, Table, TableHead, TableRow, TableCell, TableBody,
-  TableContainer, Paper, TextField, Button, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert
+  TableContainer, Paper, TextField, Button, Snackbar, Alert, Checkbox
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
@@ -9,12 +9,12 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontSize: '0.875rem',
   textAlign: 'center',
   padding: '6px',
-  backgroundColor: '#1976d2',
-  color: 'white',
+  backgroundColor: '#f5f5f5',
   fontWeight: 'bold'
 }));
 
 const initialDynamicRow = {
+  selected: false,
   particulars: '', provAmtStart: '', writeOff: '', addition: '', reduction: '', provAmtEnd: '', rate: '100', provRequired: ''
 };
 
@@ -42,7 +42,6 @@ const RW04 = () => {
       [`${r.id}_provRequired`, '']
     ]))
   );
-  const [nilModalOpen, setNilModalOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
   const handleStaticChange = (rowId, key, value) => {
@@ -73,6 +72,16 @@ const RW04 = () => {
     setDynamicRows(updated);
   };
 
+  const toggleSelectRow = (i) => {
+    const updated = [...dynamicRows];
+    updated[i].selected = !updated[i].selected;
+    setDynamicRows(updated);
+  };
+
+  const deleteSelectedRows = () => {
+    setDynamicRows(dynamicRows.filter(row => !row.selected));
+  };
+
   const validateAndSubmit = (section) => {
     if (section === 'dynamic') {
       for (let i = 0; i < dynamicRows.length; i++) {
@@ -90,6 +99,7 @@ const RW04 = () => {
   };
 
   const headers = [
+    'SELECT',
     'PARTICULAR(S)',
     'PROVISIONABLE AMT AS ON\n01.04.2025 (3)',
     'WRITE OFF DURING THE 12 MONTHS PERIOD* (4)',
@@ -103,7 +113,7 @@ const RW04 = () => {
   const renderHeader = () => (
     <TableHead>
       <TableRow>
-        <StyledTableCell>Sr No</StyledTableCell>
+        <TableCell sx={{ backgroundColor: '#f5f5f5', fontWeight: 'bold' }}>Sr No</TableCell>
         {headers.map((head, idx) => (
           <StyledTableCell key={idx}>{head}</StyledTableCell>
         ))}
@@ -126,7 +136,7 @@ const RW04 = () => {
               <TableBody>
                 {initialStaticRows.map(row => (
                   <TableRow key={row.id}>
-                    <StyledTableCell>{row.id}</StyledTableCell>
+                    <TableCell>{row.id}</TableCell>
                     <TableCell>{row.label}</TableCell>
                     {["provAmtStart", "writeOff", "addition", "reduction"].map(key => (
                       <TableCell key={key} align="right">
@@ -156,7 +166,10 @@ const RW04 = () => {
               <TableBody>
                 {dynamicRows.map((row, i) => (
                   <TableRow key={i}>
-                    <StyledTableCell>{i + 1}</StyledTableCell>
+                    <TableCell>{i + 1}</TableCell>
+                    <TableCell padding="checkbox">
+                      <Checkbox checked={row.selected} onChange={() => toggleSelectRow(i)} />
+                    </TableCell>
                     <TableCell><TextField fullWidth size="small" value={row.particulars} onChange={e => handleDynamicChange(i, 'particulars', e.target.value)} /></TableCell>
                     {["provAmtStart", "writeOff", "addition", "reduction"].map(key => (
                       <TableCell key={key} align="right">
@@ -173,22 +186,12 @@ const RW04 = () => {
           </TableContainer>
           <Box mt={2} display="flex" gap={2}>
             <Button variant="contained" onClick={() => setDynamicRows(prev => [...prev, { ...initialDynamicRow }])}>Add Row</Button>
-            <Button variant="outlined" color="error" onClick={() => setDynamicRows(prev => prev.slice(0, -1))}>Delete Row</Button>
+            <Button variant="outlined" color="error" onClick={deleteSelectedRows}>Delete Row</Button>
             <Button variant="contained" onClick={() => saveSection('dynamic')}>Save</Button>
             <Button variant="contained" color="success" onClick={() => validateAndSubmit('dynamic')}>Submit</Button>
-            <Button variant="outlined" color="warning" onClick={() => setNilModalOpen(true)}>Mark as Nil</Button>
           </Box>
         </>
       )}
-
-      <Dialog open={nilModalOpen} onClose={() => setNilModalOpen(false)}>
-        <DialogTitle>Caution!</DialogTitle>
-        <DialogContent><Typography>Do you want to submit RW-04 as Nil Report?</Typography></DialogContent>
-        <DialogActions>
-          <Button onClick={() => { setDynamicRows([{ ...initialDynamicRow }]); setSnackbar({ open: true, message: 'Marked as Nil', severity: 'info' }); setNilModalOpen(false); }} color="success">Yes</Button>
-          <Button onClick={() => setNilModalOpen(false)} color="error">No</Button>
-        </DialogActions>
-      </Dialog>
 
       <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
         <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
@@ -200,41 +203,21 @@ const RW04 = () => {
 export default RW04;
 
 
-✅ Headers now fully match your screenshot:
+✅ "Delete Row" is now checkbox-based:
 
-Multiline header labels (e.g., PROVISIONABLE AMT AS ON\n01.04.2025 (3))
+Each row in RW-04(B) includes a selectable checkbox
 
-Bold white text on blue background
+Clicking "Delete Row" removes all checked rows
 
-Used in both RW-04(A) and RW-04(B) tables
-
-Columns:
-
-1. Particulars
+"Sr No" remains unaffected visually
 
 
-2. Prov Start
+Let me know if you want:
 
+A "Select All" checkbox
 
-3. Write Off
+Confirmation before deletion
 
+Persistent serial numbers even after deletion
 
-4. Additions
-
-
-5. Reductions
-
-
-6. Prov End (7 = 3 + 5 - 4 - 6)
-
-
-7. Rate (%)
-
-
-8. Provision Required (9 = 7 * 8 / 100)
-
-
-
-
-Let me know if you’d like column alignment adjustments or tooltips like the legacy version.
 
