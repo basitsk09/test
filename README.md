@@ -7,8 +7,11 @@ import { styled } from '@mui/material/styles';
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontSize: '0.875rem',
-  textAlign: 'right',
+  textAlign: 'center',
   padding: '6px',
+  backgroundColor: '#1976d2',
+  color: 'white',
+  fontWeight: 'bold'
 }));
 
 const initialDynamicRow = {
@@ -86,43 +89,53 @@ const RW04 = () => {
     setSnackbar({ open: true, message: `${section === 'dynamic' ? 'Dynamic' : 'Static'} section saved.`, severity: 'info' });
   };
 
+  const headers = [
+    'PARTICULAR(S)',
+    'PROVISIONABLE AMT AS ON\n01.04.2025 (3)',
+    'WRITE OFF DURING THE 12 MONTHS PERIOD* (4)',
+    'ADDITIONS IN PROVISIONABLE AMT DURING THE 12 MONTHS PERIOD (5)',
+    'REDUCTION IN PROVISIONABLE AMT (OTHER THAN WRITE OFF) DURING THE 12 MONTHS PERIOD (6)',
+    'PROVISIONABLE AMT AS ON 31/03/2026 (7=3+5-4-6)',
+    'RATE OF PROVISION (%) (8)',
+    'PROVISION REQUIREMENT AS ON 31/03/2026 (9=7*8/100)'
+  ];
+
+  const renderHeader = () => (
+    <TableHead>
+      <TableRow>
+        <StyledTableCell>Sr No</StyledTableCell>
+        {headers.map((head, idx) => (
+          <StyledTableCell key={idx}>{head}</StyledTableCell>
+        ))}
+      </TableRow>
+    </TableHead>
+  );
+
   return (
     <Box>
       <Tabs value={tabIndex} onChange={(e, i) => setTabIndex(i)}>
-        <Tab label="Static Section" />
-        <Tab label="Dynamic Section" />
+        <Tab label="RW-04(A)" />
+        <Tab label="RW-04(B)" />
       </Tabs>
 
       {tabIndex === 0 && (
         <>
           <TableContainer component={Paper} sx={{ mt: 2 }}>
             <Table>
-              <TableHead>
-                <TableRow>
-                  <StyledTableCell>Sr No</StyledTableCell>
-                  <StyledTableCell>Particulars</StyledTableCell>
-                  <StyledTableCell>Prov Start</StyledTableCell>
-                  <StyledTableCell>Write Off</StyledTableCell>
-                  <StyledTableCell>Addition</StyledTableCell>
-                  <StyledTableCell>Reduction</StyledTableCell>
-                  <StyledTableCell>Prov End</StyledTableCell>
-                  <StyledTableCell>Rate</StyledTableCell>
-                  <StyledTableCell>Prov Required</StyledTableCell>
-                </TableRow>
-              </TableHead>
+              {renderHeader()}
               <TableBody>
                 {initialStaticRows.map(row => (
                   <TableRow key={row.id}>
                     <StyledTableCell>{row.id}</StyledTableCell>
-                    <StyledTableCell>{row.label}</StyledTableCell>
+                    <TableCell>{row.label}</TableCell>
                     {["provAmtStart", "writeOff", "addition", "reduction"].map(key => (
-                      <StyledTableCell key={key}>
-                        <TextField value={staticData[`${row.id}_${key}`]} onChange={e => handleStaticChange(row.id, key, e.target.value)} />
-                      </StyledTableCell>
+                      <TableCell key={key} align="right">
+                        <TextField value={staticData[`${row.id}_${key}`]} onChange={e => handleStaticChange(row.id, key, e.target.value)} size="small" />
+                      </TableCell>
                     ))}
-                    <StyledTableCell><TextField value={staticData[`${row.id}_provAmtEnd`]} readOnly /></StyledTableCell>
-                    <StyledTableCell><TextField value={staticData[`${row.id}_rate`]} readOnly /></StyledTableCell>
-                    <StyledTableCell><TextField value={staticData[`${row.id}_provRequired`]} readOnly /></StyledTableCell>
+                    <TableCell align="right"><TextField value={staticData[`${row.id}_provAmtEnd`]} size="small" readOnly /></TableCell>
+                    <TableCell align="right"><TextField value={staticData[`${row.id}_rate`]} size="small" readOnly /></TableCell>
+                    <TableCell align="right"><TextField value={staticData[`${row.id}_provRequired`]} size="small" readOnly /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -139,34 +152,20 @@ const RW04 = () => {
         <>
           <TableContainer component={Paper} sx={{ mt: 2 }}>
             <Table>
-              <TableHead>
-                <TableRow>
-                  <StyledTableCell>Sr No</StyledTableCell>
-                  <StyledTableCell>Particulars</StyledTableCell>
-                  <StyledTableCell>Prov Start</StyledTableCell>
-                  <StyledTableCell>Write Off</StyledTableCell>
-                  <StyledTableCell>Addition</StyledTableCell>
-                  <StyledTableCell>Reduction</StyledTableCell>
-                  <StyledTableCell>Prov End</StyledTableCell>
-                  <StyledTableCell>Rate</StyledTableCell>
-                  <StyledTableCell>Prov Required</StyledTableCell>
-                </TableRow>
-              </TableHead>
+              {renderHeader()}
               <TableBody>
                 {dynamicRows.map((row, i) => (
                   <TableRow key={i}>
                     <StyledTableCell>{i + 1}</StyledTableCell>
-                    <StyledTableCell>
-                      <TextField fullWidth value={row.particulars} onChange={e => handleDynamicChange(i, 'particulars', e.target.value)} />
-                    </StyledTableCell>
+                    <TableCell><TextField fullWidth size="small" value={row.particulars} onChange={e => handleDynamicChange(i, 'particulars', e.target.value)} /></TableCell>
                     {["provAmtStart", "writeOff", "addition", "reduction"].map(key => (
-                      <StyledTableCell key={key}>
-                        <TextField value={row[key]} onChange={e => handleDynamicChange(i, key, e.target.value)} />
-                      </StyledTableCell>
+                      <TableCell key={key} align="right">
+                        <TextField size="small" value={row[key]} onChange={e => handleDynamicChange(i, key, e.target.value)} />
+                      </TableCell>
                     ))}
-                    <StyledTableCell><TextField value={row.provAmtEnd} readOnly /></StyledTableCell>
-                    <StyledTableCell><TextField value={row.rate} readOnly /></StyledTableCell>
-                    <StyledTableCell><TextField value={row.provRequired} readOnly /></StyledTableCell>
+                    <TableCell align="right"><TextField size="small" value={row.provAmtEnd} readOnly /></TableCell>
+                    <TableCell align="right"><TextField size="small" value={row.rate} readOnly /></TableCell>
+                    <TableCell align="right"><TextField size="small" value={row.provRequired} readOnly /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -201,14 +200,41 @@ const RW04 = () => {
 export default RW04;
 
 
-Both the static and dynamic tables now have separate Save and Submit buttons:
+✅ Headers now fully match your screenshot:
 
-✅ Save: Shows a snackbar confirming the section was saved.
+Multiline header labels (e.g., PROVISIONABLE AMT AS ON\n01.04.2025 (3))
 
-✅ Submit: Validates and confirms submission for the corresponding section.
+Bold white text on blue background
 
-🧠 Internally distinguishes between static and dynamic sections using a section flag.
+Used in both RW-04(A) and RW-04(B) tables
+
+Columns:
+
+1. Particulars
 
 
-Let me know if you want to hook these into API calls or manage save/submit states visually.
+2. Prov Start
+
+
+3. Write Off
+
+
+4. Additions
+
+
+5. Reductions
+
+
+6. Prov End (7 = 3 + 5 - 4 - 6)
+
+
+7. Rate (%)
+
+
+8. Provision Required (9 = 7 * 8 / 100)
+
+
+
+
+Let me know if you’d like column alignment adjustments or tooltips like the legacy version.
 
