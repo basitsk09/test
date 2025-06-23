@@ -1,38 +1,229 @@
-@PostMapping("/getAnnexureSftp")
-    public @ResponseBody Map<String, Object> getAnnexureSftp(@RequestBody Map<String,Object> map) throws ConfigurationException, SQLException, IOException {
-        Map<String, Object> updatedTabData = new HashMap<>();
-        Boolean getFile = ccdpSftpService.getsftpdata(map);
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TextField, Button, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions
+} from '@mui/material';
+import { styled } from '@mui/material/styles';
 
-        boolean issave=false;
-        if (getFile && ((String) map.get("reportName")).equalsIgnoreCase("ANX2C")) {
+// --- Styled Table Cell ---
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  fontSize: '0.875rem',
+  textAlign: 'right',
+  padding: '6px',
+}));
 
-             updatedTabData = annexure2CReportDao.getSaveBySftp(map);
-//            log.info("annex2cdata:-"+updatedTabData+ "  "+updatedTabData.get("status"));
+const RW04Table = () => {
+  const [rows, setRows] = useState([]);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
+  const initialRow = {
+    particulars: '',
+    provAmtStart: '',
+    writeOff: '',
+    addition: '',
+    reduction: '',
+    provAmtEnd: '',
+    rate: '100',
+    provRequired: ''
+  };
 
+  // Load default row (one static to start)
+  useEffect(() => {
+    setRows([ { ...initialRow } ]);
+  }, []);
 
-        } else if (getFile && ((String) map.get("reportName")).equalsIgnoreCase("SC9")) {
+  const handleChange = (index, field, value) => {
+    const updated = [...rows];
+    updated[index][field] = value;
 
-            updatedTabData = sc09Service.getSaveBySftp(map);
+    if (['provAmtStart', 'writeOff', 'addition', 'reduction'].includes(field)) {
+      const start = parseFloat(updated[index].provAmtStart || 0);
+      const write = parseFloat(updated[index].writeOff || 0);
+      const add = parseFloat(updated[index].addition || 0);
+      const reduce = parseFloat(updated[index].reduction || 0);
+      const rate = parseFloat(updated[index].rate || 0);
 
+      const end = start - write + add - reduce;
+      const required = (end * rate) / 100;
 
-        }else {    ///file exist no
-            int count = ccdpSftpService.checkCCDPTimeStamp(map);
-            int dataCount= ccdpSftpService.getCountdata(map);
-            if (count == 1 && dataCount >= 1 ) {
-               String timest= ccdpSftpService.getCCDPTimeStamp(map);
-                updatedTabData.put("message", "Please note: \n Data fetched here was generated in CCDP at "+timest);
-                updatedTabData.put("status", true);
-                updatedTabData.put("fileAndDataStatus", 3);
-            } else {
-                updatedTabData.put("message", "Data not received from CCDP, Kindly wait till CCDP sends reports");
-                updatedTabData.put("status", false);
-                updatedTabData.put("fileAndDataStatus", 2);
-          /*  if(((String) map.get("reportName")).equalsIgnoreCase("ANX2C")){
-
-            }*/
-            }
-        }
-//        log.info("updatedTabData:-"+updatedTabData);
-        return updatedTabData;
+      updated[index].provAmtEnd = end.toFixed(2);
+      updated[index].provRequired = required.toFixed(2);
     }
+
+    setRows(updated);
+  };
+
+  const addRow = () => setRows(prev => [...prev, { ...initialRow }]);
+  const deleteRow = () => setRows(prev => prev.length > 1 ? prev.slice(0, -1) : prev);
+
+  const validateAndSubmit = () => {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row.particulars.trim()) {
+        return setSnackbar({ open: true, message: `Row ${i + 1}: Particulars required.`, severity: 'error' });
+      }
+      if (!row.provAmtEnd || parseFloat(row.provAmtEnd) === 0) {
+        return setSnackbar({ open: true, message: `Row ${i + 1}: Provisional amount required.`, severity: 'error' });
+      }
+    }
+    setSnackbar({ open: true, message: 'Validated successfully.', severity: 'success' });
+    // TODO: API call here
+  };
+
+  return (
+    <>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              {['(1) Sr No.', '(2) Particulars', '(3) Prov Start', '(4) Write Off', '(5) Addition', '(6) Reduction', '(7) Prov End', '(8) Rate', '(9) Prov Req'].map((label, idx) => (
+                <StyledTableCell key={idx}>{label}</StyledTableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((row, i) => (
+              <TableRow key={i}>
+                <StyledTableCell>{i + 1}</StyledTableCell>
+                <StyledTableCell>
+                  <TextField fullWidth value={row.particulars} onChange={e => handleChange(i, 'particulars', e.target.value)} />
+                </StyledTableCell>
+                {['provAmtStart', 'writeOff', 'addition', 'reduction', 'provAmtEnd', 'rate', 'provRequired'].map((field, j) => (
+                  <StyledTableCell key={j}>
+                    <TextField
+                      value={row[field]}
+                      onChange={e => handleChange(i, field, e.target.value)}
+                      inputProps={{ readOnly: ['provAmtEnd', 'provRequired'].includes(field) }}
+                    />
+                  </StyledTableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <div style={{ marginTop: '16px' }}>
+        <Button variant="contained" onClick={addRow}>Add Row</Button>
+        <Button variant="contained" color="error" onClick={deleteRow} style={{ marginLeft: 8 }}>Delete Row</Button>
+        <Button variant="contained" color="success" onClick={validateAndSubmit} style={{ marginLeft: 8 }}>Submit</Button>
+      </div>
+
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
+    </>
+  );
+};
+
+export default RW04Table;
+
+
+Great. Here's the implementation for:
+
+
+---
+
+✅ Part 2: Modals for Nil Report & Error Handling
+
+We'll use MUI Dialog to replicate Bootstrap modals (#myModal3, #errorModal, etc.).
+
+Add this block below your RW04Table JSX code:
+
+// --- Inside RW04Table component ---
+
+const [nilModalOpen, setNilModalOpen] = useState(false);
+const [errorModal, setErrorModal] = useState({ open: false, message: '' });
+
+const handleNilConfirm = () => {
+  setNilModalOpen(false);
+  // Clear the form to mark as nil
+  setRows([{ ...initialRow }]);
+  setSnackbar({ open: true, message: 'RW-04 marked as Nil Report.', severity: 'success' });
+};
+
+const handleNilReject = () => setNilModalOpen(false);
+
+const openErrorModal = (msg) => setErrorModal({ open: true, message: msg });
+
+return (
+  <>
+    {/* ...existing JSX... */}
+
+    <Dialog open={nilModalOpen} onClose={handleNilReject}>
+      <DialogTitle>Caution!</DialogTitle>
+      <DialogContent>
+        <p>Do you want to submit RW-04 as Nil Report? This will delete all entered data.</p>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleNilConfirm} color="success">Yes</Button>
+        <Button onClick={handleNilReject} color="error">No</Button>
+      </DialogActions>
+    </Dialog>
+
+    <Dialog open={errorModal.open} onClose={() => setErrorModal({ ...errorModal, open: false })}>
+      <DialogTitle style={{ color: 'red' }}>Error</DialogTitle>
+      <DialogContent>
+        <p>{errorModal.message}</p>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setErrorModal({ ...errorModal, open: false })} color="error">Close</Button>
+      </DialogActions>
+    </Dialog>
+  </>
+);
+
+To trigger these:
+
+// call this when you want to open nil modal
+setNilModalOpen(true);
+
+// or show error modal
+openErrorModal("Validation failed: Provision required");
+
+
+---
+
+✅ Part 4: provisionable1, provisionable2, checkNegative
+
+Add these above your RW04Table component:
+
+const checkNegative = (value) => {
+  const num = parseFloat(value);
+  return !isNaN(num) && num < 0;
+};
+
+const provisionable1 = (main, prior, delayed) => {
+  const mainVal = parseFloat(main || 0).toFixed(2);
+  const total = (parseFloat(prior || 0) + parseFloat(delayed || 0)).toFixed(2);
+  return mainVal !== total;
+};
+
+const provisionable2 = (main, prior, delayed) => {
+  const mainVal = parseFloat(main || 0).toFixed(2);
+  const total = (parseFloat(prior || 0) + parseFloat(delayed || 0)).toFixed(2);
+  return mainVal !== total;
+};
+
+You can apply these checks in your validation logic:
+
+if (checkNegative(row.provAmtStart)) {
+  openErrorModal(`Row ${i + 1}: Negative provision is not allowed.`);
+  return;
+}
+
+if (provisionable1(row.provAmtEnd, row.fraudsDebitedPrior100ProvOn, row.fraudsDebitedDelayedProvOn)) {
+  openErrorModal(`Row ${i + 1}: Sum mismatch in Section 1.`);
+  return;
+}
+
+If your structure includes specific fields like:
+
+row.fraudsDebitedPrior100ProvOn = "..."
+
+you must add them in initialRow and map to inputs.
+
+
+---
+
+Would you like me to now complete Part 3 (backend integration + hidden inputs) and wrap all parts in one file for use?
+
