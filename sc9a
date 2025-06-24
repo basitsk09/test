@@ -1,28 +1,108 @@
-OTH_ASTS_BRANCH	VARCHAR2(5 BYTE)	No
-OTH_ASTS_DATE	DATE	No
-OTH_ASTS_LST_YR	VARCHAR2(20 BYTE)	Yes
-OTH_ASTS_WRITE_OFF	VARCHAR2(20 BYTE)	Yes
-OTH_ASTS_ADDITION	VARCHAR2(20 BYTE)	Yes
-OTH_ASTS_REDUCTION	VARCHAR2(20 BYTE)	Yes
-OTH_ASTS_CUR_YR	VARCHAR2(20 BYTE)	Yes
-OTH_ASTS_PROVI_RATE	VARCHAR2(20 BYTE)	Yes
-OTH_ASTS_PROVI_REQ	VARCHAR2(20 BYTE)	Yes
-REPORT_MASTER_LIST_ID_FK	VARCHAR2(10 BYTE)	No
-CRS_OTH_ASSESTS_NAME	VARCHAR2(200 BYTE)	Yes
-CRS_OTH_ASSESTS_ID	VARCHAR2(20 BYTE)	No
-CRS_OTH_ASSESTS_SQ	VARCHAR2(20 BYTE)	Yes
+Thank you. Based on this DB schema and sample data, here's exactly how your React frontend payload for dynamic rows should be constructed to match the database table CRS_OTH_ASSESTS.
 
 
-99999	
-30-JUN-16	
-122.00	
-0.00	
-0.00	
-0.00	
-122.00
-100		
-0.00	
-1749519	
-FRAUDS - DEBITED TO RECALLED ASSETS A/c (Prod Cd 6998-9981)**	
-1	
-1
+---
+
+✅ Mapping Summary for Dynamic Table (Tab 2)
+
+React Field	DB Column	Sample Value
+
+writeOff	OTH_ASTS_WRITE_OFF	0.00
+addition	OTH_ASTS_ADDITION	0.00
+reduction	OTH_ASTS_REDUCTION	0.00
+provAmtEnd	OTH_ASTS_CUR_YR	122.00
+rate	OTH_ASTS_PROVI_RATE	100
+provRequired	OTH_ASTS_PROVI_REQ	0.00
+particulars	CRS_OTH_ASSESTS_NAME	e.g., "FRAUDS - ..."
+id	CRS_OTH_ASSESTS_ID	1
+sqNo	CRS_OTH_ASSESTS_SQ	1
+
+
+✅ You also need:
+
+OTH_ASTS_BRANCH: e.g., "99999" (should come from user context or state)
+
+OTH_ASTS_DATE: e.g., "30-JUN-16" (set to current or selected report date)
+
+REPORT_MASTER_LIST_ID_FK: e.g., "1749519" (probably from route or props)
+
+
+
+---
+
+✅ Final Dynamic Row Mapping Logic in React
+
+Update your dynamic row mapping in submitRW04Data() like so:
+
+const submitRW04Data = async () => {
+  const staticPayload = mapStaticToBackend();
+  const dynamicPayload = dynamicRows.map((row, index) => ({
+    othAstsWriteOff: row.writeOff || '',
+    othAstsAddition: row.addition || '',
+    othAstsReduction: row.reduction || '',
+    othAstsCurYr: row.provAmtEnd || '',
+    othAstsProviRate: row.rate || '',
+    othAstsProviReq: row.provRequired || '',
+    crsOthAssestsName: row.particulars || '',
+    crsOthAssestsId: (index + 1).toString(),
+    crsOthAssestsSq: (index + 1).toString(),
+    othAstsBranch: '99999', // or get from state
+    othAstsDate: '2025-03-31', // or format from state
+    reportMasterListIdFk: '1749519', // or from props/location
+  }));
+
+  const payload = {
+    staticPart: staticPayload,
+    dynamicPart: dynamicPayload,
+  };
+
+  try {
+    const response = await fetch('/api/rw04/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) throw new Error('Failed to save RW-04');
+
+    setSnackbar({
+      open: true,
+      message: 'RW-04 data saved successfully',
+      severity: 'success',
+    });
+  } catch (err) {
+    setSnackbar({
+      open: true,
+      message: `Error: ${err.message}`,
+      severity: 'error',
+    });
+  }
+};
+
+
+---
+
+🔄 Optional: If you want these 3 fields dynamic
+
+You can lift them to state and allow users to pick:
+
+const [branchCode, setBranchCode] = useState('99999');
+const [reportDate, setReportDate] = useState('2025-03-31');
+const [reportMasterId, setReportMasterId] = useState('1749519');
+
+Then plug them into the payload.
+
+
+---
+
+Would you like me to:
+
+Add date picker for othAstsDate
+
+Show how to POST this to a /saveOrSubmitRW04 endpoint with action type flag (save/submit)?
+
+Integrate this into the button logic with loading states?
+
+
