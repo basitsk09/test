@@ -1,211 +1,220 @@
-import React, { useState } from 'react';
-import {
-  Tabs,
-  Tab,
-  Box,
-  Typography,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  TableContainer,
-  Paper,
-  Button,
-  Snackbar,
-  Alert,
-  Checkbox,
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
-import FormInput from '../../../../common/components/ui/FormInput';
+You're absolutely right — in the last complete version of the RW04 React component I provided, the fieldKeyMap and mapped payload preparation were not included yet in the onSave() function. Let's fix that now.
 
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontSize: '0.875rem',
-  textAlign: 'center',
-  padding: '6px',
-  fontWeight: 'bold',
-}));
 
-const initialDynamicRow = {
-  selected: false,
-  particulars: '',
-  provAmtStart: '',
-  writeOff: '',
-  addition: '',
-  reduction: '',
-  provAmtEnd: '',
-  rate: '100',
-  provRequired: '',
+---
+
+✅ Add This to Your Component: fieldKeyMap + Payload Mapping
+
+📍Step 1: Add fieldKeyMap above onSave function
+
+Right after your initialDynamicRow, add:
+
+const fieldKeyMap = {
+  particulars: 'particulars',
+  provAmtStart: 'provAmt2015',
+  writeOff: 'writeOffDur12mon',
+  addition: 'additionDur12mon',
+  reduction: 'reduInProviAmt',
+  provAmtEnd: 'proviAmt2016',
+  rate: 'ratePOfProv',
+  provRequired: 'provReq',
 };
 
-const initialStaticRows = [
-  { id: '1', label: 'FRAUDS - DEBITED TO RECALLED ASSETS A/c (Prod Cd 6998-9981)**', beanPrefix: 'fraudsDebited' },
-  { id: '1.i', label: 'Frauds reported within time up to 30-09-2024 provision @ 100% ##', beanPrefix: 'fraudsDebitedPrior100' },
-  { id: '1.ii', label: 'Delayed Reported frauds Provision @ 100% ##', beanPrefix: 'fraudsDebitedDelayed' },
-  { id: '2', label: 'OTHERS LOSSES IN RECALLED ASSETS (Prod cd 6998 - 9982)#', beanPrefix: 'othersRecalled' },
-  { id: '3', label: 'FRAUDS - OTHER (NOT DEBITED TO RA A/c)$', beanPrefix: 'fraudsOthers' },
-  { id: '3.i', label: 'Frauds reported within time up to 30-09-2024 provision @ 100% ##', beanPrefix: 'fraudsOthersPrior100' },
-  { id: '3.ii', label: 'Delayed Reported frauds Provision @ 100% ##', beanPrefix: 'fraudsOthersDelayed' },
-  { id: '4', label: 'REVENUE ITEM IN SYSTEM SUSPENSE', beanPrefix: 'revenue' },
-  { id: '5', label: 'PROVISION ON ACCOUNT OF FSLO', beanPrefix: 'fslo' },
-  { id: '6', label: 'PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING IN ADJUSTING ACCOUNT FOR PREVIOUS QUARTER(S)', beanPrefix: 'outstanding' },
-  { id: '7', label: 'PROVISION ON N.P.A. INTEREST FREE STAFF LOANS', beanPrefix: 'npainterest' },
-];
 
-const RW04 = () => {
-  const [tabIndex, setTabIndex] = useState(0);
-  const [dynamicRows, setDynamicRows] = useState([{ ...initialDynamicRow }]);
-  const [staticData, setStaticData] = useState(
-    Object.fromEntries(
-      initialStaticRows.flatMap((r) =>
-        ['provAmtStart', 'writeOff', 'addition', 'reduction', 'provAmtEnd', 'rate', 'provRequired'].map((key) => [
-          `${r.id}_${key}`,
-          key === 'rate' ? '100' : '',
-        ])
-      )
-    )
-  );
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
+---
 
-  const headers = [
-    ...(tabIndex === 1 ? ['SELECT'] : []),
-    'PARTICULARS(2)',
-    'PROVISIONABLE AMT AS ON 01.04.2025 (3)',
-    'WRITE OFF DURING THE 12 MONTHS PERIOD* (4)',
-    'ADDITONS IN PROVISIONABLE AMT DURING THE 12 MONTHS PERIOD (5)',
-    'REDUCTION IN PROVISIONABLE AMT (OTHER THAN WRITE OFF) DURING THE 12 MONTHS PERIOD^ (6)',
-    'PROVISIONABLE AMT AS ON 31/03/2025 (7)=3-4+5-6',
-    'RATE OF PROVISION (%)(8)',
-    'PROVISION REQUIREMENT AS ON 31/03/2025 (9)=7*8',
-  ];
+📍Step 2: Update onSave() to use it
 
-  const isNumeric = (val) => !isNaN(parseFloat(val)) && isFinite(val);
+Replace your existing onSave() function with:
 
-  const calculateAndSetStatic = (rowId, updated) => {
-    const isManualRow = ['1.i', '1.ii', '3.i', '3.ii'].includes(rowId);
-    const start = parseFloat(updated[`${rowId}_provAmtStart`] || 0);
-    const write = parseFloat(updated[`${rowId}_writeOff`] || 0);
-    const add = parseFloat(updated[`${rowId}_addition`] || 0);
-    const reduce = parseFloat(updated[`${rowId}_reduction`] || 0);
-    const rate = parseFloat(updated[`${rowId}_rate`] || 0);
-
-    if (!isManualRow) {
-      const end = start - write + add - reduce;
-      updated[`${rowId}_provAmtEnd`] = end.toFixed(2);
-      updated[`${rowId}_provRequired`] = ((end * rate) / 100).toFixed(2);
-    } else {
-      const end = parseFloat(updated[`${rowId}_provAmtEnd`] || 0);
-      updated[`${rowId}_provRequired`] = ((end * rate) / 100).toFixed(2);
-    }
-  };
-
-  const handleStaticChange = (rowId, key, value) => {
-    const updated = { ...staticData, [`${rowId}_${key}`]: value };
-    calculateAndSetStatic(rowId, updated);
-    setStaticData(updated);
-  };
-
-  const handleDynamicChange = (i, key, value) => {
-    const updated = [...dynamicRows];
-    updated[i][key] = value;
-    const start = parseFloat(updated[i].provAmtStart || 0);
-    const write = parseFloat(updated[i].writeOff || 0);
-    const add = parseFloat(updated[i].addition || 0);
-    const reduce = parseFloat(updated[i].reduction || 0);
-    const rate = parseFloat(updated[i].rate || 0);
-    const end = start - write + add - reduce;
-    updated[i].provAmtEnd = end.toFixed(2);
-    updated[i].provRequired = ((end * rate) / 100).toFixed(2);
-    setDynamicRows(updated);
-  };
-
-  const isChildRowDisabled = (rowId, key) => {
-    return (
-      (rowId === '1.i' || rowId === '1.ii' || rowId === '3.i' || rowId === '3.ii') &&
-      !['provAmtEnd', 'rate', 'provRequired'].includes(key)
-    );
-  };
-
-  const getProvAmtEndMismatchError = (rowId) => {
-    if (rowId === '1') {
-      const parent = parseFloat(staticData['1_provAmtEnd'] || 0);
-      const sum = parseFloat(staticData['1.i_provAmtEnd'] || 0) + parseFloat(staticData['1.ii_provAmtEnd'] || 0);
-      return Math.abs(parent - sum) > 0.01;
-    }
-    if (rowId === '3') {
-      const parent = parseFloat(staticData['3_provAmtEnd'] || 0);
-      const sum = parseFloat(staticData['3.i_provAmtEnd'] || 0) + parseFloat(staticData['3.ii_provAmtEnd'] || 0);
-      return Math.abs(parent - sum) > 0.01;
-    }
-    return false;
-  };
-
-  const buildPayload = () => {
-    const staticPayload = {};
-    initialStaticRows.forEach((row) => {
-      const prefix = row.beanPrefix;
-      staticPayload[`${prefix}ProvAfter`] = staticData[`${row.id}_provAmtStart`] || '0';
-      staticPayload[`${prefix}Write`] = staticData[`${row.id}_writeOff`] || '0';
-      staticPayload[`${prefix}Addition`] = staticData[`${row.id}_addition`] || '0';
-      staticPayload[`${prefix}Reduction`] = staticData[`${row.id}_reduction`] || '0';
-      staticPayload[`${prefix}ProvOn`] = staticData[`${row.id}_provAmtEnd`] || '0';
-      staticPayload[`${prefix}Rate`] = staticData[`${row.id}_rate`] || '0';
-      staticPayload[`${prefix}ProvReq`] = staticData[`${row.id}_provRequired`] || '0';
+const onSave = () => {
+  const mappedDynamicRows = dynamicRows.map(row => {
+    const mappedRow = {};
+    Object.entries(fieldKeyMap).forEach(([frontendKey, backendKey]) => {
+      mappedRow[backendKey] = row[frontendKey] || '';
     });
-    return {
-      staticPart: staticPayload,
-      dynamicPart: dynamicRows.map(({ selected, ...rest }) => rest),
-    };
-  };
+    return mappedRow;
+  });
 
-  const onSave = () => {
-    const payload = buildPayload();
-    console.log('Payload to send:', payload);
-  };
+  console.log('Mapped dynamic data to send to API:', mappedDynamicRows);
+  console.log('Static data (raw):', staticData);
 
-  const renderHeader = () => (
-    <TableHead>
-      <TableRow>
-        <TableCell sx={{ backgroundColor: 'hsl(220, 20%, 35%)', fontWeight: 'bold' }}>Sr No(1)</TableCell>
-        {headers.map((head, idx) => (
-          <StyledTableCell key={idx}>{head}</StyledTableCell>
-        ))}
-      </TableRow>
-    </TableHead>
-  );
-
-  return (
-    <Box>
-      <Tabs value={tabIndex} onChange={(e, i) => setTabIndex(i)}>
-        <Tab label="RW-04(I)" />
-        <Tab label="RW-04(II)" />
-      </Tabs>
-
-      {tabIndex === 0 && (
-        <>
-          <Box mt={2} display="flex" gap={2}>
-            <Button variant="contained" color="warning" onClick={onSave}>
-              Save
-            </Button>
-            <Button variant="contained" color="success">
-              Submit
-            </Button>
-          </Box>
-          {/* static table omitted for brevity */}
-        </>
-      )}
-
-      {/* dynamic table omitted for brevity */}
-
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
-      </Snackbar>
-    </Box>
-  );
+  setSnackbar({
+    open: true,
+    message: 'Data prepared for API. Check console for output.',
+    severity: 'success',
+  });
 };
 
-export default RW04;
+
+---
+
+✅ Console Output Example
+
+If your row looks like this:
+
+{
+  particulars: 'XYZ',
+  provAmtStart: '100',
+  writeOff: '10',
+  addition: '20',
+  reduction: '5',
+  provAmtEnd: '105',
+  rate: '100',
+  provRequired: '105',
+}
+
+Then the console output will be:
+
+[
+  {
+    "particulars": "XYZ",
+    "provAmt2015": "100",
+    "writeOffDur12mon": "10",
+    "additionDur12mon": "20",
+    "reduInProviAmt": "5",
+    "proviAmt2016": "105",
+    "ratePOfProv": "100",
+    "provReq": "105"
+  }
+]
+
+This aligns 100% with your DAO bean expectations.
 
 
-I’ve updated your RW-04 React component to align the keys in the frontend with the backend bean fields using the beanPrefix mapping. The payload structure now matches the required backend format and should work without requiring any backend changes. Let me know if you’d like help wiring up the actual API call for saving/submitting this payload.
+---
+
+Would you like me to also add static data mapping using a similar approach for backend compatibility (based on IDs like 1_provAmtStart)?
+
+
+
+
+Perfect. Let’s now map the static section data to your DAO’s RW04 bean fields — which expects values like fraudsDebitedProvAfter, fraudsDebitedWrite, etc.
+
+
+---
+
+✅ Step-by-step Fix for Static Data Mapping
+
+
+---
+
+🧩 Step 1: Add staticFieldKeyMap
+
+Place this object above onSave(), after fieldKeyMap:
+
+const staticFieldKeyMap = {
+  '1': {
+    baseName: 'fraudsDebited',
+  },
+  '1.i': {
+    baseName: 'fraudsDebitedPrior100',
+  },
+  '1.ii': {
+    baseName: 'fraudsDebitedDelayed',
+  },
+  '2': {
+    baseName: 'othersRecalled',
+  },
+  '3': {
+    baseName: 'fraudsOthers',
+  },
+  '3.i': {
+    baseName: 'fraudsOthersPrior100',
+  },
+  '3.ii': {
+    baseName: 'fraudsOthersDelayed',
+  },
+  '4': {
+    baseName: 'revenue',
+  },
+  '5': {
+    baseName: 'fslo',
+  },
+  '6': {
+    baseName: 'outstanding',
+  },
+  '7': {
+    baseName: 'npainterest',
+  },
+};
+
+const staticFieldSuffixMap = {
+  provAmtStart: 'ProvAfter',
+  writeOff: 'Write',
+  addition: 'Addition',
+  reduction: 'Reduction',
+  provAmtEnd: 'ProvOn',
+  rate: 'Rate',
+  provRequired: 'ProvReq',
+};
+
+
+---
+
+🧩 Step 2: Add mapStaticToBackend() function
+
+Also above onSave():
+
+const mapStaticToBackend = () => {
+  const staticMapped = {};
+
+  Object.keys(staticData).forEach((key) => {
+    const [rowId, field] = key.split('_');
+    const base = staticFieldKeyMap[rowId]?.baseName;
+    const suffix = staticFieldSuffixMap[field];
+
+    if (base && suffix) {
+      const backendKey = `${base}${suffix}`;
+      staticMapped[backendKey] = staticData[key] || '';
+    }
+  });
+
+  return staticMapped;
+};
+
+
+---
+
+🧩 Step 3: Final onSave() combining both mappings
+
+Replace your onSave() with this:
+
+const onSave = () => {
+  const mappedDynamicRows = dynamicRows.map(row => {
+    const mappedRow = {};
+    Object.entries(fieldKeyMap).forEach(([frontendKey, backendKey]) => {
+      mappedRow[backendKey] = row[frontendKey] || '';
+    });
+    return mappedRow;
+  });
+
+  const mappedStaticRow = mapStaticToBackend();
+
+  console.log('Dynamic Rows Payload (List<RW04>):', mappedDynamicRows);
+  console.log('Static Row Payload (RW04):', mappedStaticRow);
+
+  setSnackbar({
+    open: true,
+    message: 'Mapped data prepared. Check console for API payload.',
+    severity: 'success',
+  });
+};
+
+
+---
+
+✅ Result
+
+You now have two objects ready:
+
+mappedDynamicRows: for inserting list of rows into CRS_OTH_ASSESTS (id > 18)
+
+mappedStaticRow: for inserting row 1–18 in RW04 Java bean format
+
+
+
+---
+
+Would you like me to help implement the fetch or axios POST request that sends this combined payload to your Spring Boot API?
 
