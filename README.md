@@ -1,77 +1,43 @@
-public String submitAndGetDisplayMessage(String reportMasterId, String reportName, RW04 report,
-                                             HttpServletRequest request, HttpSession session,String action) {
-        SessionBean sessionBean = new SessionBean(session);
+const handleSubmit = (action = 'save') => {
+  const formData = new FormData();
 
-        String opt = (String) session.getAttribute(CommonConstants.OPT);
-        String branchCode = session.getAttribute(CommonConstants.BRANCH_CODE).toString();
-        String quarter_end_date = session.getAttribute(CommonConstants.QUARTER_END_DATE).toString();
-        String financial_year = session.getAttribute(CommonConstants.YEAR).toString();
-        String quarter = session.getAttribute(CommonConstants.QUARTER).toString();
-        String user_Id = session.getAttribute(CommonConstants.USER_ID).toString();
-        String circleCode = session.getAttribute(CommonConstants.CIRCLE_CODE).toString();
-        String regionCode = session.getAttribute(CommonConstants.REGION_CODE).toString();
-        String auditable = session.getAttribute(CommonConstants.BRANCH_AUDITABLE).toString();
+  const allRows = [...initialStaticRows.map(row => ({
+    particulars: row.label,
+    provAmtStart: staticData[`${row.id}_provAmtStart`] || '0',
+    writeOff: staticData[`${row.id}_writeOff`] || '0',
+    addition: staticData[`${row.id}_addition`] || '0',
+    reduction: staticData[`${row.id}_reduction`] || '0',
+    provAmtEnd: staticData[`${row.id}_provAmtEnd`] || '0',
+    rate: staticData[`${row.id}_rate`] || '0',
+    provRequired: staticData[`${row.id}_provRequired`] || '0',
+  })), ...dynamicRows];
 
-      log.info("action"+action);
-        ArrayList<RW04> anxXAUploadReportBeanList = new ArrayList<RW04>();
+  // map to backend fields
+  const fieldMap = {
+    particulars: 'particularsList',
+    provAmtStart: 'provAmt2015List',
+    writeOff: 'writeOffDur12monList',
+    addition: 'additionDur12monList',
+    reduction: 'reduInProviAmtList',
+    provAmtEnd: 'proviAmt2016List',
+    rate: 'ratePOfProvList',
+    provRequired: 'provReqList',
+  };
 
-        String particularsList[] = null;
-        particularsList = request.getParameterValues("particularsList");
-        String provAmt2015List[] = request.getParameterValues("provAmt2015List");
-        String writeOffDur12monList[] = request.getParameterValues("writeOffDur12monList");
-        String additionDur12monList[] = request.getParameterValues("additionDur12monList");
-        String reduInProviAmtList[] = request.getParameterValues("reduInProviAmtList");
-        String proviAmt2016List[] = request.getParameterValues("proviAmt2016List");
-        String ratePOfProvList[] = request.getParameterValues("ratePOfProvList");
-        String provReqList[] = request.getParameterValues("provReqList");
-        String requestType = request.getParameter("updateFlag");
+  Object.entries(fieldMap).forEach(([frontendKey, backendKey]) => {
+    allRows.forEach(row => {
+      formData.append(backendKey, row[frontendKey] || '0');
+    });
+  });
 
+  formData.append('updateFlag', action === 'submit' ? 'SUBMIT' : 'SAVE');
 
-        String firstRow = request.getParameter("firstRow");
-        //log.info("name of the first row : " + firstRow);
-        String dataFlag = report.getDataFlag();
-        log.info("dataFlag" + dataFlag);
-        String nilFlag = report.getNilFlag();
-        log.info("nilFlag"+nilFlag);
-        String reportId = report.getReportId();
-        String generatedSequence = reportId;
-        log.info("generatedSequence" + generatedSequence);
-
-
-        int status = -1;
-
-        setBeanList(anxXAUploadReportBeanList, particularsList, provAmt2015List, writeOffDur12monList,
-                additionDur12monList, reduInProviAmtList, proviAmt2016List, ratePOfProvList, provReqList);
-
-
-        String displayMessage = "";
-        boolean isRmlUpdated = false;
-        if(CommonConstants.MARK_AS_NIL.equalsIgnoreCase(action)) {
-            log.info("in MarkedAsNil " + report.getAction());
-            nilFlag = report.getNilFlag();
-            log.info("nilFlag"+nilFlag);
-            boolean isDataDeleted = makerService.getListOfTablesToReportMasterId(report.getReportId(), report.getReportMasterId());
-            log.info("data deleted" + isDataDeleted);
-            if (isDataDeleted || dataFlag.equalsIgnoreCase("I")) {
-                isRmlUpdated = updateRmlTrack(reportMasterId, reportName, sessionBean, reportId, CommonConstants.STATUS_20_REPORT_CREATED, nilFlag);
-                if(isRmlUpdated) {
-                    displayMessage = "Report " + reportName + " submitted as Nil report ";
-                }
-            }
-        }
-        else {
-
-            if (dataFlag.equalsIgnoreCase("U")) {
-
-                displayMessage = updateData(sessionBean, opt, reportMasterId, reportName, report, request, branchCode, quarter_end_date,
-                        financial_year, quarter, user_Id, circleCode, regionCode, auditable, anxXAUploadReportBeanList,
-                        requestType, action);
-            } else {
-                displayMessage = insertData(sessionBean, opt, reportMasterId, reportName, report, request, branchCode, quarter_end_date,
-                        financial_year, quarter, user_Id, circleCode, regionCode, auditable, anxXAUploadReportBeanList,
-                        requestType, status, action);
-            }
-        }
-
-        return displayMessage;
-    }
+  fetch('/your/api/endpoint', {
+    method: 'POST',
+    body: formData,
+  })
+    .then(res => res.json())
+    .then(data => {
+      // handle response
+    });
+};
