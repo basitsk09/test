@@ -40,7 +40,7 @@ const initialDynamicRow = {
 };
 
 const initialStaticRows = [
-  { id: '1', label: 'Contiongent liability As per As-29' },
+  { id: '1', label: 'Contingent liability As per As-29' },
   { id: '2', label: 'Delayed reporting penalty' },
   { id: '3', label: 'Ex-Gratia payment' },
   { id: '4', label: 'Provision on overdue deposit intt' },
@@ -67,9 +67,10 @@ const RW05 = () => {
     )
   );
 
-  const setSnackbarMessage = useCustomSnackbar();
-  const headers = [
-    ...(tabIndex === 1 ? ['Select'] : []),
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
+  const setSnackbarMessage = useCustomSnackbar(); // This hook is imported but not used in the provided logic for Snackbar.
+
+  const headersStatic = [
     'Particulars(2)',
     'Opening Provision as on 01-04-2023(3)',
     'Additions during the period(4)',
@@ -77,6 +78,256 @@ const RW05 = () => {
     'Provision as on 30/06/2024(6)={(3+4)-(5)}',
     'Difference to be Provided/ written back(7)={(6)-(3)}',
   ];
+
+  const headersDynamic = [
+    'Select',
+    'Particulars(2)',
+    'Opening Provision as on 01-04-2023(3)',
+    'Additions during the period(4)',
+    'Reversals during the Period(5)',
+    'Provision as on 30/06/2024(6)={(3+4)-(5)}',
+    'Difference to be Provided/ written back(7)={(6)-(3)}',
+  ];
+
+  const isNumeric = (val) => !isNaN(parseFloat(val)) && isFinite(val); [span_0](start_span)//[span_0](end_span)
+
+  const calculateAndSetStatic = (rowId, updated) => {
+    const provAmtStart = parseFloat(updated[`${rowId}_provAmtStart`] || 0);
+    const addition = parseFloat(updated[`${rowId}_addition`] || 0);
+    const reduction = parseFloat(updated[`${rowId}_reduction`] || 0); 
+    
+    // For RW05, the formula for Provision as on 30/06/2024 (6)={(3+4)-(5)}
+    const provAmtEnd = (provAmtStart + addition) - reduction;
+    updated[`${rowId}_provAmtEnd`] = provAmtEnd.toFixed(2);
+
+    // For RW05, the formula for Difference to be Provided/ written back(7)={(6)-(3)}
+    const diff = provAmtEnd - provAmtStart;
+    updated[`${rowId}_provRequired`] = diff.toFixed(2);
+  };
+
+  [span_1](start_span)const handleStaticChange = (rowId, key, value) => { //[span_1](end_span)
+    const updated = { ...staticData, [`${rowId}_${key}`]: value };
+    calculateAndSetStatic(rowId, updated);
+    setStaticData(updated);
+  };
+
+  [span_2](start_span)const handleDynamicChange = (i, key, value) => { //[span_2](end_span)
+    const updated = [...dynamicRows];
+    updated[i][key] = value;
+
+    const provAmtStart = parseFloat(updated[i].provAmtStart || 0);
+    const addition = parseFloat(updated[i].addition || 0);
+    const reduction = parseFloat(updated[i].reduction || 0);
+
+    // For RW05, the formula for Provision as on 30/06/2024 (6)={(3+4)-(5)}
+    const provAmtEnd = (provAmtStart + addition) - reduction;
+    updated[i].provAmtEnd = provAmtEnd.toFixed(2);
+
+    // For RW05, the formula for Difference to be Provided/ written back(7)={(6)-(3)}
+    const diff = provAmtEnd - provAmtStart;
+    updated[i].provRequired = diff.toFixed(2);
+    
+    setDynamicRows(updated);
+  };
+
+  [span_3](start_span)const handleSubmit = (action = 'save') => { //[span_3](end_span)
+    const formData = new FormData();
+    const allRows = [
+      ...initialStaticRows.map((row) => ({
+        particulars: row.label,
+        provAmtStart: staticData[`${row.id}_provAmtStart`] || '0',
+        addition: staticData[`${row.id}_addition`] || '0',
+        reduction: staticData[`${row.id}_reduction`] || '0',
+        provAmtEnd: staticData[`${row.id}_provAmtEnd`] || '0',
+        provRequired: staticData[`${row.id}_provRequired`] || '0',
+      })),
+      ...dynamicRows.map(row => ({
+        particulars: row.particulars,
+        provAmtStart: row.provAmtStart || '0',
+        addition: row.addition || '0',
+        reduction: row.reduction || '0',
+        provAmtEnd: row.provAmtEnd || '0',
+        provRequired: row.provRequired || '0',
+      })),
+    ];
+
+    const fieldMap = {
+      particulars: 'particularsList',
+      provAmtStart: 'provAmtStartList',
+      addition: 'additionList',
+      reduction: 'reductionList',
+      provAmtEnd: 'provAmtEndList',
+      provRequired: 'provRequiredList',
+    };
+
+    Object.entries(fieldMap).forEach(([frontendKey, backendKey]) => {
+      allRows.forEach((row) => {
+        formData.append(backendKey, row[frontendKey] || '0');
+      });
+    });
+
+    formData.append('updateFlag', action === 'submit' ? 'SUBMIT' : 'SAVE');
+
+    for (let pair of formData.entries()) {
+      console.log(pair[0] + ' ' + pair[1]);
+    }
+
+    setSnackbar({
+      open: true,
+      message: `Data ${action === 'submit' ? 'submitted' : 'saved'} successfully! Check console for payload.`,
+      severity: 'success',
+    });
+  };
+
+  [span_4](start_span)const renderHeader = (headers) => ( //[span_4](end_span)
+    <TableHead>
+      <TableRow>
+        <TableCell sx={{ backgroundColor: 'hsl(220, 20%, 35%)', fontWeight: 'bold' }}>Sr No(1)</TableCell>
+        {headers.map((head, idx) => (
+          <StyledTableCell key={idx}>{head}</StyledTableCell>
+        ))}
+      </TableRow>
+    </TableHead>
+  );
+
+  return (
+    <Box>
+      [span_5](start_span)<Tabs value={tabIndex} onChange={(e, i) => setTabIndex(i)}> {/*[span_5](end_span) */}
+        <Tab label="RW-05(I)" />
+        <Tab label="RW-05(II)" />
+      </Tabs>
+
+      {tabIndex === 0 && (
+        <>
+          [span_6](start_span)<Box mt={2} display="flex" gap={2}> {/*[span_6](end_span) */}
+            <Button variant="contained" color="warning" onClick={() => handleSubmit()}>
+              Save
+            </Button>
+            <Button variant="contained" color="success" onClick={() => handleSubmit('submit')}>
+              Submit
+            </Button>
+          </Box>
+          [span_7](start_span)<TableContainer component={Paper} sx={{ mt: 2 }}> {/*[span_7](end_span) */}
+            <Table>
+              {renderHeader(headersStatic)}
+              <TableBody>
+                [span_8](start_span){initialStaticRows.map((row) => ( {/*[span_8](end_span) */}
+                  <TableRow key={row.id}>
+                    <TableCell>{row.id}</TableCell>
+                    [span_9](start_span)<TableCell>{row.label}</TableCell> {/*[span_9](end_span) */}
+                    {['provAmtStart', 'addition', 'reduction'].map((key) => (
+                      <TableCell key={key} align="center">
+                        <FormInput
+                          [span_10](start_span)value={staticData[`${row.id}_${key}`] || ''} {/*[span_10](end_span) */}
+                          [span_11](start_span)onChange={(e) => handleStaticChange(row.id, key, e.target.value)} {/*[span_11](end_span) */}
+                          [span_12](start_span)error={!!staticData[`${row.id}_${key}`] && !isNumeric(staticData[`${row.id}_${key}`])} {/*[span_12](end_span) */}
+                          [span_13](start_span)sx={{ width: '150px' }} {/*[span_13](end_span) */}
+                        />
+                      </TableCell>
+                    ))}
+                    [span_14](start_span)<TableCell align="center"> {/*[span_14](end_span) */}
+                      <FormInput
+                        [span_15](start_span)value={staticData[`${row.id}_provAmtEnd`]} {/*[span_15](end_span) */}
+                        readOnly={true}
+                        sx={{ width: '150px' }}
+                      />
+                    </TableCell>
+                    [span_16](start_span)<TableCell align="center"> {/*[span_16](end_span) */}
+                      <FormInput
+                        [span_17](start_span)value={staticData[`${row.id}_provRequired`]} {/*[span_17](end_span) */}
+                        readOnly={true}
+                        sx={{ width: '150px' }}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
+      )}
+
+      {tabIndex === 1 && (
+        <>
+          <Box mt={2} display="flex" gap={2}>
+            <Button
+              variant="contained"
+              color="secondary"
+              [span_18](start_span)onClick={() => setDynamicRows([...dynamicRows, { ...initialDynamicRow }])} {/*[span_18](end_span) */}
+            >
+              Add Row
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              [span_19](start_span)onClick={() => setDynamicRows(dynamicRows.filter((r) => !r.selected))} {/*[span_19](end_span) */}
+            >
+              Delete Row
+            </Button>
+            <Button variant="contained" color="warning" onClick={() => handleSubmit()}>
+              Save
+            </Button>
+            <Button variant="contained" color="success" onClick={() => handleSubmit('submit')}>
+              Submit
+            </Button>
+          </Box>
+          <TableContainer component={Paper} sx={{ mt: 2 }}>
+            <Table>
+              {renderHeader(headersDynamic)}
+              <TableBody>
+                [span_20](start_span){dynamicRows.map((row, i) => ( {/*[span_20](end_span) */}
+                  <TableRow key={i}>
+                    <TableCell>{i + 1}</TableCell>
+                    [span_21](start_span)<TableCell padding="checkbox"> {/*[span_21](end_span) */}
+                      <Checkbox
+                        checked={row.selected}
+                        onChange={() => {
+                          const updated = [...dynamicRows];
+                          updated[i].selected = !updated[i].selected; [span_22](start_span){/*[span_22](end_span) */}
+                          setDynamicRows(updated);
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <FormInput
+                        [span_23](start_span)value={row.particulars} {/*[span_23](end_span) */}
+                        inputType={'alphaNumericWithSpace'}
+                        onChange={(e) => {
+                          const updated = [...dynamicRows];
+                          updated[i].particulars = e.target.value; [span_24](start_span){/*[span_24](end_span) */}
+                          setDynamicRows(updated);
+                        }}
+                        sx={{ width: '150px' }}
+                      />
+                    </TableCell>
+                    {['provAmtStart', 'addition', 'reduction'].map((key) => (
+                      [span_25](start_span)<TableCell key={key} align="center"> {/*[span_25](end_span) */}
+                        <FormInput
+                          value={row[key] || [span_26](start_span)''} {/*[span_26](end_span) */}
+                          [span_27](start_span)onChange={(e) => handleDynamicChange(i, key, e.target.value)} {/*[span_27](end_span) */}
+                          sx={{ width: '150px' }}
+                        />
+                      </TableCell>
+                    ))}
+                    [span_28](start_span)<TableCell align="center"> {/*[span_28](end_span) */}
+                      [span_29](start_span)<FormInput value={row.provAmtEnd} readOnly={true} sx={{ width: '150px' }} /> {/*[span_29](end_span) */}
+                    </TableCell>
+                    [span_30](start_span)<TableCell align="center"> {/*[span_30](end_span) */}
+                      [span_31](start_span)<FormInput value={row.provRequired} readOnly={true} sx={{ width: '150px' }} /> {/*[span_31](end_span) */}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
+      )}
+
+      [span_32](start_span)<Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}> {/*[span_32](end_span) */}
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
+    </Box>
+  );
 };
 
 export default RW05;
