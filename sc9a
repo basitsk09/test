@@ -68,7 +68,7 @@ const RW05 = () => {
   );
 
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
-  const setSnackbarMessage = useCustomSnackbar(); // This hook is imported but not used in the provided logic for Snackbar.
+  const setSnackbarMessage = useCustomSnackbar(); 
 
   const headersStatic = [
     'Particulars(2)',
@@ -89,29 +89,27 @@ const RW05 = () => {
     'Difference to be Provided/ written back(7)={(6)-(3)}',
   ];
 
-  const isNumeric = (val) => !isNaN(parseFloat(val)) && isFinite(val); [span_0](start_span)//[span_0](end_span)
+  const isNumeric = (val) => !isNaN(parseFloat(val)) && isFinite(val); 
 
   const calculateAndSetStatic = (rowId, updated) => {
     const provAmtStart = parseFloat(updated[`${rowId}_provAmtStart`] || 0);
     const addition = parseFloat(updated[`${rowId}_addition`] || 0);
     const reduction = parseFloat(updated[`${rowId}_reduction`] || 0); 
     
-    // For RW05, the formula for Provision as on 30/06/2024 (6)={(3+4)-(5)}
     const provAmtEnd = (provAmtStart + addition) - reduction;
     updated[`${rowId}_provAmtEnd`] = provAmtEnd.toFixed(2);
 
-    // For RW05, the formula for Difference to be Provided/ written back(7)={(6)-(3)}
     const diff = provAmtEnd - provAmtStart;
     updated[`${rowId}_provRequired`] = diff.toFixed(2);
   };
 
-  [span_1](start_span)const handleStaticChange = (rowId, key, value) => { //[span_1](end_span)
+  const handleStaticChange = (rowId, key, value) => { 
     const updated = { ...staticData, [`${rowId}_${key}`]: value };
     calculateAndSetStatic(rowId, updated);
     setStaticData(updated);
   };
 
-  [span_2](start_span)const handleDynamicChange = (i, key, value) => { //[span_2](end_span)
+  const handleDynamicChange = (i, key, value) => { 
     const updated = [...dynamicRows];
     updated[i][key] = value;
 
@@ -119,18 +117,16 @@ const RW05 = () => {
     const addition = parseFloat(updated[i].addition || 0);
     const reduction = parseFloat(updated[i].reduction || 0);
 
-    // For RW05, the formula for Provision as on 30/06/2024 (6)={(3+4)-(5)}
     const provAmtEnd = (provAmtStart + addition) - reduction;
     updated[i].provAmtEnd = provAmtEnd.toFixed(2);
 
-    // For RW05, the formula for Difference to be Provided/ written back(7)={(6)-(3)}
     const diff = provAmtEnd - provAmtStart;
     updated[i].provRequired = diff.toFixed(2);
     
     setDynamicRows(updated);
   };
 
-  [span_3](start_span)const handleSubmit = (action = 'save') => { //[span_3](end_span)
+  const handleSubmit = (action = 'save') => { 
     const formData = new FormData();
     const allRows = [
       ...initialStaticRows.map((row) => ({
@@ -179,7 +175,7 @@ const RW05 = () => {
     });
   };
 
-  [span_4](start_span)const renderHeader = (headers) => ( //[span_4](end_span)
+  const renderHeader = (headers) => ( 
     <TableHead>
       <TableRow>
         <TableCell sx={{ backgroundColor: 'hsl(220, 20%, 35%)', fontWeight: 'bold' }}>Sr No(1)</TableCell>
@@ -192,14 +188,14 @@ const RW05 = () => {
 
   return (
     <Box>
-      [span_5](start_span)<Tabs value={tabIndex} onChange={(e, i) => setTabIndex(i)}> {/*[span_5](end_span) */}
+      <Tabs value={tabIndex} onChange={(e, i) => setTabIndex(i)}> 
         <Tab label="RW-05(I)" />
         <Tab label="RW-05(II)" />
       </Tabs>
 
       {tabIndex === 0 && (
         <>
-          [span_6](start_span)<Box mt={2} display="flex" gap={2}> {/*[span_6](end_span) */}
+          <Box mt={2} display="flex" gap={2}> 
             <Button variant="contained" color="warning" onClick={() => handleSubmit()}>
               Save
             </Button>
@@ -207,34 +203,34 @@ const RW05 = () => {
               Submit
             </Button>
           </Box>
-          [span_7](start_span)<TableContainer component={Paper} sx={{ mt: 2 }}> {/*[span_7](end_span) */}
+          <TableContainer component={Paper} sx={{ mt: 2 }}> 
             <Table>
               {renderHeader(headersStatic)}
               <TableBody>
-                [span_8](start_span){initialStaticRows.map((row) => ( {/*[span_8](end_span) */}
+                {initialStaticRows.map((row) => ( 
                   <TableRow key={row.id}>
                     <TableCell>{row.id}</TableCell>
-                    [span_9](start_span)<TableCell>{row.label}</TableCell> {/*[span_9](end_span) */}
+                    <TableCell>{row.label}</TableCell> 
                     {['provAmtStart', 'addition', 'reduction'].map((key) => (
                       <TableCell key={key} align="center">
                         <FormInput
-                          [span_10](start_span)value={staticData[`${row.id}_${key}`] || ''} {/*[span_10](end_span) */}
-                          [span_11](start_span)onChange={(e) => handleStaticChange(row.id, key, e.target.value)} {/*[span_11](end_span) */}
-                          [span_12](start_span)error={!!staticData[`${row.id}_${key}`] && !isNumeric(staticData[`${row.id}_${key}`])} {/*[span_12](end_span) */}
-                          [span_13](start_span)sx={{ width: '150px' }} {/*[span_13](end_span) */}
+                          value={staticData[`${row.id}_${key}`] || ''} 
+                          onChange={(e) => handleStaticChange(row.id, key, e.target.value)} 
+                          error={!!staticData[`${row.id}_${key}`] && !isNumeric(staticData[`${row.id}_${key}`])} 
+                          sx={{ width: '150px' }} 
                         />
                       </TableCell>
                     ))}
-                    [span_14](start_span)<TableCell align="center"> {/*[span_14](end_span) */}
+                    <TableCell align="center"> 
                       <FormInput
-                        [span_15](start_span)value={staticData[`${row.id}_provAmtEnd`]} {/*[span_15](end_span) */}
+                        value={staticData[`${row.id}_provAmtEnd`]} 
                         readOnly={true}
                         sx={{ width: '150px' }}
                       />
                     </TableCell>
-                    [span_16](start_span)<TableCell align="center"> {/*[span_16](end_span) */}
+                    <TableCell align="center"> 
                       <FormInput
-                        [span_17](start_span)value={staticData[`${row.id}_provRequired`]} {/*[span_17](end_span) */}
+                        value={staticData[`${row.id}_provRequired`]} 
                         readOnly={true}
                         sx={{ width: '150px' }}
                       />
@@ -253,14 +249,14 @@ const RW05 = () => {
             <Button
               variant="contained"
               color="secondary"
-              [span_18](start_span)onClick={() => setDynamicRows([...dynamicRows, { ...initialDynamicRow }])} {/*[span_18](end_span) */}
+              onClick={() => setDynamicRows([...dynamicRows, { ...initialDynamicRow }])} 
             >
               Add Row
             </Button>
             <Button
               variant="contained"
               color="error"
-              [span_19](start_span)onClick={() => setDynamicRows(dynamicRows.filter((r) => !r.selected))} {/*[span_19](end_span) */}
+              onClick={() => setDynamicRows(dynamicRows.filter((r) => !r.selected))} 
             >
               Delete Row
             </Button>
@@ -275,45 +271,45 @@ const RW05 = () => {
             <Table>
               {renderHeader(headersDynamic)}
               <TableBody>
-                [span_20](start_span){dynamicRows.map((row, i) => ( {/*[span_20](end_span) */}
+                {dynamicRows.map((row, i) => ( 
                   <TableRow key={i}>
                     <TableCell>{i + 1}</TableCell>
-                    [span_21](start_span)<TableCell padding="checkbox"> {/*[span_21](end_span) */}
+                    <TableCell padding="checkbox"> 
                       <Checkbox
                         checked={row.selected}
                         onChange={() => {
                           const updated = [...dynamicRows];
-                          updated[i].selected = !updated[i].selected; [span_22](start_span){/*[span_22](end_span) */}
+                          updated[i].selected = !updated[i].selected; 
                           setDynamicRows(updated);
                         }}
                       />
                     </TableCell>
                     <TableCell>
                       <FormInput
-                        [span_23](start_span)value={row.particulars} {/*[span_23](end_span) */}
+                        value={row.particulars} 
                         inputType={'alphaNumericWithSpace'}
                         onChange={(e) => {
                           const updated = [...dynamicRows];
-                          updated[i].particulars = e.target.value; [span_24](start_span){/*[span_24](end_span) */}
+                          updated[i].particulars = e.target.value; 
                           setDynamicRows(updated);
                         }}
                         sx={{ width: '150px' }}
                       />
                     </TableCell>
                     {['provAmtStart', 'addition', 'reduction'].map((key) => (
-                      [span_25](start_span)<TableCell key={key} align="center"> {/*[span_25](end_span) */}
+                      <TableCell key={key} align="center"> 
                         <FormInput
-                          value={row[key] || [span_26](start_span)''} {/*[span_26](end_span) */}
-                          [span_27](start_span)onChange={(e) => handleDynamicChange(i, key, e.target.value)} {/*[span_27](end_span) */}
+                          value={row[key] || ''} 
+                          onChange={(e) => handleDynamicChange(i, key, e.target.value)} 
                           sx={{ width: '150px' }}
                         />
                       </TableCell>
                     ))}
-                    [span_28](start_span)<TableCell align="center"> {/*[span_28](end_span) */}
-                      [span_29](start_span)<FormInput value={row.provAmtEnd} readOnly={true} sx={{ width: '150px' }} /> {/*[span_29](end_span) */}
+                    <TableCell align="center"> 
+                      <FormInput value={row.provAmtEnd} readOnly={true} sx={{ width: '150px' }} /> 
                     </TableCell>
-                    [span_30](start_span)<TableCell align="center"> {/*[span_30](end_span) */}
-                      [span_31](start_span)<FormInput value={row.provRequired} readOnly={true} sx={{ width: '150px' }} /> {/*[span_31](end_span) */}
+                    <TableCell align="center"> 
+                      <FormInput value={row.provRequired} readOnly={true} sx={{ width: '150px' }} /> 
                     </TableCell>
                   </TableRow>
                 ))}
@@ -323,7 +319,7 @@ const RW05 = () => {
         </>
       )}
 
-      [span_32](start_span)<Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}> {/*[span_32](end_span) */}
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}> 
         <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
     </Box>
