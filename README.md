@@ -1181,3 +1181,28 @@ const Schedule10 = () => {
 };
 
 export default Schedule10;
+
+Validations to be applied
+/////////////////////////
+ if (parseFloat(sc10.row.validPremisesAmount) != parseFloat(validTotalThree)) {
+                        var totlC29 = document
+                            .getElementById("sc10.row.totalC29");
+                        totlC29.style.border = "1px solid red";
+                    }
+                    if (parseFloat(sc10.row.validPremisesUnderConsAmount) != parseFloat(validTotalTwo)) {
+
+                        var preUnderCon29 = document
+                            .getElementById("sc10.row.premisesUnderCons29");
+                        preUnderCon29.style.border = "1px solid red";
+
+                    }
+                    if (parseFloat(sc10.row.validOtherFixedAssetAmount) != parseFloat(validTotalOne)) {
+                        var totlA29 = document
+                            .getElementById("sc10.row.totalA29");
+                        totlA29.style.border = "1px solid red";
+
+                        var totlB29 = document
+                            .getElementById("sc10.row.totalB29");
+                        totlB29.style.border = "1px solid red";
+
+                    }
