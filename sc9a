@@ -1,329 +1,178 @@
-import React, { useState } from 'react';
-import {
-  Tabs,
-  Tab,
-  Box,
-  Typography,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  TableContainer,
-  Paper,
-  Button,
-  Snackbar,
-  Alert,
-  Checkbox,
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
-import FormInput from '../../../../common/components/ui/FormInput';
-import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+get data payload in response:
+[
+                    [
+                        "",
+                        "FRAUDS - DEBITED TO RECALLED ASSETS A/c (Prod Cd 6998-9981)**",
+                        "12120",
+                        "1212",
+                        "1212",
+                        "121210",
+                        "-109090.00",
+                        " ",
+                        "24240.00",
+                        "1",
+                        "1",
+                        "false"
+                    ],
+                    [
+                        "",
+                        "Frauds reported within time up to null provision @ 100% ##_D_D_D_D",
+                        "0_D",
+                        "0_D",
+                        "0_D",
+                        "0_D",
+                        "12120",
+                        "100",
+                        "12120.00",
+                        "2",
+                        "2",
+                        "false"
+                    ],
+                    [
+                        "",
+                        "Delayed Reported frauds Provision @ 100% ##_D_D_D_D",
+                        "0_D",
+                        "0_D",
+                        "0_D",
+                        "0_D",
+                        "12120",
+                        "100",
+                        "12120.00",
+                        "3",
+                        "3",
+                        "false"
+                    ],
+                    [
+                        "",
+                        "OTHERS LOSSES IN RECALLED ASSETS (Prod cd 6998 - 9982)#",
+                        "1212",
+                        "12121",
+                        "12120",
+                        "120",
+                        "1091.00",
+                        "100",
+                        "1091.00",
+                        "4",
+                        "4",
+                        "false"
+                    ],
+                    [
+                        "",
+                        "FRAUDS - OTHER (NOT DEBITED TO RA A/c)$",
+                        "1212",
+                        "12121",
+                        "12120",
+                        "112120",
+                        "-110909.00",
+                        " ",
+                        "12220.00",
+                        "5",
+                        "5",
+                        "false"
+                    ],
+                    [
+                        "",
+                        "Frauds reported within time up tonullprovision @ 100% ##_D_D_D_D",
+                        "0_D",
+                        "0_D",
+                        "0_D",
+                        "0_D",
+                        "11110",
+                        "100",
+                        "11110.00",
+                        "6",
+                        "6",
+                        "false"
+                    ],
+                    [
+                        "",
+                        "Delayed Reported frauds Provision @ 100% ##_D_D_D_D",
+                        "0_D",
+                        "0_D",
+                        "0_D",
+                        "0_D",
+                        "1110",
+                        "100",
+                        "1110.00",
+                        "7",
+                        "7",
+                        "false"
+                    ],
+                    [
+                        "",
+                        "REVENUE ITEM IN SYSTEM SUSPENSE",
+                        "1212120",
+                        "1212120",
+                        "12120",
+                        "1110",
+                        "11010.00",
+                        "100",
+                        "11010.00",
+                        "8",
+                        "8",
+                        "false"
+                    ],
+                    [
+                        "",
+                        "PROVISION ON ACCOUNT OF FSLO",
+                        "111111",
+                        "11110",
+                        "11110",
+                        "1110",
+                        "110001.00",
+                        "100",
+                        "110001.00",
+                        "9",
+                        "9",
+                        "false"
+                    ],
+                    [
+                        "",
+                        "PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING IN ADJUSTING ACCOUNT FOR PREVIOUS QUARTER(S) (i.e. PRIOR TO CURRENT QUARTER)",
+                        "11110",
+                        "1110",
+                        "110",
+                        "110",
+                        "10000.00",
+                        "100",
+                        "10000.00",
+                        "10",
+                        "10",
+                        "false"
+                    ],
+                    [
+                        "",
+                        "PROVISION ON N.P.A. INTEREST FREE STAFF LOANS",
+                        "0",
+                        "0",
+                        "0",
+                        "0",
+                        "0.00",
+                        "100",
+                        "0.00",
+                        "11",
+                        "11",
+                        "false"
+                    ]
+                ]
 
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontSize: '0.875rem',
-  textAlign: 'center',
-  padding: '6px',
-  fontWeight: 'bold',
-}));
+////////////////////////////////////////////////////////////////////////////
+Save data payload
 
-const initialDynamicRow = {
-  selected: false,
-  particulars: '',
-  provAmtStart: '',
-  writeOff: '',
-  addition: '',
-  reduction: '',
-  provAmtEnd: '',
-  rate: '100',
-  provRequired: '',
-};
-
-const initialStaticRows = [
-  { id: '1', label: 'Contingent liability As per As-29' },
-  { id: '2', label: 'Delayed reporting penalty' },
-  { id: '3', label: 'Ex-Gratia payment' },
-  { id: '4', label: 'Provision on overdue deposit intt' },
-  { id: '5', label: 'Leave encashment' },
-  { id: '6', label: 'Provision for performance linked incentives' },
-  {
-    id: '7',
-    label:
-      'Provision on account of entries outstanding in adjusting account for previous quarter(s) (i.e. prior to current quarter)',
-  },
-];
-
-const RW05 = () => {
-  const [tabIndex, setTabIndex] = useState(0);
-  const [dynamicRows, setDynamicRows] = useState([{ ...initialDynamicRow }]);
-  const [staticData, setStaticData] = useState(
-    Object.fromEntries(
-      initialStaticRows.flatMap((r) =>
-        ['provAmtStart', 'writeOff', 'addition', 'reduction', 'provAmtEnd', 'rate', 'provRequired'].map((key) => [
-          `${r.id}_${key}`,
-          key === 'rate' ? '100' : '',
-        ])
-      )
-    )
-  );
-
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
-  const setSnackbarMessage = useCustomSnackbar(); 
-
-  const headersStatic = [
-    'Particulars(2)',
-    'Opening Provision as on 01-04-2023(3)',
-    'Additions during the period(4)',
-    'Reversals during the Period(5)',
-    'Provision as on 30/06/2024(6)={(3+4)-(5)}',
-    'Difference to be Provided/ written back(7)={(6)-(3)}',
-  ];
-
-  const headersDynamic = [
-    'Select',
-    'Particulars(2)',
-    'Opening Provision as on 01-04-2023(3)',
-    'Additions during the period(4)',
-    'Reversals during the Period(5)',
-    'Provision as on 30/06/2024(6)={(3+4)-(5)}',
-    'Difference to be Provided/ written back(7)={(6)-(3)}',
-  ];
-
-  const isNumeric = (val) => !isNaN(parseFloat(val)) && isFinite(val); 
-
-  const calculateAndSetStatic = (rowId, updated) => {
-    const provAmtStart = parseFloat(updated[`${rowId}_provAmtStart`] || 0);
-    const addition = parseFloat(updated[`${rowId}_addition`] || 0);
-    const reduction = parseFloat(updated[`${rowId}_reduction`] || 0); 
-    
-    const provAmtEnd = (provAmtStart + addition) - reduction;
-    updated[`${rowId}_provAmtEnd`] = provAmtEnd.toFixed(2);
-
-    const diff = provAmtEnd - provAmtStart;
-    updated[`${rowId}_provRequired`] = diff.toFixed(2);
-  };
-
-  const handleStaticChange = (rowId, key, value) => { 
-    const updated = { ...staticData, [`${rowId}_${key}`]: value };
-    calculateAndSetStatic(rowId, updated);
-    setStaticData(updated);
-  };
-
-  const handleDynamicChange = (i, key, value) => { 
-    const updated = [...dynamicRows];
-    updated[i][key] = value;
-
-    const provAmtStart = parseFloat(updated[i].provAmtStart || 0);
-    const addition = parseFloat(updated[i].addition || 0);
-    const reduction = parseFloat(updated[i].reduction || 0);
-
-    const provAmtEnd = (provAmtStart + addition) - reduction;
-    updated[i].provAmtEnd = provAmtEnd.toFixed(2);
-
-    const diff = provAmtEnd - provAmtStart;
-    updated[i].provRequired = diff.toFixed(2);
-    
-    setDynamicRows(updated);
-  };
-
-  const handleSubmit = (action = 'save') => { 
-    const formData = new FormData();
-    const allRows = [
-      ...initialStaticRows.map((row) => ({
-        particulars: row.label,
-        provAmtStart: staticData[`${row.id}_provAmtStart`] || '0',
-        addition: staticData[`${row.id}_addition`] || '0',
-        reduction: staticData[`${row.id}_reduction`] || '0',
-        provAmtEnd: staticData[`${row.id}_provAmtEnd`] || '0',
-        provRequired: staticData[`${row.id}_provRequired`] || '0',
-      })),
-      ...dynamicRows.map(row => ({
-        particulars: row.particulars,
-        provAmtStart: row.provAmtStart || '0',
-        addition: row.addition || '0',
-        reduction: row.reduction || '0',
-        provAmtEnd: row.provAmtEnd || '0',
-        provRequired: row.provRequired || '0',
-      })),
-    ];
-
-    const fieldMap = {
-      particulars: 'particularsList',
-      provAmtStart: 'provAmtStartList',
-      addition: 'additionList',
-      reduction: 'reductionList',
-      provAmtEnd: 'provAmtEndList',
-      provRequired: 'provRequiredList',
-    };
-
-    Object.entries(fieldMap).forEach(([frontendKey, backendKey]) => {
-      allRows.forEach((row) => {
-        formData.append(backendKey, row[frontendKey] || '0');
-      });
-    });
-
-    formData.append('updateFlag', action === 'submit' ? 'SUBMIT' : 'SAVE');
-
-    for (let pair of formData.entries()) {
-      console.log(pair[0] + ' ' + pair[1]);
-    }
-
-    setSnackbar({
-      open: true,
-      message: `Data ${action === 'submit' ? 'submitted' : 'saved'} successfully! Check console for payload.`,
-      severity: 'success',
-    });
-  };
-
-  const renderHeader = (headers) => ( 
-    <TableHead>
-      <TableRow>
-        <TableCell sx={{ backgroundColor: 'hsl(220, 20%, 35%)', fontWeight: 'bold' }}>Sr No(1)</TableCell>
-        {headers.map((head, idx) => (
-          <StyledTableCell key={idx}>{head}</StyledTableCell>
-        ))}
-      </TableRow>
-    </TableHead>
-  );
-
-  return (
-    <Box>
-      <Tabs value={tabIndex} onChange={(e, i) => setTabIndex(i)}> 
-        <Tab label="RW-05(I)" />
-        <Tab label="RW-05(II)" />
-      </Tabs>
-
-      {tabIndex === 0 && (
-        <>
-          <Box mt={2} display="flex" gap={2}> 
-            <Button variant="contained" color="warning" onClick={() => handleSubmit()}>
-              Save
-            </Button>
-            <Button variant="contained" color="success" onClick={() => handleSubmit('submit')}>
-              Submit
-            </Button>
-          </Box>
-          <TableContainer component={Paper} sx={{ mt: 2 }}> 
-            <Table>
-              {renderHeader(headersStatic)}
-              <TableBody>
-                {initialStaticRows.map((row) => ( 
-                  <TableRow key={row.id}>
-                    <TableCell>{row.id}</TableCell>
-                    <TableCell>{row.label}</TableCell> 
-                    {['provAmtStart', 'addition', 'reduction'].map((key) => (
-                      <TableCell key={key} align="center">
-                        <FormInput
-                          value={staticData[`${row.id}_${key}`] || ''} 
-                          onChange={(e) => handleStaticChange(row.id, key, e.target.value)} 
-                          error={!!staticData[`${row.id}_${key}`] && !isNumeric(staticData[`${row.id}_${key}`])} 
-                          sx={{ width: '150px' }} 
-                        />
-                      </TableCell>
-                    ))}
-                    <TableCell align="center"> 
-                      <FormInput
-                        value={staticData[`${row.id}_provAmtEnd`]} 
-                        readOnly={true}
-                        sx={{ width: '150px' }}
-                      />
-                    </TableCell>
-                    <TableCell align="center"> 
-                      <FormInput
-                        value={staticData[`${row.id}_provRequired`]} 
-                        readOnly={true}
-                        sx={{ width: '150px' }}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </>
-      )}
-
-      {tabIndex === 1 && (
-        <>
-          <Box mt={2} display="flex" gap={2}>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={() => setDynamicRows([...dynamicRows, { ...initialDynamicRow }])} 
-            >
-              Add Row
-            </Button>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={() => setDynamicRows(dynamicRows.filter((r) => !r.selected))} 
-            >
-              Delete Row
-            </Button>
-            <Button variant="contained" color="warning" onClick={() => handleSubmit()}>
-              Save
-            </Button>
-            <Button variant="contained" color="success" onClick={() => handleSubmit('submit')}>
-              Submit
-            </Button>
-          </Box>
-          <TableContainer component={Paper} sx={{ mt: 2 }}>
-            <Table>
-              {renderHeader(headersDynamic)}
-              <TableBody>
-                {dynamicRows.map((row, i) => ( 
-                  <TableRow key={i}>
-                    <TableCell>{i + 1}</TableCell>
-                    <TableCell padding="checkbox"> 
-                      <Checkbox
-                        checked={row.selected}
-                        onChange={() => {
-                          const updated = [...dynamicRows];
-                          updated[i].selected = !updated[i].selected; 
-                          setDynamicRows(updated);
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <FormInput
-                        value={row.particulars} 
-                        inputType={'alphaNumericWithSpace'}
-                        onChange={(e) => {
-                          const updated = [...dynamicRows];
-                          updated[i].particulars = e.target.value; 
-                          setDynamicRows(updated);
-                        }}
-                        sx={{ width: '150px' }}
-                      />
-                    </TableCell>
-                    {['provAmtStart', 'addition', 'reduction'].map((key) => (
-                      <TableCell key={key} align="center"> 
-                        <FormInput
-                          value={row[key] || ''} 
-                          onChange={(e) => handleDynamicChange(i, key, e.target.value)} 
-                          sx={{ width: '150px' }}
-                        />
-                      </TableCell>
-                    ))}
-                    <TableCell align="center"> 
-                      <FormInput value={row.provAmtEnd} readOnly={true} sx={{ width: '150px' }} /> 
-                    </TableCell>
-                    <TableCell align="center"> 
-                      <FormInput value={row.provRequired} readOnly={true} sx={{ width: '150px' }} /> 
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </>
-      )}
-
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}> 
-        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
-      </Snackbar>
-    </Box>
-  );
-};
-
-export default RW05;
+{"value":[
+["","FRAUDS - DEBITED TO RECALLED ASSETS A/c (Prod Cd 6998-9981)**","12120","1212","1212","121210","-109090.00_D"," ","24240.00","1","1","true"],
+["","Frauds reported within time up to null provision @ 100% ##_D_D_D","0_D","0_D","0_D","0_D","12120","100","12120.00","2","2","true"],
+["","Delayed Reported frauds Provision @ 100% ##_D_D_D","0_D","0_D","0_D","0_D","12120","100","12120.00","3","3","true"],
+["","OTHERS LOSSES IN RECALLED ASSETS (Prod cd 6998 - 9982)#","1212","12121","12120","120","1091.00_D","100","1091.00","4","4","true"],
+["","FRAUDS - OTHER (NOT DEBITED TO RA A/c)$","1212","12121","12120","112120","-110909.00_D"," ","12220.00","5","5","true"],
+["","Frauds reported within time up tonullprovision @ 100% ##_D_D_D","0_D","0_D","0_D","0_D","11110","100","11110.00","6","6","true"],
+["","Delayed Reported frauds Provision @ 100% ##_D_D_D","0_D","0_D","0_D","0_D","1110","100","1110.00","7","7","true"],
+["","REVENUE ITEM IN SYSTEM SUSPENSE","1212120","1212120","12120","1110","11010.00_D","100","11010.00","8","8","true"],
+["","PROVISION ON ACCOUNT OF FSLO","111111","11110","11110","1110","110001.00_D","100","110001.00","9","9","true"],
+["","PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING IN ADJUSTING ACCOUNT FOR PREVIOUS QUARTER(S) (i.e. PRIOR TO CURRENT QUARTER)","11110","1110","110","110","10000.00_D","100","10000.00","10","10","true"],
+["","PROVISION ON N.P.A. INTEREST FREE STAFF LOANS","0","0","0","0","0.00_D","100","0.00","11","11","true"]],
+"tabValue":"1",
+"tabName":"RW-04(I)",
+"reportId":"3007",
+"submissionId":5259,
+"currentStatus":"11"}
