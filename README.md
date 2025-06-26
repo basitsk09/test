@@ -21,7 +21,7 @@ import {
 import TableCell, { tableCellClasses } from '@mui/material/TableCell';
 import { styled } from '@mui/material/styles';
 import lodashDebounce from 'lodash/debounce';
-import FormInput from '../../../../common/components/ui/FormInput';
+import FormInput from '../../../../common/components/ui/FormInput'; // Assuming this is an MUI TextField wrapper
 import useApi from '../../../../common/hooks/useApi';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
@@ -32,7 +32,7 @@ const StyledTableCell = styled(TableCell, {
 })(({ theme, hasError }) => ({
   fontSize: '0.875rem',
   padding: '8px',
-  border: `1px solid ${hasError ? 'red' : theme.palette.divider}`,
+  border: `1px solid ${hasError ? 'red' : theme.palette.divider}`, // Apply red border if hasError is true
   whiteSpace: 'nowrap',
 
   [`&.${tableCellClasses.head}`]: {
@@ -52,12 +52,7 @@ const StyledTableRow = styled(TableRow, {
   '&:nth-of-type(odd)': {
     // backgroundColor: theme.palette.action.hover,
   },
-  // Hide the last border
-  // '&:last-child td, &:last-child th': {
-  //   border: 0,
-  // },
   ...($issectionheader && {
-    // backgroundColor: theme.palette.grey[50],
     '& > td, & > th': {
       fontWeight: 'bold',
       textAlign: 'left',
@@ -74,367 +69,78 @@ const StyledTableRow = styled(TableRow, {
     },
   }),
   ...($istotalrow && {
-    // backgroundColor: theme.palette.grey[50],
     '& > td, & > th': {
       fontWeight: 'bold',
-      //color: theme.palette.text.primary,
     },
   }),
 }));
 
 // --- Configurations (identical to original) ---
 const schedule10DataFields = [
-  'stcNstaff',
-  'offResidenceA',
-  'otherPremisesA',
-  'electricFitting',
-  'totalA',
-  'computers',
-  'compSoftwareInt',
-  'compSoftwareNonint',
-  'compSoftwareTotal',
-  'motor',
-  'offResidenceB',
-  'stcLho',
-  'otherPremisesB',
-  'otherMachineryPlant',
-  'totalB',
-  'totalFurnFix',
-  'landNotRev',
-  'landRev',
-  'landRevEnh',
-  'offBuildNotRev',
-  'offBuildRev',
-  'offBuildRevEnh',
-  'residQuartNotRev',
-  'residQuartRev',
-  'residQuartRevEnh',
-  'premisTotal',
-  'revtotal',
-  'totalC',
-  'premisesUnderCons',
-  'grandTotal',
+  'stcNstaff', 'offResidenceA', 'otherPremisesA', 'electricFitting', 'totalA',
+  'computers', 'compSoftwareInt', 'compSoftwareNonint', 'compSoftwareTotal', 'motor',
+  'offResidenceB', 'stcLho', 'otherPremisesB', 'otherMachineryPlant', 'totalB',
+  'totalFurnFix', 'landNotRev', 'landRev', 'landRevEnh', 'offBuildNotRev',
+  'offBuildRev', 'offBuildRevEnh', 'residQuartNotRev', 'residQuartRev', 'residQuartRevEnh',
+  'premisTotal', 'revtotal', 'totalC', 'premisesUnderCons', 'grandTotal',
 ];
 
 const intraRowCalculatedFields = [
-  'totalA',
-  'compSoftwareTotal',
-  'otherMachineryPlant',
-  'totalB',
-  'totalFurnFix',
-  'premisTotal',
-  'revtotal',
-  'totalC',
-  'grandTotal',
+  'totalA', 'compSoftwareTotal', 'otherMachineryPlant', 'totalB', 'totalFurnFix',
+  'premisTotal', 'revtotal', 'totalC', 'grandTotal',
 ];
 
 const rowDefinitionsConfig = [
-  // --- Section: Original Cost / Revalued Value ---
-  {
-    id: 'row1',
-    modelSuffix: '1',
-    srNo: 'A',
-    label: (formData) =>
-      `Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March ${formData.finyearOne ||
-      ''}`,
-    type: 'entry',
-    isSectionHeaderStyle: true,
-  },
-  // --- Section: Addition ---
+  { id: 'row1', modelSuffix: '1', srNo: 'A', label: (formData) => `Total Original Cost / Revalued Value upto the end of previous year i.e. 31st March ${formData.finyearOne || ''}`, type: 'entry', isSectionHeaderStyle: true },
   { id: 'header_addition', label: 'Addition', type: 'subSectionHeader' },
-  {
-    id: 'header_addition_a',
-    srNo: '(a)',
-    label: 'Original cost of items put to use during the year:',
-    type: 'subSectionHeader',
-    isMinorHeader: true,
-  },
-  {
-    id: 'row3',
-    modelSuffix: '3',
-    srNo: '(i)',
-    label: 'Cost of new items put to use upto 3rd October 2024',
-    type: 'entry',
-  },
-  {
-    id: 'row4',
-    modelSuffix: '4',
-    srNo: '(ii)',
-    label: 'Cost of new items put to use during 4th October 2024 to 31st March 2025',
-    type: 'entry',
-  },
-  {
-    id: 'row36',
-    modelSuffix: '36',
-    srNo: '(b)',
-    label: 'Increase in value of Fixed Assets due to Current Revaluation',
-    type: 'entry',
-  },
-  {
-    id: 'row5',
-    modelSuffix: '5',
-    srNo: '(c)',
-    label: 'Original cost of items transferred from other Circles/Groups/CC Departments',
-    type: 'entry',
-  },
-  {
-    id: 'row6',
-    modelSuffix: '6',
-    srNo: '(d)',
-    label: 'Original cost of items transferred from other branches of the same Circle',
-    type: 'entry',
-  },
-  {
-    id: 'row7',
-    modelSuffix: '7',
-    srNo: 'I',
-    label: 'Total [a(i)+a(ii)+b+c+d]',
-    type: 'total',
-    subItemIds: ['row3', 'row4', 'row36', 'row5', 'row6'],
-    operation: 'sum',
-    isTotalRowStyle: true,
-  },
-  // --- Section: Deduction ---
+  { id: 'header_addition_a', srNo: '(a)', label: 'Original cost of items put to use during the year:', type: 'subSectionHeader', isMinorHeader: true },
+  { id: 'row3', modelSuffix: '3', srNo: '(i)', label: 'Cost of new items put to use upto 3rd October 2024', type: 'entry' },
+  { id: 'row4', modelSuffix: '4', srNo: '(ii)', label: 'Cost of new items put to use during 4th October 2024 to 31st March 2025', type: 'entry' },
+  { id: 'row36', modelSuffix: '36', srNo: '(b)', label: 'Increase in value of Fixed Assets due to Current Revaluation', type: 'entry' },
+  { id: 'row5', modelSuffix: '5', srNo: '(c)', label: 'Original cost of items transferred from other Circles/Groups/CC Departments', type: 'entry' },
+  { id: 'row6', modelSuffix: '6', srNo: '(d)', label: 'Original cost of items transferred from other branches of the same Circle', type: 'entry' },
+  { id: 'row7', modelSuffix: '7', srNo: 'I', label: 'Total [a(i)+a(ii)+b+c+d]', type: 'total', subItemIds: ['row3', 'row4', 'row36', 'row5', 'row6'], operation: 'sum', isTotalRowStyle: true },
   { id: 'header_deduction', label: 'Deduction', type: 'subSectionHeader' },
-  {
-    id: 'row37',
-    modelSuffix: '37',
-    srNo: '(i)',
-    label: 'Short Valuation charged to Revaluation Reserve due to Current Downward Revaluation',
-    type: 'entry',
-  },
-  {
-    id: 'row9',
-    modelSuffix: '9',
-    srNo: '(ii)',
-    label: 'Original cost of items sold/ discarded during the year',
-    type: 'entry',
-  },
-  {
-    id: 'row33',
-    modelSuffix: '33',
-    srNo: '(iii)',
-    label: 'Projects under construction capitalised during the year',
-    type: 'entry',
-  },
-  {
-    id: 'row10',
-    modelSuffix: '10',
-    srNo: '(iv)',
-    label: 'Original cost of items transferred to other Circles/Groups/CC Departments',
-    type: 'entry',
-  },
-  {
-    id: 'row11',
-    modelSuffix: '11',
-    srNo: '(v)',
-    label: 'Original cost of items transferred to other branches in the same circle',
-    type: 'entry',
-  },
-  {
-    id: 'row12',
-    modelSuffix: '12',
-    srNo: 'II',
-    label: 'Total (i+ii+iii+iv+v)',
-    type: 'total',
-    subItemIds: ['row37', 'row9', 'row33', 'row10', 'row11'],
-    operation: 'sum',
-    isTotalRowStyle: true,
-  },
-  // --- Section: Net Totals ---
-  {
-    id: 'row13',
-    modelSuffix: '13',
-    srNo: 'B',
-    label: 'Net Addition (I-II)',
-    type: 'total',
-    subItemIds: ['row7', 'row12'],
-    operation: 'subtract',
-    isSectionHeaderStyle: true,
-    isTotalRowStyle: true,
-  },
-  {
-    id: 'row14',
-    modelSuffix: '14',
-    srNo: 'C',
-    label: (formData) => `Total Original Cost/ Revalued Value as at 31st March ${formData.finyearTwo ||
-      ''} (A+B)`,
-    type: 'total',
-    subItemIds: ['row1', 'row13'],
-    operation: 'sum',
-    isSectionHeaderStyle: true,
-    isTotalRowStyle: true,
-  },
-  // --- Section: Depreciation ---
+  { id: 'row37', modelSuffix: '37', srNo: '(i)', label: 'Short Valuation charged to Revaluation Reserve due to Current Downward Revaluation', type: 'entry' },
+  { id: 'row9', modelSuffix: '9', srNo: '(ii)', label: 'Original cost of items sold/ discarded during the year', type: 'entry' },
+  { id: 'row33', modelSuffix: '33', srNo: '(iii)', label: 'Projects under construction capitalised during the year', type: 'entry' },
+  { id: 'row10', modelSuffix: '10', srNo: '(iv)', label: 'Original cost of items transferred to other Circles/Groups/CC Departments', type: 'entry' },
+  { id: 'row11', modelSuffix: '11', srNo: '(v)', label: 'Original cost of items transferred to other branches in the same circle', type: 'entry' },
+  { id: 'row12', modelSuffix: '12', srNo: 'II', label: 'Total (i+ii+iii+iv+v)', type: 'total', subItemIds: ['row37', 'row9', 'row33', 'row10', 'row11'], operation: 'sum', isTotalRowStyle: true },
+  { id: 'row13', modelSuffix: '13', srNo: 'B', label: 'Net Addition (I-II)', type: 'total', subItemIds: ['row7', 'row12'], operation: 'subtract', isSectionHeaderStyle: true, isTotalRowStyle: true },
+  { id: 'row14', modelSuffix: '14', srNo: 'C', label: (formData) => `Total Original Cost/ Revalued Value as at 31st March ${formData.finyearTwo || ''} (A+B)`, type: 'total', subItemIds: ['row1', 'row13'], operation: 'sum', isSectionHeaderStyle: true, isTotalRowStyle: true },
   { id: 'header_depreciation', label: 'Depreciation', type: 'subSectionHeader' },
-  {
-    id: 'row18',
-    modelSuffix: '18',
-    srNo: '(i)',
-    label: (formData) => `Depreciation upto the end of previous year i.e. 31st March ${formData.finyearOne ||
-      ''}`,
-    type: 'entry',
-  },
-  {
-    id: 'row34',
-    modelSuffix: '34',
-    srNo: '(ii)',
-    label: (formData) =>
-      `Short Valuation charged to depreciation upto end of previous year i.e.31st March ${formData.finyearOne ||
-      ''}`,
-    type: 'entry',
-  },
-  {
-    id: 'row38',
-    modelSuffix: '38',
-    srNo: '(iii)',
-    label: 'Depreciation on repatriation of Officials from Subsidiaries/ Associates',
-    type: 'entry',
-  },
-  {
-    id: 'row19',
-    modelSuffix: '19',
-    srNo: '(iv)',
-    label: 'Depreciation transferred from other Circles/Groups/CC Departments',
-    type: 'entry',
-  },
-  {
-    id: 'row20',
-    modelSuffix: '20',
-    srNo: '(v)',
-    label: 'Depreciation transferred from other branches of the same circle.',
-    type: 'entry',
-  },
-  {
-    id: 'row21',
-    modelSuffix: '21',
-    srNo: '(vi)',
-    label: 'Depreciation charged during the current year',
-    type: 'entry',
-  },
-  {
-    id: 'row39',
-    modelSuffix: '39',
-    srNo: '(vii)',
-    label: 'Short Valuation charged to Depreciation during the current year due to Current Revaluation',
-    type: 'entry',
-  },
-  {
-    id: 'row22',
-    modelSuffix: '22',
-    srNo: 'D',
-    label: 'Total (i+ii+iii+iv+v+vi+vii)',
-    type: 'total',
-    subItemIds: ['row18', 'row34', 'row38', 'row19', 'row20', 'row21', 'row39'],
-    operation: 'sum',
-    isTotalRowStyle: true,
-  },
-  // --- Section: Less Depreciation ---
+  { id: 'row18', modelSuffix: '18', srNo: '(i)', label: (formData) => `Depreciation upto the end of previous year i.e. 31st March ${formData.finyearOne || ''}`, type: 'entry' },
+  { id: 'row34', modelSuffix: '34', srNo: '(ii)', label: (formData) => `Short Valuation charged to depreciation upto end of previous year i.e.31st March ${formData.finyearOne || ''}`, type: 'entry' },
+  { id: 'row38', modelSuffix: '38', srNo: '(iii)', label: 'Depreciation on repatriation of Officials from Subsidiaries/ Associates', type: 'entry' },
+  { id: 'row19', modelSuffix: '19', srNo: '(iv)', label: 'Depreciation transferred from other Circles/Groups/CC Departments', type: 'entry' },
+  { id: 'row20', modelSuffix: '20', srNo: '(v)', label: 'Depreciation transferred from other branches of the same circle.', type: 'entry' },
+  { id: 'row21', modelSuffix: '21', srNo: '(vi)', label: 'Depreciation charged during the current year', type: 'entry' },
+  { id: 'row39', modelSuffix: '39', srNo: '(vii)', label: 'Short Valuation charged to Depreciation during the current year due to Current Revaluation', type: 'entry' },
+  { id: 'row22', modelSuffix: '22', srNo: 'D', label: 'Total (i+ii+iii+iv+v+vi+vii)', type: 'total', subItemIds: ['row18', 'row34', 'row38', 'row19', 'row20', 'row21', 'row39'], operation: 'sum', isTotalRowStyle: true },
   { id: 'header_less_depreciation', label: 'Less :', type: 'subSectionHeader' },
-  {
-    id: 'row40',
-    modelSuffix: '40',
-    srNo: '(i)',
-    label: 'Past Short Valuation credited to Depreciation during the current year due to Current Upward Revaluation',
-    type: 'entry',
-  },
-  {
-    id: 'row24',
-    modelSuffix: '24',
-    srNo: '(ii)',
-    label: 'Depreciation previously provided on fixed assets sold/ discarded',
-    type: 'entry',
-  },
-  {
-    id: 'row25',
-    modelSuffix: '25',
-    srNo: '(iii)',
-    label: 'Depreciation transferred to other Circles/Groups/CC Departments',
-    type: 'entry',
-  },
-  {
-    id: 'row26',
-    modelSuffix: '26',
-    srNo: '(iv)',
-    label: 'Depreciation transferred to other branches of the same Circle.',
-    type: 'entry',
-  },
-  {
-    id: 'row27',
-    modelSuffix: '27',
-    srNo: 'E',
-    label: 'Total (i+ii+iii+iv)',
-    type: 'total',
-    subItemIds: ['row40', 'row24', 'row25', 'row26'],
-    operation: 'sum',
-    isTotalRowStyle: true,
-  },
-  // --- Section: Net Depreciation & Book Value ---
-  {
-    id: 'row28',
-    modelSuffix: '28',
-    srNo: 'F',
-    label: 'Net Depreciation (D-E)',
-    type: 'total',
-    subItemIds: ['row22', 'row27'],
-    operation: 'subtract',
-    isTotalRowStyle: true,
-  },
-  {
-    id: 'row29',
-    modelSuffix: '29',
-    srNo: 'G',
-    label: (formData) => `Net Book Value as at 31st March ${formData.finyearTwo ||
-      ''} (C-F)`,
-    type: 'total',
-    subItemIds: ['row14', 'row28'],
-    operation: 'subtract',
-    isSectionHeaderStyle: true,
-    isTotalRowStyle: true,
-  },
-  // --- Section: Sale of Assets ---
+  { id: 'row40', modelSuffix: '40', srNo: '(i)', label: 'Past Short Valuation credited to Depreciation during the current year due to Current Upward Revaluation', type: 'entry' },
+  { id: 'row24', modelSuffix: '24', srNo: '(ii)', label: 'Depreciation previously provided on fixed assets sold/ discarded', type: 'entry' },
+  { id: 'row25', modelSuffix: '25', srNo: '(iii)', label: 'Depreciation transferred to other Circles/Groups/CC Departments', type: 'entry' },
+  { id: 'row26', modelSuffix: '26', srNo: '(iv)', label: 'Depreciation transferred to other branches of the same Circle.', type: 'entry' },
+  { id: 'row27', modelSuffix: '27', srNo: 'E', label: 'Total (i+ii+iii+iv)', type: 'total', subItemIds: ['row40', 'row24', 'row25', 'row26'], operation: 'sum', isTotalRowStyle: true },
+  { id: 'row28', modelSuffix: '28', srNo: 'F', label: 'Net Depreciation (D-E)', type: 'total', subItemIds: ['row22', 'row27'], operation: 'subtract', isTotalRowStyle: true },
+  { id: 'row29', modelSuffix: '29', srNo: 'G', label: (formData) => `Net Book Value as at 31st March ${formData.finyearTwo || ''} (C-F)`, type: 'total', subItemIds: ['row14', 'row28'], operation: 'subtract', isSectionHeaderStyle: true, isTotalRowStyle: true },
   { id: 'row30', modelSuffix: '30', srNo: 'H', label: 'Sale Price of fixed assets', type: 'entry' },
-  {
-    id: 'row31',
-    modelSuffix: '31',
-    srNo: 'I',
-    label: 'Book Value of fixed assets sold [II (ii)-E(ii)]',
-    type: 'total',
-    subItemIds: ['row9', 'row24'],
-    operation: 'subtract_special_IIii_Eii',
-    isTotalRowStyle: true,
-  },
+  { id: 'row31', modelSuffix: '31', srNo: 'I', label: 'Book Value of fixed assets sold [II (ii)-E(ii)]', type: 'total', subItemIds: ['row9', 'row24'], operation: 'subtract_special_IIii_Eii', isTotalRowStyle: true },
   { id: 'row35', modelSuffix: '35', srNo: 'J', label: 'GST on Sale of fixed assets', type: 'entry' },
-  {
-    id: 'row32',
-    modelSuffix: '32',
-    srNo: 'K',
-    label: 'Profit/ (Loss) on sale of fixed assets [H-(I+J)]',
-    type: 'total',
-    subItemIds: ['row30', 'row31', 'row35'],
-    operation: 'custom_H_minus_IplusJ',
-    isTotalRowStyle: true,
-  },
+  { id: 'row32', modelSuffix: '32', srNo: 'K', label: 'Profit/ (Loss) on sale of fixed assets [H-(I+J)]', type: 'total', subItemIds: ['row30', 'row31', 'row35'], operation: 'custom_H_minus_IplusJ', isTotalRowStyle: true },
 ];
 
 const columnDisplayHeaders = [
-  // Group (A) Furniture & Fittings
   { labelHtml: 'i) At STCs & Staff Colleges <br /> (For Local Head Office only)', dataField: 'stcNstaff' },
   { labelHtml: "ii) At Officers' Residences", dataField: 'offResidenceA' },
   { labelHtml: 'iii) At Other Premises', dataField: 'otherPremisesA' },
-  {
-    labelHtml:
-      'iv) Electric Fittings <br /> (include electric wiring, <br /> switches, sockets, other <br /> fittings & fans etc.)',
-    dataField: 'electricFitting',
-  },
+  { labelHtml: 'iv) Electric Fittings <br /> (include electric wiring, <br /> switches, sockets, other <br /> fittings & fans etc.)', dataField: 'electricFitting' },
   { labelHtml: 'TOTAL (A) <br /> (i+ii+iii+iv)', dataField: 'totalA', isCalculated: true },
-  // Group (B) Machinery & Plant
   { labelHtml: 'i) Computer Hardware', dataField: 'computers' },
   { labelHtml: 'a. Computer Software <br /> (forming integral part of <br /> Hardware)', dataField: 'compSoftwareInt' },
-  {
-    labelHtml: 'b. Computer Software <br /> (not forming integral <br /> of Hardware)',
-    dataField: 'compSoftwareNonint',
-  },
+  { labelHtml: 'b. Computer Software <br /> (not forming integral <br /> of Hardware)', dataField: 'compSoftwareNonint' },
   { labelHtml: 'ii) Computer Software <br /> Total (a+b)', dataField: 'compSoftwareTotal', isCalculated: true },
   { labelHtml: 'iii) Motor Vehicles', dataField: 'motor' },
   { labelHtml: "a) At Officers' Residences", dataField: 'offResidenceB' },
@@ -442,24 +148,16 @@ const columnDisplayHeaders = [
   { labelHtml: 'c) At other Premises', dataField: 'otherPremisesB' },
   { labelHtml: 'iv) Other Machinery & Plant <br />(a+b+c)', dataField: 'otherMachineryPlant', isCalculated: true },
   { labelHtml: 'TOTAL (B) <br /> (i+ii+iii+iv)', dataField: 'totalB', isCalculated: true },
-  // Total Furniture & Fixtures (A+B)
   { labelHtml: 'Total Furniture & Fixtures <br /> (A+B)', dataField: 'totalFurnFix', isCalculated: true },
-  // Group (C) Premises
   { labelHtml: '(a) Land (Not Revalued): <br /> Cost', dataField: 'landNotRev' },
   { labelHtml: '(b) Land (Revalued): <br /> Cost', dataField: 'landRev' },
   { labelHtml: '(c) Land (Revalued): <br /> Enhancement due to <br /> Revaluation', dataField: 'landRevEnh' },
   { labelHtml: '(d) Office Building <br /> (Not revalued): Cost', dataField: 'offBuildNotRev' },
   { labelHtml: '(e) Office Building <br /> (Revalued): Cost', dataField: 'offBuildRev' },
-  {
-    labelHtml: '(f) Office Building <br /> (Revalued): Enhancement <br /> due to Revaluation',
-    dataField: 'offBuildRevEnh',
-  },
+  { labelHtml: '(f) Office Building <br /> (Revalued): Enhancement <br /> due to Revaluation', dataField: 'offBuildRevEnh' },
   { labelHtml: '(g) Residential Building <br /> (Not revalued): Cost', dataField: 'residQuartNotRev' },
   { labelHtml: '(h) Residential Building <br /> (Revalued): Cost', dataField: 'residQuartRev' },
-  {
-    labelHtml: '(i) Residential Building <br /> (Revalued): Enhancement <br /> due to Revaluation',
-    dataField: 'residQuartRevEnh',
-  },
+  { labelHtml: '(i) Residential Building <br /> (Revalued): Enhancement <br /> due to Revaluation', dataField: 'residQuartRevEnh' },
   { labelHtml: '(j) Premises Total <br /> (a+b+d+e+g+h)', dataField: 'premisTotal', isCalculated: true },
   { labelHtml: '(k) Revaluation Total <br /> (c+f+i)', dataField: 'revtotal', isCalculated: true },
   { labelHtml: 'TOTAL (C) <br /> (j+k)', dataField: 'totalC', isCalculated: true },
@@ -490,7 +188,7 @@ const MemoizedFormInput = React.memo(function MemoizedFormInput({
   onChange,
   onBlur,
   readOnly,
-  error,
+  error, // This prop controls the red border on the TextField itself
   helperText,
 }) {
   return (
@@ -500,10 +198,10 @@ const MemoizedFormInput = React.memo(function MemoizedFormInput({
       onChange={onChange}
       onBlur={onBlur}
       readOnly={readOnly}
-      error={!!error}
+      error={error} // Pass the boolean error status directly
       helperText={helperText}
       customStyles={{
-        width: '200px', // ? consistent fixed width for all
+        width: '200px',
         '& input': {
           textAlign: 'right',
           padding: '6px 8px',
@@ -521,15 +219,12 @@ const VirtualizedInput = (props) => {
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        // If the component is intersecting the viewport, show the real input
         if (entry.isIntersecting) {
           setIsInView(true);
-          // Stop observing once it's visible
           observer.unobserve(entry.target);
         }
       },
       {
-        // Optional: Adjust rootMargin to load inputs slightly before they appear on screen
         rootMargin: '200px',
       }
     );
@@ -544,17 +239,17 @@ const VirtualizedInput = (props) => {
       }
     };
   }, []);
-  // Placeholder has fixed height and alignment to prevent layout shifts when the real input loads
+
   const placeholder = (
     <Box
       ref={placeholderRef}
       sx={{
         height: '38px',
-        width: '200px', // Match typical height of a small TextField
+        width: '200px',
         textAlign: 'right',
         padding: '6px 8px',
         boxSizing: 'border-box',
-        border: '1px solid transparent', // To prevent layout shift when real input loads
+        border: '1px solid transparent',
       }}
     >
       {props.displayValue}
@@ -567,7 +262,8 @@ const Schedule10 = () => {
   const setSnackbarMessage = useCustomSnackbar();
   const [isChecking, setIsChecking] = useState(false);
   const [formData, setFormData] = useState(generateInitialSchedule10Data);
-  const [errors, setErrors] = useState({}); // Stores individual field errors (e.g., numeric) AND validation mismatches
+  // 'errors' state now explicitly manages specific field error strings (or 'mismatch')
+  const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false);
   const { state } = useLocation();
@@ -588,7 +284,8 @@ const Schedule10 = () => {
     premisesUnderConstruction: '0.00',
   });
   const [manualEntry, setManualEntry] = useState(true);
-  const [validationErrors, setValidationErrors] = useState([]); // State for pre-check validation errors for the dialog
+  // This state holds the messages for the validation dialog
+  const [validationErrorMessages, setValidationErrorMessages] = useState([]);
 
   const convertFlatSc10DataToFormData = (flatData) => {
     const structuredData = generateInitialSchedule10Data();
@@ -622,21 +319,18 @@ const Schedule10 = () => {
         console.log('SFTP response:', data);
         if (user.isCircleExist === 'true') {
           if (data.fileAndDataStatus === 1) {
-            // SFTP Success
             const convertedFormData = convertFlatSc10DataToFormData(data.sc10Data);
             setFormData(convertedFormData);
-            setFieldsDisabled(true); // disables all inputs
+            setFieldsDisabled(true);
             setSnackbarMessage(data.message || 'Data successfully fetched from IFAMS via SFTP.', 'success');
           } else if (data.fileAndDataStatus === 2) {
-            // File error or mismatch
             setFieldsDisabled(true);
             showDialog({
               title: 'File Error',
               message: data.message || 'Data not received from IFAMS, Kindly wait till IFAMS sends reports',
-              onConfirm: () => navigate(-1), // go back
+              onConfirm: () => navigate(-1),
             });
           } else if (data.fileAndDataStatus === 3) {
-            // Data already exists in DB but file was missing
             setFieldsDisabled(true);
             showDialog({
               title: 'Info',
@@ -689,7 +383,7 @@ const Schedule10 = () => {
     const flatData = {};
     rowDefinitionsConfig.forEach((rowDef) => {
       const suffix = rowDef.modelSuffix;
-      if (!suffix) return; // Skip headers
+      if (!suffix) return;
 
       const row = formData[rowDef.id] || {};
       schedule10DataFields.forEach((field) => {
@@ -697,7 +391,6 @@ const Schedule10 = () => {
         flatData[key] = row[field] ?? '0.00';
       });
     });
-    // Add year fields if needed
     flatData.finyearOne = formData.finyearOne;
     flatData.finyearTwo = formData.finyearTwo;
 
@@ -706,63 +399,89 @@ const Schedule10 = () => {
 
   const getNum = (value) => parseFloat(value) || 0;
 
-  const performPreCheckValidations = (validationApiResponse) => {
-    setValidationErrors([]); // Clear previous dialog errors
-    setErrors({}); // Clear previous red border errors
+  // This function performs the validation logic and updates both error states
+  const performPreCheckValidations = (apiResponse) => {
+    // Clear all previous errors first
+    setErrors({});
+    setValidationErrorMessages([]);
 
-    const currentValidationErrors = [];
-    const newFieldErrors = {}; // To store errors for red borders
+    const currentValidationMessages = [];
+    const newFieldErrors = {}; // To apply red borders
+
+    // Calculate totals for validation from current calculatedData
+    const totalA_row29 = getNum(calculatedData.row29.totalA);
+    const totalB_row29 = getNum(calculatedData.row29.totalB);
+    const totalC_row29 = getNum(calculatedData.row29.totalC);
+    const premisesUnderCons_row29 = getNum(calculatedData.row29.premisesUnderCons);
+
+    // Get expected values from API response
+    const validPremisesAmount = getNum(apiResponse.validationPremisesAmount);
+    const validPremisesUnderConsAmount = getNum(apiResponse.validationPremisesUnderConsAmount);
+    const validOtherFixedAssetAmount = getNum(apiResponse.validationOtherFixedAssetAmount);
 
     // Validation 1: Premises value
-    const premisesValue = getNum(calculatedData.row29.totalC);
-    const validPremisesAmount = getNum(validationApiResponse.validationPremisesAmount);
-    if (premisesValue.toFixed(2) !== validPremisesAmount.toFixed(2)) {
-      currentValidationErrors.push('Premises value Not Matching');
-      newFieldErrors['row29-totalC'] = 'mismatch'; // Key for specific cell
+    if (totalC_row29.toFixed(2) !== validPremisesAmount.toFixed(2)) {
+      currentValidationMessages.push('Premises value Not Matching');
+      newFieldErrors['row29-totalC'] = true; // Use boolean for error state to trigger red border
     }
 
     // Validation 2: Premises/Project under construction value
-    const premisesUnderConsValue = getNum(calculatedData.row29.premisesUnderCons);
-    const validPremisesUnderConsAmount = getNum(validationApiResponse.validationPremisesUnderConsAmount);
-    if (premisesUnderConsValue.toFixed(2) !== validPremisesUnderConsAmount.toFixed(2)) {
-      currentValidationErrors.push('Premises/Project under Construction value Not Matching');
-      newFieldErrors['row29-premisesUnderCons'] = 'mismatch';
+    if (premisesUnderCons_row29.toFixed(2) !== validPremisesUnderConsAmount.toFixed(2)) {
+      currentValidationMessages.push('Premises/Project under Construction value Not Matching');
+      newFieldErrors['row29-premisesUnderCons'] = true;
     }
 
-    // Validation 3: Other Fixed Asset value
-    const totalA_row29 = getNum(calculatedData.row29.totalA);
-    const totalB_row29 = getNum(calculatedData.row29.totalB);
-    const otherFixedAssetSum = totalA_row29 + totalB_row29;
-    const validOtherFixedAssetAmount = getNum(validationApiResponse.validationOtherFixedAssetAmount);
-    if (otherFixedAssetSum.toFixed(2) !== validOtherFixedAssetAmount.toFixed(2)) {
-      currentValidationErrors.push('Other Fixed Asset value Not Matching');
-      newFieldErrors['row29-totalA'] = 'mismatch';
-      newFieldErrors['row29-totalB'] = 'mismatch';
+    // Validation 3: Other Fixed Asset value (totalA29 + totalB29)
+    const combinedTotalAB_row29 = (totalA_row29 + totalB_row29);
+    if (combinedTotalAB_row29.toFixed(2) !== validOtherFixedAssetAmount.toFixed(2)) {
+      currentValidationMessages.push('Other Fixed Asset value Not Matching');
+      newFieldErrors['row29-totalA'] = true;
+      newFieldErrors['row29-totalB'] = true;
     }
 
-    setErrors(newFieldErrors); // Set errors for red borders
-    setValidationErrors(currentValidationErrors); // Set errors for the dialog
-    setPreCheckOpen(true); // Open the pre-check dialog
+    setErrors(newFieldErrors); // Update field errors for red borders
+    setValidationErrorMessages(currentValidationMessages); // Update messages for the dialog
+
+    return currentValidationMessages.length === 0; // Return true if no errors, false otherwise
   };
 
   const validateAndSubmit = async (isSaveOnly = true) => {
-    // Before submission, perform the pre-check validation again
-    // This assumes preCheckData is already available from a previous pre-check API call
-    // If not, you might need to call the API here first to get the latest preCheckData
-    
-    // You could optionally fetch latest preCheckData if 'preCheckData' might be stale
-    // const validationApiResponse = await callApi('/Maker/getValidationDataTen', payload, 'POST');
-    // performPreCheckValidations(validationApiResponse);
+    setIsSubmitting(true);
+    let apiResponseForValidation = preCheckData; // Default to existing preCheckData
 
-    performPreCheckValidations(preCheckData); // Use existing preCheckData for validation during submit
+    // You might want to refetch preCheckData to ensure it's up-to-date
+    // for submission validation, especially if the user hasn't clicked "Pre-Check" recently.
+    // For this example, we'll assume preCheckData is sufficiently recent from handlePreCheck
+    // or loaded on component mount. If you need to refetch, uncomment and adapt:
+    /*
+    try {
+      const payload = {
+        circleCode: user.circleCode,
+        quarterEndDate: user.quarterEndDate,
+        status: reportObject.status,
+        reportId: reportObject.reportId,
+        reportMasterId: reportObject.reportMasterId,
+        reportName: reportObject.name,
+        userId: user.userId,
+        areMocPending: false,
+      };
+      apiResponseForValidation = await callApi('/Maker/getValidationDataTen', payload, 'POST');
+    } catch (error) {
+      setSnackbarMessage('Failed to fetch pre-check data for submission validation.', 'error');
+      setIsSubmitting(false);
+      return; // Stop submission
+    }
+    */
 
-    if (validationErrors.length > 0) {
-      setPreCheckOpen(true); // Re-open the pre-check dialog to show errors
-      return; // Stop submission if there are errors
+    const isValid = performPreCheckValidations(apiResponseForValidation);
+
+    if (!isValid) {
+      setPreCheckOpen(true); // Open dialog to show errors
+      setIsSubmitting(false); // Stop submission
+      return;
     }
 
     // If no validation errors, proceed with save/submit
-    setIsSubmitting(true);
     try {
       console.log('formdata', formData);
 
@@ -812,7 +531,6 @@ const Schedule10 = () => {
     setDialogOpen(true);
     setDialogContent({ title, message, onConfirm });
   };
-
 
   const calculatedData = useMemo(() => {
     console.time('Schedule10 Calculations');
@@ -930,10 +648,11 @@ const Schedule10 = () => {
   const handleBlur = useCallback((rowId, fieldKey, value) => {
     const numericRegex = /^-?\d*\.?\d{0,2}$/;
     let error = '';
+    // This is for basic numeric validation, separate from pre-check mismatches
     if (value !== '' && value !== '-' && !numericRegex.test(value)) {
       error = 'Invalid number';
     }
-    setErrors((prev) => ({ ...prev, [`${rowId}-${fieldKey}`]: error }));
+    setErrors((prev) => ({ ...prev, [`${rowId}-${fieldKey}`]: error ? true : false })); // Store boolean true/false for numeric error
   }, []);
 
   const handlePreCheck = async () => {
@@ -958,8 +677,7 @@ const Schedule10 = () => {
           premises: response.validationPremisesAmount,
           premisesUnderConstruction: response.validationPremisesUnderConsAmount,
         });
-        // Perform validations and set errors here
-        performPreCheckValidations(response);
+        performPreCheckValidations(response); // Perform validations immediately after getting data
       }
     } catch (error) {
       setSnackbar({
@@ -983,17 +701,17 @@ const Schedule10 = () => {
   return (
     <Box sx={{ p: 1, width: '100%', boxSizing: 'border-box', overflowX: 'hidden', bgcolor: 'background.default' }}>
       <Dialog open={preCheckOpen} onClose={() => setPreCheckOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ backgroundColor: validationErrors.length > 0 ? '#E74C3C' : '#4CAF50', color: 'white' }}>
-          {validationErrors.length > 0 ? 'Errors!' : 'Attention!'}
+        <DialogTitle sx={{ backgroundColor: validationErrorMessages.length > 0 ? '#E74C3C' : '#4CAF50', color: 'white' }}>
+          {validationErrorMessages.length > 0 ? 'Errors!' : 'Attention!'}
         </DialogTitle>
         <DialogContent dividers>
-          {validationErrors.length > 0 ? (
+          {validationErrorMessages.length > 0 ? (
             <Box>
               <Typography variant="h6" component="div" sx={{ mb: 2, color: 'red' }}>
                 Please correct the following errors:
               </Typography>
               <ul>
-                {validationErrors.map((error, index) => (
+                {validationErrorMessages.map((error, index) => (
                   <li key={index}>
                     <Typography>{error}</Typography>
                   </li>
@@ -1122,7 +840,7 @@ const Schedule10 = () => {
                   key={colDef.dataField}
                   sx={{
                     position: 'sticky',
-                    top: '42px', // Adjust this value based on your row height
+                    top: '42px',
                     backgroundColor: 'background.paper',
                   }}
                   dangerouslySetInnerHTML={{ __html: colDef.labelHtml }}
@@ -1194,21 +912,25 @@ const Schedule10 = () => {
                       rowDef.type === 'total' ||
                       colDef.isCalculated ||
                       (rowDef.isReadOnlyGroup && rowDef.isReadOnlyGroup.includes(fieldKey));
+
                     const displayValue = calculatedData[rowKey]?.[fieldKey] ?? '0.00';
                     const inputValue = formData[rowKey]?.[fieldKey] ?? '0.00';
-                    const errorForField = errors[cellKey]; // This error could be for numeric validation or pre-check mismatch
+
+                    // Check if there's any error for this specific field (numeric or mismatch)
+                    const hasError = errors[cellKey];
 
                     return (
-                      <StyledTableCell key={cellKey} hasError={!!errorForField}>
+                      <StyledTableCell key={cellKey} hasError={hasError}>
                         <VirtualizedInput
                           name={cellKey}
                           value={isReadOnly ? displayValue : inputValue}
-                          displayValue={displayValue} // Pass display value for placeholder
+                          displayValue={displayValue}
                           onChange={(e) => handleChange(rowDef.id, fieldKey, e.target.value)}
                           onBlur={(e) => handleBlur(rowDef.id, fieldKey, e.target.value)}
                           readOnly={isReadOnly || fieldsDisabled || manualEntry}
-                          error={errorForField} // Pass error to FormInput for its internal error state/helperText
-                          helperText={errorForField === 'mismatch' ? 'Value Mismatch' : errorForField} // Custom helper text for mismatch
+                          error={hasError} // Pass boolean to FormInput
+                          // Helper text can be more specific if 'errors[cellKey]' stores a message
+                          helperText={hasError ? (errors[cellKey] === true ? 'Value Mismatch' : errors[cellKey]) : ''}
                         />
                       </StyledTableCell>
                     );
