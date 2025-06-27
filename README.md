@@ -25,20 +25,21 @@ import FormInput from '../../../../common/components/ui/FormInput';
 import useApi from '../../../../common/hooks/useApi';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import LoadingOverlay from '../../../../common/components/ui/loadingOverlay';
 
-// --- Styled Components ---
+// --- Styled Components (Updated for Theming) ---
 const StyledTableCell = styled(TableCell, {
-  shouldForwardProp: (prop) => prop !== 'isFixedColumn' && prop !== 'hasError',
-})(({ theme, hasError }) => ({
+  shouldForwardProp: (prop) => prop !== 'isFixedColumn',
+})(({ theme }) => ({
   fontSize: '0.875rem',
   padding: '8px',
-  // Apply red border directly to the cell if hasError is true
-  border: `1px solid ${hasError ? 'red' : theme.palette.divider}`,
+  border: `1px solid ${theme.palette.divider}`,
   whiteSpace: 'nowrap',
 
   [`&.${tableCellClasses.head}`]: {
-    backgroundColor: theme.palette.grey[50],
-    color: theme.palette.text.primary,
+    // backgroundColor: theme.palette.grey[50],
+    // color: theme.palette.text.primary,
     fontWeight: 'bold',
     textAlign: 'center',
   },
@@ -53,30 +54,37 @@ const StyledTableRow = styled(TableRow, {
   '&:nth-of-type(odd)': {
     // backgroundColor: theme.palette.action.hover,
   },
+  // Hide the last border
+  // '&:last-child td, &:last-child th': {
+  //   border: 0,
+  // },
   ...($issectionheader && {
+    // backgroundColor: theme.palette.grey[50],
     '& > td, & > th': {
       fontWeight: 'bold',
       textAlign: 'left',
-      color: theme.palette.text.primary,
+      //color: theme.palette.text.primary,
     },
   }),
   ...($issubsectionheader && {
-    backgroundColor: theme.palette.grey[50],
+    // backgroundColor: theme.palette.grey[50],
     '& > td, & > th': {
       fontWeight: 'bold',
       fontStyle: 'italic',
       textAlign: 'left',
-      color: theme.palette.text.primary,
+      // color: theme.palette.text.primary,
     },
   }),
   ...($istotalrow && {
+    // backgroundColor: theme.palette.grey[50],
     '& > td, & > th': {
       fontWeight: 'bold',
+      //color: theme.palette.text.primary,
     },
   }),
 }));
 
-// --- Configurations ---
+// --- Configurations (identical to original) ---
 const schedule10DataFields = [
   'stcNstaff',
   'offResidenceA',
@@ -123,6 +131,7 @@ const intraRowCalculatedFields = [
 ];
 
 const rowDefinitionsConfig = [
+  // --- Section: Original Cost / Revalued Value ---
   {
     id: 'row1',
     modelSuffix: '1',
@@ -132,6 +141,7 @@ const rowDefinitionsConfig = [
     type: 'entry',
     isSectionHeaderStyle: true,
   },
+  // --- Section: Addition ---
   { id: 'header_addition', label: 'Addition', type: 'subSectionHeader' },
   {
     id: 'header_addition_a',
@@ -185,6 +195,7 @@ const rowDefinitionsConfig = [
     operation: 'sum',
     isTotalRowStyle: true,
   },
+  // --- Section: Deduction ---
   { id: 'header_deduction', label: 'Deduction', type: 'subSectionHeader' },
   {
     id: 'row37',
@@ -231,6 +242,7 @@ const rowDefinitionsConfig = [
     operation: 'sum',
     isTotalRowStyle: true,
   },
+  // --- Section: Net Totals ---
   {
     id: 'row13',
     modelSuffix: '13',
@@ -253,6 +265,7 @@ const rowDefinitionsConfig = [
     isSectionHeaderStyle: true,
     isTotalRowStyle: true,
   },
+  // --- Section: Depreciation ---
   { id: 'header_depreciation', label: 'Depreciation', type: 'subSectionHeader' },
   {
     id: 'row18',
@@ -314,6 +327,7 @@ const rowDefinitionsConfig = [
     operation: 'sum',
     isTotalRowStyle: true,
   },
+  // --- Section: Less Depreciation ---
   { id: 'header_less_depreciation', label: 'Less :', type: 'subSectionHeader' },
   {
     id: 'row40',
@@ -353,6 +367,7 @@ const rowDefinitionsConfig = [
     operation: 'sum',
     isTotalRowStyle: true,
   },
+  // --- Section: Net Depreciation & Book Value ---
   {
     id: 'row28',
     modelSuffix: '28',
@@ -374,6 +389,7 @@ const rowDefinitionsConfig = [
     isSectionHeaderStyle: true,
     isTotalRowStyle: true,
   },
+  // --- Section: Sale of Assets ---
   { id: 'row30', modelSuffix: '30', srNo: 'H', label: 'Sale Price of fixed assets', type: 'entry' },
   {
     id: 'row31',
@@ -399,6 +415,7 @@ const rowDefinitionsConfig = [
 ];
 
 const columnDisplayHeaders = [
+  // Group (A) Furniture & Fittings
   { labelHtml: 'i) At STCs & Staff Colleges <br /> (For Local Head Office only)', dataField: 'stcNstaff' },
   { labelHtml: "ii) At Officers' Residences", dataField: 'offResidenceA' },
   { labelHtml: 'iii) At Other Premises', dataField: 'otherPremisesA' },
@@ -408,6 +425,7 @@ const columnDisplayHeaders = [
     dataField: 'electricFitting',
   },
   { labelHtml: 'TOTAL (A) <br /> (i+ii+iii+iv)', dataField: 'totalA', isCalculated: true },
+  // Group (B) Machinery & Plant
   { labelHtml: 'i) Computer Hardware', dataField: 'computers' },
   { labelHtml: 'a. Computer Software <br /> (forming integral part of <br /> Hardware)', dataField: 'compSoftwareInt' },
   {
@@ -421,7 +439,9 @@ const columnDisplayHeaders = [
   { labelHtml: 'c) At other Premises', dataField: 'otherPremisesB' },
   { labelHtml: 'iv) Other Machinery & Plant <br />(a+b+c)', dataField: 'otherMachineryPlant', isCalculated: true },
   { labelHtml: 'TOTAL (B) <br /> (i+ii+iii+iv)', dataField: 'totalB', isCalculated: true },
+  // Total Furniture & Fixtures (A+B)
   { labelHtml: 'Total Furniture & Fixtures <br /> (A+B)', dataField: 'totalFurnFix', isCalculated: true },
+  // Group (C) Premises
   { labelHtml: '(a) Land (Not Revalued): <br /> Cost', dataField: 'landNotRev' },
   { labelHtml: '(b) Land (Revalued): <br /> Cost', dataField: 'landRev' },
   { labelHtml: '(c) Land (Revalued): <br /> Enhancement due to <br /> Revaluation', dataField: 'landRevEnh' },
@@ -467,24 +487,23 @@ const MemoizedFormInput = React.memo(function MemoizedFormInput({
   onChange,
   onBlur,
   readOnly,
-  error, // This prop now correctly reflects if there's an error for the field
+  error,
   helperText,
 }) {
   return (
     <FormInput
       name={name}
-      value={error}
+      value={value}
       onChange={onChange}
       onBlur={onBlur}
       readOnly={readOnly}
-      error={error} // Pass the boolean `error` directly to FormInput
+      error={!!error}
       helperText={helperText}
       customStyles={{
-        width: '200px',
+        width: '200px', // ? consistent fixed width for all
         '& input': {
           textAlign: 'right',
           padding: '6px 8px',
-          border: error ? '1px solid red' : '',
         },
       }}
     />
@@ -499,12 +518,15 @@ const VirtualizedInput = (props) => {
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
+        // If the component is intersecting the viewport, show the real input
         if (entry.isIntersecting) {
           setIsInView(true);
+          // Stop observing once it's visible
           observer.unobserve(entry.target);
         }
       },
       {
+        // Optional: Adjust rootMargin to load inputs slightly before they appear on screen
         rootMargin: '200px',
       }
     );
@@ -520,29 +542,32 @@ const VirtualizedInput = (props) => {
     };
   }, []);
 
+  // Placeholder has fixed height and alignment to prevent layout shifts when the real input loads
   const placeholder = (
     <Box
       ref={placeholderRef}
       sx={{
         height: '38px',
-        width: '200px',
+        width: '20px', // Match typical height of a small TextField
         textAlign: 'right',
+        // width: '100%',
         padding: '6px 8px',
         boxSizing: 'border-box',
-        border: '1px solid transparent',
       }}
     >
       {props.displayValue}
     </Box>
   );
+
   return isInView ? <MemoizedFormInput {...props} /> : placeholder;
 };
+
+//const useCustomSnackbar = () => (message, severity) => console.log(`Snackbar: ${message} (${severity})`);
 
 const Schedule10 = () => {
   const setSnackbarMessage = useCustomSnackbar();
   const [isChecking, setIsChecking] = useState(false);
   const [formData, setFormData] = useState(generateInitialSchedule10Data);
-  // 'errors' state now explicitly manages specific field error BOoleans (for border)
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -550,26 +575,31 @@ const Schedule10 = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user'));
   const [reportObject, setReportObject] = useState(state?.report || null);
+  //const showSnackbar = useCustomSnackbar();
   const { callApi } = useApi();
   const [fieldsDisabled, setFieldsDisabled] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogContent, setDialogContent] = useState({ title: '', message: '', onConfirm: () => {} });
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [preCheckOpen, setPreCheckOpen] = useState(false);
-  const [isValid, setIsValid] = useState(false);
   const [preCheckData, setPreCheckData] = useState({
     otherFixedAsset: '0.00',
     premises: '0.00',
     premisesUnderConstruction: '0.00',
   });
   const [manualEntry, setManualEntry] = useState(true);
-  // This state holds the string messages for the validation dialog
-  const [validationErrorMessages, setValidationErrorMessages] = useState([]);
+
+  // const formatDateToSlash = (dateStr) => {
+  //   if (!dateStr || typeof dateStr !== 'string') return dateStr;
+
+  //   const [year, month, day] = dateStr.split('-');
+  //   return `${day}/${month}/${year}`;
+  // };
 
   const convertFlatSc10DataToFormData = (flatData) => {
     const structuredData = generateInitialSchedule10Data();
+
     rowDefinitionsConfig.forEach((rowDef) => {
       const rowId = rowDef.id;
       const suffix = rowDef.modelSuffix;
@@ -581,6 +611,8 @@ const Schedule10 = () => {
         }
       });
     });
+
+    // Handle additional fields like particulars3, particulars4, finyearOne, finyearTwo if needed
     return structuredData;
   };
 
@@ -593,43 +625,46 @@ const Schedule10 = () => {
         reportID: reportObject.reportMasterId,
         reportName: 'SC10',
       };
-      console.log('payload:', payload);
+      // console.log('payload:', payload);
       try {
         const data = await callApi('/IFAMSS/SC10SFTP', payload, 'POST');
 
-        console.log('SFTP response:', data);
+        // console.log('SFTP response:', data);
         if (user.isCircleExist === 'true') {
           if (data.fileAndDataStatus === 1) {
+            // SFTP Success
+            // Assuming `data.data` contains the schedule form values
             const convertedFormData = convertFlatSc10DataToFormData(data.sc10Data);
             setFormData(convertedFormData);
-            setFieldsDisabled(true);
-            setSnackbarMessage(data.message || 'Data successfully fetched from IFAMS via SFTP.', 'success');
+            setFieldsDisabled(true); // disables all inputs
+            setSnackbarMessage('Data successfully fetched from IFAMS via SFTP.', 'success');
           } else if (data.fileAndDataStatus === 2) {
+            // File error or mismatch
             setFieldsDisabled(true);
             showDialog({
               title: 'File Error',
               message: data.message || 'Data not received from IFAMS, Kindly wait till IFAMS sends reports',
-              onConfirm: () => navigate(-1),
+
+              onConfirm: () => navigate(-1), // go back
             });
+            // setSnackbarMessage(data.message || 'Data not received from IFAMS, Kindly wait till IFAMS sends reports.', 'success');
           } else if (data.fileAndDataStatus === 3) {
+            // Data already exists in DB but file was missing
             setFieldsDisabled(true);
             showDialog({
               title: 'Info',
               message: data.message || 'Please note: Data fetched here was generated in IFAMS',
-              onConfirm: () => navigate(-1),
+              onConfirm: () => {},
             });
           }
         } else {
           setManualEntry(false);
           getValidationDataTen();
-          getValidationData();
         }
       } catch (error) {
         if (error.message !== 'canceled') {
-          setSnackbarMessage(error.message || 'Error while checking SC10 SFTP data.', 'error');
+          setSnackbarMessage('Error while checking SC10 SFTP data.', 'error');
         }
-      } finally {
-        setIsLoading(false);
       }
     };
 
@@ -646,11 +681,11 @@ const Schedule10 = () => {
       reportName: reportObject.name,
       areMocPending: reportObject.areMocPending,
     };
-    console.log('payload:', payload);
+    // console.log('payload:', payload);
     try {
       const data = await callApi('/Maker/getSavedDataTen', payload, 'POST');
       if (data) {
-        console.log('data', data);
+        // console.log('data', data);
         const convertedFormData = convertFlatSc10DataToFormData(data);
         setFormData(convertedFormData);
       } else {
@@ -665,7 +700,7 @@ const Schedule10 = () => {
     const flatData = {};
     rowDefinitionsConfig.forEach((rowDef) => {
       const suffix = rowDef.modelSuffix;
-      if (!suffix) return;
+      if (!suffix) return; // Skip headers
 
       const row = formData[rowDef.id] || {};
       schedule10DataFields.forEach((field) => {
@@ -673,138 +708,21 @@ const Schedule10 = () => {
         flatData[key] = row[field] ?? '0.00';
       });
     });
+
+    // Add year fields if needed
     flatData.finyearOne = formData.finyearOne;
     flatData.finyearTwo = formData.finyearTwo;
 
     return flatData;
   };
 
-  const getNum = (value) => parseFloat(value) || 0;
-
-  // This function performs the validation logic and updates both error states
-  const performPreCheckValidations = (apiResponse) => {
-    // Clear all previous errors first for both dialog and borders
-    setErrors({});
-    setValidationErrorMessages([]);
-
-    const currentValidationMessages = [];
-    const newFieldErrors = {}; // To apply red borders
-
-    // Calculate totals for validation from current calculatedData
-    const totalA_row29 = getNum(calculatedData.row29.totalA);
-    const totalB_row29 = getNum(calculatedData.row29.totalB);
-    const totalC_row29 = getNum(calculatedData.row29.totalC);
-    const premisesUnderCons_row29 = getNum(calculatedData.row29.premisesUnderCons);
-
-    // Get expected values from API response
-    const validPremisesAmount = getNum(apiResponse.validationPremisesAmount);
-    const validPremisesUnderConsAmount = getNum(apiResponse.validationPremisesUnderConsAmount);
-    const validOtherFixedAssetAmount = getNum(apiResponse.validationOtherFixedAssetAmount);
-
-    // Validation 1: Premises value
-    if (totalC_row29.toFixed(2) !== validPremisesAmount.toFixed(2)) {
-      currentValidationMessages.push('Premises value Not Matching');
-      newFieldErrors['row29-totalC'] = true; // Set to true to indicate error for border
-    }
-
-    // Validation 2: Premises/Project under construction value
-    if (premisesUnderCons_row29.toFixed(2) !== validPremisesUnderConsAmount.toFixed(2)) {
-      currentValidationMessages.push('Premises/Project under Construction value Not Matching');
-      newFieldErrors['row29-premisesUnderCons'] = true;
-    }
-
-    // Validation 3: Other Fixed Asset value (totalA29 + totalB29)
-    const combinedTotalAB_row29 = totalA_row29 + totalB_row29;
-    if (combinedTotalAB_row29.toFixed(2) !== validOtherFixedAssetAmount.toFixed(2)) {
-      currentValidationMessages.push('Other Fixed Asset value Not Matching');
-      newFieldErrors['row29-totalA'] = true;
-      newFieldErrors['row29-totalB'] = true;
-    }
-
-    setErrors(newFieldErrors);
-    console.log('newFieldErrors', newFieldErrors); // Update field errors for red borders
-    setValidationErrorMessages(currentValidationMessages); // Update messages for the dialog
-
-    return currentValidationMessages.length === 0; // Return true if no errors, false otherwise
-  };
-
-  const getValidationData = async () => {
+  const handleSaveOrSubmit = async (isSaveOnly = true) => {
+    setIsSubmitting(true);
     try {
-      const payload = {
-        circleCode: user.circleCode,
-        quarterEndDate: user.quarterEndDate,
-        status: reportObject.status,
-        reportId: reportObject.reportId,
-        reportMasterId: reportObject.reportMasterId,
-        reportName: reportObject.name,
-        userId: user.userId,
-        areMocPending: false,
-      };
-      const apiResponseForValidation = await callApi('/Maker/getValidationDataTen', payload, 'POST');
-      setPreCheckData({
-        // Update preCheckData state with the latest from API
-        otherFixedAsset: apiResponseForValidation.validationOtherFixedAssetAmount,
-        premises: apiResponseForValidation.validationPremisesAmount,
-        premisesUnderConstruction: apiResponseForValidation.validationPremisesUnderConsAmount,
-      });
-      console.log('preCheckData', preCheckData);
-    } catch (error) {
-      setSnackbarMessage('Failed to fetch pre-check data for submission validation.', 'error');
-      setIsSubmitting(false);
-      return; // Stop submission
-    }
-
-    const valid = performPreCheckValidations(apiResponseForValidation);
-    setIsValid(valid); // Perform validation with fetched data
-  };
-
-  const validateAndSubmit = async (isSaveOnly = true) => {
-    //let apiResponseForValidation = preCheckData; // Default to existing preCheckData
-
-    // **Important:** For reliable validation on submit, it's best to always
-    // fetch the latest validation data here, unless `preCheckData` is guaranteed
-    // to be up-to-date (e.g., if 'Pre-Check' is always clicked before 'Submit').
-    // For now, we use existing `preCheckData`.
-    //try {
-    //   const payload = {
-    //     circleCode: user.circleCode,
-    //     quarterEndDate: user.quarterEndDate,
-    //     status: reportObject.status,
-    //     reportId: reportObject.reportId,
-    //     reportMasterId: reportObject.reportMasterId,
-    //     reportName: reportObject.name,
-    //     userId: user.userId,
-    //     areMocPending: false,
-    //   };
-    //   apiResponseForValidation = await callApi('/Maker/getValidationDataTen', payload, 'POST');
-    //   setPreCheckData({
-    //     // Update preCheckData state with the latest from API
-    //     otherFixedAsset: apiResponseForValidation.validationOtherFixedAssetAmount,
-    //     premises: apiResponseForValidation.validationPremisesAmount,
-    //     premisesUnderConstruction: apiResponseForValidation.validationPremisesUnderConsAmount,
-    //   });
-    // } catch (error) {
-    //   setSnackbarMessage('Failed to fetch pre-check data for submission validation.', 'error');
-    //   setIsSubmitting(false);
-    //   return; // Stop submission
-    // }
-
-    //const valid = performPreCheckValidations(apiResponseForValidation); // Perform validation with fetched data
-
-    if (!isValid) {
-      setPreCheckOpen(true); // Open dialog to show errors
-      setIsSubmitting(false); // Prevent submission
-      return;
-    } else {
-      setIsSubmitting(true);
-    }
-
-    // If no validation errors, proceed with save/submit
-    try {
-      console.log('formdata', formData);
+      // console.log('formdata', formData);
 
       const dataToSend = flattenSchedule10Data(formData);
-      console.log('dataToSend', dataToSend);
+      // console.log('dataToSend', dataToSend);
       const payload = {
         ...dataToSend,
         save: isSaveOnly,
@@ -816,12 +734,13 @@ const Schedule10 = () => {
         reportId: reportObject.reportId,
         status: reportObject.status,
       };
-      console.log('payload', payload);
+
+      // console.log('payload', payload);
 
       const response = await callApi('/Maker/submitTen', payload, 'POST');
 
       if (response) {
-        if (typeof response === 'string') {
+        if (response && typeof response === 'string') {
           const [_flag, newReportId, newStatus] = response.split('~');
           setReportObject((prev) => ({
             ...prev,
@@ -839,6 +758,7 @@ const Schedule10 = () => {
         throw new Error(response.data?.message || 'Unexpected response');
       }
     } catch (err) {
+      console.log('error in handleSaveOrSubmit :: ', err);
       setSnackbarMessage('Error occurred during save/submit.', 'error');
     } finally {
       setIsSubmitting(false);
@@ -849,6 +769,12 @@ const Schedule10 = () => {
     setDialogOpen(true);
     setDialogContent({ title, message, onConfirm });
   };
+
+  useEffect(() => {
+    setIsLoading(false);
+  }, []);
+
+  const getNum = (value) => parseFloat(value) || 0;
 
   const calculatedData = useMemo(() => {
     console.time('Schedule10 Calculations');
@@ -899,11 +825,13 @@ const Schedule10 = () => {
         });
       }
     });
+
     rowDefinitionsConfig.forEach((rowDef) => {
       if (rowDef.type === 'entry') {
         calculateInternalRowTotals(newCalculatedData[rowDef.id]);
       }
     });
+
     rowDefinitionsConfig.forEach((rowDef) => {
       if (rowDef.type === 'total') {
         const targetRow = newCalculatedData[rowDef.id];
@@ -932,6 +860,7 @@ const Schedule10 = () => {
         calculateInternalRowTotals(targetRow);
       }
     });
+
     console.timeEnd('Schedule10 Calculations');
     return newCalculatedData;
   }, [formData]);
@@ -962,28 +891,19 @@ const Schedule10 = () => {
     [formData, debouncedRecalculate]
   );
 
-  // This handleBlur is for numeric/format validation for a single field
-  const handleBlur = useCallback(
-    (rowId, fieldKey, value) => {
-      const numericRegex = /^-?\d*\.?\d{0,2}$/;
-      let errorDetected = false; // Use a boolean to track if *any* error occurred on blur
-
-      if (value !== '' && value !== '-' && !numericRegex.test(value)) {
-        errorDetected = true;
-        setSnackbarMessage('Invalid number format. Please enter a valid number (e.g., 123.45)', 'error');
-      }
-
-      setErrors((prev) => ({
-        ...prev,
-        [`${rowId}-${fieldKey}`]: errorDetected, // Set boolean based on validation
-      }));
-    },
-    [setSnackbarMessage]
-  );
+  const handleBlur = useCallback((rowId, fieldKey, value) => {
+    const numericRegex = /^-?\d*\.?\d{0,2}$/;
+    let error = '';
+    if (value !== '' && value !== '-' && !numericRegex.test(value)) {
+      error = 'Invalid number';
+    }
+    setErrors((prev) => ({ ...prev, [`${rowId}-${fieldKey}`]: error }));
+  }, []);
 
   const handlePreCheck = async () => {
     setIsChecking(true);
     try {
+      // The payload would be the current form data, similar to the AngularJS `row1`
       const payload = {
         circleCode: user.circleCode,
         quarterEndDate: user.quarterEndDate,
@@ -994,24 +914,22 @@ const Schedule10 = () => {
         userId: user.userId,
         areMocPending: false,
       };
-      console.log('payload:', payload);
+      // console.log('payload:', payload);
       const response = await callApi('/Maker/getValidationDataTen', payload, 'POST');
 
+      // Update state with the data from the API response
       if (response) {
         setPreCheckData({
           otherFixedAsset: response.validationOtherFixedAssetAmount,
           premises: response.validationPremisesAmount,
           premisesUnderConstruction: response.validationPremisesUnderConsAmount,
         });
-        // Perform validations immediately after getting data
-        performPreCheckValidations(response);
+        setPreCheckOpen(true); // Open the modal
       }
     } catch (error) {
-      setSnackbar({
-        open: true,
-        message: 'Failed to fetch pre-check data.',
-        severity: 'error',
-      });
+      console.log('error in handlePreCheck::', error);
+
+      setSnackbarMessage('Failed to fetch pre-check data.', 'error');
     } finally {
       setIsChecking(false);
     }
@@ -1026,55 +944,36 @@ const Schedule10 = () => {
   }
 
   return (
-    <Box sx={{ p: 1, width: '100%', boxSizing: 'border-box', overflowX: 'hidden', bgcolor: 'background.default' }}>
+    <Box
+      sx={{ p: 1, width: '100%', boxSizing: 'border-box', overflowX: 'hidden' /*  bgcolor: 'background.default' */ }}
+    >
       <Dialog open={preCheckOpen} onClose={() => setPreCheckOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle
-          sx={{ backgroundColor: validationErrorMessages.length > 0 ? '#E74C3C' : '#4CAF50', color: 'white' }}
-        >
-          {validationErrorMessages.length > 0 ? 'Errors!' : 'Attention!'}
-        </DialogTitle>
+        <DialogTitle sx={{ backgroundColor: '#E74C3C', color: 'white' }}>Attention!</DialogTitle>
         <DialogContent dividers>
-          {validationErrorMessages.length > 0 ? (
-            <Box>
-              <Typography variant="h6" component="div" sx={{ mb: 2, color: 'red' }}>
-                Please correct the following errors:
-              </Typography>
-              <ul>
-                {validationErrorMessages.map((error, index) => (
-                  <li key={index}>
-                    <Typography>{error}</Typography>
-                  </li>
-                ))}
-              </ul>
-            </Box>
-          ) : (
-            <Box>
-              <Typography variant="h6" component="div" sx={{ mb: 2 }}>
-                The values for pre-checks of comp codes are as follows:-
-              </Typography>
-              <Box component="table" sx={{ width: '100%' }}>
-                <Box component="tbody" sx={{ fontSize: '15px' }}>
-                  <Box component="tr">
-                    <Box component="td" sx={{ py: 1 }}>
-                      OTHER FIXED ASSETS (including furniture and fixtures) ={' '}
-                      <strong>{preCheckData.otherFixedAsset}</strong>
-                    </Box>
-                  </Box>
-                  <Box component="tr">
-                    <Box component="td" sx={{ py: 1 }}>
-                      PREMISES = <strong>{preCheckData.premises}</strong>
-                    </Box>
-                  </Box>
-                  <Box component="tr">
-                    <Box component="td" sx={{ py: 1 }}>
-                      ASSETS UNDER CONSTRUCTION (INCLUDING PREMISES) ={' '}
-                      <strong>{preCheckData.premisesUnderConstruction}</strong>
-                    </Box>
-                  </Box>
+          <Typography variant="h6" component="div" sx={{ mb: 2 }}>
+            The values for pre-checks of comp codes are as follows:-
+          </Typography>
+          <Box component="table" sx={{ width: '100%' }}>
+            <Box component="tbody" sx={{ fontSize: '15px' }}>
+              <Box component="tr">
+                <Box component="td" sx={{ py: 1 }}>
+                  OTHER FIXED ASSETS (including furniture and fixtures) ={' '}
+                  <strong>{preCheckData.otherFixedAsset}</strong>
+                </Box>
+              </Box>
+              <Box component="tr">
+                <Box component="td" sx={{ py: 1 }}>
+                  PREMISES = <strong>{preCheckData.premises}</strong>
+                </Box>
+              </Box>
+              <Box component="tr">
+                <Box component="td" sx={{ py: 1 }}>
+                  ASSETS UNDER CONSTRUCTION (INCLUDING PREMISES) ={' '}
+                  <strong>{preCheckData.premisesUnderConstruction}</strong>
                 </Box>
               </Box>
             </Box>
-          )}
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPreCheckOpen(false)} variant="contained" color="success">
@@ -1082,7 +981,6 @@ const Schedule10 = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
         <DialogTitle>{dialogContent.title}</DialogTitle>
         <DialogContent>{dialogContent.message}</DialogContent>
@@ -1108,7 +1006,7 @@ const Schedule10 = () => {
           <Button
             onClick={() => {
               setOpenSubmitDialog(false);
-              validateAndSubmit(false); // Call validateAndSubmit for submission
+              handleSaveOrSubmit(false);
             }}
             color="success"
             variant="contained"
@@ -1119,15 +1017,34 @@ const Schedule10 = () => {
       </Dialog>
 
       <Stack direction="row" spacing={2} sx={{ mb: 2, justifyContent: 'left' }}>
-        <Button variant="contained" color="error" onClick={handlePreCheck} disabled={isChecking || isSubmitting}>
+        {/* <Button variant="contained" color="error" onClick={handlePreCheck} disabled={isChecking || isSubmitting}>
           {isChecking ? <CircularProgress size={24} /> : 'Pre-Check Amount'}
-        </Button>
-        <Button variant="contained" color="warning" onClick={() => validateAndSubmit(true)} disabled={isSubmitting}>
+        </Button> */}
+        <CustomButton
+          onClickHandler={handlePreCheck}
+          buttonType={'precheck'}
+          label={'Pre Check Amount'}
+          disabled={isChecking || isSubmitting}
+        />
+        {/* <Button variant="contained" color="warning" onClick={() => handleSaveOrSubmit(true)} disabled={isSubmitting}>
           Save
-        </Button>
-        <Button variant="contained" color="success" onClick={() => setOpenSubmitDialog(true)} disabled={isSubmitting}>
+        </Button> */}
+
+        <CustomButton
+          onClickHandler={() => handleSaveOrSubmit(true)}
+          buttonType={'save'}
+          label={'Save'}
+          disabled={isSubmitting}
+        />
+        {/* <Button variant="contained" color="success" onClick={() => setOpenSubmitDialog(true)} disabled={isSubmitting}>
           Submit
-        </Button>
+        </Button> */}
+        <CustomButton
+          onClickHandler={() => setOpenSubmitDialog(true)}
+          buttonType={'submit'}
+          label={'Submit'}
+          disabled={isSubmitting}
+        />
       </Stack>
 
       <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)' }}>
@@ -1141,7 +1058,7 @@ const Schedule10 = () => {
                   position: 'sticky',
                   left: 0,
                   zIndex: 1101,
-                  backgroundColor: 'background.paper',
+                  // backgroundColor: 'background.paper',
                 }}
               >
                 Sr.No
@@ -1153,7 +1070,7 @@ const Schedule10 = () => {
                   position: 'sticky',
                   left: '50px',
                   zIndex: 1100,
-                  backgroundColor: 'background.paper',
+                  // backgroundColor: 'background.paper',
                 }}
               >
                 Particulars
@@ -1169,8 +1086,9 @@ const Schedule10 = () => {
                   key={colDef.dataField}
                   sx={{
                     position: 'sticky',
-                    top: '42px',
-                    backgroundColor: 'background.paper',
+                    top: '42px', // Adjust this value based on your row height
+                    //zIndex: 1101,
+                    // backgroundColor: 'background.paper',
                   }}
                   dangerouslySetInnerHTML={{ __html: colDef.labelHtml }}
                 />
@@ -1180,6 +1098,7 @@ const Schedule10 = () => {
           <TableBody>
             {rowDefinitionsConfig.map((rowDef) => {
               const rowKey = rowDef.id;
+
               if (rowDef.type === 'subSectionHeader') {
                 return (
                   <StyledTableRow key={rowKey} $issubsectionheader>
@@ -1188,17 +1107,18 @@ const Schedule10 = () => {
                         position: 'sticky',
                         left: 0,
                         zIndex: 1,
-                        backgroundColor: (theme) => theme.palette.grey[50],
+                        // backgroundColor: (theme) => theme.palette.grey[50],
                       }}
                     >
                       {rowDef.srNo || ''}
                     </StyledTableCell>
                     <StyledTableCell
+                      //colSpan={columnDisplayHeaders.length + 1}
                       sx={{
                         position: 'sticky',
                         left: 52,
                         zIndex: 1,
-                        backgroundColor: (theme) => theme.palette.grey[50],
+                        // backgroundColor: (theme) => theme.palette.grey[50],
                       }}
                     >
                       {typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label}
@@ -1218,7 +1138,7 @@ const Schedule10 = () => {
                       position: 'sticky',
                       left: 0,
                       zIndex: 1,
-                      bgcolor: 'background.paper',
+                      // bgcolor: 'background.paper',
                     }}
                   >
                     {rowDef.srNo || ''}
@@ -1228,7 +1148,7 @@ const Schedule10 = () => {
                       position: 'sticky',
                       left: '50px',
                       zIndex: 1,
-                      bgcolor: 'background.paper',
+                      // bgcolor: 'background.paper',
                     }}
                   >
                     {typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label}
@@ -1241,42 +1161,21 @@ const Schedule10 = () => {
                       rowDef.type === 'total' ||
                       colDef.isCalculated ||
                       (rowDef.isReadOnlyGroup && rowDef.isReadOnlyGroup.includes(fieldKey));
-
                     const displayValue = calculatedData[rowKey]?.[fieldKey] ?? '0.00';
                     const inputValue = formData[rowKey]?.[fieldKey] ?? '0.00';
-
-                    // Determine if there's an error for this specific field for border
-                    const hasError = errors[cellKey] === true; // Check for explicit true
-
-                    // Determine helper text based on error status
-                    let fieldHelperText = '';
-                    if (hasError) {
-                      if (rowKey === 'row29' && fieldKey === 'totalC') {
-                        fieldHelperText = 'Premises value Mismatch';
-                      } else if (rowKey === 'row29' && fieldKey === 'premisesUnderCons') {
-                        fieldHelperText = 'Projects under Construction value Mismatch';
-                      } else if (
-                        (rowKey === 'row29' && fieldKey === 'totalA') ||
-                        (rowKey === 'row29' && fieldKey === 'totalB')
-                      ) {
-                        fieldHelperText = 'Other Fixed Asset value Mismatch';
-                      } else if (errors[cellKey] && typeof errors[cellKey] === 'string') {
-                        // For generic numeric error messages if any
-                        fieldHelperText = errors[cellKey];
-                      }
-                    }
+                    const errorForField = errors[cellKey];
 
                     return (
-                      <StyledTableCell key={cellKey} hasError={hasError}>
+                      <StyledTableCell key={cellKey}>
                         <VirtualizedInput
                           name={cellKey}
                           value={isReadOnly ? displayValue : inputValue}
-                          displayValue={displayValue}
+                          displayValue={displayValue} // Pass display value for placeholder
                           onChange={(e) => handleChange(rowDef.id, fieldKey, e.target.value)}
                           onBlur={(e) => handleBlur(rowDef.id, fieldKey, e.target.value)}
                           readOnly={isReadOnly || fieldsDisabled || manualEntry}
-                          error={hasError} // Pass boolean to FormInput
-                          helperText={fieldHelperText}
+                          error={errorForField}
+                          helperText={errorForField}
                         />
                       </StyledTableCell>
                     );
@@ -1288,16 +1187,7 @@ const Schedule10 = () => {
         </Table>
       </TableContainer>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+      <LoadingOverlay loading={isSubmitting} />
     </Box>
   );
 };
