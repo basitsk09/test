@@ -38,8 +38,6 @@ const StyledTableCell = styled(TableCell, {
   whiteSpace: 'nowrap',
 
   [`&.${tableCellClasses.head}`]: {
-    // backgroundColor: theme.palette.grey[50],
-    // color: theme.palette.text.primary,
     fontWeight: 'bold',
     textAlign: 'center',
   },
@@ -51,35 +49,23 @@ const StyledTableCell = styled(TableCell, {
 const StyledTableRow = styled(TableRow, {
   shouldForwardProp: (prop) => prop !== '$istotalrow' && prop !== '$issectionheader' && prop !== '$issubsectionheader',
 })(({ theme, $istotalrow, $issectionheader, $issubsectionheader }) => ({
-  '&:nth-of-type(odd)': {
-    // backgroundColor: theme.palette.action.hover,
-  },
-  // Hide the last border
-  // '&:last-child td, &:last-child th': {
-  //   border: 0,
-  // },
+  '&:nth-of-type(odd)': {},
   ...($issectionheader && {
-    // backgroundColor: theme.palette.grey[50],
     '& > td, & > th': {
       fontWeight: 'bold',
       textAlign: 'left',
-      //color: theme.palette.text.primary,
     },
   }),
   ...($issubsectionheader && {
-    // backgroundColor: theme.palette.grey[50],
     '& > td, & > th': {
       fontWeight: 'bold',
       fontStyle: 'italic',
       textAlign: 'left',
-      // color: theme.palette.text.primary,
     },
   }),
   ...($istotalrow && {
-    // backgroundColor: theme.palette.grey[50],
     '& > td, & > th': {
       fontWeight: 'bold',
-      //color: theme.palette.text.primary,
     },
   }),
 }));
@@ -117,7 +103,6 @@ const schedule10DataFields = [
   'premisesUnderCons',
   'grandTotal',
 ];
-
 const intraRowCalculatedFields = [
   'totalA',
   'compSoftwareTotal',
@@ -129,7 +114,6 @@ const intraRowCalculatedFields = [
   'totalC',
   'grandTotal',
 ];
-
 const rowDefinitionsConfig = [
   // --- Section: Original Cost / Revalued Value ---
   {
@@ -413,7 +397,6 @@ const rowDefinitionsConfig = [
     isTotalRowStyle: true,
   },
 ];
-
 const columnDisplayHeaders = [
   // Group (A) Furniture & Fittings
   { labelHtml: 'i) At STCs & Staff Colleges <br /> (For Local Head Office only)', dataField: 'stcNstaff' },
@@ -463,7 +446,6 @@ const columnDisplayHeaders = [
   { labelHtml: '(D) Projects under <br /> construction', dataField: 'premisesUnderCons' },
   { labelHtml: 'Grand Total <br /> (A + B + C + D)', dataField: 'grandTotal', isCalculated: true },
 ];
-
 const generateInitialSchedule10Data = () => {
   const initialData = {
     finyearOne: new Date().getFullYear().toString(),
@@ -489,11 +471,12 @@ const MemoizedFormInput = React.memo(function MemoizedFormInput({
   readOnly,
   error,
   helperText,
+  customStyles, // Accept customStyles prop
 }) {
   return (
     <FormInput
       name={name}
-      value={name}
+      value={value}
       onChange={onChange}
       onBlur={onBlur}
       readOnly={readOnly}
@@ -504,7 +487,7 @@ const MemoizedFormInput = React.memo(function MemoizedFormInput({
         '& input': {
           textAlign: 'right',
           padding: '6px 8px',
-         border : name ==='row29-totalA' && value !=="1px solid red"
+          ...(customStyles && customStyles['& input']), // Merge custom input styles
         },
       }}
     />
@@ -542,28 +525,24 @@ const VirtualizedInput = (props) => {
       }
     };
   }, []);
-
   // Placeholder has fixed height and alignment to prevent layout shifts when the real input loads
   const placeholder = (
     <Box
       ref={placeholderRef}
       sx={{
         height: '38px',
-        width: '20px', // Match typical height of a small TextField
+        width: '200px', // Match typical height of a small TextField and consistent fixed width
         textAlign: 'right',
-        // width: '100%',
         padding: '6px 8px',
         boxSizing: 'border-box',
+        border: props.error ? '1px solid red' : '1px solid #ccc', // Apply border to placeholder too
       }}
     >
       {props.displayValue}
     </Box>
   );
-
   return isInView ? <MemoizedFormInput {...props} /> : placeholder;
 };
-
-//const useCustomSnackbar = () => (message, severity) => console.log(`Snackbar: ${message} (${severity})`);
 
 const Schedule10 = () => {
   const setSnackbarMessage = useCustomSnackbar();
@@ -576,7 +555,6 @@ const Schedule10 = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user'));
   const [reportObject, setReportObject] = useState(state?.report || null);
-  //const showSnackbar = useCustomSnackbar();
   const { callApi } = useApi();
   const [fieldsDisabled, setFieldsDisabled] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -590,17 +568,11 @@ const Schedule10 = () => {
     premisesUnderConstruction: '0.00',
   });
   const [manualEntry, setManualEntry] = useState(true);
-
-  // const formatDateToSlash = (dateStr) => {
-  //   if (!dateStr || typeof dateStr !== 'string') return dateStr;
-
-  //   const [year, month, day] = dateStr.split('-');
-  //   return `${day}/${month}/${year}`;
-  // };
+  // New state for validation errors based on fetched data
+  const [validationErrors, setValidationErrors] = useState({});
 
   const convertFlatSc10DataToFormData = (flatData) => {
     const structuredData = generateInitialSchedule10Data();
-
     rowDefinitionsConfig.forEach((rowDef) => {
       const rowId = rowDef.id;
       const suffix = rowDef.modelSuffix;
@@ -612,178 +584,35 @@ const Schedule10 = () => {
         }
       });
     });
-
-    // Handle additional fields like particulars3, particulars4, finyearOne, finyearTwo if needed
     return structuredData;
   };
 
-  useEffect(() => {
-    const checkSC10SftpData = async () => {
-      const payload = {
-        circleCode: user.circleCode,
-        qed: user.quarterEndDate,
-        reportStatus: 'A',
-        reportID: reportObject.reportMasterId,
-        reportName: 'SC10',
-      };
-      // console.log('payload:', payload);
-      try {
-        const data = await callApi('/IFAMSS/SC10SFTP', payload, 'POST');
+  // Function to apply validation borders based on fetched data
+  const applyValidationBorders = useCallback((fetchedValidationData, currentCalculatedData) => {
+    const newValidationErrors = {};
+    const getNum = (value) => parseFloat(value) || 0;
 
-        // console.log('SFTP response:', data);
-        if (user.isCircleExist === 'true') {
-          if (data.fileAndDataStatus === 1) {
-            // SFTP Success
-            // Assuming `data.data` contains the schedule form values
-            const convertedFormData = convertFlatSc10DataToFormData(data.sc10Data);
-            setFormData(convertedFormData);
-            setFieldsDisabled(true); // disables all inputs
-            setSnackbarMessage('Data successfully fetched from IFAMS via SFTP.', 'success');
-          } else if (data.fileAndDataStatus === 2) {
-            // File error or mismatch
-            setFieldsDisabled(true);
-            showDialog({
-              title: 'File Error',
-              message: data.message || 'Data not received from IFAMS, Kindly wait till IFAMS sends reports',
+    // frontend keys mapping to backend validation data
+    const totalA29 = getNum(currentCalculatedData['row29']?.['totalA']);
+    const totalB29 = getNum(currentCalculatedData['row29']?.['totalB']);
+    const totalC29 = getNum(currentCalculatedData['row29']?.['totalC']);
+    const premisesUnderCons29 = getNum(currentCalculatedData['row29']?.['premisesUnderCons']);
 
-              onConfirm: () => navigate(-1), // go back
-            });
-            // setSnackbarMessage(data.message || 'Data not received from IFAMS, Kindly wait till IFAMS sends reports.', 'success');
-          } else if (data.fileAndDataStatus === 3) {
-            // Data already exists in DB but file was missing
-            setFieldsDisabled(true);
-            showDialog({
-              title: 'Info',
-              message: data.message || 'Please note: Data fetched here was generated in IFAMS',
-              onConfirm: () => {},
-            });
-          }
-        } else {
-          setManualEntry(false);
-          getValidationDataTen();
-        }
-      } catch (error) {
-        if (error.message !== 'canceled') {
-          setSnackbarMessage('Error while checking SC10 SFTP data.', 'error');
-        }
-      }
-    };
+    const validTotalOne = (totalA29 + totalB29).toFixed(2);
+    const validTotalTwo = premisesUnderCons29.toFixed(2);
+    const validTotalThree = totalC29.toFixed(2);
 
-    checkSC10SftpData();
-  }, []);
-
-  const getValidationDataTen = async () => {
-    const payload = {
-      circleCode: user.circleCode,
-      quarterEndDate: user.quarterEndDate,
-      status: reportObject.status,
-      reportId: reportObject.reportId,
-      reportMasterId: reportObject.reportMasterId,
-      reportName: reportObject.name,
-      areMocPending: reportObject.areMocPending,
-    };
-    // console.log('payload:', payload);
-    try {
-      const data = await callApi('/Maker/getSavedDataTen', payload, 'POST');
-      if (data) {
-        console.log('data', data);
-        const convertedFormData = convertFlatSc10DataToFormData(data);
-        setFormData(convertedFormData);
-        console.log('formdata', formData);
-      } else {
-        throw new Error('Error while checking SC10 SFTP data.');
-      }
-    } catch (error) {
-      setSnackbarMessage(error.message || 'Error while checking SC10 SFTP data.', 'error');
+    if (getNum(fetchedValidationData.validationPremisesAmount) !== getNum(validTotalThree)) {
+      newValidationErrors['row29-totalC'] = true;
     }
-    setTimeout(() => {
-      silentPreCheckValidation();
-    }, 2000);
-  };
-
-  const flattenSchedule10Data = (formData) => {
-    const flatData = {};
-    rowDefinitionsConfig.forEach((rowDef) => {
-      const suffix = rowDef.modelSuffix;
-      if (!suffix) return; // Skip headers
-
-      const row = formData[rowDef.id] || {};
-      schedule10DataFields.forEach((field) => {
-        const key = `${field}${suffix}`;
-        flatData[key] = row[field] ?? '0.00';
-      });
-    });
-
-    // Add year fields if needed
-    flatData.finyearOne = formData.finyearOne;
-    flatData.finyearTwo = formData.finyearTwo;
-
-    return flatData;
-  };
-
-  const handleSaveOrSubmit = async (isSaveOnly = true) => {
-    const hasValidationErrors = Object.values(errors).some((val) => val && val.length > 0);
-    if (!isSaveOnly && hasValidationErrors) {
-      setSnackbarMessage('Cannot submit. Please fix validation errors in Row 29.', 'error');
-      setIsSubmitting(false);
-      return;
+    if (getNum(fetchedValidationData.validationPremisesUnderConsAmount) !== getNum(validTotalTwo)) {
+      newValidationErrors['row29-premisesUnderCons'] = true;
     }
-
-    setIsSubmitting(true);
-    try {
-      // console.log('formdata', formData);
-
-      const dataToSend = flattenSchedule10Data(formData);
-      // console.log('dataToSend', dataToSend);
-      const payload = {
-        ...dataToSend,
-        save: isSaveOnly,
-        circleCode: user.circleCode,
-        quarterEndDate: user.quarterEndDate,
-        userId: user.userId,
-        reportName: reportObject.name,
-        reportMasterId: reportObject.reportMasterId,
-        reportId: reportObject.reportId,
-        status: reportObject.status,
-      };
-
-      // console.log('payload', payload);
-
-      const response = await callApi('/Maker/submitTen', payload, 'POST');
-
-      if (response) {
-        if (response && typeof response === 'string') {
-          const [_flag, newReportId, newStatus] = response.split('~');
-          setReportObject((prev) => ({
-            ...prev,
-            reportId: newReportId,
-            status: newStatus,
-          }));
-          setSnackbarMessage(isSaveOnly ? 'Report saved successfully!' : 'Report submitted successfully!', 'success');
-          if (!isSaveOnly) {
-            setTimeout(() => {
-              navigate('../');
-            }, 2000);
-          }
-        }
-      } else {
-        throw new Error(response.data?.message || 'Unexpected response');
-      }
-    } catch (err) {
-      console.log('error in handleSaveOrSubmit :: ', err);
-      setSnackbarMessage('Error occurred during save/submit.', 'error');
-    } finally {
-      setIsSubmitting(false);
+    if (getNum(fetchedValidationData.validationOtherFixedAssetAmount) !== getNum(validTotalOne)) {
+      newValidationErrors['row29-totalA'] = true;
+      newValidationErrors['row29-totalB'] = true;
     }
-  };
-
-  const showDialog = ({ title, message, onConfirm }) => {
-    setDialogOpen(true);
-    setDialogContent({ title, message, onConfirm });
-  };
-
-  useEffect(() => {
-    setIsLoading(false);
+    setValidationErrors(newValidationErrors);
   }, []);
 
   const getNum = (value) => parseFloat(value) || 0;
@@ -799,9 +628,10 @@ const Schedule10 = () => {
       rowObj.compSoftwareTotal = (p('compSoftwareInt') + p('compSoftwareNonint')).toFixed(2);
       const otherMachineryPlantVal = p('offResidenceB') + p('stcLho') + p('otherPremisesB');
       rowObj.otherMachineryPlant = otherMachineryPlantVal.toFixed(2);
-      rowObj.totalB = (p('computers') + getNum(rowObj.compSoftwareTotal) + p('motor') + otherMachineryPlantVal).toFixed(
-        2
-      );
+      rowObj.totalB = (p('computers') +
+        getNum(rowObj.compSoftwareTotal) + p('motor') + otherMachineryPlantVal).toFixed(
+          2
+        );
       rowObj.totalFurnFix = (getNum(rowObj.totalA) + getNum(rowObj.totalB)).toFixed(2);
       const premisTotalVal =
         p('landNotRev') +
@@ -872,7 +702,6 @@ const Schedule10 = () => {
         calculateInternalRowTotals(targetRow);
       }
     });
-
     console.timeEnd('Schedule10 Calculations');
     return newCalculatedData;
   }, [formData]);
@@ -912,55 +741,167 @@ const Schedule10 = () => {
     setErrors((prev) => ({ ...prev, [`${rowId}-${fieldKey}`]: error }));
   }, []);
 
-  const handlePreCheck = async () => {
-    setIsChecking(true);
-    try {
-      // The payload would be the current form data, similar to the AngularJS `row1`
-      // const payload = {
-      //   circleCode: user.circleCode,
-      //   quarterEndDate: user.quarterEndDate,
-      //   status: reportObject.status,
-      //   reportId: reportObject.reportId,
-      //   reportMasterId: reportObject.reportMasterId,
-      //   reportName: reportObject.name,
-      //   userId: user.userId,
-      //   areMocPending: false,
-      // };
-      // // console.log('payload:', payload);
-      // const response = await callApi('/Maker/getValidationDataTen', payload, 'POST');
-
-      // Update state with the data from the API response
-      // if (response) {
-      //   setPreCheckData({
-      //     otherFixedAsset: response.validationOtherFixedAssetAmount,
-      //     premises: response.validationPremisesAmount,
-      //     premisesUnderConstruction: response.validationPremisesUnderConsAmount,
-      //   });
-      setPreCheckOpen(true); // Open the modal
-      //}
-    } catch (error) {
-      console.log('error in handlePreCheck::', error);
-
-      setSnackbarMessage('Failed to fetch pre-check data.', 'error');
-    } finally {
-      setIsChecking(false);
-    }
+  const showDialog = ({ title, message, onConfirm }) => {
+    setDialogOpen(true);
+    setDialogContent({ title, message, onConfirm });
   };
-  /////////////////////////
 
-  const silentPreCheckValidation = async () => {
+  const flattenSchedule10Data = (formData) => {
+    const flatData = {};
+    rowDefinitionsConfig.forEach((rowDef) => {
+      const suffix = rowDef.modelSuffix;
+      if (!suffix) return; // Skip headers
+
+      const row = formData[rowDef.id] || {};
+      schedule10DataFields.forEach((field) => {
+        const key = `${field}${suffix}`;
+        flatData[key] = row[field] ?? '0.00';
+      });
+    });
+    // Add year fields if needed
+    flatData.finyearOne = formData.finyearOne;
+    flatData.finyearTwo = formData.finyearTwo;
+
+    return flatData;
+  };
+
+  // New function to fetch validation data on load
+  const fetchValidationData = useCallback(async () => {
+    setIsLoading(true);
+    const payload = {
+      circleCode: user.circleCode,
+      quarterEndDate: user.quarterEndDate,
+      status: reportObject.status,
+      reportId: reportObject.reportId,
+      reportMasterId: reportObject.reportMasterId,
+      reportName: reportObject.name,
+      areMocPending: reportObject.areMocPending,
+    };
     try {
+      const data = await callApi('/Maker/getValidationDataTen', payload, 'POST');
+      if (data) {
+        setPreCheckData({
+          otherFixedAsset: data.validationOtherFixedAssetAmount,
+          premises: data.validationPremisesAmount,
+          premisesUnderConstruction: data.validationPremisesUnderConsAmount,
+        });
+        // Apply validation borders immediately after fetching
+        applyValidationBorders(data, calculatedData);
+      } else {
+        throw new Error('Error while fetching validation data.');
+      }
+    } catch (error) {
+      setSnackbarMessage(error.message || 'Error while fetching validation data.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, reportObject, callApi, setSnackbarMessage, applyValidationBorders, calculatedData]);
+
+  useEffect(() => {
+    const checkSC10SftpData = async () => {
       const payload = {
         circleCode: user.circleCode,
+        qed: user.quarterEndDate,
+        reportStatus: 'A',
+        reportID: reportObject.reportMasterId,
+        reportName: 'SC10',
+      };
+      try {
+        const data = await callApi('/IFAMSS/SC10SFTP', payload, 'POST');
+        if (user.isCircleExist === 'true') {
+          if (data.fileAndDataStatus === 1) {
+            const convertedFormData = convertFlatSc10DataToFormData(data.sc10Data);
+            setFormData(convertedFormData);
+            setFieldsDisabled(true);
+            setSnackbarMessage('Data successfully fetched from IFAMS via SFTP.', 'success');
+            // After setting form data, fetch validation data
+            fetchValidationData();
+          } else if (data.fileAndDataStatus === 2) {
+            setFieldsDisabled(true);
+            showDialog({
+              title: 'File Error',
+              message: data.message || 'Data not received from IFAMS, Kindly wait till IFAMS sends reports',
+              onConfirm: () => navigate(-1),
+            });
+          } else if (data.fileAndDataStatus === 3) {
+            setFieldsDisabled(true);
+            showDialog({
+              title: 'Info',
+              message: data.message || 'Please note: Data fetched here was generated in IFAMS',
+              onConfirm: () => {},
+            });
+            // After showing info, fetch validation data
+            fetchValidationData();
+          }
+        } else {
+          setManualEntry(false);
+          // If not `isCircleExist`, still fetch validation data on load
+          fetchValidationData();
+        }
+      } catch (error) {
+        if (error.message !== 'canceled') {
+          setSnackbarMessage('Error while checking SC10 SFTP data.', 'error');
+        }
+      }
+    };
+
+    checkSC10SftpData();
+  }, [user, reportObject, callApi, navigate, setSnackbarMessage, fetchValidationData]); // Added fetchValidationData to dependencies
+
+  const handleSaveOrSubmit = async (isSaveOnly = true) => {
+    setIsSubmitting(true);
+    try {
+      const dataToSend = flattenSchedule10Data(formData);
+      const payload = {
+        ...dataToSend,
+        save: isSaveOnly,
+        circleCode: user.circleCode,
         quarterEndDate: user.quarterEndDate,
-        status: reportObject.status,
-        reportId: reportObject.reportId,
-        reportMasterId: reportObject.reportMasterId,
-        reportName: reportObject.name,
         userId: user.userId,
-        areMocPending: false,
+        reportName: reportObject.name,
+        reportMasterId: reportObject.reportMasterId,
+        reportId: reportObject.reportId,
+        status: reportObject.status,
       };
 
+      const response = await callApi('/Maker/submitTen', payload, 'POST');
+      if (response && typeof response === 'string') {
+        const [_flag, newReportId, newStatus] = response.split('~');
+        setReportObject((prev) => ({
+          ...prev,
+          reportId: newReportId,
+          status: newStatus,
+        }));
+        setSnackbarMessage(isSaveOnly ? 'Report saved successfully!' : 'Report submitted successfully!', 'success');
+        if (!isSaveOnly) {
+          setTimeout(() => {
+            navigate('../');
+          }, 2000);
+        }
+      } else {
+        throw new Error(response.data?.message || 'Unexpected response');
+      }
+    } catch (err) {
+      console.log('error in handleSaveOrSubmit :: ', err);
+      setSnackbarMessage('Error occurred during save/submit.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePreCheck = useCallback(async () => {
+    setIsChecking(true);
+    const payload = {
+      circleCode: user.circleCode,
+      quarterEndDate: user.quarterEndDate,
+      status: reportObject.status,
+      reportId: reportObject.reportId,
+      reportMasterId: reportObject.reportMasterId,
+      reportName: reportObject.name,
+      userId: user.userId,
+      areMocPending: false,
+    };
+    try {
       const response = await callApi('/Maker/getValidationDataTen', payload, 'POST');
       if (response) {
         setPreCheckData({
@@ -968,39 +909,18 @@ const Schedule10 = () => {
           premises: response.validationPremisesAmount,
           premisesUnderConstruction: response.validationPremisesUnderConsAmount,
         });
-      }
-      if (response) {
-        const validationErrors = {};
-
-        const row29 = formData['row29'];
-        if (parseFloat(row29.totalA).toFixed(2) !== parseFloat(response.validationOtherFixedAssetAmount).toFixed(2)) {
-          validationErrors['row29-totalA'] = 'Mismatch with precheck';
-        }
-        if (parseFloat(row29.totalB).toFixed(2) !== parseFloat(response.validationOtherFixedAssetAmount).toFixed(2)) {
-          validationErrors['row29-totalB'] = 'Mismatch with precheck';
-        }
-        if (parseFloat(row29.totalC).toFixed(2) !== parseFloat(response.validationPremisesAmount).toFixed(2)) {
-          validationErrors['row29-totalC'] = 'Mismatch with precheck';
-        }
-        if (
-          parseFloat(row29.premisesUnderCons).toFixed(2) !==
-          parseFloat(response.validationPremisesUnderConsAmount).toFixed(2)
-        ) {
-          validationErrors['row29-premisesUnderCons'] = 'Mismatch with precheck';
-        }
-
-        setErrors((prev) => ({ ...prev, ...validationErrors }));
-
-        // prevent submission if errors present
-        if (Object.keys(validationErrors).length > 0) {
-          setSnackbarMessage('Row29 data mismatch with precheck. Please correct the fields.', 'error');
-        }
+        setPreCheckOpen(true);
+        // Also apply validation borders on pre-check
+        applyValidationBorders(response, calculatedData);
       }
     } catch (error) {
-      //console.error('Silent precheck error:', error);
-      //setSnackbarMessage('Failed to run initial validation precheck.', 'error');
+      console.log('error in handlePreCheck::', error);
+      setSnackbarMessage('Failed to fetch pre-check data.', 'error');
+    } finally {
+      setIsChecking(false);
     }
-  };
+  }, [user, reportObject, callApi, setSnackbarMessage, applyValidationBorders, calculatedData]);
+
 
   if (isLoading) {
     return (
@@ -1012,7 +932,7 @@ const Schedule10 = () => {
 
   return (
     <Box
-      sx={{ p: 1, width: '100%', boxSizing: 'border-box', overflowX: 'hidden' /*  bgcolor: 'background.default' */ }}
+      sx={{ p: 1, width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}
     >
       <Dialog open={preCheckOpen} onClose={() => setPreCheckOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle sx={{ backgroundColor: '#E74C3C', color: 'white' }}>Attention!</DialogTitle>
@@ -1084,28 +1004,18 @@ const Schedule10 = () => {
       </Dialog>
 
       <Stack direction="row" spacing={2} sx={{ mb: 2, justifyContent: 'left' }}>
-        {/* <Button variant="contained" color="error" onClick={handlePreCheck} disabled={isChecking || isSubmitting}>
-          {isChecking ? <CircularProgress size={24} /> : 'Pre-Check Amount'}
-        </Button> */}
         <CustomButton
           onClickHandler={handlePreCheck}
           buttonType={'precheck'}
           label={'Pre Check Amount'}
           disabled={isChecking || isSubmitting}
         />
-        {/* <Button variant="contained" color="warning" onClick={() => handleSaveOrSubmit(true)} disabled={isSubmitting}>
-          Save
-        </Button> */}
-
         <CustomButton
           onClickHandler={() => handleSaveOrSubmit(true)}
           buttonType={'save'}
           label={'Save'}
           disabled={isSubmitting}
         />
-        {/* <Button variant="contained" color="success" onClick={() => setOpenSubmitDialog(true)} disabled={isSubmitting}>
-          Submit
-        </Button> */}
         <CustomButton
           onClickHandler={() => setOpenSubmitDialog(true)}
           buttonType={'submit'}
@@ -1125,7 +1035,6 @@ const Schedule10 = () => {
                   position: 'sticky',
                   left: 0,
                   zIndex: 1101,
-                  // backgroundColor: 'background.paper',
                 }}
               >
                 Sr.No
@@ -1137,7 +1046,6 @@ const Schedule10 = () => {
                   position: 'sticky',
                   left: '50px',
                   zIndex: 1100,
-                  // backgroundColor: 'background.paper',
                 }}
               >
                 Particulars
@@ -1153,9 +1061,7 @@ const Schedule10 = () => {
                   key={colDef.dataField}
                   sx={{
                     position: 'sticky',
-                    top: '42px', // Adjust this value based on your row height
-                    //zIndex: 1101,
-                    // backgroundColor: 'background.paper',
+                    top: '42px',
                   }}
                   dangerouslySetInnerHTML={{ __html: colDef.labelHtml }}
                 />
@@ -1165,7 +1071,6 @@ const Schedule10 = () => {
           <TableBody>
             {rowDefinitionsConfig.map((rowDef) => {
               const rowKey = rowDef.id;
-
               if (rowDef.type === 'subSectionHeader') {
                 return (
                   <StyledTableRow key={rowKey} $issubsectionheader>
@@ -1174,18 +1079,15 @@ const Schedule10 = () => {
                         position: 'sticky',
                         left: 0,
                         zIndex: 1,
-                        // backgroundColor: (theme) => theme.palette.grey[50],
                       }}
                     >
                       {rowDef.srNo || ''}
                     </StyledTableCell>
                     <StyledTableCell
-                      //colSpan={columnDisplayHeaders.length + 1}
                       sx={{
                         position: 'sticky',
                         left: 52,
                         zIndex: 1,
-                        // backgroundColor: (theme) => theme.palette.grey[50],
                       }}
                     >
                       {typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label}
@@ -1205,7 +1107,6 @@ const Schedule10 = () => {
                       position: 'sticky',
                       left: 0,
                       zIndex: 1,
-                      // bgcolor: 'background.paper',
                     }}
                   >
                     {rowDef.srNo || ''}
@@ -1215,7 +1116,6 @@ const Schedule10 = () => {
                       position: 'sticky',
                       left: '50px',
                       zIndex: 1,
-                      // bgcolor: 'background.paper',
                     }}
                   >
                     {typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label}
@@ -1231,18 +1131,26 @@ const Schedule10 = () => {
                     const displayValue = calculatedData[rowKey]?.[fieldKey] ?? '0.00';
                     const inputValue = formData[rowKey]?.[fieldKey] ?? '0.00';
                     const errorForField = errors[cellKey];
+                    // Determine if validation error exists for this cell
+                    const hasValidationError = validationErrors[cellKey];
 
                     return (
                       <StyledTableCell key={cellKey}>
                         <VirtualizedInput
                           name={cellKey}
                           value={isReadOnly ? displayValue : inputValue}
-                          displayValue={displayValue} // Pass display value for placeholder
+                          displayValue={displayValue}
                           onChange={(e) => handleChange(rowDef.id, fieldKey, e.target.value)}
                           onBlur={(e) => handleBlur(rowDef.id, fieldKey, e.target.value)}
                           readOnly={isReadOnly || fieldsDisabled || manualEntry}
                           error={errorForField}
                           helperText={errorForField}
+                          // Apply inline style for red border if validation error exists
+                          customStyles={{
+                            '& input': {
+                              border: hasValidationError ? '1px solid red' : '1px solid #ccc',
+                            },
+                          }}
                         />
                       </StyledTableCell>
                     );
