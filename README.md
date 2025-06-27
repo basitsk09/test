@@ -489,6 +489,7 @@ const MemoizedFormInput = React.memo(function MemoizedFormInput({
   readOnly,
   error,
   helperText,
+  customStyles, // Ensure customStyles is destructured here
 }) {
   return (
     <FormInput
@@ -504,7 +505,9 @@ const MemoizedFormInput = React.memo(function MemoizedFormInput({
         '& input': {
           textAlign: 'right',
           padding: '6px 8px',
+          ...(error && { border: '1px solid red' }), // Apply red border if error
         },
+        ...customStyles, // Merge customStyles
       }}
     />
   );
@@ -548,11 +551,11 @@ const VirtualizedInput = (props) => {
       ref={placeholderRef}
       sx={{
         height: '38px',
-        width: '20px', // Match typical height of a small TextField
+        width: '200px', // Match consistent fixed width for all FormInput
         textAlign: 'right',
-        // width: '100%',
         padding: '6px 8px',
         boxSizing: 'border-box',
+        ...(props.error && { border: '1px solid red' }), // Apply red border to placeholder if error
       }}
     >
       {props.displayValue}
@@ -568,7 +571,7 @@ const Schedule10 = () => {
   const setSnackbarMessage = useCustomSnackbar();
   const [isChecking, setIsChecking] = useState(false);
   const [formData, setFormData] = useState(generateInitialSchedule10Data);
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState({}); // This will now hold both general errors and pre-check validation errors
   const [isLoading, setIsLoading] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false);
   const { state } = useLocation();
@@ -582,211 +585,43 @@ const Schedule10 = () => {
   const [dialogContent, setDialogContent] = useState({ title: '', message: '', onConfirm: () => {} });
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [preCheckOpen, setPreCheckOpen] = useState(false);
-  const [preCheckData, setPreCheckData] = useState({
+  const [preCheckOpen, setPreCheckOpen] = useState(false); // State for the pre-check dialog
+  const [preCheckData, setPreCheckData] = useState({ // Data to be displayed in the pre-check dialog
     otherFixedAsset: '0.00',
     premises: '0.00',
     premisesUnderConstruction: '0.00',
   });
   const [manualEntry, setManualEntry] = useState(true);
 
-  // const formatDateToSlash = (dateStr) => {
-  //   if (!dateStr || typeof dateStr !== 'string') return dateStr;
-
-  //   const [year, month, day] = dateStr.split('-');
-  //   return `${day}/${month}/${year}`;
-  // };
-
+  // Helper function to convert flat data to structured formData
   const convertFlatSc10DataToFormData = (flatData) => {
-    const structuredData = generateInitialSchedule10Data();
-
+    const structuredData = generateInitialSchedule10Data(); // Starts with default structure
     rowDefinitionsConfig.forEach((rowDef) => {
       const rowId = rowDef.id;
       const suffix = rowDef.modelSuffix;
-
+      // Ensure the row exists in structuredData before trying to assign fields
+      if (!structuredData[rowId]) {
+        structuredData[rowId] = {};
+      }
       schedule10DataFields.forEach((field) => {
         const flatKey = `${field}${suffix}`;
         if (flatData[flatKey] !== undefined) {
           structuredData[rowId][field] = flatData[flatKey];
+        } else {
+          // Ensure field is initialized if not present in flatData
+          structuredData[rowId][field] = '0.00';
         }
       });
     });
-
-    // Handle additional fields like particulars3, particulars4, finyearOne, finyearTwo if needed
+    // Handle additional fields like finyearOne, finyearTwo
+    structuredData.finyearOne = flatData.finyearOne || new Date().getFullYear().toString();
+    structuredData.finyearTwo = flatData.finyearTwo || (new Date().getFullYear() + 1).toString();
     return structuredData;
   };
 
-  useEffect(() => {
-    const checkSC10SftpData = async () => {
-      const payload = {
-        circleCode: user.circleCode,
-        qed: user.quarterEndDate,
-        reportStatus: 'A',
-        reportID: reportObject.reportMasterId,
-        reportName: 'SC10',
-      };
-      // console.log('payload:', payload);
-      try {
-        const data = await callApi('/IFAMSS/SC10SFTP', payload, 'POST');
+  const getNum = (value) => parseFloat(value) || 0; // Moved this helper up
 
-        // console.log('SFTP response:', data);
-        if (user.isCircleExist === 'true') {
-          if (data.fileAndDataStatus === 1) {
-            // SFTP Success
-            // Assuming `data.data` contains the schedule form values
-            const convertedFormData = convertFlatSc10DataToFormData(data.sc10Data);
-            setFormData(convertedFormData);
-            setFieldsDisabled(true); // disables all inputs
-            setSnackbarMessage('Data successfully fetched from IFAMS via SFTP.', 'success');
-          } else if (data.fileAndDataStatus === 2) {
-            // File error or mismatch
-            setFieldsDisabled(true);
-            showDialog({
-              title: 'File Error',
-              message: data.message || 'Data not received from IFAMS, Kindly wait till IFAMS sends reports',
-
-              onConfirm: () => navigate(-1), // go back
-            });
-            // setSnackbarMessage(data.message || 'Data not received from IFAMS, Kindly wait till IFAMS sends reports.', 'success');
-          } else if (data.fileAndDataStatus === 3) {
-            // Data already exists in DB but file was missing
-            setFieldsDisabled(true);
-            showDialog({
-              title: 'Info',
-              message: data.message || 'Please note: Data fetched here was generated in IFAMS',
-              onConfirm: () => {},
-            });
-          }
-        } else {
-          setManualEntry(false);
-          getValidationDataTen();
-        }
-      } catch (error) {
-        if (error.message !== 'canceled') {
-          setSnackbarMessage('Error while checking SC10 SFTP data.', 'error');
-        }
-      }
-    };
-
-    checkSC10SftpData();
-  }, []);
-
-  const getValidationDataTen = async () => {
-    const payload = {
-      circleCode: user.circleCode,
-      quarterEndDate: user.quarterEndDate,
-      status: reportObject.status,
-      reportId: reportObject.reportId,
-      reportMasterId: reportObject.reportMasterId,
-      reportName: reportObject.name,
-      areMocPending: reportObject.areMocPending,
-    };
-    // console.log('payload:', payload);
-    try {
-      const data = await callApi('/Maker/getSavedDataTen', payload, 'POST');
-      if (data) {
-        console.log('data', data);
-        const convertedFormData = convertFlatSc10DataToFormData(data);
-        setFormData(convertedFormData);
-        console.log('formdata', formData);
-      } else {
-        throw new Error('Error while checking SC10 SFTP data.');
-      }
-    } catch (error) {
-      setSnackbarMessage(error.message || 'Error while checking SC10 SFTP data.', 'error');
-    }
-    setTimeout(() => {
-      silentPreCheckValidation();
-    }, 2000);
-  };
-
-  const flattenSchedule10Data = (formData) => {
-    const flatData = {};
-    rowDefinitionsConfig.forEach((rowDef) => {
-      const suffix = rowDef.modelSuffix;
-      if (!suffix) return; // Skip headers
-
-      const row = formData[rowDef.id] || {};
-      schedule10DataFields.forEach((field) => {
-        const key = `${field}${suffix}`;
-        flatData[key] = row[field] ?? '0.00';
-      });
-    });
-
-    // Add year fields if needed
-    flatData.finyearOne = formData.finyearOne;
-    flatData.finyearTwo = formData.finyearTwo;
-
-    return flatData;
-  };
-
-  const handleSaveOrSubmit = async (isSaveOnly = true) => {
-    const hasValidationErrors = Object.values(errors).some((val) => val && val.length > 0);
-    if (!isSaveOnly && hasValidationErrors) {
-      setSnackbarMessage('Cannot submit. Please fix validation errors in Row 29.', 'error');
-      setIsSubmitting(false);
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      // console.log('formdata', formData);
-
-      const dataToSend = flattenSchedule10Data(formData);
-      // console.log('dataToSend', dataToSend);
-      const payload = {
-        ...dataToSend,
-        save: isSaveOnly,
-        circleCode: user.circleCode,
-        quarterEndDate: user.quarterEndDate,
-        userId: user.userId,
-        reportName: reportObject.name,
-        reportMasterId: reportObject.reportMasterId,
-        reportId: reportObject.reportId,
-        status: reportObject.status,
-      };
-
-      // console.log('payload', payload);
-
-      const response = await callApi('/Maker/submitTen', payload, 'POST');
-
-      if (response) {
-        if (response && typeof response === 'string') {
-          const [_flag, newReportId, newStatus] = response.split('~');
-          setReportObject((prev) => ({
-            ...prev,
-            reportId: newReportId,
-            status: newStatus,
-          }));
-          setSnackbarMessage(isSaveOnly ? 'Report saved successfully!' : 'Report submitted successfully!', 'success');
-          if (!isSaveOnly) {
-            setTimeout(() => {
-              navigate('../');
-            }, 2000);
-          }
-        }
-      } else {
-        throw new Error(response.data?.message || 'Unexpected response');
-      }
-    } catch (err) {
-      console.log('error in handleSaveOrSubmit :: ', err);
-      setSnackbarMessage('Error occurred during save/submit.', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const showDialog = ({ title, message, onConfirm }) => {
-    setDialogOpen(true);
-    setDialogContent({ title, message, onConfirm });
-  };
-
-  useEffect(() => {
-    setIsLoading(false);
-  }, []);
-
-  const getNum = (value) => parseFloat(value) || 0;
-
+  // Memoized calculated data
   const calculatedData = useMemo(() => {
     console.time('Schedule10 Calculations');
     const newCalculatedData = JSON.parse(JSON.stringify(formData));
@@ -821,28 +656,24 @@ const Schedule10 = () => {
       ).toFixed(2);
     };
 
+    // Initialize all rows/fields in newCalculatedData based on config
     rowDefinitionsConfig.forEach((rowDef) => {
       if (!newCalculatedData[rowDef.id]) {
         newCalculatedData[rowDef.id] = {};
-        schedule10DataFields.forEach((fieldKey) => {
-          newCalculatedData[rowDef.id][fieldKey] = '0.00';
-        });
       }
-      if (rowDef.type === 'entry' && formData[rowDef.id]) {
-        Object.keys(formData[rowDef.id]).forEach((fieldKey) => {
-          if (schedule10DataFields.includes(fieldKey) && !intraRowCalculatedFields.includes(fieldKey)) {
-            newCalculatedData[rowDef.id][fieldKey] = formData[rowDef.id][fieldKey];
-          }
-        });
-      }
+      schedule10DataFields.forEach((fieldKey) => {
+        newCalculatedData[rowDef.id][fieldKey] = formData[rowDef.id]?.[fieldKey] ?? '0.00';
+      });
     });
 
+    // Calculate intra-row totals for entry rows first
     rowDefinitionsConfig.forEach((rowDef) => {
       if (rowDef.type === 'entry') {
         calculateInternalRowTotals(newCalculatedData[rowDef.id]);
       }
     });
 
+    // Calculate inter-row totals
     rowDefinitionsConfig.forEach((rowDef) => {
       if (rowDef.type === 'total') {
         const targetRow = newCalculatedData[rowDef.id];
@@ -868,86 +699,23 @@ const Schedule10 = () => {
           }
           targetRow[fieldKey] = value.toFixed(2);
         });
-        calculateInternalRowTotals(targetRow);
+        calculateInternalRowTotals(targetRow); // Calculate intra-row totals for total rows too
       }
     });
-
     console.timeEnd('Schedule10 Calculations');
     return newCalculatedData;
-  }, [formData]);
+  }, [formData]); // Recalculate whenever formData changes
 
+  // Use a separate effect to trigger silentPreCheckValidation when calculatedData is ready
   useEffect(() => {
-    if (isCalculating) {
-      setIsCalculating(false);
+    // Only run validation if not in initial loading phase or during active calculation
+    // and if there's an actual report object (meaning data might have been loaded)
+    if (!isLoading && !isCalculating && reportObject) {
+      silentPreCheckValidation();
     }
-  }, [calculatedData, isCalculating]);
+  }, [calculatedData, isLoading, isCalculating, reportObject]); // Depend on calculatedData to ensure it's updated
 
-  const debouncedRecalculate = useCallback(
-    lodashDebounce((newFormData) => {
-      setIsCalculating(true);
-      setFormData(newFormData);
-    }, 300),
-    []
-  );
-
-  const handleChange = useCallback(
-    (rowId, fieldKey, value) => {
-      const newFormData = {
-        ...formData,
-        [rowId]: { ...(formData[rowId] || {}), [fieldKey]: value },
-      };
-      setFormData(newFormData);
-      debouncedRecalculate(newFormData);
-    },
-    [formData, debouncedRecalculate]
-  );
-
-  const handleBlur = useCallback((rowId, fieldKey, value) => {
-    const numericRegex = /^-?\d*\.?\d{0,2}$/;
-    let error = '';
-    if (value !== '' && value !== '-' && !numericRegex.test(value)) {
-      error = 'Invalid number';
-    }
-    setErrors((prev) => ({ ...prev, [`${rowId}-${fieldKey}`]: error }));
-  }, []);
-
-  const handlePreCheck = async () => {
-    setIsChecking(true);
-    try {
-      // The payload would be the current form data, similar to the AngularJS `row1`
-      const payload = {
-        circleCode: user.circleCode,
-        quarterEndDate: user.quarterEndDate,
-        status: reportObject.status,
-        reportId: reportObject.reportId,
-        reportMasterId: reportObject.reportMasterId,
-        reportName: reportObject.name,
-        userId: user.userId,
-        areMocPending: false,
-      };
-      // console.log('payload:', payload);
-      const response = await callApi('/Maker/getValidationDataTen', payload, 'POST');
-
-      // Update state with the data from the API response
-      if (response) {
-        setPreCheckData({
-          otherFixedAsset: response.validationOtherFixedAssetAmount,
-          premises: response.validationPremisesAmount,
-          premisesUnderConstruction: response.validationPremisesUnderConsAmount,
-        });
-        setPreCheckOpen(true); // Open the modal
-      }
-    } catch (error) {
-      console.log('error in handlePreCheck::', error);
-
-      setSnackbarMessage('Failed to fetch pre-check data.', 'error');
-    } finally {
-      setIsChecking(false);
-    }
-  };
-  /////////////////////////
-
-  const silentPreCheckValidation = async () => {
+  const silentPreCheckValidation = useCallback(async () => {
     try {
       const payload = {
         circleCode: user.circleCode,
@@ -961,100 +729,308 @@ const Schedule10 = () => {
       };
 
       const response = await callApi('/Maker/getValidationDataTen', payload, 'POST');
-      if (response) {
-        setPreCheckData({
-          otherFixedAsset: response.validationOtherFixedAssetAmount,
-          premises: response.validationPremisesAmount,
-          premisesUnderConstruction: response.validationPremisesUnderConsAmount,
-        });
-      }
       if (response) {
         const validationErrors = {};
+        // Use calculatedData for comparison, as it reflects the latest form state
+        const row29 = calculatedData['row29']; // Use calculatedData here
 
-        const row29 = formData['row29'];
-        if (parseFloat(row29.totalA).toFixed(2) !== parseFloat(response.validationOtherFixedAssetAmount).toFixed(2)) {
-          validationErrors['row29-totalA'] = 'Mismatch with precheck';
-        }
-        if (parseFloat(row29.totalB).toFixed(2) !== parseFloat(response.validationOtherFixedAssetAmount).toFixed(2)) {
-          validationErrors['row29-totalB'] = 'Mismatch with precheck';
-        }
-        if (parseFloat(row29.totalC).toFixed(2) !== parseFloat(response.validationPremisesAmount).toFixed(2)) {
-          validationErrors['row29-totalC'] = 'Mismatch with precheck';
-        }
-        if (
-          parseFloat(row29.premisesUnderCons).toFixed(2) !==
-          parseFloat(response.validationPremisesUnderConsAmount).toFixed(2)
-        ) {
-          validationErrors['row29-premisesUnderCons'] = 'Mismatch with precheck';
+        if (row29 && response) { // Ensure both exist before comparing
+          if (getNum(row29.totalA).toFixed(2) !== getNum(response.validationOtherFixedAssetAmount).toFixed(2)) {
+            validationErrors['row29-totalA'] = 'Mismatch with precheck';
+          }
+          if (getNum(row29.totalB).toFixed(2) !== getNum(response.validationOtherFixedAssetAmount).toFixed(2)) {
+            validationErrors['row29-totalB'] = 'Mismatch with precheck';
+          }
+          if (getNum(row29.totalC).toFixed(2) !== getNum(response.validationPremisesAmount).toFixed(2)) {
+            validationErrors['row29-totalC'] = 'Mismatch with precheck';
+          }
+          if (
+            getNum(row29.premisesUnderCons).toFixed(2) !==
+            getNum(response.validationPremisesUnderConsAmount).toFixed(2)
+          ) {
+            validationErrors['row29-premisesUnderCons'] = 'Mismatch with precheck';
+          }
         }
 
-        setErrors((prev) => ({ ...prev, ...validationErrors }));
 
-        // prevent submission if errors present
+        // Update errors state, merging with existing general errors
+        setErrors((prev) => {
+            const newErrors = { ...prev };
+            // Clear previous precheck errors from row29 before adding new ones
+            ['row29-totalA', 'row29-totalB', 'row29-totalC', 'row29-premisesUnderCons'].forEach(key => {
+                delete newErrors[key];
+            });
+            return { ...newErrors, ...validationErrors };
+        });
+
         if (Object.keys(validationErrors).length > 0) {
           setSnackbarMessage('Row29 data mismatch with precheck. Please correct the fields.', 'error');
+        } else {
+            setSnackbarMessage('Row29 precheck validation successful.', 'success');
         }
       }
     } catch (error) {
-      //console.error('Silent precheck error:', error);
-      //setSnackbarMessage('Failed to run initial validation precheck.', 'error');
+      console.error('Silent precheck error:', error);
+      // Only show error if it's not a 'canceled' error (e.g., component unmounted during fetch)
+      if (error.message !== 'canceled') {
+        setSnackbarMessage('Failed to run initial validation precheck.', 'error');
+      }
+    }
+  }, [user, reportObject, callApi, calculatedData, setSnackbarMessage, getNum]); // Add getNum to dependencies
+
+  // Effect to load initial SFTP/DB data
+  useEffect(() => {
+    const checkSC10SftpData = async () => {
+      const payload = {
+        circleCode: user.circleCode,
+        qed: user.quarterEndDate,
+        reportStatus: 'A',
+        reportID: reportObject.reportMasterId,
+        reportName: 'SC10',
+      };
+      try {
+        [span_0](start_span)const data = await callApi('/IFAMSS/SC10SFTP', payload, 'POST'); //[span_0](end_span)
+
+        [span_1](start_span)if (user.isCircleExist === 'true') { //[span_1](end_span)
+          [span_2](start_span)if (data.fileAndDataStatus === 1) { //[span_2](end_span)
+            const convertedFormData = convertFlatSc10DataToFormData(data.sc10Data); [span_3](start_span)//[span_3](end_span)
+            setFormData(convertedFormData); [span_4](start_span)//[span_4](end_span)
+            setFieldsDisabled(true); [span_5](start_span)//[span_5](end_span)
+            setSnackbarMessage('Data successfully fetched from IFAMS via SFTP.', 'success'); [span_6](start_span)//[span_6](end_span)
+          [span_7](start_span)} else if (data.fileAndDataStatus === 2) { //[span_7](end_span)
+            setFieldsDisabled(true); [span_8](start_span)//[span_8](end_span)
+            showDialog({
+              [span_9](start_span)title: 'File Error', //[span_9](end_span)
+              message: data.message || [span_10](start_span)'Data not received from IFAMS, Kindly wait till IFAMS sends reports', //[span_10](end_span)
+              [span_11](start_span)onConfirm: () => navigate(-1), // go back[span_11](end_span)
+            });
+          [span_12](start_span)} else if (data.fileAndDataStatus === 3) { //[span_12](end_span)
+            setFieldsDisabled(true); [span_13](start_span)//[span_13](end_span)
+            showDialog({
+              [span_14](start_span)title: 'Info', //[span_14](end_span)
+              message: data.message || [span_15](start_span)'Please note: Data fetched here was generated in IFAMS', //[span_15](end_span)
+              [span_16](start_span)onConfirm: () => {}, //[span_16](end_span)
+            });
+          }
+        [span_17](start_span)} else { //[span_17](end_span)
+          setManualEntry(false); [span_18](start_span)//[span_18](end_span)
+          getValidationDataTen(); [span_19](start_span)//[span_19](end_span)
+        }
+      [span_20](start_span)} catch (error) { //[span_20](end_span)
+        [span_21](start_span)if (error.message !== 'canceled') { //[span_21](end_span)
+          setSnackbarMessage('Error while checking SC10 SFTP data.', 'error'); [span_22](start_span)//[span_22](end_span)
+        }
+      } finally {
+        setIsLoading(false); // Ensure loading is turned off regardless of success/error
+      }
+    };
+    checkSC10SftpData();
+  }, [user, reportObject, callApi, navigate, setSnackbarMessage, convertFlatSc10DataToFormData, showDialog]); // Add all dependencies
+
+  // Helper function for getting saved data (used when manualEntry is false)
+  const getValidationDataTen = useCallback(async () => { // Make this useCallback too
+    const payload = {
+      circleCode: user.circleCode,
+      quarterEndDate: user.quarterEndDate,
+      status: reportObject.status,
+      reportId: reportObject.reportId,
+      reportMasterId: reportObject.reportMasterId,
+      reportName: reportObject.name,
+      areMocPending: reportObject.areMocPending,
+    };
+    try {
+      [span_23](start_span)const data = await callApi('/Maker/getSavedDataTen', payload, 'POST'); //[span_23](end_span)
+      [span_24](start_span)if (data) { //[span_24](end_span)
+        // console.log('data received from getSavedDataTen', data); // Log the raw data
+        const convertedFormData = convertFlatSc10DataToFormData(data); [span_25](start_span)//[span_25](end_span)
+        setFormData(convertedFormData); [span_26](start_span)//[span_26](end_span)
+        // console.log('formData after setting from getSavedDataTen', convertedFormData); // Log the value being set
+      [span_27](start_span)} else { //[span_27](end_span)
+        throw new Error('Error while checking SC10 SFTP data.'); [span_28](start_span)//[span_28](end_span)
+      }
+    [span_29](start_span)} catch (error) { //[span_29](end_span)
+      setSnackbarMessage(error.message || 'Error while checking SC10 SFTP data.', 'error'); [span_30](start_span)//[span_30](end_span)
+    }
+  }, [user, reportObject, callApi, setSnackbarMessage, convertFlatSc10DataToFormData]);
+
+
+  [span_31](start_span)const flattenSchedule10Data = (formData) => { //[span_31](end_span)
+    const flatData = {}; [span_32](start_span)//[span_32](end_span)
+    [span_33](start_span)rowDefinitionsConfig.forEach((rowDef) => { //[span_33](end_span)
+      const suffix = rowDef.modelSuffix; [span_34](start_span)//[span_34](end_span)
+      if (!suffix) return; [span_35](start_span)// Skip headers[span_35](end_span)
+
+      const row = formData[rowDef.id] || {}; [span_36](start_span)//[span_36](end_span)
+      [span_37](start_span)schedule10DataFields.forEach((field) => { //[span_37](end_span)
+        const key = `${field}${suffix}`; [span_38](start_span)//[span_38](end_span)
+        flatData[key] = row[field] ?? '0.00'; [span_39](start_span)//[span_39](end_span)
+      });
+    });
+
+    // Add year fields if needed
+    flatData.finyearOne = formData.finyearOne; [span_40](start_span)//[span_40](end_span)
+    flatData.finyearTwo = formData.finyearTwo; [span_41](start_span)//[span_41](end_span)
+
+    return flatData; [span_42](start_span)//[span_42](end_span)
+  };
+
+  [span_43](start_span)const handleSaveOrSubmit = async (isSaveOnly = true) => { //[span_43](end_span)
+    const hasValidationErrors = Object.values(errors).some((val) => val && val.length > 0);
+    // Check if any errors exist (including pre-check errors)
+    if (!isSaveOnly && hasValidationErrors) {
+      setSnackbarMessage('Cannot submit. Please fix validation errors in Row 29.', 'error');
+      setIsSubmitting(false); // Ensure submitting state is reset
+      return;
+    }
+
+    setIsSubmitting(true); [span_44](start_span)//[span_44](end_span)
+    try {
+      const dataToSend = flattenSchedule10Data(formData); [span_45](start_span)//[span_45](end_span)
+
+      [span_46](start_span)const payload = { //[span_46](end_span)
+        [span_47](start_span)...dataToSend, //[span_47](end_span)
+        [span_48](start_span)save: isSaveOnly, //[span_48](end_span)
+        [span_49](start_span)circleCode: user.circleCode, //[span_49](end_span)
+        [span_50](start_span)quarterEndDate: user.quarterEndDate, //[span_50](end_span)
+        [span_51](start_span)userId: user.userId, //[span_51](end_span)
+        [span_52](start_span)reportName: reportObject.name, //[span_52](end_span)
+        [span_53](start_span)reportMasterId: reportObject.reportMasterId, //[span_53](end_span)
+        [span_54](start_span)reportId: reportObject.reportId, //[span_54](end_span)
+        [span_55](start_span)status: reportObject.status, //[span_55](end_span)
+      };
+
+      const response = await callApi('/Maker/submitTen', payload, 'POST'); [span_56](start_span)//[span_56](end_span)
+
+      [span_57](start_span)if (response) { //[span_57](end_span)
+        [span_58](start_span)if (response && typeof response === 'string') { //[span_58](end_span)
+          const [_flag, newReportId, newStatus] = response.split('~'); [span_59](start_span)//[span_59](end_span)
+          [span_60](start_span)setReportObject((prev) => ({ //[span_60](end_span)
+            ...prev,
+            reportId: newReportId,
+            status: newStatus,
+          }));
+          setSnackbarMessage(isSaveOnly ? 'Report saved successfully!' : 'Report submitted successfully!', 'success'); [span_61](start_span)//[span_61](end_span)
+          [span_62](start_span)if (!isSaveOnly) { //[span_62](end_span)
+            [span_63](start_span)setTimeout(() => { //[span_63](end_span)
+              navigate('../'); [span_64](start_span)//[span_64](end_span)
+            }, 2000);
+          }
+        }
+      [span_65](start_span)} else { //[span_65](end_span)
+        throw new Error(response.data?.message || 'Unexpected response'); [span_66](start_span)//[span_66](end_span)
+      }
+    [span_67](start_span)} catch (err) { //[span_67](end_span)
+      console.log('error in handleSaveOrSubmit :: ', err); [span_68](start_span)//[span_68](end_span)
+      setSnackbarMessage('Error occurred during save/submit.', 'error'); [span_69](start_span)//[span_69](end_span)
+    } finally {
+      setIsSubmitting(false); [span_70](start_span)//[span_70](end_span)
     }
   };
 
-  if (isLoading) {
+  [span_71](start_span)const showDialog = ({ title, message, onConfirm }) => { //[span_71](end_span)
+    setDialogOpen(true); [span_72](start_span)//[span_72](end_span)
+    setDialogContent({ title, message, onConfirm }); [span_73](start_span)//[span_73](end_span)
+  };
+
+  [span_74](start_span)useEffect(() => { //[span_74](end_span)
+    setIsLoading(false); [span_75](start_span)//[span_75](end_span)
+  }, []);
+
+
+  [span_76](start_span)useEffect(() => { //[span_76](end_span)
+    [span_77](start_span)if (isCalculating) { //[span_77](end_span)
+      setIsCalculating(false); [span_78](start_span)//[span_78](end_span)
+    }
+  }, [calculatedData, isCalculating]); [span_79](start_span)//[span_79](end_span)
+
+  [span_80](start_span)const debouncedRecalculate = useCallback( //[span_80](end_span)
+    [span_81](start_span)lodashDebounce((newFormData) => { //[span_81](end_span)
+      setIsCalculating(true); [span_82](start_span)//[span_82](end_span)
+      setFormData(newFormData); [span_83](start_span)//[span_83](end_span)
+    [span_84](start_span)}, 300), //[span_84](end_span)
+    [span_85](start_span)[] //[span_85](end_span)
+  );
+
+  [span_86](start_span)const handleChange = useCallback( //[span_86](end_span)
+    [span_87](start_span)(rowId, fieldKey, value) => { //[span_87](end_span)
+      [span_88](start_span)const newFormData = { //[span_88](end_span)
+        [span_89](start_span)...formData, //[span_89](end_span)
+        [span_90](start_span)[rowId]: { ...(formData[rowId] || {}), [fieldKey]: value }, //[span_90](end_span)
+      };
+      setFormData(newFormData); [span_91](start_span)//[span_91](end_span)
+      debouncedRecalculate(newFormData); [span_92](start_span)//[span_92](end_span)
+    },
+    [span_93](start_span)[formData, debouncedRecalculate] //[span_93](end_span)
+  );
+
+  [span_94](start_span)const handleBlur = useCallback((rowId, fieldKey, value) => { //[span_94](end_span)
+    const numericRegex = /^-?\d*\.?\d{0,2}$/; [span_95](start_span)//[span_95](end_span)
+    let error = ''; [span_96](start_span)//[span_96](end_span)
+    [span_97](start_span)if (value !== '' && value !== '-' && !numericRegex.test(value)) { //[span_97](end_span)
+      error = 'Invalid number'; [span_98](start_span)//[span_98](end_span)
+    }
+    setErrors((prev) => ({ ...prev, [`${rowId}-${fieldKey}`]: error })); [span_99](start_span)//[span_99](end_span)
+  }, []);
+
+
+  [span_100](start_span)if (isLoading) { //[span_100](end_span)
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 150px)' }}>
         <CircularProgress /> <Typography sx={{ ml: 2 }}>Loading Schedule 10...</Typography>
       </Box>
-    );
+    ); [span_101](start_span)//[span_101](end_span)
   }
 
   return (
     <Box
-      sx={{ p: 1, width: '100%', boxSizing: 'border-box', overflowX: 'hidden' /*  bgcolor: 'background.default' */ }}
+      sx={{ p: 1, width: '100%', boxSizing: 'border-box', overflowX: 'hidden' /* bgcolor: 'background.default' */ }}
     >
-      <Dialog open={preCheckOpen} onClose={() => setPreCheckOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ backgroundColor: '#E74C3C', color: 'white' }}>Attention!</DialogTitle>
-        <DialogContent dividers>
+      [span_102](start_span)<Dialog open={preCheckOpen} onClose={() => setPreCheckOpen(false)} fullWidth maxWidth="sm"> {/*[span_102](end_span) */}
+        [span_103](start_span)<DialogTitle sx={{ backgroundColor: '#E74C3C', color: 'white' }}>Attention!</DialogTitle> {/*[span_103](end_span) */}
+        [span_104](start_span)<DialogContent dividers> {/*[span_104](end_span) */}
           <Typography variant="h6" component="div" sx={{ mb: 2 }}>
-            The values for pre-checks of comp codes are as follows:-
+            [span_105](start_span)The values for pre-checks of comp {/*[span_105](end_span) */}
+            codes are as follows:-
           </Typography>
           <Box component="table" sx={{ width: '100%' }}>
             <Box component="tbody" sx={{ fontSize: '15px' }}>
               <Box component="tr">
                 <Box component="td" sx={{ py: 1 }}>
-                  OTHER FIXED ASSETS (including furniture and fixtures) ={' '}
-                  <strong>{preCheckData.otherFixedAsset}</strong>
+                  [span_106](start_span)OTHER {/*[span_106](end_span) */}
+                  FIXED ASSETS (including furniture and fixtures) ={' '}
+                  [span_107](start_span)<strong>{preCheckData.otherFixedAsset}</strong> {/*[span_107](end_span) */}
                 </Box>
               </Box>
               <Box component="tr">
                 <Box component="td" sx={{ py: 1 }}>
-                  PREMISES = <strong>{preCheckData.premises}</strong>
+                  [span_108](start_span)PREMISES = <strong>{preCheckData.premises}</strong> {/*[span_108](end_span) */}
                 </Box>
               </Box>
               <Box component="tr">
                 <Box component="td" sx={{ py: 1 }}>
-                  ASSETS UNDER CONSTRUCTION (INCLUDING PREMISES) ={' '}
-                  <strong>{preCheckData.premisesUnderConstruction}</strong>
+                  [span_109](start_span)ASSETS UNDER CONSTRUCTION (INCLUDING PREMISES) {/*[span_109](end_span) */}
+                  ={' '}
+                  [span_110](start_span)<strong>{preCheckData.premisesUnderConstruction}</strong> {/*[span_110](end_span) */}
                 </Box>
               </Box>
             </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPreCheckOpen(false)} variant="contained" color="success">
+          [span_111](start_span)<Button onClick={() => {/*[span_111](end_span) */}
+            [span_112](start_span)setPreCheckOpen(false)} variant="contained" color="success"> {/*[span_112](end_span) */}
             Continue
           </Button>
         </DialogActions>
       </Dialog>
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
-        <DialogTitle>{dialogContent.title}</DialogTitle>
-        <DialogContent>{dialogContent.message}</DialogContent>
+      [span_113](start_span)<Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}> {/*[span_113](end_span) */}
+        [span_114](start_span)<DialogTitle>{dialogContent.title}</DialogTitle> {/*[span_114](end_span) */}
+        [span_115](start_span)<DialogContent>{dialogContent.message}</DialogContent> {/*[span_115](end_span) */}
         <DialogActions>
           <Button
-            onClick={() => {
-              setDialogOpen(false);
-              dialogContent.onConfirm();
+            [span_116](start_span)onClick={() => { //[span_116](end_span)
+              setDialogOpen(false); [span_117](start_span)//[span_117](end_span)
+              dialogContent.onConfirm(); [span_118](start_span)//[span_118](end_span)
             }}
           >
             OK
@@ -1062,17 +1038,17 @@ const Schedule10 = () => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={openSubmitDialog} onClose={() => setOpenSubmitDialog(false)}>
-        <DialogTitle>Confirm Submission</DialogTitle>
-        <DialogContent>Are you sure you want to submit Schedule 10 data?</DialogContent>
+      [span_119](start_span)<Dialog open={openSubmitDialog} onClose={() => setOpenSubmitDialog(false)}> {/*[span_119](end_span) */}
+        [span_120](start_span)<DialogTitle>Confirm Submission</DialogTitle> {/*[span_120](end_span) */}
+        [span_121](start_span)<DialogContent>Are you sure you want to submit Schedule 10 data?</DialogContent> {/*[span_121](end_span) */}
         <DialogActions>
-          <Button onClick={() => setOpenSubmitDialog(false)} color="inherit">
+          [span_122](start_span)<Button onClick={() => setOpenSubmitDialog(false)} color="inherit"> {/*[span_122](end_span) */}
             Close
           </Button>
           <Button
             onClick={() => {
-              setOpenSubmitDialog(false);
-              handleSaveOrSubmit(false);
+              setOpenSubmitDialog(false); [span_123](start_span)//[span_123](end_span)
+              handleSaveOrSubmit(false); [span_124](start_span)//[span_124](end_span)
             }}
             color="success"
             variant="contained"
@@ -1083,48 +1059,38 @@ const Schedule10 = () => {
       </Dialog>
 
       <Stack direction="row" spacing={2} sx={{ mb: 2, justifyContent: 'left' }}>
-        {/* <Button variant="contained" color="error" onClick={handlePreCheck} disabled={isChecking || isSubmitting}>
-          {isChecking ? <CircularProgress size={24} /> : 'Pre-Check Amount'}
-        </Button> */}
         <CustomButton
-          onClickHandler={handlePreCheck}
+          [span_125](start_span)onClickHandler={handlePreCheck} //[span_125](end_span)
           buttonType={'precheck'}
-          label={'Pre Check Amount'}
-          disabled={isChecking || isSubmitting}
+          [span_126](start_span)label={'Pre Check Amount'} //[span_126](end_span)
+          [span_127](start_span)disabled={isChecking || isSubmitting} //[span_127](end_span)
         />
-        {/* <Button variant="contained" color="warning" onClick={() => handleSaveOrSubmit(true)} disabled={isSubmitting}>
-          Save
-        </Button> */}
-
         <CustomButton
-          onClickHandler={() => handleSaveOrSubmit(true)}
+          [span_128](start_span)onClickHandler={() => handleSaveOrSubmit(true)} //[span_128](end_span)
           buttonType={'save'}
           label={'Save'}
-          disabled={isSubmitting}
+          [span_129](start_span)disabled={isSubmitting} //[span_129](end_span)
         />
-        {/* <Button variant="contained" color="success" onClick={() => setOpenSubmitDialog(true)} disabled={isSubmitting}>
-          Submit
-        </Button> */}
         <CustomButton
-          onClickHandler={() => setOpenSubmitDialog(true)}
+          [span_130](start_span)onClickHandler={() => setOpenSubmitDialog(true)} //[span_130](end_span)
           buttonType={'submit'}
           label={'Submit'}
-          disabled={isSubmitting}
+          disabled={isSubmitting || Object.values(errors).some((val) => val && val.length > 0)} // Disable if any errors
         />
       </Stack>
 
-      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)' }}>
-        <Table sx={{ minWidth: 3000 }} aria-label="schedule 10 table" stickyHeader>
+      [span_131](start_span)<TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)' }}> {/*[span_131](end_span) */}
+        [span_132](start_span)<Table sx={{ minWidth: 3000 }} aria-label="schedule 10 table" stickyHeader> {/*[span_132](end_span) */}
           <TableHead>
             <TableRow>
               <StyledTableCell
                 rowSpan={2}
                 sx={{
-                  minWidth: '50px',
-                  position: 'sticky',
-                  left: 0,
-                  zIndex: 1101,
-                  // backgroundColor: 'background.paper',
+                  [span_133](start_span)minWidth: '50px', //[span_133](end_span)
+                  [span_134](start_span)position: 'sticky', //[span_134](end_span)
+                  [span_135](start_span)left: 0, //[span_135](end_span)
+                  [span_136](start_span)zIndex: 1101, //[span_136](end_span)
+                  [span_137](start_span)// backgroundColor: 'background.paper',[span_137](end_span)
                 }}
               >
                 Sr.No
@@ -1132,62 +1098,62 @@ const Schedule10 = () => {
               <StyledTableCell
                 rowSpan={2}
                 sx={{
-                  minWidth: '350px',
-                  position: 'sticky',
-                  left: '50px',
-                  zIndex: 1100,
-                  // backgroundColor: 'background.paper',
+                  [span_138](start_span)minWidth: '350px', //[span_138](end_span)
+                  [span_139](start_span)position: 'sticky', //[span_139](end_span)
+                  [span_140](start_span)left: '50px', //[span_140](end_span)
+                  [span_141](start_span)zIndex: 1100, //[span_141](end_span)
+                  [span_142](start_span)// backgroundColor: 'background.paper',[span_142](end_span)
                 }}
               >
                 Particulars
               </StyledTableCell>
-              <StyledTableCell colSpan={5}> (A) FURNITURE & FITTINGS</StyledTableCell>
-              <StyledTableCell colSpan={10}> (B) MACHINERY & PLANT</StyledTableCell>
-              <StyledTableCell colSpan={13}> (C) PREMISES</StyledTableCell>
-              <StyledTableCell colSpan={2}></StyledTableCell>
+              [span_143](start_span)<StyledTableCell colSpan={5}> (A) FURNITURE & FITTINGS</StyledTableCell> {/*[span_143](end_span) */}
+              [span_144](start_span)<StyledTableCell colSpan={10}> (B) MACHINERY & PLANT</StyledTableCell> {/*[span_144](end_span) */}
+              [span_145](start_span)<StyledTableCell colSpan={13}> (C) PREMISES</StyledTableCell> {/*[span_145](end_span) */}
+              [span_146](start_span)<StyledTableCell colSpan={2}></StyledTableCell> {/*[span_146](end_span) */}
             </TableRow>
             <TableRow>
               {columnDisplayHeaders.map((colDef) => (
                 <StyledTableCell
                   key={colDef.dataField}
                   sx={{
-                    position: 'sticky',
-                    top: '42px', // Adjust this value based on your row height
-                    //zIndex: 1101,
-                    // backgroundColor: 'background.paper',
+                    [span_147](start_span)position: 'sticky', //[span_147](end_span)
+                    [span_148](start_span)top: '42px', // Adjust this value based on your row height[span_148](end_span)
+                    [span_149](start_span)//zIndex: 1101,[span_149](end_span)
+                    [span_150](start_span)// backgroundColor: 'background.paper',[span_150](end_span)
                   }}
                   dangerouslySetInnerHTML={{ __html: colDef.labelHtml }}
                 />
               ))}
             </TableRow>
-          </TableHead>
+          [span_151](start_span)</TableHead> {/*[span_151](end_span) */}
           <TableBody>
             {rowDefinitionsConfig.map((rowDef) => {
               const rowKey = rowDef.id;
 
-              if (rowDef.type === 'subSectionHeader') {
+              [span_152](start_span)if (rowDef.type === 'subSectionHeader') { //[span_152](end_span)
                 return (
                   <StyledTableRow key={rowKey} $issubsectionheader>
                     <StyledTableCell
                       sx={{
-                        position: 'sticky',
-                        left: 0,
-                        zIndex: 1,
-                        // backgroundColor: (theme) => theme.palette.grey[50],
+                        [span_153](start_span)position: 'sticky', //[span_153](end_span)
+                        [span_154](start_span)left: 0, //[span_154](end_span)
+                        [span_155](start_span)zIndex: 1, //[span_155](end_span)
+                        [span_156](start_span)// backgroundColor: (theme) => theme.palette.grey[50],[span_156](end_span)
                       }}
                     >
                       {rowDef.srNo || ''}
                     </StyledTableCell>
                     <StyledTableCell
-                      //colSpan={columnDisplayHeaders.length + 1}
+                      [span_157](start_span)//colSpan={columnDisplayHeaders.length + 1}[span_157](end_span)
                       sx={{
-                        position: 'sticky',
-                        left: 52,
-                        zIndex: 1,
-                        // backgroundColor: (theme) => theme.palette.grey[50],
+                        [span_158](start_span)position: 'sticky', //[span_158](end_span)
+                        [span_159](start_span)left: 52, //[span_159](end_span)
+                        [span_160](start_span)zIndex: 1, //[span_160](end_span)
+                        [span_161](start_span)// backgroundColor: (theme) => theme.palette.grey[50],[span_161](end_span)
                       }}
                     >
-                      {typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label}
+                      [span_162](start_span){typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label} {/*[span_162](end_span) */}
                     </StyledTableCell>
                   </StyledTableRow>
                 );
@@ -1198,51 +1164,51 @@ const Schedule10 = () => {
                   key={rowKey}
                   $istotalrow={rowDef.isTotalRowStyle}
                   $issectionheader={rowDef.isSectionHeaderStyle}
-                >
+                > [span_163](start_span){/*[span_163](end_span) */}
                   <StyledTableCell
                     sx={{
-                      position: 'sticky',
-                      left: 0,
-                      zIndex: 1,
-                      // bgcolor: 'background.paper',
+                      [span_164](start_span)position: 'sticky', //[span_164](end_span)
+                      [span_165](start_span)left: 0, //[span_165](end_span)
+                      [span_166](start_span)zIndex: 1, //[span_166](end_span)
+                      [span_167](start_span)// bgcolor: 'background.paper',[span_167](end_span)
                     }}
                   >
-                    {rowDef.srNo || ''}
+                    {rowDef.srNo || [span_168](start_span)''} {/*[span_168](end_span) */}
                   </StyledTableCell>
                   <StyledTableCell
                     sx={{
-                      position: 'sticky',
-                      left: '50px',
-                      zIndex: 1,
-                      // bgcolor: 'background.paper',
+                      [span_169](start_span)position: 'sticky', //[span_169](end_span)
+                      [span_170](start_span)left: '50px', //[span_170](end_span)
+                      [span_171](start_span)zIndex: 1, //[span_171](end_span)
+                      [span_172](start_span)// bgcolor: 'background.paper',[span_172](end_span)
                     }}
                   >
-                    {typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label}
+                    [span_173](start_span){typeof rowDef.label === 'function' ? rowDef.label(formData) : rowDef.label} {/*[span_173](end_span) */}
                   </StyledTableCell>
 
                   {columnDisplayHeaders.map((colDef) => {
-                    const fieldKey = colDef.dataField;
-                    const cellKey = `${rowKey}-${fieldKey}`;
+                    [span_174](start_span)const fieldKey = colDef.dataField; //[span_174](end_span)
+                    const cellKey = `${rowKey}-${fieldKey}`; [span_175](start_span)//[span_175](end_span)
                     const isReadOnly =
-                      rowDef.type === 'total' ||
-                      colDef.isCalculated ||
+                      rowDef.type === 'total' || [span_176](start_span)//[span_176](end_span)
+                      colDef.isCalculated || [span_177](start_span)//[span_177](end_span)
                       (rowDef.isReadOnlyGroup && rowDef.isReadOnlyGroup.includes(fieldKey));
-                    const displayValue = calculatedData[rowKey]?.[fieldKey] ?? '0.00';
-                    const inputValue = formData[rowKey]?.[fieldKey] ?? '0.00';
-                    const errorForField = errors[cellKey];
+                    const displayValue = calculatedData[rowKey]?.[fieldKey] ?? '0.00'; [span_178](start_span)//[span_178](end_span)
+                    const inputValue = formData[rowKey]?.[fieldKey] ?? '0.00'; [span_179](start_span)//[span_179](end_span)
+                    const errorForField = errors[cellKey]; [span_180](start_span)//[span_180](end_span)
 
                     return (
                       <StyledTableCell key={cellKey}>
                         <VirtualizedInput
                           name={cellKey}
-                          value={isReadOnly ? displayValue : inputValue}
-                          displayValue={displayValue} // Pass display value for placeholder
-                          onChange={(e) => handleChange(rowDef.id, fieldKey, e.target.value)}
-                          onBlur={(e) => handleBlur(rowDef.id, fieldKey, e.target.value)}
-                          readOnly={isReadOnly || fieldsDisabled || manualEntry}
+                          [span_181](start_span)value={isReadOnly ? displayValue : inputValue} //[span_181](end_span)
+                          [span_182](start_span)displayValue={displayValue} // Pass display value for placeholder[span_182](end_span)
+                          [span_183](start_span)onChange={(e) => handleChange(rowDef.id, fieldKey, e.target.value)} //[span_183](end_span)
+                          [span_184](start_span)onBlur={(e) => handleBlur(rowDef.id, fieldKey, e.target.value)} //[span_184](end_span)
+                          [span_185](start_span)readOnly={isReadOnly || fieldsDisabled || manualEntry} //[span_185](end_span)
                           error={errorForField}
                           helperText={errorForField}
-                        />
+                        [span_186](start_span)/> {/*[span_186](end_span) */}
                       </StyledTableCell>
                     );
                   })}
