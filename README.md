@@ -478,7 +478,7 @@ const MemoizedFormInput = React.memo(function MemoizedFormInput({
   readOnly,
   error,
   helperText,
-  customStyles, // Add customStyles to props
+  customStyles,
 }) {
   return (
     <FormInput
@@ -490,13 +490,13 @@ const MemoizedFormInput = React.memo(function MemoizedFormInput({
       error={!!error}
       helperText={helperText}
       customStyles={{
-        width: '200px', // ? consistent fixed width for all
+        width: '200px',
         '& input': {
           textAlign: 'right',
           padding: '6px 8px',
-          ...(error && { border: '1px solid red' }), // Apply red border if error
+          ...(error && { border: '1px solid red' }),
         },
-        ...customStyles, // Apply any additional custom styles
+        ...customStyles,
       }}
     />
   );
@@ -510,15 +510,12 @@ const VirtualizedInput = (props) => {
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        // If the component is intersecting the viewport, show the real input
         if (entry.isIntersecting) {
           setIsInView(true);
-          // Stop observing once it's visible
           observer.unobserve(entry.target);
         }
       },
       {
-        // Optional: Adjust rootMargin to load inputs slightly before they appear on screen
         rootMargin: '200px',
       }
     );
@@ -533,17 +530,16 @@ const VirtualizedInput = (props) => {
       }
     };
   }, []);
-  // Placeholder has fixed height and alignment to prevent layout shifts when the real input loads
   const placeholder = (
     <Box
       ref={placeholderRef}
       sx={{
         height: '38px',
-        width: '200px', // Match consistent fixed width for all
+        width: '200px',
         textAlign: 'right',
         padding: '6px 8px',
         boxSizing: 'border-box',
-        ...(props.error && { border: '1px solid red' }), // Apply red border to placeholder if error
+        ...(props.error && { border: '1px solid red' }),
       }}
     >
       {props.displayValue}
@@ -569,14 +565,14 @@ const Schedule10 = () => {
   const [dialogContent, setDialogContent] = useState({ title: '', message: '', onConfirm: () => { } });
   const [openSubmitDialog, setOpenSubmitDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [preCheckOpen, setPreCheckOpen] = useState(false);
-  const [preCheckData, setPreCheckData] = useState({
+  const [preCheckOpen, setPreCheckOpen] = useState(false); // Re-introduced preCheckOpen state for the dialog
+  const [preCheckDialogData, setPreCheckDialogData] = useState({ // New state for dialog-specific data
     otherFixedAsset: '0.00',
     premises: '0.00',
     premisesUnderConstruction: '0.00',
   });
   const [manualEntry, setManualEntry] = useState(true);
-  const [preCheckValidationErrors, setPreCheckValidationErrors] = useState({}); // New state for pre-check errors
+  const [preCheckValidationErrors, setPreCheckValidationErrors] = useState({});
 
   const convertFlatSc10DataToFormData = (flatData) => {
     const structuredData = generateInitialSchedule10Data();
@@ -592,215 +588,6 @@ const Schedule10 = () => {
       });
     });
     return structuredData;
-  };
-
-  useEffect(() => {
-    const checkSC10SftpData = async () => {
-      const payload = {
-        circleCode: user.circleCode,
-        qed: user.quarterEndDate,
-        reportStatus: 'A',
-        reportID: reportObject.reportMasterId,
-        reportName: 'SC10',
-      };
-      try {
-        const data = await callApi('/IFAMSS/SC10SFTP', payload, 'POST');
-
-        if (user.isCircleExist === 'true') {
-          if (data.fileAndDataStatus === 1) {
-            const convertedFormData = convertFlatSc10DataToFormData(data.sc10Data);
-            setFormData(convertedFormData);
-            setFieldsDisabled(true);
-            setSnackbarMessage('Data successfully fetched from IFAMS via SFTP.', 'success');
-            // Immediately perform pre-check validation after fetching data
-            performPreCheckValidation(data.sc10Data);
-          } else if (data.fileAndDataStatus === 2) {
-            setFieldsDisabled(true);
-            showDialog({
-              title: 'File Error',
-              message: data.message || 'Data not received from IFAMS, Kindly wait till IFAMS sends reports',
-              onConfirm: () => navigate(-1),
-            });
-          } else if (data.fileAndDataStatus === 3) {
-            setFieldsDisabled(true);
-            showDialog({
-              title: 'Info',
-              message: data.message || 'Please note: Data fetched here was generated in IFAMS',
-              onConfirm: () => { },
-            });
-            // Immediately perform pre-check validation for existing data
-            getValidationDataTen(); // Call to get saved data and then validate
-          }
-        } else {
-          setManualEntry(false);
-          getValidationDataTen();
-        }
-      } catch (error) {
-        if (error.message !== 'canceled') {
-          setSnackbarMessage('Error while checking SC10 SFTP data.', 'error');
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkSC10SftpData();
-  }, []);
-
-  const getValidationDataTen = async () => {
-    const payload = {
-      circleCode: user.circleCode,
-      quarterEndDate: user.quarterEndDate,
-      status: reportObject.status,
-      reportId: reportObject.reportId,
-      reportMasterId: reportObject.reportMasterId,
-      reportName: reportObject.name,
-      areMocPending: reportObject.areMocPending,
-    };
-    try {
-      const data = await callApi('/Maker/getSavedDataTen', payload, 'POST');
-      if (data) {
-        const convertedFormData = convertFlatSc10DataToFormData(data);
-        setFormData(convertedFormData);
-        // Once saved data is loaded, perform pre-check validation against it
-        performPreCheckValidation(data);
-      } else {
-        throw new Error('Error while checking SC10 SFTP data.');
-      }
-    } catch (error) {
-      setSnackbarMessage(error.message || 'Error while checking SC10 SFTP data.', 'error');
-    }
-  };
-
-  const flattenSchedule10Data = (formData) => {
-    const flatData = {};
-    rowDefinitionsConfig.forEach((rowDef) => {
-      const suffix = rowDef.modelSuffix;
-      if (!suffix) return;
-
-      const row = formData[rowDef.id] || {};
-      schedule10DataFields.forEach((field) => {
-        const key = `${field}${suffix}`;
-        flatData[key] = row[field] ?? '0.00';
-      });
-    });
-    flatData.finyearOne = formData.finyearOne;
-    flatData.finyearTwo = formData.finyearTwo;
-
-    return flatData;
-  };
-
-  const performPreCheckValidation = useCallback(async (currentFormData) => {
-    setIsChecking(true);
-    try {
-      const payload = {
-        circleCode: user.circleCode,
-        quarterEndDate: user.quarterEndDate,
-        status: reportObject.status,
-        reportId: reportObject.reportId,
-        reportMasterId: reportObject.reportMasterId,
-        reportName: reportObject.name,
-        userId: user.userId,
-        areMocPending: false,
-      };
-      const response = await callApi('/Maker/getValidationDataTen', payload, 'POST');
-      if (response) {
-        const validationErrors = {};
-        const getNum = (value) => parseFloat(value) || 0;
-
-        // Note: For SFTP data, `currentFormData` is already flattened.
-        // For getSavedDataTen, `currentFormData` is also flattened.
-        // If `calculatedData` is used, it refers to the `useMemo` calculated values based on `formData`.
-
-        // Compare fetched pre-check data with relevant calculated values
-        const row29TotalA = getNum(calculatedData.row29?.totalA);
-        const row29TotalB = getNum(calculatedData.row29?.totalB);
-        const row29TotalC = getNum(calculatedData.row29?.totalC);
-        const row29PremisesUnderCons = getNum(calculatedData.row29?.premisesUnderCons);
-
-        const apiOtherFixedAsset = getNum(response.validationOtherFixedAssetAmount);
-        const apiPremises = getNum(response.validationPremisesAmount);
-        const apiPremisesUnderConstruction = getNum(response.validationPremisesUnderConsAmount);
-
-        if (row29TotalA !== apiOtherFixedAsset) {
-          validationErrors['row29-totalA'] = 'Mismatch with Pre-Check Data';
-        }
-        if (row29TotalB !== apiOtherFixedAsset) { // Assuming totalB also compares to otherFixedAsset
-          validationErrors['row29-totalB'] = 'Mismatch with Pre-Check Data';
-        }
-        if (row29TotalC !== apiPremises) {
-          validationErrors['row29-totalC'] = 'Mismatch with Pre-Check Data';
-        }
-        if (row29PremisesUnderCons !== apiPremisesUnderConstruction) {
-          validationErrors['row29-premisesUnderCons'] = 'Mismatch with Pre-Check Data';
-        }
-
-        setPreCheckValidationErrors(validationErrors);
-
-        if (Object.keys(validationErrors).length > 0) {
-          setSnackbarMessage('Pre-check validation failed. Please review the highlighted fields.', 'error');
-        } else {
-          setSnackbarMessage('Pre-check validation successful!', 'success');
-        }
-      }
-    } catch (error) {
-      setSnackbarMessage('Failed to fetch pre-check data.', 'error');
-      console.error('Error in performPreCheckValidation:', error);
-    } finally {
-      setIsChecking(false);
-    }
-  }, [user, reportObject, calculatedData, setSnackbarMessage]); // Added calculatedData to dependency array
-
-  const handleSaveOrSubmit = async (isSaveOnly = true) => {
-    // Prevent submission if there are pre-check validation errors
-    if (!isSaveOnly && Object.keys(preCheckValidationErrors).length > 0) {
-      setSnackbarMessage('Cannot submit due to pre-check validation errors. Please resolve them first.', 'error');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const dataToSend = flattenSchedule10Data(formData);
-      const payload = {
-        ...dataToSend,
-        save: isSaveOnly,
-        circleCode: user.circleCode,
-        quarterEndDate: user.quarterEndDate,
-        userId: user.userId,
-        reportName: reportObject.name,
-        reportMasterId: reportObject.reportMasterId,
-        reportId: reportObject.reportId,
-        status: reportObject.status,
-      };
-
-      const response = await callApi('/Maker/submitTen', payload, 'POST');
-      if (response && typeof response === 'string') {
-        const [_flag, newReportId, newStatus] = response.split('~');
-        setReportObject((prev) => ({
-          ...prev,
-          reportId: newReportId,
-          status: newStatus,
-        }));
-        setSnackbarMessage(isSaveOnly ? 'Report saved successfully!' : 'Report submitted successfully!', 'success');
-        if (!isSaveOnly) {
-          setTimeout(() => {
-            navigate('../');
-          }, 2000);
-        }
-      } else {
-        throw new Error(response.data?.message || 'Unexpected response');
-      }
-    } catch (err) {
-      console.error('error in handleSaveOrSubmit :: ', err);
-      setSnackbarMessage('Error occurred during save/submit.', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const showDialog = ({ title, message, onConfirm }) => {
-    setDialogOpen(true);
-    setDialogContent({ title, message, onConfirm });
   };
 
   const getNum = (value) => parseFloat(value) || 0;
@@ -892,20 +679,239 @@ const Schedule10 = () => {
     return newCalculatedData;
   }, [formData]);
 
-  useEffect(() => {
-    if (isCalculating) {
-      setIsCalculating(false);
+  const performPreCheckValidation = useCallback(async () => {
+    setIsChecking(true);
+    try {
+      const payload = {
+        circleCode: user.circleCode,
+        quarterEndDate: user.quarterEndDate,
+        status: reportObject.status,
+        reportId: reportObject.reportId,
+        reportMasterId: reportObject.reportMasterId,
+        reportName: reportObject.name,
+        userId: user.userId,
+        areMocPending: false,
+      };
+      [span_0](start_span)const response = await callApi('/Maker/getValidationDataTen', payload, 'POST'); //[span_0](end_span)
+      if (response) {
+        // Update the dialog data regardless of validation success/failure
+        [span_1](start_span)setPreCheckDialogData({ //[span_1](end_span)
+          [span_2](start_span)otherFixedAsset: response.validationOtherFixedAssetAmount, //[span_2](end_span)
+          [span_3](start_span)premises: response.validationPremisesAmount, //[span_3](end_span)
+          [span_4](start_span)premisesUnderConstruction: response.validationPremisesUnderConsAmount, //[span_4](end_span)
+        });
+
+        const validationErrors = {};
+        const getNumLocal = (value) => parseFloat(value) || 0;
+
+        // Compare fetched pre-check data with relevant calculated values
+        const row29TotalA = getNumLocal(calculatedData.row29?.totalA);
+        const row29TotalB = getNumLocal(calculatedData.row29?.totalB);
+        const row29TotalC = getNumLocal(calculatedData.row29?.totalC);
+        const row29PremisesUnderCons = getNumLocal(calculatedData.row29?.premisesUnderCons);
+
+        const apiOtherFixedAsset = getNumLocal(response.validationOtherFixedAssetAmount); [span_5](start_span)//[span_5](end_span)
+        const apiPremises = getNumLocal(response.validationPremisesAmount); [span_6](start_span)//[span_6](end_span)
+        const apiPremisesUnderConstruction = getNumLocal(response.validationPremisesUnderConsAmount); [span_7](start_span)//[span_7](end_span)
+
+        // Based on the image showing:
+        // row29-totalA = validOtherFixedAssetAmount
+        // row29-totalB = validOtherFixedAssetAmount
+        // row29-totalC = validPremisesAmount
+        // row29-premisesUnderCons = validPremisesUnderConsAmount
+        if (row29TotalA !== apiOtherFixedAsset) {
+          validationErrors['row29-totalA'] = 'Mismatch with Pre-Check Data';
+        }
+        if (row29TotalB !== apiOtherFixedAsset) {
+          validationErrors['row29-totalB'] = 'Mismatch with Pre-Check Data';
+        }
+        if (row29TotalC !== apiPremises) {
+          validationErrors['row29-totalC'] = 'Mismatch with Pre-Check Data';
+        }
+        if (row29PremisesUnderCons !== apiPremisesUnderConstruction) {
+          validationErrors['row29-premisesUnderCons'] = 'Mismatch with Pre-Check Data';
+        }
+
+        setPreCheckValidationErrors(validationErrors);
+
+        if (Object.keys(validationErrors).length > 0) {
+          setSnackbarMessage('Pre-check validation failed. Please review the highlighted fields.', 'error');
+        } else {
+          setSnackbarMessage('Pre-check validation successful!', 'success');
+        }
+        setPreCheckOpen(true); // Open the dialog after validation and snackbar message are set
+      }
+    } catch (error) {
+      setSnackbarMessage('Failed to fetch pre-check data.', 'error');
+      console.error('Error in performPreCheckValidation:', error);
+    } finally {
+      setIsChecking(false);
     }
-  }, [calculatedData, isCalculating]);
+  }, [user, reportObject, calculatedData, setSnackbarMessage, callApi]);
+
+  useEffect(() => {
+    const checkSC10SftpData = async () => {
+      const payload = {
+        circleCode: user.circleCode,
+        qed: user.quarterEndDate,
+        reportStatus: 'A',
+        reportID: reportObject.reportMasterId,
+        reportName: 'SC10',
+      };
+      try {
+        [span_8](start_span)const data = await callApi('/IFAMSS/SC10SFTP', payload, 'POST'); //[span_8](end_span)
+
+        [span_9](start_span)if (user.isCircleExist === 'true') { //[span_9](end_span)
+          [span_10](start_span)if (data.fileAndDataStatus === 1) { //[span_10](end_span)
+            const convertedFormData = convertFlatSc10DataToFormData(data.sc10Data); [span_11](start_span)//[span_11](end_span)
+            setFormData(convertedFormData); [span_12](start_span)//[span_12](end_span)
+            setFieldsDisabled(true); [span_13](start_span)//[span_13](end_span)
+            setSnackbarMessage('Data successfully fetched from IFAMS via SFTP.', 'success'); [span_14](start_span)//[span_14](end_span)
+            // Validation will be triggered by the separate useEffect watching calculatedData
+          [span_15](start_span)} else if (data.fileAndDataStatus === 2) { //[span_15](end_span)
+            setFieldsDisabled(true); [span_16](start_span)//[span_16](end_span)
+            showDialog({
+              [span_17](start_span)title: 'File Error', //[span_17](end_span)
+              message: data.message || [span_18](start_span)'Data not received from IFAMS, Kindly wait till IFAMS sends reports', //[span_18](end_span)
+              [span_19](start_span)onConfirm: () => navigate(-1), //[span_19](end_span)
+            });
+          [span_20](start_span)} else if (data.fileAndDataStatus === 3) { //[span_20](end_span)
+            setFieldsDisabled(true); [span_21](start_span)//[span_21](end_span)
+            showDialog({
+              [span_22](start_span)title: 'Info', //[span_22](end_span)
+              message: data.message || [span_23](start_span)'Please note: Data fetched here was generated in IFAMS', //[span_23](end_span)
+              [span_24](start_span)onConfirm: () => { }, //[span_24](end_span)
+            });
+          }
+        [span_25](start_span)} else { //[span_25](end_span)
+          setManualEntry(false); [span_26](start_span)//[span_26](end_span)
+          getValidationDataTen(); [span_27](start_span)//[span_27](end_span)
+        }
+      [span_28](start_span)} catch (error) { //[span_28](end_span)
+        [span_29](start_span)if (error.message !== 'canceled') { //[span_29](end_span)
+          setSnackbarMessage('Error while checking SC10 SFTP data.', 'error'); [span_30](start_span)//[span_30](end_span)
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkSC10SftpData();
+  }, [user, reportObject, callApi, navigate, setSnackbarMessage]);
+
+  useEffect(() => {
+    // This effect runs whenever calculatedData changes, which happens after formData updates.
+    // It's the ideal place to re-run the pre-check validation for inline errors.
+    if (!isLoading && !isCalculating) {
+      // Only run pre-check validation if data was loaded from SFTP or DB
+      // and not if it's a fresh manual entry where initial pre-check might not be relevant immediately
+      if (reportObject && (user.isCircleExist === 'true' || reportObject.status)) {
+        performPreCheckValidation();
+      }
+    }
+  }, [calculatedData, isLoading, isCalculating, performPreCheckValidation, reportObject, user.isCircleExist]);
+
+
+  const getValidationDataTen = async () => {
+    const payload = {
+      circleCode: user.circleCode,
+      quarterEndDate: user.quarterEndDate,
+      status: reportObject.status,
+      reportId: reportObject.reportId,
+      reportMasterId: reportObject.reportMasterId,
+      reportName: reportObject.name,
+      areMocPending: reportObject.areMocPending,
+    };
+    try {
+      const data = await callApi('/Maker/getSavedDataTen', payload, 'POST'); [span_31](start_span)//[span_31](end_span)
+      [span_32](start_span)if (data) { //[span_32](end_span)
+        const convertedFormData = convertFlatSc10DataToFormData(data); [span_33](start_span)//[span_33](end_span)
+        setFormData(convertedFormData); [span_34](start_span)//[span_34](end_span)
+        // Validation will be triggered by the separate useEffect watching calculatedData
+      [span_35](start_span)} else { //[span_35](end_span)
+        throw new Error('Error while checking SC10 SFTP data.'); [span_36](start_span)//[span_36](end_span)
+      }
+    [span_37](start_span)} catch (error) { //[span_37](end_span)
+      setSnackbarMessage(error.message || 'Error while checking SC10 SFTP data.', 'error'); [span_38](start_span)//[span_38](end_span)
+    }
+  };
+
+  const flattenSchedule10Data = (formData) => {
+    const flatData = {};
+    rowDefinitionsConfig.forEach((rowDef) => {
+      const suffix = rowDef.modelSuffix;
+      if (!suffix) return;
+
+      const row = formData[rowDef.id] || {};
+      schedule10DataFields.forEach((field) => {
+        const key = `${field}${suffix}`;
+        flatData[key] = row[field] ?? '0.00';
+      });
+    });
+    flatData.finyearOne = formData.finyearOne;
+    flatData.finyearTwo = formData.finyearTwo;
+
+    return flatData;
+  };
+
+  const handleSaveOrSubmit = async (isSaveOnly = true) => {
+    // Prevent submission if there are pre-check validation errors
+    if (!isSaveOnly && Object.keys(preCheckValidationErrors).length > 0) {
+      setSnackbarMessage('Cannot submit due to pre-check validation errors. Please resolve them first.', 'error');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const dataToSend = flattenSchedule10Data(formData);
+      const payload = {
+        ...dataToSend,
+        save: isSaveOnly,
+        circleCode: user.circleCode,
+        quarterEndDate: user.quarterEndDate,
+        userId: user.userId,
+        reportName: reportObject.name,
+        reportMasterId: reportObject.reportMasterId,
+        reportId: reportObject.reportId,
+        status: reportObject.status,
+      };
+
+      const response = await callApi('/Maker/submitTen', payload, 'POST'); [span_39](start_span)//[span_39](end_span)
+      [span_40](start_span)if (response && typeof response === 'string') { //[span_40](end_span)
+        const [_flag, newReportId, newStatus] = response.split('~'); [span_41](start_span)//[span_41](end_span)
+        setReportObject((prev) => ({
+          ...prev,
+          reportId: newReportId,
+          status: newStatus,
+        })); [span_42](start_span)//[span_42](end_span)
+        setSnackbarMessage(isSaveOnly ? 'Report saved successfully!' : 'Report submitted successfully!', 'success'); [span_43](start_span)//[span_43](end_span)
+        [span_44](start_span)if (!isSaveOnly) { //[span_44](end_span)
+          [span_45](start_span)setTimeout(() => { //[span_45](end_span)
+            navigate('../'); [span_46](start_span)//[span_46](end_span)
+          }, 2000);
+        }
+      [span_47](start_span)} else { //[span_47](end_span)
+        throw new Error(response.data?.message || 'Unexpected response'); [span_48](start_span)//[span_48](end_span)
+      }
+    [span_49](start_span)} catch (err) { //[span_49](end_span)
+      console.error('error in handleSaveOrSubmit :: ', err); [span_50](start_span)//[span_50](end_span)
+      setSnackbarMessage('Error occurred during save/submit.', 'error'); [span_51](start_span)//[span_51](end_span)
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const showDialog = ({ title, message, onConfirm }) => {
+    setDialogOpen(true);
+    setDialogContent({ title, message, onConfirm });
+  };
+
 
   const debouncedRecalculate = useCallback(
-    lodashDebounce((newFormData) => {
+    lodashDebounce(() => {
       setIsCalculating(true);
-      setFormData(newFormData);
-      // Re-run pre-check validation after debounce calculation is complete
-      performPreCheckValidation(newFormData);
     }, 300),
-    [performPreCheckValidation]
+    []
   );
 
   const handleChange = useCallback(
@@ -915,7 +921,7 @@ const Schedule10 = () => {
         [rowId]: { ...(formData[rowId] || {}), [fieldKey]: value },
       };
       setFormData(newFormData);
-      debouncedRecalculate(newFormData);
+      debouncedRecalculate();
     },
     [formData, debouncedRecalculate]
   );
@@ -941,7 +947,40 @@ const Schedule10 = () => {
     <Box
       sx={{ p: 1, width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}
     >
-      {/* Removed the preCheckOpen Dialog */}
+      <Dialog open={preCheckOpen} onClose={() => setPreCheckOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ backgroundColor: '#E74C3C', color: 'white' }}>Attention!</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="h6" component="div" sx={{ mb: 2 }}>
+            The values for pre-checks of comp codes are as follows:-
+          </Typography>
+          <Box component="table" sx={{ width: '100%' }}>
+            <Box component="tbody" sx={{ fontSize: '15px' }}>
+              <Box component="tr">
+                <Box component="td" sx={{ py: 1 }}>
+                  OTHER FIXED ASSETS (including furniture and fixtures) ={' '}
+                  <strong>{preCheckDialogData.otherFixedAsset}</strong>
+                </Box>
+              </Box>
+              <Box component="tr">
+                <Box component="td" sx={{ py: 1 }}>
+                  PREMISES = <strong>{preCheckDialogData.premises}</strong>
+                </Box>
+              </Box>
+              <Box component="tr">
+                <Box component="td" sx={{ py: 1 }}>
+                  ASSETS UNDER CONSTRUCTION (INCLUDING PREMISES) ={' '}
+                  <strong>{preCheckDialogData.premisesUnderConstruction}</strong>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPreCheckOpen(false)} variant="contained" color="success">
+            Continue
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
         <DialogTitle>{dialogContent.title}</DialogTitle>
         <DialogContent>{dialogContent.message}</DialogContent>
@@ -979,9 +1018,9 @@ const Schedule10 = () => {
 
       <Stack direction="row" spacing={2} sx={{ mb: 2, justifyContent: 'left' }}>
         <CustomButton
-          onClickHandler={() => performPreCheckValidation(formData)} // Call directly for manual check
+          onClickHandler={performPreCheckValidation}
           buttonType={'precheck'}
-          label={'Re-Run Pre Check'}
+          label={'Pre Check Amount'} {/* Changed label back */}
           disabled={isChecking || isSubmitting}
         />
         <CustomButton
@@ -994,7 +1033,7 @@ const Schedule10 = () => {
           onClickHandler={() => setOpenSubmitDialog(true)}
           buttonType={'submit'}
           label={'Submit'}
-          disabled={isSubmitting || Object.keys(preCheckValidationErrors).length > 0} // Disable submit if errors
+          disabled={isSubmitting || Object.keys(preCheckValidationErrors).length > 0}
         />
       </Stack>
 
@@ -1104,7 +1143,7 @@ const Schedule10 = () => {
                       (rowDef.isReadOnlyGroup && rowDef.isReadOnlyGroup.includes(fieldKey));
                     const displayValue = calculatedData[rowKey]?.[fieldKey] ?? '0.00';
                     const inputValue = formData[rowKey]?.[fieldKey] ?? '0.00';
-                    const errorForField = errors[cellKey] || preCheckValidationErrors[cellKey]; // Combine errors
+                    const errorForField = errors[cellKey] || preCheckValidationErrors[cellKey];
 
                     return (
                       <StyledTableCell key={cellKey}>
@@ -1115,7 +1154,7 @@ const Schedule10 = () => {
                           onChange={(e) => handleChange(rowDef.id, fieldKey, e.target.value)}
                           onBlur={(e) => handleBlur(rowDef.id, fieldKey, e.target.value)}
                           readOnly={isReadOnly || fieldsDisabled || manualEntry}
-                          error={!!errorForField} // Pass boolean for error prop
+                          error={!!errorForField}
                           helperText={errorForField}
                         />
                       </StyledTableCell>
