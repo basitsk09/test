@@ -685,16 +685,19 @@ const Schedule10 = () => {
     try {
       const data = await callApi('/Maker/getSavedDataTen', payload, 'POST');
       if (data) {
-        // console.log('data', data);
+        console.log('data', data);
         const convertedFormData = convertFlatSc10DataToFormData(data);
         setFormData(convertedFormData);
+        console.log('formdata', formData);
       } else {
         throw new Error('Error while checking SC10 SFTP data.');
       }
     } catch (error) {
       setSnackbarMessage(error.message || 'Error while checking SC10 SFTP data.', 'error');
     }
-    silentPreCheckValidation();
+    setTimeout(() => {
+      silentPreCheckValidation();
+    }, 2000);
   };
 
   const flattenSchedule10Data = (formData) => {
