@@ -1,109 +1,85 @@
-To automatically perform a precheck without showing the dialog on load, and to validate row29 values (totalA, totalB, totalC, premisesUnderCons) against the three backend amounts from the precheck (otherFixedAsset, premises, premisesUnderConstruction), follow this step-by-step solution:
+Thanks — if the red border is not showing, it's likely because the FormInput component isn't properly consuming the error or helperText props to trigger MUI's error styling, or your error object is not reaching the component correctly.
 
 
 ---
 
-✅ Step-by-step Modifications
+✅ Fix Checklist
 
-1. Update useEffect to call handlePreCheck silently
-
-Replace the handlePreCheck call in useEffect with a custom version that:
-
-does not open dialog
-
-validates against row29
-
-applies red border on mismatch
-
-prevents submission if validation fails
-
-
-Insert this inside the main useEffect after loading the form data:
-
-useEffect(() => {
-  const silentPreCheckValidation = async () => {
-    try {
-      const payload = {
-        circleCode: user.circleCode,
-        quarterEndDate: user.quarterEndDate,
-        status: reportObject.status,
-        reportId: reportObject.reportId,
-        reportMasterId: reportObject.reportMasterId,
-        reportName: reportObject.name,
-        userId: user.userId,
-        areMocPending: false,
-      };
-
-      const response = await callApi('/Maker/getValidationDataTen', payload, 'POST');
-      if (response) {
-        const validationErrors = {};
-
-        const row29 = formData['row29'];
-        if (parseFloat(row29.totalA).toFixed(2) !== parseFloat(response.validationOtherFixedAssetAmount).toFixed(2)) {
-          validationErrors['row29-totalA'] = 'Mismatch with precheck';
-        }
-        if (parseFloat(row29.totalB).toFixed(2) !== parseFloat(response.validationOtherFixedAssetAmount).toFixed(2)) {
-          validationErrors['row29-totalB'] = 'Mismatch with precheck';
-        }
-        if (parseFloat(row29.totalC).toFixed(2) !== parseFloat(response.validationPremisesAmount).toFixed(2)) {
-          validationErrors['row29-totalC'] = 'Mismatch with precheck';
-        }
-        if (
-          parseFloat(row29.premisesUnderCons).toFixed(2) !==
-          parseFloat(response.validationPremisesUnderConsAmount).toFixed(2)
-        ) {
-          validationErrors['row29-premisesUnderCons'] = 'Mismatch with precheck';
-        }
-
-        setErrors((prev) => ({ ...prev, ...validationErrors }));
-
-        // prevent submission if errors present
-        if (Object.keys(validationErrors).length > 0) {
-          setSnackbarMessage('Row29 data mismatch with precheck. Please correct the fields.', 'error');
-        }
-      }
-    } catch (error) {
-      console.error('Silent precheck error:', error);
-      setSnackbarMessage('Failed to run initial validation precheck.', 'error');
-    }
-  };
-
-  if (!manualEntry && !fieldsDisabled) {
-    silentPreCheckValidation();
-  }
-}, [formData]); // rerun if formData changes after fetch
+Here’s a full fix you can apply to guarantee the red border appears on invalid fields:
 
 
 ---
 
-2. Block submission if validation not resolved
+1. ✅ Ensure error and helperText Props Are Applied in FormInput
 
-In handleSaveOrSubmit, insert this check before calling the API:
+Your VirtualizedInput uses MemoizedFormInput, which in turn uses FormInput.
 
-const hasValidationErrors = Object.values(errors).some((val) => val && val.length > 0);
-if (!isSaveOnly && hasValidationErrors) {
-  setSnackbarMessage('Cannot submit. Please fix validation errors in Row 29.', 'error');
-  setIsSubmitting(false);
-  return;
+Find this part in your MemoizedFormInput:
+
+<FormInput
+  name={name}
+  value={value}
+  onChange={onChange}
+  onBlur={onBlur}
+  readOnly={readOnly}
+  error={!!error}
+  helperText={helperText}
+  customStyles={{
+    width: '200px',
+    '& input': {
+      textAlign: 'right',
+      padding: '6px 8px',
+    },
+  }}
+/>
+
+✅ Make sure your FormInput component forwards error and helperText to MUI’s <TextField>. If not, the red border won’t appear.
+
+
+---
+
+2. ✅ Validate That errors[row29-fieldKey] Has the Right Key
+
+Ensure you're setting error keys like this:
+
+validationErrors['row29-totalA'] = 'Mismatch with precheck';
+
+And then this key must match what's being checked during render:
+
+const errorForField = errors[cellKey]; // cellKey = `${rowKey}-${fieldKey}`
+
+If rowKey is "row29" and fieldKey is "totalA", then cellKey is "row29-totalA" ✅ — so make sure it matches exactly.
+
+
+---
+
+3. ✅ Force Re-render After Setting Errors
+
+If the red border still doesn’t show after setting setErrors(...), try forcing re-render with a separate useState:
+
+const [errorVersion, setErrorVersion] = useState(0);
+...
+setErrors((prev) => {
+  const updated = { ...prev, ...validationErrors };
+  setErrorVersion((v) => v + 1); // force re-render
+  return updated;
+});
+
+Then add errorVersion as a dependency to anything memoized like MemoizedFormInput or VirtualizedInput if needed.
+
+
+---
+
+✅ Optional: Debug Quick Patch
+
+Add this just above your return in VirtualizedInput to visually confirm error is received:
+
+if (error) {
+  console.log(`❗ Error applied to ${name}: ${helperText}`);
 }
 
 
 ---
 
-✅ Result
-
-On first load, handlePreCheck is done silently.
-
-If values in row29-totalA, totalB, totalC, or premisesUnderCons do not match the expected ones:
-
-Corresponding fields get red borders with error message.
-
-Submission is blocked until the errors are resolved.
-
-
-
-
----
-
-Let me know if you want to auto-correct the values instead of just validating them.
+Let me know if you're using a custom FormInput component — I can help update it if it's missing error handling.
 
