@@ -1,129 +1,255 @@
-Okay, let's consolidate and explicitly show the code for the JWT filter and its integration in a new, hypothetical microservice called order-service. This will demonstrate how you'd replicate the pattern from product-service if you were to add another protected microservice.
-We'll assume the auth-service and api-gateway remain the same as previously defined.
-New Microservice: Order Service
-This service will manage customer orders and will have protected endpoints that require authentication and role-based authorization.
-1. order-service/pom.xml (Dependencies):
-(This will be very similar to product-service/pom.xml)
+You're asking an excellent question that gets to the heart of microservices design and best practices for shared code.
+Can every microservice use one JwtUtil and one JwtAuthFilter?
+Short Answer: Yes, conceptually, but not directly by sharing a single compiled JwtUtil.java or JwtAuthFilter.java file across separate Spring Boot applications.
+The correct approach is to create a shared library (a separate Maven module/JAR) that contains these common security components (JwtUtil, JwtAuthFilter, SecurityConfig setup), and then each microservice that needs JWT validation can depend on and include this library.
+Why a Shared Library?
+ * DRY (Don't Repeat Yourself): Avoids copying and pasting the exact same code into every microservice, reducing redundancy.
+ * Consistency: Ensures that all microservices use the exact same JWT validation logic. If you fix a bug or enhance security in the shared library, all dependent microservices benefit by simply updating the library version.
+ * Maintainability: Easier to manage and update common code in one place.
+ * Version Control: You can version your shared security library independently.
+Implementation Steps (Spring Boot Multi-Module Project):
+We'll create a parent Maven project and three child modules:
+ * common-security (the shared library)
+ * auth-service
+ * product-service (will depend on common-security)
+ * order-service (will depend on common-security)
+ * api-gateway
+I. Parent pom.xml (Root of the Project)
+Create a directory (e.g., microservices-jwt-shared) and put this pom.xml inside it.
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.7</version> <relativePath/> </parent>
-    <groupId>com.example</groupId>
-    <artifactId>order-service</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>order-service</name>
-    <description>Order Microservice</description>
+    <packaging>pom</packaging> <groupId>com.example</groupId>
+    <artifactId>microservices-jwt-shared</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+
+    <name>Microservices with Shared JWT Security</name>
+    <description>A multi-module project demonstrating shared JWT security components.</description>
 
     <properties>
         <java.version>17</java.version>
+        <spring-boot.version>3.2.7</spring-boot.version>
+        <spring-cloud.version>2023.0.2</spring-cloud.version>
+        <jjwt.version>0.12.5</jjwt.version>
+        <lombok.version>1.18.30</lombok.version>
     </properties>
 
-    <dependencies>
+    <modules>
+        <module>common-security</module>
+        <module>auth-service</module>
+        <module>product-service</module>
+        <module>order-service</module>
+        <module>api-gateway</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-parent</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+                <scope>runtime</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
+                <scope>runtime</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+                <optional>true</optional>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>${spring-boot.version}</version>
+                    <configuration>
+                        <excludes>
+                            <exclude>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+</project>
+
+II. common-security Module (The Shared Library)
+Create a subdirectory common-security under your parent project.
+1. common-security/pom.xml:
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.example</groupId>
+        <artifactId>microservices-jwt-shared</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>common-security</artifactId>
+    <name>Common Security Library</name>
+    <description>Shared JWT utilities and filters for microservices</description>
+    <packaging>jar</packaging> <dependencies>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-web</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
-            <version>0.12.5</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-impl</artifactId>
-            <version>0.12.5</version>
-            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
-            <version>0.12.5</version>
-            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 
 </project>
 
-2. order-service/src/main/resources/application.properties:
-server.port=8083 # Different port for this new service
-app.jwt.secret=yourVeryLongAndSecureSecretKeyForJWTAuthServices1234567890 # MUST BE THE SAME AS AUTH-SERVICE!
+2. common-security/src/main/java/com/example/common/security/jwt/JwtUtil.java:
+package com.example.common.security.jwt;
 
-Crucial: The app.jwt.secret must be identical to the one in auth-service and product-service.
-3. Java Files (com.example.orderservice package):
- * OrderServiceApplication.java:
-   package com.example.orderservice;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Component;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import java.security.Key;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-@SpringBootApplication
-public class OrderServiceApplication {
+@Component // Make it a Spring component so it can be injected
+public class JwtUtil {
 
-    public static void main(String[] args) {
-        SpringApplication.run(OrderServiceApplication.class, args);
+    // These values will be picked up from the consuming service's application.properties
+    @Value("${app.jwt.secret}")
+    private String secret;
+
+    @Value("${app.jwt.expiration-ms:3600000}") // Default to 1 hour if not specified
+    private long expirationMs;
+
+    // --- Token Generation (typically for Auth Service) ---
+    public String generateToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
+        // Add roles to claims
+        claims.put("roles", userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.joining(",")));
+        return createToken(claims, userDetails.getUsername());
+    }
+
+    private String createToken(Map<String, Object> claims, String userName) {
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(userName)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + expirationMs))
+                .signWith(getSignKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    // --- Token Validation and Extraction (for Protected Services) ---
+    public String extractUsername(String token) {
+        return extractClaim(token, Claims::getSubject);
+    }
+
+    public Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
+    public Claims extractAllClaims(String token) {
+        return Jwts
+                .parserBuilder()
+                .setSigningKey(getSignKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
+    }
+
+    public Boolean isTokenExpired(String token) {
+        return extractExpiration(token).before(new Date());
+    }
+
+    // This method is for services that need to do a full userDetails match (Auth Service)
+    public Boolean validateToken(String token, UserDetails userDetails) {
+        final String username = extractUsername(token);
+        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+
+    private Key getSignKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(secret);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 }
 
- * order/Order.java (Simple Data Class):
-   package com.example.orderservice.order;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class Order {
-    private Long id;
-    private String customerUsername;
-    private String productName;
-    private int quantity;
-    private double totalAmount;
-}
-
- * jwt/JwtAuthFilter.java (The JWT Filter - Identical to Product Service's!):
-   package com.example.orderservice.jwt; // Note the package name changes
+3. common-security/src/main/java/com/example/common/security/jwt/JwtAuthFilter.java:
+package com.example.common.security.jwt;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -141,8 +267,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.SignatureException;
+import io.jsonwebtoken.UnsupportedJwtException;
 
-@RequiredArgsConstructor
+@RequiredArgsConstructor // For injecting JwtUtil
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
@@ -162,16 +292,42 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 username = jwtUtil.extractUsername(token);
                 Claims claims = jwtUtil.extractAllClaims(token);
                 roles = claims.get("roles", String.class); // Retrieve roles from claims
+            } catch (ExpiredJwtException e) {
+                logger.warn("JWT Token has expired: {}", e.getMessage());
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401 Unauthorized
+                response.getWriter().write("JWT Token has expired");
+                return; // Stop further processing
+            } catch (SignatureException e) {
+                logger.error("Invalid JWT Signature: {}", e.getMessage());
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401 Unauthorized
+                response.getWriter().write("Invalid JWT Signature");
+                return;
+            } catch (MalformedJwtException e) {
+                logger.error("Invalid JWT Token: {}", e.getMessage());
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401 Unauthorized
+                response.getWriter().write("Invalid JWT Token");
+                return;
+            } catch (UnsupportedJwtException e) {
+                logger.error("JWT Token is unsupported: {}", e.getMessage());
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401 Unauthorized
+                response.getWriter().write("JWT Token is unsupported");
+                return;
+            } catch (IllegalArgumentException e) {
+                logger.error("JWT claims string is empty: {}", e.getMessage());
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401 Unauthorized
+                response.getWriter().write("JWT claims string is empty");
+                return;
             } catch (Exception e) {
-                logger.error("Error parsing JWT in Order Service: " + e.getMessage());
-                // Don't throw here directly, let Spring Security's mechanisms handle it
+                logger.error("Error parsing or validating JWT: {}", e.getMessage(), e);
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR); // 500 Internal Server Error
+                response.getWriter().write("Error processing JWT");
+                return;
             }
         }
 
-        // If username extracted AND no authentication is currently set in the context
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            // Here, we're assuming the token is valid if it's not expired and signed correctly
-            // In a real system, you might add more checks (e.g., against a token blacklist)
+            // Assuming the token is valid at this point as exceptions would have been caught
+            // Re-validate expiration just in case, though ExpiredJwtException should catch it
             if (!jwtUtil.isTokenExpired(token)) {
                 List<SimpleGrantedAuthority> authorities = Arrays.stream(roles.split(","))
                         .map(SimpleGrantedAuthority::new)
@@ -181,70 +337,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         username, null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             } else {
-                logger.warn("Expired JWT token received in Order Service: " + token);
+                logger.warn("JWT Token has expired during re-check: " + token);
+                // This case should ideally be handled by ExpiredJwtException above,
+                // but kept as a safeguard.
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401 Unauthorized
+                response.getWriter().write("JWT Token expired during re-check");
+                return;
             }
         }
         filterChain.doFilter(request, response);
     }
 }
 
- * jwt/JwtUtil.java (The JWT Utility - Identical to Product Service's!):
-   package com.example.orderservice.jwt; // Note the package name changes
+4. common-security/src/main/java/com/example/common/security/config/JwtSecurityConfig.java:
+This class encapsulates the common Spring Security configuration for services that need JWT authentication.
+package com.example.common.security.config;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
-import java.security.Key;
-import java.util.Date;
-import java.util.function.Function;
-
-@Component
-public class JwtUtil {
-
-    @Value("${app.jwt.secret}")
-    private String secret;
-
-    public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
-    }
-
-    public Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
-
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
-
-    public Claims extractAllClaims(String token) {
-        return Jwts
-                .parserBuilder()
-                .setSigningKey(getSignKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-    }
-
-    public Boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    private Key getSignKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secret);
-        return Keys.hmacShaKeyFor(keyBytes);
-    }
-}
-
- * config/SecurityConfig.java (Security Configuration - Identical to Product Service's structure):
-   package com.example.orderservice.config; // Note the package name changes
-
-import com.example.orderservice.jwt.JwtAuthFilter;
-import com.example.orderservice.jwt.JwtUtil;
+import com.example.common.security.jwt.JwtAuthFilter;
+import com.example.common.security.jwt.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -256,10 +366,10 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
-@EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true) // Enable @PreAuthorize
+@EnableWebSecurity // Enable Spring Security's web security support
+@EnableMethodSecurity(prePostEnabled = true) // Enables @PreAuthorize, @PostAuthorize etc.
 @RequiredArgsConstructor
-public class SecurityConfig {
+public class JwtSecurityConfig {
 
     private final JwtUtil jwtUtil;
 
@@ -268,29 +378,589 @@ public class SecurityConfig {
         return new JwtAuthFilter(jwtUtil);
     }
 
+    // This Bean will be created in any service that imports common-security and enables
+    // this configuration (e.g., via @Import or component scanning)
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain jwtFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable()) // Disable CSRF for stateless API
-            .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/api/orders/public/**").permitAll() // Public orders
-                .anyRequest().authenticated() // All other requests require authentication
-            )
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Use stateless sessions for JWT
             )
-            .addFilterBefore(jwtAuthFilter(), UsernamePasswordAuthenticationFilter.class); // Add JWT filter
+            // Add your custom JWT filter before Spring's default UsernamePasswordAuthenticationFilter
+            .addFilterBefore(jwtAuthFilter(), UsernamePasswordAuthenticationFilter.class);
+
+        // NOTE: Specific authorization rules (.authorizeHttpRequests) are NOT defined here.
+        // Each consuming microservice will define its own specific path authorizations
+        // in its own SecurityConfig. This base config only sets up the filter chain.
 
         return http.build();
     }
 }
 
- * order/OrderController.java:
-   package com.example.orderservice.order;
+III. auth-service Module
+Create auth-service subdirectory.
+(This service will still generate tokens, but it won't use the shared JwtAuthFilter for its own incoming requests, as its endpoints are public for login/register)
+1. auth-service/pom.xml:
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.example</groupId>
+        <artifactId>microservices-jwt-shared</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>auth-service</artifactId>
+    <name>auth-service</name>
+    <description>Authentication Microservice</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>common-security</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+</project>
+
+2. auth-service/src/main/resources/application.properties:
+server.port=8081
+spring.datasource.url=jdbc:h2:mem:authdb
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.h2.console.enabled=true
+spring.jpa.hibernate.ddl-auto=update
+
+# JWT Secret Key - MUST BE STRONG AND THE SAME ACROSS SERVICES
+app.jwt.secret=yourVeryLongAndSecureSecretKeyForJWTAuthServices1234567890
+app.jwt.expiration-ms=3600000 # 1 hour
+
+3. auth-service/src/main/java/com/example/authservice/AuthServiceApplication.java:
+package com.example.authservice;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan; // Important for common-security components
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+@SpringBootApplication
+@ComponentScan(basePackages = {"com.example.authservice", "com.example.common.security"}) // Scan common-security
+public class AuthServiceApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(AuthServiceApplication.class, args);
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+
+4. auth-service/src/main/java/com/example/authservice/user/User.java: (No change from before, keeping it in auth-service as it's specific to user management here)
+package com.example.authservice.user;
+
+import jakarta.persistence.*;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.Collection;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.Arrays;
+
+@Entity
+@Table(name = "users")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class User implements UserDetails {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String username;
+    private String password; // Stored as BCrypt hash
+    private String roles; // Comma-separated roles, e.g., "ROLE_USER,ROLE_ADMIN"
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return Arrays.stream(roles.split(","))
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean isAccountNonExpired() { return true; }
+    @Override
+    public boolean isAccountNonLocked() { return true; }
+    @Override
+    public boolean isCredentialsNonExpired() { return true; }
+    @Override
+    public boolean isEnabled() { return true; }
+}
+
+5. auth-service/src/main/java/com/example/authservice/user/UserRepository.java: (No change)
+package com.example.authservice.user;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByUsername(String username);
+    boolean existsByUsername(String username);
+}
+
+6. auth-service/src/main/java/com/example/authservice/user/UserDetailsServiceImpl.java: (No change)
+package com.example.authservice.user;
+
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class UserDetailsServiceImpl implements UserDetailsService {
+
+    private final UserRepository userRepository;
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+    }
+}
+
+7. auth-service/src/main/java/com/example/authservice/auth/AuthController.java: (Slight change to use common-security.jwt.JwtUtil)
+package com.example.authservice.auth;
+
+import com.example.common.security.jwt.JwtUtil; // NOW FROM COMMON LIBRARY
+import com.example.authservice.user.User;
+import com.example.authservice.user.UserRepository;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil; // Injected from common-security
+    private final AuthenticationManager authenticationManager;
+
+    @PostMapping("/register")
+    public ResponseEntity<?> registerUser(@RequestBody RegisterRequest registerRequest) {
+        if (userRepository.existsByUsername(registerRequest.getUsername())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Username is already taken!");
+        }
+
+        User user = new User();
+        user.setUsername(registerRequest.getUsername());
+        user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+        user.setRoles(registerRequest.getRoles());
+
+        userRepository.save(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully!");
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
+            );
+
+            User userDetails = (User) authentication.getPrincipal();
+            String token = jwtUtil.generateToken(userDetails); // Use generateToken from shared JwtUtil
+            return ResponseEntity.ok(new JwtResponse(token));
+
+        } catch (AuthenticationException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid Username or Password!");
+        }
+    }
+}
+
+@Data @NoArgsConstructor @AllArgsConstructor class RegisterRequest { private String username; private String password; private String roles; }
+@Data @NoArgsConstructor @AllArgsConstructor class LoginRequest { private String username; private String password; }
+@Data @NoArgsConstructor @AllArgsConstructor class JwtResponse { private String token; }
+
+8. auth-service/src/main/java/com/example/authservice/config/SecurityConfig.java: (No change from before, since this service doesn't need to validate incoming JWTs)
+package com.example.authservice.config;
+
+import com.example.authservice.user.UserDetailsServiceImpl;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import lombok.RequiredArgsConstructor;
+
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final UserDetailsServiceImpl userDetailsService;
+    private final PasswordEncoder passwordEncoder;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(authorize -> authorize
+                .requestMatchers("/api/auth/register", "/api/auth/login", "/h2-console/**").permitAll()
+                .anyRequest().authenticated()
+            )
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            );
+        http.headers(headers -> headers.frameOptions().disable());
+
+        return http.build();
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider();
+        authenticationProvider.setUserDetailsService(userDetailsService);
+        authenticationProvider.setPasswordEncoder(passwordEncoder);
+        return authenticationProvider;
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+}
+
+IV. product-service Module
+Create product-service subdirectory.
+1. product-service/pom.xml:
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.example</groupId>
+        <artifactId>microservices-jwt-shared</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>product-service</artifactId>
+    <name>product-service</name>
+    <description>Product Microservice</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>common-security</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+</project>
+
+2. product-service/src/main/resources/application.properties:
+server.port=8082
+app.jwt.secret=yourVeryLongAndSecureSecretKeyForJWTAuthServices1234567890 # MUST BE THE SAME
+
+3. product-service/src/main/java/com/example/productservice/ProductServiceApplication.java:
+package com.example.productservice;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.ComponentScan; // Important for common-security components
+import org.springframework.context.annotation.Import; // To explicitly import JwtSecurityConfig
+import com.example.common.security.config.JwtSecurityConfig; // Import the shared config
+
+@SpringBootApplication
+@ComponentScan(basePackages = {"com.example.productservice", "com.example.common.security"}) // Scan common-security
+@Import(JwtSecurityConfig.class) // Explicitly import the shared security config
+public class ProductServiceApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ProductServiceApplication.class, args);
+    }
+}
+
+4. product-service/src/main/java/com/example/productservice/product/Product.java: (No change)
+package com.example.productservice.product;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data @NoArgsConstructor @AllArgsConstructor
+public class Product { private Long id; private String name; private double price; }
+
+5. product-service/src/main/java/com/example/productservice/config/SecurityConfig.java:
+(This SecurityConfig only defines specific authorization rules for this service, relying on JwtSecurityConfig for the core filter chain setup)
+package com.example.productservice.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+// Removed @EnableWebSecurity and @EnableMethodSecurity here as they are in JwtSecurityConfig
+public class SecurityConfig {
+
+    // This bean name is distinct from jwtFilterChain in common-security
+    @Bean
+    public SecurityFilterChain productSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+            // These are applied AFTER the common-security's JwtAuthFilter
+            .authorizeHttpRequests(authorize -> authorize
+                .requestMatchers("/api/products/public/**").permitAll() // Public products
+                .anyRequest().authenticated() // All other requests require authentication
+            );
+            // csrf and sessionManagement are already handled by JwtSecurityConfig
+
+        return http.build();
+    }
+}
+
+6. product-service/src/main/java/com/example/productservice/product/ProductController.java: (No change)
+package com.example.productservice.product;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/products")
+public class ProductController {
+
+    private final List<Product> products = new ArrayList<>();
+    private Long nextId = 1L;
+
+    public ProductController() {
+        products.add(new Product(nextId++, "Laptop", 1200.00));
+        products.add(new Product(nextId++, "Mouse", 25.00));
+        products.add(new Product(nextId++, "Keyboard", 75.00));
+    }
+
+    @GetMapping("/public")
+    public ResponseEntity<List<Product>> getPublicProducts() {
+        return ResponseEntity.ok(products);
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN')")
+    public ResponseEntity<List<Product>> getAllProducts() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("User accessing protected products: " + authentication.getName());
+        System.out.println("Authorities: " + authentication.getAuthorities());
+        return ResponseEntity.ok(products);
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<Product> addProduct(@RequestBody Product product) {
+        final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("Admin " + authentication.getName() + " adding product.");
+        product.setId(nextId++);
+        products.add(product);
+        return ResponseEntity.status(201).body(product);
+    }
+
+    @GetMapping("/my-info")
+    @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN')")
+    public ResponseEntity<?> getMyInfo() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return ResponseEntity.ok("Hello, " + authentication.getName() + "! Your roles: " + authentication.getAuthorities());
+    }
+}
+
+V. order-service Module
+Create order-service subdirectory.
+(This will be almost identical to product-service in terms of structure and dependency)
+1. order-service/pom.xml:
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.example</groupId>
+        <artifactId>microservices-jwt-shared</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>order-service</artifactId>
+    <name>order-service</name>
+    <description>Order Microservice</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>common-security</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+</project>
+
+2. order-service/src/main/resources/application.properties:
+server.port=8083
+app.jwt.secret=yourVeryLongAndSecureSecretKeyForJWTAuthServices1234567890 # MUST BE THE SAME
+
+3. order-service/src/main/java/com/example/orderservice/OrderServiceApplication.java:
+package com.example.orderservice;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Import;
+import com.example.common.security.config.JwtSecurityConfig;
+
+@SpringBootApplication
+@ComponentScan(basePackages = {"com.example.orderservice", "com.example.common.security"})
+@Import(JwtSecurityConfig.class)
+public class OrderServiceApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(OrderServiceApplication.class, args);
+    }
+}
+
+4. order-service/src/main/java/com/example/orderservice/order/Order.java: (No change)
+package com.example.orderservice.order;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data @NoArgsConstructor @AllArgsConstructor
+public class Order { private Long id; private String customerUsername; private String productName; private int quantity; private double totalAmount; }
+
+5. order-service/src/main/java/com/example/orderservice/config/SecurityConfig.java:
+package com.example.orderservice.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain orderSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .authorizeHttpRequests(authorize -> authorize
+                .requestMatchers("/api/orders/public/**").permitAll()
+                .anyRequest().authenticated()
+            );
+        return http.build();
+    }
+}
+
+6. order-service/src/main/java/com/example/orderservice/order/OrderController.java: (No change)
+package com.example.orderservice.order;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -311,26 +981,22 @@ public class OrderController {
         orders.add(new Order(nextOrderId++, "user1", "Keyboard", 1, 75.00));
     }
 
-    // Public endpoint (not protected)
     @GetMapping("/public")
     public ResponseEntity<List<Order>> getPublicOrders() {
         return ResponseEntity.ok(orders);
     }
 
-    // Protected endpoint - accessible by ROLE_USER or ROLE_ADMIN
     @GetMapping("/my-orders")
     @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN')")
     public ResponseEntity<List<Order>> getMyOrders() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentUsername = authentication.getName();
-        // Filter orders specific to the authenticated user
         List<Order> userOrders = orders.stream()
                 .filter(order -> order.getCustomerUsername().equals(currentUsername))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(userOrders);
     }
 
-    // Admin-only endpoint - to view all orders
     @GetMapping
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<List<Order>> getAllOrders() {
@@ -339,15 +1005,13 @@ public class OrderController {
         return ResponseEntity.ok(orders);
     }
 
-    // Endpoint to create an order - accessible by ROLE_USER or ROLE_ADMIN
     @PostMapping
     @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN')")
     public ResponseEntity<Order> createOrder(@RequestBody Order order) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        // Ensure the order is for the authenticated user, or if admin, they can set it.
         if (!authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) &&
             !order.getCustomerUsername().equals(authentication.getName())) {
-            return ResponseEntity.status(403).build(); // Not allowed to create order for another user
+            return ResponseEntity.status(403).build();
         }
 
         order.setId(nextOrderId++);
@@ -356,10 +1020,41 @@ public class OrderController {
     }
 }
 
-Update API Gateway Configuration:
-You'll need to add a new route for the order-service in your api-gateway/src/main/resources/application.properties:
-# api-gateway/src/main/resources/application.properties
+VI. api-gateway Module
+Create api-gateway subdirectory.
+1. api-gateway/pom.xml:
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.example</groupId>
+        <artifactId>microservices-jwt-shared</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>api-gateway</artifactId>
+    <name>api-gateway</name>
+    <description>API Gateway using Spring Cloud Gateway</description>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+</project>
+
+2. api-gateway/src/main/resources/application.properties:
 server.port=8080
 
 spring.cloud.gateway.routes[0].id=auth-service
@@ -370,7 +1065,6 @@ spring.cloud.gateway.routes[1].id=product-service
 spring.cloud.gateway.routes[1].uri=http://localhost:8082
 spring.cloud.gateway.routes[1].predicates[0]=Path=/api/products/**
 
-# NEW ROUTE FOR ORDER SERVICE
 spring.cloud.gateway.routes[2].id=order-service
 spring.cloud.gateway.routes[2].uri=http://localhost:8083
 spring.cloud.gateway.routes[2].predicates[0]=Path=/api/orders/**
@@ -381,61 +1075,73 @@ spring.webflux.cors.allowed-methods=GET,POST,PUT,DELETE,OPTIONS
 spring.webflux.cors.allowed-headers=*
 spring.webflux.cors.max-age=3600
 
-Explanation with Code Flow for Order Service:
- * Client Request: A client sends a request like GET http://localhost:8080/api/orders/my-orders with an Authorization: Bearer <JWT_TOKEN> header.
- * API Gateway:
-   * Receives the request on 8080.
-   * Sees the path /api/orders/**.
-   * Routes the request to http://localhost:8083 (the order-service). The Authorization header is forwarded along.
- * Order Service Receives Request:
-   * The Spring Boot application running on 8083 receives the request.
-   * Spring Security Filter Chain Activation: Because EnableWebSecurity is enabled and JwtAuthFilter is configured:
-     * The request enters the JwtAuthFilter.
-     * doFilterInternal is called.
- * Inside JwtAuthFilter.java (Order Service):
-   // 1. Extract Header:
-String authHeader = request.getHeader("Authorization"); // Gets "Bearer <JWT_TOKEN>"
-String token = authHeader.substring(7); // Extracts "<JWT_TOKEN>"
+3. api-gateway/src/main/java/com/example/apigateway/ApiGatewayApplication.java: (No change)
+package com.example.apigateway;
 
-// 2. Extract Username and Claims using JwtUtil:
-// This uses the JwtUtil (which has the shared JWT_SECRET from application.properties)
-// to verify the token's signature and expiration, and then extract the username and roles.
-username = jwtUtil.extractUsername(token);
-Claims claims = jwtUtil.extractAllClaims(token);
-roles = claims.get("roles", String.class); // e.g., "ROLE_USER,ROLE_ADMIN"
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.reactive.CorsWebFilter;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
-// 3. Set Authentication Context (if token is valid):
-if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-    if (!jwtUtil.isTokenExpired(token)) {
-        // Convert comma-separated roles to Spring Security GrantedAuthority objects
-        List<SimpleGrantedAuthority> authorities = Arrays.stream(roles.split(","))
-                .map(SimpleGrantedAuthority::new)
-                .collect(Collectors.toList());
+import java.util.Arrays;
+import java.util.Collections;
 
-        // Create an Authentication object
-        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                username, null, authorities); // `null` for password as we're authenticating by token
+@SpringBootApplication
+public class ApiGatewayApplication {
 
-        // Set the authentication object in Spring's SecurityContextHolder.
-        // THIS IS CRUCIAL. Now, Spring Security knows who the user is and what roles they have.
-        SecurityContextHolder.getContext().setAuthentication(authToken);
-    } else {
-        logger.warn("Expired JWT token received...");
+    public static void main(String[] args) {
+        SpringApplication.run(ApiGatewayApplication.class, args);
+    }
+
+    @Bean
+    public CorsWebFilter corsWebFilter() {
+        CorsConfiguration corsConfig = new CorsConfiguration();
+        corsConfig.setAllowedOrigins(Collections.singletonList("*"));
+        corsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        corsConfig.setAllowedHeaders(Collections.singletonList("*"));
+        corsConfig.setAllowCredentials(true);
+        corsConfig.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", corsConfig);
+        return new CorsWebFilter(source);
     }
 }
 
-// 4. Continue Filter Chain:
-filterChain.doFilter(request, response); // Passes the request to the next filter (or controller)
+How to Run and Test:
+ * Project Setup: Create the parent directory (microservices-jwt-shared) and the five subdirectories (common-security, auth-service, product-service, order-service, api-gateway).
+ * Copy Files: Place all the respective pom.xml, application.properties, and Java source files in their correct locations. Ensure package names match (com.example.common.security, com.example.authservice, etc.).
+ * Build All Projects (from the microservices-jwt-shared parent directory):
+   mvn clean install
 
- * Order Controller (OrderController.java):
-   * The request now arrives at the OrderController.
-   * Before executing a method like getMyOrders(), Spring Security (because of @EnableMethodSecurity) checks the @PreAuthorize annotation:
-     @GetMapping("/my-orders")
-@PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN')")
-public ResponseEntity<List<Order>> getMyOrders() {
-    // ...
-}
+   This command will build common-security first, then the other modules which depend on it.
+ * Run Applications (in separate terminal windows/tabs):
+   # Terminal 1: Auth Service (Port 8081)
+cd auth-service
+mvn spring-boot:run
 
-   * Spring Security looks at the SecurityContextHolder (which was populated by JwtAuthFilter). If the authenticated user (obtained from the JWT) has either ROLE_USER or ROLE_ADMIN, the method execution is allowed. Otherwise, a 403 Forbidden error is returned before the method's logic even runs.
-   * Inside the controller method, SecurityContextHolder.getContext().getAuthentication() can be used to retrieve the authenticated user's details (username, roles) that were extracted from the JWT.
-This detailed code walkthrough for order-service demonstrates that yes, for every microservice that needs to enforce security using JWTs, you'll replicate the JwtUtil and JwtAuthFilter pattern, along with the SecurityConfig to integrate them into Spring Security's flow.
+# Terminal 2: Product Service (Port 8082)
+cd product-service
+mvn spring-boot:run
+
+# Terminal 3: Order Service (Port 8083)
+cd order-service
+mvn spring-boot:run
+
+# Terminal 4: API Gateway (Port 8080)
+cd api-gateway
+mvn spring-boot:run
+
+Testing:
+The testing steps using curl or Postman/Insomnia are largely the same as before.
+ * Register users via /api/auth/register.
+ * Login to get tokens via /api/auth/login.
+ * Access product endpoints via /api/products (protected) and /api/products/public (public).
+ * Now, also test order endpoints:
+   * GET http://localhost:8080/api/orders/public (public)
+   * GET http://localhost:8080/api/orders/my-orders (protected, requires token, should show orders for the logged-in user only)
+   * GET http://localhost:8080/api/orders (protected, admin only)
+   * POST http://localhost:8080/api/orders (protected, user/admin to create, requires token)
+This multi-module structure correctly implements the concept of "one JwtUtil and one JwtAuthFilter" by sharing them as a common library. Each service that needs JWT validation simply includes this library and enables its configuration, leveraging the consistent, centrally managed security logic.
