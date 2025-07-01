@@ -1,384 +1,273 @@
-You're looking to integrate Kafka for asynchronous communication between your Spring Boot microservices. This is a common and powerful pattern in microservices architectures, enabling loose coupling, scalability, and resilience.
-Instead of direct HTTP calls between, say, the Order Service and the Product Service (which would be synchronous and blocking), we'll use Kafka as a message broker.
-Scenario for Example:
-Let's enhance the Order Service and Product Service interaction:
- * When an order is created in the Order Service, it will publish a message to a Kafka topic (e.g., order-events).
- * The Product Service will consume messages from this order-events topic.
- * Upon receiving an order creation event, the Product Service will deduct the ordered product's quantity (or log it for simplicity, as we don't have a database for products).
-Key Kafka Concepts:
- * Producer: An application that publishes messages to Kafka topics.
- * Consumer: An application that subscribes to Kafka topics and processes messages.
- * Topic: A category or feed name to which messages are published.
- * Broker: A Kafka server that stores and manages topics.
-Prerequisites:
- * Kafka Installation: You need a running Kafka broker. The easiest way is using Docker:
-   docker run -d --name zookeeper -p 2181:2181 confluentinc/cp-zookeeper:7.6.0
-docker run -d --name kafka -p 9092:9092 -e KAFKA_BROKER_ID=1 -e KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181 -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 --link zookeeper confluentinc/cp-kafka:7.6.0
+While the user is asking a question about implementing executor services, they are also asking about why it is preferred over Thread and Runnable. This implies a need to understand the fundamental differences and advantages. This will require a conceptual explanation in addition to code examples. I will need to provide both theoretical and practical information.
+I'll proceed by explaining the concepts first, then providing the code examples.It appears you're asking about the Executor Service in Java, its implementation, and why it's generally preferred over directly managing Thread and Runnable objects.
+Let's break down the concepts and then illustrate with examples.
+Understanding Executor Service
+The ExecutorService is a higher-level API provided by the java.util.concurrent package for managing threads. Instead of creating and managing threads manually for each task, you submit tasks to an ExecutorService, and it handles the thread creation, pooling, and execution.
+Core Components:
+ * Executor Interface: A simple interface with a single method execute(Runnable command). It's the base interface for all executors.
+ * ExecutorService Interface: Extends Executor and provides more comprehensive features for managing the lifecycle of asynchronous tasks, including methods for submitting tasks that return a result (Callable), managing shutdown, and terminating threads.
+ * Executors Class: A utility class that provides static factory methods for creating various types of ExecutorService instances, such as:
+   * newFixedThreadPool(int nThreads): Creates a thread pool with a fixed number of threads. If all threads are busy, new tasks wait in a queue.
+   * newCachedThreadPool(): Creates a thread pool that creates new threads as needed but reuses existing threads if available.
+   * newSingleThreadExecutor(): Creates an executor that uses a single worker thread. Tasks are executed sequentially.
+   * newScheduledThreadPool(int corePoolSize): Creates a thread pool that can schedule commands to run after a given delay or to execute periodically.
+ * Runnable: Represents a task that can be executed. Its run() method does not return a value and cannot throw checked exceptions.
+ * Callable: Similar to Runnable but its call() method can return a result and throw checked exceptions. It's often used with ExecutorService for tasks that need to return a value.
+ * Future: Represents the result of an asynchronous computation. It provides methods to check if the computation is complete, wait for its completion, and retrieve the result.
+Why Executor Service is Preferred Over Thread and Runnable
+Directly creating Thread objects and managing them with Runnable instances for every task has several drawbacks, especially in applications with a high volume of concurrent tasks. Here's why ExecutorService is preferred:
+ * Resource Management (Thread Pooling):
+   * Manual Thread Creation: Creating a new Thread for every task is resource-intensive. Thread creation involves overhead for the operating system (memory allocation, context switching). If you create too many threads, it can exhaust system resources and lead to OutOfMemoryError.
+   * Executor Service: ExecutorService uses a thread pool. Threads are created once and then reused for multiple tasks. This significantly reduces the overhead associated with thread creation and destruction. It also prevents the system from being overwhelmed by an excessive number of threads.
+ * Lifecycle Management:
+   * Manual Thread Creation: You are responsible for starting, stopping, and managing the lifecycle of each Thread manually. This can be complex and error-prone, especially when dealing with graceful shutdowns or handling exceptions.
+   * Executor Service: ExecutorService handles the entire lifecycle of threads within the pool. It provides methods like shutdown(), shutdownNow(), and awaitTermination() to gracefully or abruptly stop the execution of tasks and terminate the threads. This simplifies resource cleanup.
+ * Task Management and Scheduling:
+   * Manual Thread Creation: With raw Threads, you generally have to manage task queuing and scheduling yourself if you need any form of sophisticated execution order.
+   * Executor Service: ExecutorService provides built-in mechanisms for managing tasks. Tasks are submitted to the executor, which then places them in an internal queue and assigns them to available threads. This allows for efficient scheduling and execution of tasks without explicit management. It also supports Callable for tasks that return results, which is not directly supported by Runnable and Thread.
+ * Error Handling and Result Retrieval:
+   * Manual Thread Creation: Runnable's run() method cannot throw checked exceptions, and it doesn't return a value directly. Handling exceptions within a Thread often requires manual mechanisms like shared variables or Thread.setDefaultUncaughtExceptionHandler(). Retrieving results requires shared data structures and synchronization.
+   * Executor Service: ExecutorService works well with Callable and Future. Callable allows tasks to return a result and throw exceptions, which can then be retrieved and handled via the Future object. This provides a much cleaner and more robust way to manage asynchronous computations.
+ * Concurrency Control Simplification:
+   * Manual Thread Creation: You're more exposed to the complexities of concurrent programming, such as race conditions, deadlocks, and starvation, and you're responsible for implementing appropriate synchronization mechanisms.
+   * Executor Service: While not eliminating concurrency issues entirely, ExecutorService abstracts away many low-level threading concerns, allowing you to focus on the business logic of your tasks. The underlying thread pool manages many of the synchronization aspects internally.
+Implementation Examples
+Let's illustrate the difference with code. We'll have a simple task that prints a message and then sleeps.
+1. Using Thread and Runnable (Less Preferred for Many Tasks)
+import java.util.concurrent.TimeUnit;
 
-   (Give it a minute or two to fully start up.)
- * Existing Microservices Setup: We'll build upon the multi-module Spring Boot project with shared JWT security.
-Implementation Steps
-I. Update Parent pom.xml
-No changes are strictly needed here if you already have the spring-boot.version and spring-cloud.version defined, as Kafka dependencies will be added directly to the service POMs.
-II. order-service (Producer)
-The Order Service will produce OrderCreatedEvent messages to Kafka.
-1. order-service/pom.xml:
-Add the spring-kafka dependency.
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>com.example</groupId>
-        <artifactId>microservices-jwt-shared</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
-    </parent>
-    <artifactId>order-service</artifactId>
-    <name>order-service</name>
-    <description>Order Microservice</description>
+class MyRunnableTask implements Runnable {
+    private String taskName;
 
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.example</groupId>
-            <artifactId>common-security</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
+    public MyRunnableTask(String taskName) {
+        this.taskName = taskName;
+    }
 
-        <dependency>
-            <groupId>org.springframework.kafka</groupId>
-            <artifactId>spring-kafka</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.kafka</groupId>
-            <artifactId>spring-kafka-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
-</project>
-
-2. order-service/src/main/resources/application.properties:
-Add Kafka producer configuration.
-server.port=8083
-app.jwt.secret=yourVeryLongAndSecureSecretKeyForJWTAuthServices1234567890
-
-# Kafka Producer Configuration
-spring.kafka.producer.bootstrap-servers=localhost:9092
-spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer
-spring.kafka.producer.value-serializer=org.springframework.kafka.support.serializer.JsonSerializer # For JSON messages
-spring.kafka.producer.properties.spring.json.add.type.headers=false # Avoid adding __TypeId__ header
-
-# Topic names
-app.kafka.topic.order-events=order-events
-
-3. order-service/src/main/java/com/example/orderservice/event/OrderCreatedEvent.java:
-This is the DTO (Data Transfer Object) for the Kafka message.
-package com.example.orderservice.event;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class OrderCreatedEvent {
-    private String orderId;
-    private String customerUsername;
-    private String productName;
-    private int quantity;
-    private double totalAmount;
-    private LocalDateTime createdAt;
-}
-
-4. order-service/src/main/java/com/example/orderservice/kafka/OrderProducer.java:
-This class will send messages to Kafka.
-package com.example.orderservice.kafka;
-
-import com.example.orderservice.event.OrderCreatedEvent;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.stereotype.Service;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-@Service
-@RequiredArgsConstructor
-public class OrderProducer {
-
-    private static final Logger log = LoggerFactory.getLogger(OrderProducer.class);
-    private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
-
-    @Value("${app.kafka.topic.order-events}")
-    private String orderEventsTopic;
-
-    public void sendOrderCreatedEvent(OrderCreatedEvent event) {
-        log.info("Sending OrderCreatedEvent to Kafka topic {}: {}", orderEventsTopic, event);
-        kafkaTemplate.send(orderEventsTopic, event.getOrderId(), event)
-                .whenComplete((result, ex) -> {
-                    if (ex == null) {
-                        log.info("OrderCreatedEvent sent successfully to topic {} with offset {}: {}",
-                                result.getRecordMetadata().topic(),
-                                result.getRecordMetadata().offset(),
-                                event);
-                    } else {
-                        log.error("Failed to send OrderCreatedEvent to topic {}: {}", orderEventsTopic, event, ex);
-                    }
-                });
+    @Override
+    public void run() {
+        System.out.println(Thread.currentThread().getName() + " starting task: " + taskName);
+        try {
+            TimeUnit.SECONDS.sleep(2); // Simulate some work
+        } catch (InterruptedException e) {
+            System.out.println(Thread.currentThread().getName() + " was interrupted while performing task: " + taskName);
+            Thread.currentThread().interrupt(); // Restore the interrupted status
+        }
+        System.out.println(Thread.currentThread().getName() + " finished task: " + taskName);
     }
 }
 
-5. order-service/src/main/java/com/example/orderservice/order/OrderController.java:
-Modify the createOrder method to publish the Kafka event.
-package com.example.orderservice.order;
+public class DirectThreadExample {
+    public static void main(String[] args) {
+        System.out.println("--- Starting Direct Thread Example ---");
 
-import com.example.orderservice.event.OrderCreatedEvent; // Import the event DTO
-import com.example.orderservice.kafka.OrderProducer; // Import the producer
-import lombok.RequiredArgsConstructor; // Add this for @RequiredArgsConstructor
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime; // Import LocalDateTime
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
-@RestController
-@RequestMapping("/api/orders")
-@RequiredArgsConstructor // Use Lombok's RequiredArgsConstructor
-public class OrderController {
-
-    private final List<Order> orders = new ArrayList<>();
-    private Long nextOrderId = 1L;
-    private final OrderProducer orderProducer; // Inject OrderProducer
-
-    // Constructor modified to initialize products (if still needed)
-    public OrderController(OrderProducer orderProducer) {
-        this.orderProducer = orderProducer;
-        orders.add(new Order(nextOrderId++, "user1", "Laptop", 1, 1200.00));
-        orders.add(new Order(nextOrderId++, "admin", "Mouse", 2, 50.00));
-        orders.add(new Order(nextOrderId++, "user1", "Keyboard", 1, 75.00));
-    }
-
-
-    // ... (other methods are unchanged) ...
-
-    @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN')")
-    public ResponseEntity<Order> createOrder(@RequestBody Order order) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (!authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) &&
-            !order.getCustomerUsername().equals(authentication.getName())) {
-            return ResponseEntity.status(403).build();
+        // Create and start multiple threads
+        for (int i = 0; i < 5; i++) {
+            Thread thread = new Thread(new MyRunnableTask("Task-" + (i + 1)));
+            thread.start(); // Each task gets a new thread
         }
 
-        order.setId(nextOrderId++);
-        orders.add(order);
-
-        // NEW: Publish OrderCreatedEvent to Kafka
-        OrderCreatedEvent event = new OrderCreatedEvent(
-            String.valueOf(order.getId()),
-            order.getCustomerUsername(),
-            order.getProductName(),
-            order.getQuantity(),
-            order.getTotalAmount(),
-            LocalDateTime.now()
-        );
-        orderProducer.sendOrderCreatedEvent(event);
-
-        return ResponseEntity.status(201).body(order);
+        System.out.println("--- All tasks submitted (Direct Thread) ---");
+        // In a real application, you'd need to manually manage joining threads
+        // or ensure the main thread waits for all tasks to complete.
     }
 }
 
-III. product-service (Consumer)
-The Product Service will consume OrderCreatedEvent messages from Kafka.
-1. product-service/pom.xml:
-Add the spring-kafka dependency.
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>com.example</groupId>
-        <artifactId>microservices-jwt-shared</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
-    </parent>
-    <artifactId>product-service</artifactId>
-    <name>product-service</name>
-    <description>Product Microservice</description>
+Output (Example):
+--- Starting Direct Thread Example ---
+--- All tasks submitted (Direct Thread) ---
+Thread-0 starting task: Task-1
+Thread-1 starting task: Task-2
+Thread-2 starting task: Task-3
+Thread-3 starting task: Task-4
+Thread-4 starting task: Task-5
+Thread-0 finished task: Task-1
+Thread-1 finished task: Task-2
+Thread-2 finished task: Task-3
+Thread-3 finished task: Task-4
+Thread-4 finished task: Task-5
 
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.example</groupId>
-            <artifactId>common-security</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
+Problems with this approach for many tasks:
+ * Each start() call creates a new OS thread, which is expensive.
+ * No explicit mechanism for graceful shutdown of all threads.
+ * No way to limit the number of concurrently running threads.
+2. Using ExecutorService (Preferred Approach)
+Example 2.1: Runnable with ExecutorService
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
-        <dependency>
-            <groupId>org.springframework.kafka</groupId>
-            <artifactId>spring-kafka</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.kafka</groupId>
-            <artifactId>spring-kafka-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+class MyRunnableTask implements Runnable {
+    private String taskName;
 
-</project>
+    public MyRunnableTask(String taskName) {
+        this.taskName = taskName;
+    }
 
-2. product-service/src/main/resources/application.properties:
-Add Kafka consumer configuration.
-server.port=8082
-app.jwt.secret=yourVeryLongAndSecureSecretKeyForJWTAuthServices1234567890
-
-# Kafka Consumer Configuration
-spring.kafka.consumer.bootstrap-servers=localhost:9092
-spring.kafka.consumer.group-id=product-service-group
-spring.kafka.consumer.key-deserializer=org.apache.kafka.common.serialization.StringDeserializer
-spring.kafka.consumer.value-deserializer=org.springframework.kafka.support.serializer.JsonDeserializer # For JSON messages
-spring.kafka.consumer.properties.spring.json.trusted.packages=* # Trust all packages for deserialization
-spring.kafka.consumer.properties.spring.json.value.default.type=com.example.productservice.event.OrderCreatedEvent # Default type if header is not present
-
-# Topic names
-app.kafka.topic.order-events=order-events
-
-Important: spring.kafka.consumer.properties.spring.json.trusted.packages=* and spring.kafka.consumer.properties.spring.json.value.default.type are crucial for Spring Kafka's JsonDeserializer to correctly deserialize JSON messages into your OrderCreatedEvent DTO without the producer explicitly adding type headers.
-3. product-service/src/main/java/com/example/productservice/event/OrderCreatedEvent.java:
-The consumer needs the same DTO definition as the producer to deserialize the message correctly. It must have the exact same package and class name relative to the value-deserializer configuration.
-package com.example.productservice.event; // Must match the package in order-service
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class OrderCreatedEvent {
-    private String orderId;
-    private String customerUsername;
-    private String productName;
-    private int quantity;
-    private double totalAmount;
-    private LocalDateTime createdAt;
-}
-
-4. product-service/src/main/java/com/example/productservice/kafka/OrderConsumer.java:
-This class will listen for and process Kafka messages.
-package com.example.productservice.kafka;
-
-import com.example.productservice.event.OrderCreatedEvent;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.stereotype.Component;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-@Component
-public class OrderConsumer {
-
-    private static final Logger log = LoggerFactory.getLogger(OrderConsumer.class);
-
-    @KafkaListener(topics = "${app.kafka.topic.order-events}", groupId = "${spring.kafka.consumer.group-id}")
-    public void listenOrderCreated(OrderCreatedEvent event) {
-        log.info("Received OrderCreatedEvent from Kafka: {}", event);
-
-        // Here, you would implement your business logic for the Product Service
-        // For example:
-        // 1. Deduct inventory for event.getProductName() by event.getQuantity()
-        // 2. Update product status
-        // 3. Log the order for analytical purposes
-        // 4. Send an internal notification
-
-        log.info("Product Service: Processing order for product '{}', quantity '{}' by user '{}'",
-                event.getProductName(), event.getQuantity(), event.getCustomerUsername());
-
-        // In a real application, if you had a database for products:
-        // Product product = productRepository.findByName(event.getProductName());
-        // if (product != null && product.getQuantity() >= event.getQuantity()) {
-        //    product.setQuantity(product.getQuantity() - event.getQuantity());
-        //    productRepository.save(product);
-        //    log.info("Inventory updated for product: {}", event.getProductName());
-        // } else {
-        //    log.warn("Insufficient stock or product not found for order: {}", event.getOrderId());
-        //    // Handle out-of-stock scenario (e.g., compensating transaction, notify order service)
-        // }
+    @Override
+    public void run() {
+        System.out.println(Thread.currentThread().getName() + " starting task: " + taskName);
+        try {
+            TimeUnit.SECONDS.sleep(2); // Simulate some work
+        } catch (InterruptedException e) {
+            System.out.println(Thread.currentThread().getName() + " was interrupted while performing task: " + taskName);
+            Thread.currentThread().interrupt();
+        }
+        System.out.println(Thread.currentThread().getName() + " finished task: " + taskName);
     }
 }
 
-III. Update api-gateway (No Changes)
-The API Gateway remains unchanged, as it's unaware of the internal Kafka communication. It still routes HTTP requests to the order-service as before.
-How to Run and Test
- * Start Kafka and Zookeeper (using the Docker commands provided at the beginning).
- * Build all projects from the parent directory: mvn clean install
- * Start all services in separate terminals:
-   * auth-service (Port 8081)
-   * product-service (Port 8082)
-   * order-service (Port 8083)
-   * api-gateway (Port 8080)
-   Verify that order-service and product-service logs show successful Kafka connection.
- * Test the Flow:
-   * Login as a user (e.g., user1 or admin) to get a JWT token:
-     curl -X POST -H "Content-Type: application/json" -d '{"username": "user1", "password": "user1password"}' http://localhost:8080/api/auth/login
-# Copy the token
+public class ExecutorServiceRunnableExample {
+    public static void main(String[] args) {
+        System.out.println("--- Starting ExecutorService (Runnable) Example ---");
 
-   * Create an Order using the order-service via the API Gateway:
-     # Replace <USER_TOKEN> with your actual JWT token
-curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer <USER_TOKEN>" -d '{"customerUsername": "user1", "productName": "Keyboard", "quantity": 1, "totalAmount": 75.00}' http://localhost:8080/api/orders
+        // Create a fixed thread pool with 3 threads
+        ExecutorService executorService = Executors.newFixedThreadPool(3);
 
-   * Observe the Logs:
-     * order-service logs: You should see messages indicating that OrderCreatedEvent is being sent to Kafka.
-       INFO ... OrderProducer - Sending OrderCreatedEvent to Kafka topic order-events: OrderCreatedEvent(...)
-INFO ... OrderProducer - OrderCreatedEvent sent successfully to topic order-events with offset ...
+        // Submit 10 tasks to the executor service
+        for (int i = 0; i < 10; i++) {
+            executorService.execute(new MyRunnableTask("Task-" + (i + 1)));
+        }
 
-     * product-service logs: You should see messages indicating that OrderCreatedEvent is being received and processed from Kafka.
-       INFO ... OrderConsumer - Received OrderCreatedEvent from Kafka: OrderCreatedEvent(...)
-INFO ... OrderConsumer - Product Service: Processing order for product 'Keyboard', quantity '1' by user 'user1'
+        System.out.println("--- All tasks submitted to ExecutorService ---");
 
-This demonstrates asynchronous, event-driven communication using Kafka between your order-service (as a producer) and your product-service (as a consumer). This pattern makes your services more resilient (if product service is down, order service can still produce, and product service will process when it comes back up) and scalable.
+        // Initiate an orderly shutdown. Previously submitted tasks are executed,
+        // but no new tasks will be accepted.
+        executorService.shutdown();
+
+        // Wait until all tasks are finished or a timeout occurs
+        try {
+            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
+                System.err.println("Executor did not terminate in the specified time.");
+                executorService.shutdownNow(); // Force shutdown
+            }
+        } catch (InterruptedException e) {
+            System.err.println("Main thread interrupted while waiting for executor termination.");
+            executorService.shutdownNow(); // Force shutdown
+            Thread.currentThread().interrupt();
+        }
+
+        System.out.println("--- ExecutorService shutdown complete ---");
+    }
+}
+
+Output (Example): Notice how only 3 threads are created and reused.
+--- Starting ExecutorService (Runnable) Example ---
+--- All tasks submitted to ExecutorService ---
+pool-1-thread-1 starting task: Task-1
+pool-1-thread-2 starting task: Task-2
+pool-1-thread-3 starting task: Task-3
+pool-1-thread-1 finished task: Task-1
+pool-1-thread-1 starting task: Task-4
+pool-1-thread-2 finished task: Task-2
+pool-1-thread-2 starting task: Task-5
+pool-1-thread-3 finished task: Task-3
+pool-1-thread-3 starting task: Task-6
+pool-1-thread-1 finished task: Task-4
+pool-1-thread-1 starting task: Task-7
+pool-1-thread-2 finished task: Task-5
+pool-1-thread-2 starting task: Task-8
+pool-1-thread-3 finished task: Task-6
+pool-1-thread-3 starting task: Task-9
+pool-1-thread-1 finished task: Task-7
+pool-1-thread-1 starting task: Task-10
+pool-1-thread-2 finished task: Task-8
+pool-1-thread-3 finished task: Task-9
+pool-1-thread-1 finished task: Task-10
+--- ExecutorService shutdown complete ---
+
+Example 2.2: Callable with ExecutorService and Future (for results)
+import java.util.concurrent.*;
+
+class MyCallableTask implements Callable<String> {
+    private String taskName;
+    private int value;
+
+    public MyCallableTask(String taskName, int value) {
+        this.taskName = taskName;
+        this.value = value;
+    }
+
+    @Override
+    public String call() throws Exception {
+        System.out.println(Thread.currentThread().getName() + " starting callable task: " + taskName);
+        try {
+            TimeUnit.SECONDS.sleep(1); // Simulate some work
+            if (value % 3 == 0) {
+                throw new RuntimeException("Simulated error for task " + taskName);
+            }
+        } catch (InterruptedException e) {
+            System.out.println(Thread.currentThread().getName() + " was interrupted while performing task: " + taskName);
+            Thread.currentThread().interrupt();
+            return "Task " + taskName + " interrupted.";
+        }
+        System.out.println(Thread.currentThread().getName() + " finished callable task: " + taskName);
+        return "Result from " + taskName + ": " + (value * 2);
+    }
+}
+
+public class ExecutorServiceCallableExample {
+    public static void main(String[] args) {
+        System.out.println("--- Starting ExecutorService (Callable & Future) Example ---");
+
+        ExecutorService executorService = Executors.newFixedThreadPool(2); // Using 2 threads
+
+        // List to hold Future objects
+        java.util.List<Future<String>> futures = new java.util.ArrayList<>();
+
+        // Submit 5 Callable tasks
+        for (int i = 0; i < 5; i++) {
+            futures.add(executorService.submit(new MyCallableTask("CallableTask-" + (i + 1), i + 1)));
+        }
+
+        System.out.println("--- All Callable tasks submitted to ExecutorService ---");
+
+        // Retrieve results from Future objects
+        for (Future<String> future : futures) {
+            try {
+                // get() is blocking until the task is complete
+                String result = future.get();
+                System.out.println("Retrieved: " + result);
+            } catch (InterruptedException e) {
+                System.err.println("Retrieval interrupted: " + e.getMessage());
+                Thread.currentThread().interrupt();
+            } catch (ExecutionException e) {
+                System.err.println("Task threw an exception: " + e.getCause().getMessage());
+            }
+        }
+
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
+                System.err.println("Executor did not terminate in the specified time (Callable).");
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            System.err.println("Main thread interrupted while waiting for callable executor termination.");
+            executorService.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        System.out.println("--- ExecutorService (Callable) shutdown complete ---");
+    }
+}
+
+Output (Example):
+--- Starting ExecutorService (Callable & Future) Example ---
+--- All Callable tasks submitted to ExecutorService ---
+pool-1-thread-1 starting callable task: CallableTask-1
+pool-1-thread-2 starting callable task: CallableTask-2
+pool-1-thread-1 finished callable task: CallableTask-1
+pool-1-thread-1 starting callable task: CallableTask-3
+pool-1-thread-2 finished callable task: CallableTask-2
+pool-1-thread-2 starting callable task: CallableTask-4
+Retrieved: Result from CallableTask-1: 2
+Retrieved: Result from CallableTask-2: 4
+pool-1-thread-1 starting callable task: CallableTask-5
+Task threw an exception: Simulated error for task CallableTask-3
+pool-1-thread-2 finished callable task: CallableTask-4
+Retrieved: Result from CallableTask-4: 8
+pool-1-thread-1 finished callable task: CallableTask-5
+Retrieved: Result from CallableTask-5: 10
+--- ExecutorService (Callable) shutdown complete ---
+
+Conclusion
+The ExecutorService offers a powerful and flexible framework for managing concurrent tasks in Java. By abstracting away the complexities of low-level thread management, it allows developers to write more robust, efficient, and maintainable concurrent applications. While Thread and Runnable are fundamental building blocks, ExecutorService provides the necessary infrastructure for effective concurrent programming in most real-world scenarios.
