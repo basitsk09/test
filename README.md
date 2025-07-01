@@ -16,7 +16,7 @@ import {
   Alert,
   Checkbox,
 } from '@mui/material';
-import { styled } = '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 import FormInput from '../../../../common/components/ui/FormInput';
 import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
 
@@ -31,72 +31,131 @@ const initialDynamicRow = {
   selected: false,
   particulars: '',
   provAmtStart: '',
+  writeOff: '',
   addition: '',
-  reversal: '',
+  reduction: '',
   provAmtEnd: '',
-  difference: '',
+  rate: '100',
+  provRequired: '',
+};
+
+const fieldKeyMap = {
+  particulars: 'particulars',
+  provAmtStart: 'provAmt2015',
+  writeOff: 'writeOffDur12mon',
+  addition: 'additionDur12mon',
+  reduction: 'reduInProviAmt',
+  provAmtEnd: 'proviAmt2016',
+  rate: 'ratePOfProv',
+  provRequired: 'provReq',
+};
+
+const staticFieldKeyMap = {
+  1: {
+    baseName: 'fraudsDebited',
+  },
+  '1.i': {
+    baseName: 'fraudsDebitedPrior100',
+  },
+  '1.ii': {
+    baseName: 'fraudsDebitedDelayed',
+  },
+  2: {
+    baseName: 'othersRecalled',
+  },
+  3: {
+    baseName: 'fraudsOthers',
+  },
+  '3.i': {
+    baseName: 'fraudsOthersPrior100',
+  },
+  '3.ii': {
+    baseName: 'fraudsOthersDelayed',
+  },
+  4: {
+    baseName: 'revenue',
+  },
+  5: {
+    baseName: 'fslo',
+  },
+  6: {
+    baseName: 'outstanding',
+  },
+  7: {
+    baseName: 'npainterest',
+  },
+};
+
+const staticFieldSuffixMap = {
+  provAmtStart: 'ProvAfter',
+  writeOff: 'Write',
+  addition: 'Addition',
+  reduction: 'Reduction',
+  provAmtEnd: 'ProvOn',
+  rate: 'Rate',
+  provRequired: 'ProvReq',
 };
 
 const initialStaticRows = [
-  { id: '1', label: 'Contingent liability As per As-29' },
-  { id: '2', label: 'Delayed reporting penalty' },
-  { id: '3', label: 'Ex-Gratia payment' },
-  { id: '4', label: 'Provision on overdue deposit intt' },
-  { id: '5', label: 'Leave encashment' },
-  { id: '6', label: 'Provision for performance linked incentives' },
-  {
-    id: '7',
-    label:
-      'Provision on account of entries outstanding in adjusting account for previous quarter(s) (i.e. prior to current quarter)',
-  },
+  { id: '1', label: 'FRAUDS - DEBITED TO RECALLED ASSETS A/c (Prod Cd 6998-9981)**' },
+  { id: '1.i', label: 'Frauds reported within time up to 30-09-2024 provision @ 100% ##' },
+  { id: '1.ii', label: 'Delayed Reported frauds Provision @ 100% ##' },
+  { id: '2', label: 'OTHERS LOSSES IN RECALLED ASSETS (Prod cd 6998 - 9982)#' },
+  { id: '3', label: 'FRAUDS - OTHER (NOT DEBITED TO RA A/c)$' },
+  { id: '3.i', label: 'Frauds reported within time up to 30-09-2024 provision @ 100% ##' },
+  { id: '3.ii', label: 'Delayed Reported frauds Provision @ 100% ##' },
+  { id: '4', label: 'REVENUE ITEM IN SYSTEM SUSPENSE' },
+  { id: '5', label: 'PROVISION ON ACCOUNT OF FSLO' },
+  { id: '6', label: 'PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING IN ADJUSTING ACCOUNT FOR PREVIOUS QUARTER(S)' },
+  { id: '7', label: 'PROVISION ON N.P.A. INTEREST FREE STAFF LOANS' },
 ];
 
-const RW05 = () => {
+const RW04 = () => {
   const [tabIndex, setTabIndex] = useState(0);
   const [dynamicRows, setDynamicRows] = useState([{ ...initialDynamicRow }]);
   const [staticData, setStaticData] = useState(
     Object.fromEntries(
       initialStaticRows.flatMap((r) =>
-        ['provAmtStart', 'addition', 'reversal', 'provAmtEnd', 'difference'].map((key) => [`${r.id}_${key}`, ''])
+        ['provAmtStart', 'writeOff', 'addition', 'reduction', 'provAmtEnd', 'rate', 'provRequired'].map((key) => [
+          `${r.id}_${key}`,
+          key === 'rate' ? '100' : '',
+        ])
       )
     )
   );
-
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const setSnackbarMessage = useCustomSnackbar();
-  const [isLoading, setIsLoading] = useState(false);
 
-  const headersStatic = [
-    'Particulars(2)',
-    'Opening Provision as on 01-04-2023(3)',
-    'Additions during the period(4)',
-    'Reversals during the Period(5)',
-    'Provision as on 30/06/2024(6)={(3+4)-(5)}',
-    'Difference to be Provided/ written back(7)={(6)-(3)}',
-  ];
-
-  const headersDynamic = [
-    'Select',
-    'Particulars(2)',
-    'Opening Provision as on 01-04-2023(3)',
-    'Additions during the period(4)',
-    'Reversals during the Period(5)',
-    'Provision as on 30/06/2024(6)={(3+4)-(5)}',
-    'Difference to be Provided/ written back(7)={(6)-(3)}',
+  const headers = [
+    ...(tabIndex === 1 ? ['SELECT'] : []),
+    'PARTICULARS(2)',
+    'PROVISIONABLE AMT AS ON 01.04.2025 (3)',
+    'WRITE OFF DURING THE 12 MONTHS PERIOD* (4)',
+    'ADDITONS IN PROVISIONABLE AMT DURING THE 12 MONTHS PERIOD (5)',
+    'REDUCTION IN PROVISIONABLE AMT (OTHER THAN WRITE OFF) DURING THE 12 MONTHS PERIOD^ (6)',
+    'PROVISIONABLE AMT AS ON 31/03/2025 (7)=3-4+5-6',
+    'RATE OF PROVISION (%)(8)',
+    'PROVISION REQUIREMENT AS ON 31/03/2025 (9)=7*8',
   ];
 
   const isNumeric = (val) => !isNaN(parseFloat(val)) && isFinite(val);
 
   const calculateAndSetStatic = (rowId, updated) => {
-    const provAmtStart = parseFloat(updated[`${rowId}_provAmtStart`] || 0);
-    const addition = parseFloat(updated[`${rowId}_addition`] || 0);
-    const reversal = parseFloat(updated[`${rowId}_reversal`] || 0);
+    const isManualRow = ['1.i', '1.ii', '3.i', '3.ii'].includes(rowId);
+    const start = parseFloat(updated[`${rowId}_provAmtStart`] || 0);
+    const write = parseFloat(updated[`${rowId}_writeOff`] || 0);
+    const add = parseFloat(updated[`${rowId}_addition`] || 0);
+    const reduce = parseFloat(updated[`${rowId}_reduction`] || 0);
+    const rate = parseFloat(updated[`${rowId}_rate`] || 0);
 
-    // Provision as on 30/06/2024(6)={(3+4)-(5)}
-    const provAmtEnd = provAmtStart + addition - reversal;
-    updated[`${rowId}_provAmtEnd`] = provAmtEnd.toFixed(2);
-    // Difference to be Provided/ written back(7)={(6)-(3)}
-    const difference = provAmtEnd - provAmtStart;
-    updated[`${rowId}_difference`] = difference.toFixed(2);
+    if (!isManualRow) {
+      const end = start - write + add - reduce;
+      updated[`${rowId}_provAmtEnd`] = end.toFixed(2);
+      updated[`${rowId}_provRequired`] = ((end * rate) / 100).toFixed(2);
+    } else {
+      const end = parseFloat(updated[`${rowId}_provAmtEnd`] || 0);
+      updated[`${rowId}_provRequired`] = ((end * rate) / 100).toFixed(2);
+    }
   };
 
   const handleStaticChange = (rowId, key, value) => {
@@ -107,86 +166,163 @@ const RW05 = () => {
 
   const handleDynamicChange = (i, key, value) => {
     const updated = [...dynamicRows];
-    // Only update if the value is numeric or empty for numeric fields
-    const newValue = ['provAmtStart', 'addition', 'reversal'].includes(key) && !isNumeric(value) && value !== ''
-      ? updated[i][key]
-      : value;
-
-    updated[i][key] = newValue;
-
-    const provAmtStart = parseFloat(updated[i].provAmtStart || 0);
-    const addition = parseFloat(updated[i].addition || 0);
-    const reversal = parseFloat(updated[i].reversal || 0);
-
-    // Provision as on 30/06/2024(6)={(3+4)-(5)}
-    const provAmtEnd = provAmtStart + addition - reversal;
-    updated[i].provAmtEnd = provAmtEnd.toFixed(2);
-
-    // Difference to be Provided/ written back(7)={(6)-(3)}
-    const difference = provAmtEnd - provAmtStart;
-    updated[i].difference = difference.toFixed(2);
-
+    updated[i][key] = value;
+    const start = parseFloat(updated[i].provAmtStart || 0);
+    const write = parseFloat(updated[i].writeOff || 0);
+    const add = parseFloat(updated[i].addition || 0);
+    const reduce = parseFloat(updated[i].reduction || 0);
+    const rate = parseFloat(updated[i].rate || 0);
+    const end = start - write + add - reduce;
+    updated[i].provAmtEnd = end.toFixed(2);
+    updated[i].provRequired = ((end * rate) / 100).toFixed(2);
     setDynamicRows(updated);
   };
 
-  const handleSubmit = (action = 'save') => {
-    setIsLoading(true);
-    let payload = {};
-
-    if (tabIndex === 0) {
-      // Payload for Tab 1 (RW-05-I) as per your sample
-      payload = {
-        value: initialStaticRows.map((row) => ([
-          " ", // Constant value from sample
-          row.label,
-          staticData[`${row.id}_provAmtStart`] || '0',
-          staticData[`${row.id}_addition`] || '0',
-          staticData[`${row.id}_reversal`] || '0',
-          (parseFloat(staticData[`${row.id}_provAmtEnd`] || 0)).toFixed(2), // Ensure 2 decimal places
-          (parseFloat(staticData[`${row.id}_difference`] || 0)).toFixed(2), // Ensure 2 decimal places
-          row.id,
-          row.id,
-          "true"
-        ])),
-        tabValue: "1",
-        tabName: "RW-05-I",
-        reportId: "3009",
-        submissionId: 5262,
-        currentStatus: "11" // Constant value from sample
-      };
-    } else if (tabIndex === 1) {
-      // Payload for Tab 2 (RW-05-II) as per your sample
-      // This logic assumes you are submitting the *first* dynamic row data in the sample format.
-      // If you need to submit ALL dynamic rows or handle specific indexing, this will need adjustment.
-      const firstDynamicRow = dynamicRows[0] || initialDynamicRow;
-      payload = {
-        value: [
-          firstDynamicRow.particulars || 'ewewe', // Use "ewewe" as default from sample if particulars is empty
-          firstDynamicRow.provAmtStart || '1',    // Default from sample
-          firstDynamicRow.addition || '1',       // Default from sample
-          firstDynamicRow.reversal || '1',       // Default from sample
-          (parseFloat(firstDynamicRow.provAmtEnd || 0)).toFixed(2), // Ensure 2 decimal places
-          (parseFloat(firstDynamicRow.difference || 0)).toFixed(2), // Ensure 2 decimal places
-          "208", // Constant from sample
-          "208", // Constant from sample
-          "true" // Constant from sample
-        ],
-        tabValue: "2",
-        reportId: "3009",
-        submissionId: 5262,
-        currentStatus: "11" // Constant value from sample
-      };
-    }
-
-    console.log(`Payload for Tab ${tabIndex + 1} (${action}):`, JSON.stringify(payload, null, 2));
-    setSnackbarMessage(
-      `Data for Tab ${tabIndex === 0 ? 'RW-05(I)' : 'RW-05(II)'} ${action === 'submit' ? 'submitted' : 'saved'} successfully! Check console for payload.`,
-      'success'
+  const isChildRowDisabled = (rowId, key) => {
+    return (
+      (rowId === '1.i' || rowId === '1.ii' || rowId === '3.i' || rowId === '3.ii') &&
+      !['provAmtEnd', 'rate', 'provRequired'].includes(key)
     );
-    setIsLoading(false);
   };
 
-  const renderHeader = (headers) => (
+  const getProvAmtEndMismatchError = (rowId) => {
+    if (rowId === '1') {
+      const parent = parseFloat(staticData['1_provAmtEnd'] || 0);
+      const sum = parseFloat(staticData['1.i_provAmtEnd'] || 0) + parseFloat(staticData['1.ii_provAmtEnd'] || 0);
+      return Math.abs(parent - sum) > 0.01;
+    }
+    if (rowId === '3') {
+      const parent = parseFloat(staticData['3_provAmtEnd'] || 0);
+      const sum = parseFloat(staticData['3.i_provAmtEnd'] || 0) + parseFloat(staticData['3.ii_provAmtEnd'] || 0);
+      return Math.abs(parent - sum) > 0.01;
+    }
+    return false;
+  };
+
+  const mapPayloadToSaveAndSubmit = (action) => {
+    const payloadValue = [];
+
+    initialStaticRows.forEach((row, index) => {
+      const rowData = [
+        '', // First empty string
+        row.label, // Particulars
+        staticData[`${row.id}_provAmtStart`] || '0',
+        staticData[`${row.id}_writeOff`] || '0',
+        staticData[`${row.id}_addition`] || '0',
+        staticData[`${row.id}_reduction`] || '0',
+        `${parseFloat(staticData[`${row.id}_provAmtEnd`] || 0).toFixed(2)}`, // Add _D suffix
+        staticData[`${row.id}_rate`] || '0',
+        parseFloat(staticData[`${row.id}_provRequired`] || 0).toFixed(2),
+        (index + 1).toString(), // Serial number
+        (index + 1).toString(), // Another serial number/id
+        action === 'submit' ? 'true' : 'true', // For static rows, always true for save/submit
+      ];
+      payloadValue.push(rowData);
+    });
+
+    // Map dynamic rows (only if tabIndex is 1, as dynamic rows are only visible there)
+    if (tabIndex === 1) {
+      dynamicRows.forEach((row, index) => {
+        const dynamicRowData = [
+          '', // First empty string
+          row.particulars,
+          row.provAmtStart || '0',
+          row.writeOff || '0',
+          row.addition || '0',
+          row.reduction || '0',
+          `${parseFloat(row.provAmtEnd || 0).toFixed(2)}`, // Add _D suffix
+          row.rate || '0',
+          parseFloat(row.provRequired || 0).toFixed(2),
+          (initialStaticRows.length + index + 1).toString(), // Continue serial number from static rows
+          (initialStaticRows.length + index + 1).toString(), // Another serial number/id
+          action === 'submit' ? 'true' : row.selected ? 'true' : 'false', // Use row.selected for dynamic rows on save
+        ];
+        payloadValue.push(dynamicRowData);
+      });
+    }
+
+    return {
+      value: payloadValue,
+      tabValue: (tabIndex + 1).toString(), // '1' for RW-04(I), '2' for RW-04(II)
+      tabName: tabIndex === 0 ? 'RW-04(I)' : 'RW-04(II)',
+      reportId: '3007', // As per payload
+      submissionId: 5259, // As per payload
+      currentStatus: '11', // As per payload
+    };
+  };
+
+  const handleSubmit = (action = 'save') => {
+    const payload = mapPayloadToSaveAndSubmit(action);
+    console.log(`${action.toUpperCase()} Payload:`, JSON.stringify(payload, null, 2));
+
+    setSnackbar({
+      open: true,
+      message: `Data prepared for ${action}. Check console for API payload.`,
+      severity: 'success',
+    });
+    // Here you would typically send this payload to your backend API
+    // e.g., axios.post('/api/rw04/submit', payload)
+  };
+
+  // The 'onSave' and 'submitRW04Data' functions from the original file are commented out as they are replaced by the new handleSubmit
+  // const onSave = () => {
+  //   const mappedDynamicRows = dynamicRows.map((row) => {
+  //     const mappedRow = {};
+  //     Object.entries(fieldKeyMap).forEach(([frontendKey, backendKey]) => {
+  //       mappedRow[backendKey] = row[frontendKey] || '';
+  //     });
+  //     return mappedRow;
+  //   });
+  //   const mappedStaticRow = mapStaticToBackend();
+
+  //   console.log('Dynamic Rows Payload (List<RW04>):', mappedDynamicRows);
+  //   console.log('Static Row Payload (RW04):', mappedStaticRow);
+
+  //   setSnackbar({
+  //     open: true,
+  //     message: 'Mapped data prepared. Check console for API payload.',
+  //     severity: 'success',
+  //   });
+  // };
+
+  // const submitRW04Data = async () => {
+  //   const staticPayload = mapStaticToBackend();
+  //   const dynamicPayload = dynamicRows.map((row, index) => ({
+  //     othAstsWriteOff: row.writeOff || '',
+  //     othAstsAddition: row.addition || '',
+  //     othAstsReduction: row.reduction || '',
+  //     othAstsCurYr: row.provAmtEnd || '',
+  //     othAstsProviRate: row.rate || '',
+  //     othAstsProviReq: row.provRequired || '',
+  //     crsOthAssestsName: row.particulars || '',
+  //     crsOthAssestsId: (index + 1).toString(),
+  //     crsOthAssestsSq: (index + 1).toString(),
+
+  //     othAstsBranch: '99999',
+  //     othAstsDate: '2025-03-31',
+  //     reportMasterListIdFk: '1749519',
+  //   }));
+  //   const payload = {
+  //     staticPart: staticPayload,
+  //     dynamicPart: dynamicPayload,
+  //   };
+  //   try {
+  //     console.log('payload', payload);
+  //     setSnackbar({
+  //       open: true,
+  //       message: 'RW-04 data saved successfully',
+  //       severity: 'success',
+  //     });
+  //   } catch (err) {
+  //     setSnackbar({
+  //       open: true,
+  //       message: `Error: ${err.message}`,
+  //       severity: 'error',
+  //     });
+  //   }
+  // };
+
+  const renderHeader = () => (
     <TableHead>
       <TableRow>
         <TableCell sx={{ backgroundColor: 'hsl(220, 20%, 35%)', fontWeight: 'bold' }}>Sr No(1)</TableCell>
@@ -200,57 +336,74 @@ const RW05 = () => {
   return (
     <Box>
       <Tabs value={tabIndex} onChange={(e, i) => setTabIndex(i)}>
-        <Tab label="RW-05(I)" />
-        <Tab label="RW-05(II)" />
+        <Tab label="RW-04(I)" />
+        <Tab label="RW-04(II)" />
       </Tabs>
 
       {tabIndex === 0 && (
         <>
           <Box mt={2} display="flex" gap={2}>
-            <Button variant="contained" color="warning" onClick={() => handleSubmit()} disabled={isLoading}>
+            <Button variant="contained" color="warning" onClick={() => handleSubmit('save')}>
               Save
             </Button>
-            <Button variant="contained" color="success" onClick={() => handleSubmit('submit')} disabled={isLoading}>
+            <Button variant="contained" color="success" onClick={() => handleSubmit('submit')}>
               Submit
             </Button>
           </Box>
-          <TableContainer component={Paper} sx={{ mt: 2 }}>
-            <Table>
-              {renderHeader(headersStatic)}
+          <TableContainer component={Paper} sx={{ mt: 2, maxHeight: 'calc(100vh - 250px)' }}>
+            <Table stickyHeader>
+              {renderHeader()}
               <TableBody>
                 {initialStaticRows.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell align="center">{row.id}</TableCell>
-                    <TableCell align="center">{row.label}</TableCell>
-                    {['provAmtStart', 'addition', 'reversal'].map((key) => (
+                    <TableCell>{row.id}</TableCell>
+                    <TableCell sx={{ width: '280px' }} align="center">
+                      {row.label}
+                    </TableCell>
+                    {['provAmtStart', 'writeOff', 'addition', 'reduction'].map((key) => (
                       <TableCell key={key} align="center">
                         <FormInput
                           value={staticData[`${row.id}_${key}`]}
                           onChange={(e) => handleStaticChange(row.id, key, e.target.value)}
-                          // The readOnly prop for 'Contingent liability As per As-29' seems to be missing
-                          // based on your original request, I've kept it as it was (row.id.includes('1'))
-                          // If you want to enable editing for this row, remove the readOnly prop.
-                          readOnly={row.id.includes('1')}
+                          error={!!staticData[`${row.id}_${key}`] && !isNumeric(staticData[`${row.id}_${key}`])}
+                          readOnly={isChildRowDisabled(row.id, key)}
                           debounceDuration={1}
-                          sx={{ width: '180px' }}
+                          sx={{ width: '150px' }}
                           placeholder="0.00"
-                          type="number"
                         />
                       </TableCell>
                     ))}
                     <TableCell align="center">
+                      <Box display="flex" flexDirection="column">
+                        <FormInput
+                          value={staticData[`${row.id}_provAmtEnd`]}
+                          onChange={(e) => handleStaticChange(row.id, 'provAmtEnd', e.target.value)}
+                          readOnly={!['1.i', '1.ii', '3.i', '3.ii'].includes(row.id)}
+                          error={getProvAmtEndMismatchError(row.id)}
+                          debounceDuration={1}
+                          sx={{ width: '150px' }}
+                          placeholder="0.00"
+                        />
+                        {getProvAmtEndMismatchError(row.id) && (
+                          <Typography fontSize={12} color="error" textAlign={'left'} sx={{ ml: 1 }}>
+                            The value does not match
+                          </Typography>
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell align="center">
                       <FormInput
-                        value={staticData[`${row.id}_provAmtEnd`]}
+                        value={row.id === '1' || row.id === '3' ? '' : staticData[`${row.id}_rate`]}
                         readOnly={true}
-                        sx={{ width: '180px' }}
+                        sx={{ width: '150px' }}
                         placeholder="0.00"
                       />
                     </TableCell>
                     <TableCell align="center">
                       <FormInput
-                        value={staticData[`${row.id}_difference`]}
+                        value={staticData[`${row.id}_provRequired`]}
                         readOnly={true}
-                        sx={{ width: '180px' }}
+                        sx={{ width: '150px' }}
                         placeholder="0.00"
                       />
                     </TableCell>
@@ -279,16 +432,17 @@ const RW05 = () => {
             >
               Delete Row
             </Button>
-            <Button variant="contained" color="warning" onClick={() => handleSubmit()} disabled={isLoading}>
+            {/* The following two buttons now call handleSubmit */}
+            <Button variant="contained" color="warning" onClick={() => handleSubmit('save')}>
               Save
             </Button>
-            <Button variant="contained" color="success" onClick={() => handleSubmit('submit')} disabled={isLoading}>
+            <Button variant="contained" color="success" onClick={() => handleSubmit('submit')}>
               Submit
             </Button>
           </Box>
           <TableContainer component={Paper} sx={{ mt: 2, maxHeight: 'calc(100vh - 250px)' }}>
             <Table stickyHeader>
-              {renderHeader(headersDynamic)}
+              {renderHeader()}
               <TableBody>
                 {dynamicRows.map((row, i) => (
                   <TableRow key={i}>
@@ -305,6 +459,7 @@ const RW05 = () => {
                     </TableCell>
                     <TableCell>
                       <FormInput
+                        maxLength={50}
                         value={row.particulars}
                         inputType={'alphaNumericWithSpace'}
                         onChange={(e) => {
@@ -312,27 +467,29 @@ const RW05 = () => {
                           updated[i].particulars = e.target.value;
                           setDynamicRows(updated);
                         }}
-                        sx={{ width: '180px' }}
+                        sx={{ width: '150px' }}
                         placeholder="Enter Text"
                       />
                     </TableCell>
-                    {['provAmtStart', 'addition', 'reversal'].map((key) => (
+                    {['provAmtStart', 'writeOff', 'addition', 'reduction'].map((key) => (
                       <TableCell key={key} align="center">
                         <FormInput
                           value={row[key]}
                           onChange={(e) => handleDynamicChange(i, key, e.target.value)}
                           debounceDuration={1}
-                          sx={{ width: '180px' }}
+                          sx={{ width: '150px' }}
                           placeholder="0.00"
-                          type="number"
                         />
                       </TableCell>
                     ))}
                     <TableCell align="center">
-                      <FormInput value={row.provAmtEnd} readOnly={true} sx={{ width: '180px' }} placeholder="0.00" />
+                      <FormInput value={row.provAmtEnd} readOnly={true} sx={{ width: '150px' }} placeholder="0.00" />
                     </TableCell>
                     <TableCell align="center">
-                      <FormInput value={row.difference} readOnly={true} sx={{ width: '180px' }} placeholder="0.00" />
+                      <FormInput value={row.rate} readOnly={true} sx={{ width: '150px' }} placeholder="0.00" />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput value={row.provRequired} readOnly={true} sx={{ width: '150px' }} placeholder="0.00" />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -341,8 +498,12 @@ const RW05 = () => {
           </TableContainer>
         </>
       )}
+
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
     </Box>
   );
 };
 
-export default RW05;
+export default RW04;
