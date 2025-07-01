@@ -19,6 +19,8 @@ import {
 import { styled } from '@mui/material/styles';
 import FormInput from '../../../../common/components/ui/FormInput';
 import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import { useLocation } from 'react-router-dom';
+import useApi from '../../../../common/hooks/useApi';
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontSize: '0.875rem',
@@ -41,40 +43,40 @@ const initialDynamicRow = {
 
 // fieldKeyMap and staticFieldKeyMap are not directly used in the current payload generation approach
 // but are kept for reference if a different backend mapping strategy is adopted.
-const fieldKeyMap = {
-  particulars: 'particulars',
-  provAmtStart: 'provAmt2015',
-  writeOff: 'writeOffDur12mon',
-  addition: 'additionDur12mon',
-  reduction: 'reduInProviAmt',
-  provAmtEnd: 'proviAmt2016',
-  rate: 'ratePOfProv',
-  provRequired: 'provReq',
-};
+// const fieldKeyMap = {
+//   particulars: 'particulars',
+//   provAmtStart: 'provAmt2015',
+//   writeOff: 'writeOffDur12mon',
+//   addition: 'additionDur12mon',
+//   reduction: 'reduInProviAmt',
+//   provAmtEnd: 'proviAmt2016',
+//   rate: 'ratePOfProv',
+//   provRequired: 'provReq',
+// };
 
-const staticFieldKeyMap = {
-  1: { baseName: 'fraudsDebited' },
-  '1.i': { baseName: 'fraudsDebitedPrior100' },
-  '1.ii': { baseName: 'fraudsDebitedDelayed' },
-  2: { baseName: 'othersRecalled' },
-  3: { baseName: 'fraudsOthers' },
-  '3.i': { baseName: 'fraudsOthersPrior100' },
-  '3.ii': { baseName: 'fraudsOthersDelayed' },
-  4: { baseName: 'revenue' },
-  5: { baseName: 'fslo' },
-  6: { baseName: 'outstanding' },
-  7: { baseName: 'npainterest' },
-};
+// const staticFieldKeyMap = {
+//   1: { baseName: 'fraudsDebited' },
+//   '1.i': { baseName: 'fraudsDebitedPrior100' },
+//   '1.ii': { baseName: 'fraudsDebitedDelayed' },
+//   2: { baseName: 'othersRecalled' },
+//   3: { baseName: 'fraudsOthers' },
+//   '3.i': { baseName: 'fraudsOthersPrior100' },
+//   '3.ii': { baseName: 'fraudsOthersDelayed' },
+//   4: { baseName: 'revenue' },
+//   5: { baseName: 'fslo' },
+//   6: { baseName: 'outstanding' },
+//   7: { baseName: 'npainterest' },
+// };
 
-const staticFieldSuffixMap = {
-  provAmtStart: 'ProvAfter',
-  writeOff: 'Write',
-  addition: 'Addition',
-  reduction: 'Reduction',
-  provAmtEnd: 'ProvOn',
-  rate: 'Rate',
-  provRequired: 'ProvReq',
-};
+// const staticFieldSuffixMap = {
+//   provAmtStart: 'ProvAfter',
+//   writeOff: 'Write',
+//   addition: 'Addition',
+//   reduction: 'Reduction',
+//   provAmtEnd: 'ProvOn',
+//   rate: 'Rate',
+//   provRequired: 'ProvReq',
+// };
 
 const initialStaticRows = [
   { id: '1', label: 'FRAUDS - DEBITED TO RECALLED ASSETS A/c (Prod Cd 6998-9981)**' },
@@ -92,6 +94,8 @@ const initialStaticRows = [
 
 const RW04 = () => {
   const [tabIndex, setTabIndex] = useState(0);
+  const user = JSON.parse(localStorage.getItem('user'));
+  console.log('user', user);
   const [dynamicRows, setDynamicRows] = useState([{ ...initialDynamicRow }]);
   const [staticData, setStaticData] = useState(
     Object.fromEntries(
@@ -104,9 +108,11 @@ const RW04 = () => {
     )
   );
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
-  // eslint-disable-next-line no-unused-vars
+  const { callApi } = useApi();
+  const { state } = useLocation();
   const setSnackbarMessage = useCustomSnackbar(); // If not used, consider removing or integrating
-
+  const [reportObject, setReportObject] = useState(state?.report || null);
+  console.log('reportObject', reportObject);
   const headers = [
     ...(tabIndex === 1 ? ['SELECT'] : []),
     'PARTICULARS(2)',
@@ -142,9 +148,12 @@ const RW04 = () => {
 
   const handleStaticChange = (rowId, key, value) => {
     // Only allow numeric input for calculation fields
-    const processedValue = ['provAmtStart', 'writeOff', 'addition', 'reduction', 'provAmtEnd'].includes(key) && value !== '' && !isNumeric(value)
-      ? staticData[`${rowId}_${key}`] // Revert to previous valid value
-      : value;
+    const processedValue =
+      ['provAmtStart', 'writeOff', 'addition', 'reduction', 'provAmtEnd'].includes(key) &&
+      value !== '' &&
+      !isNumeric(value)
+        ? staticData[`${rowId}_${key}`] // Revert to previous valid value
+        : value;
 
     const updated = { ...staticData, [`${rowId}_${key}`]: processedValue };
     calculateAndSetStatic(rowId, updated);
@@ -154,9 +163,10 @@ const RW04 = () => {
   const handleDynamicChange = (i, key, value) => {
     const updated = [...dynamicRows];
     // Only allow numeric input for calculation fields
-    const processedValue = ['provAmtStart', 'writeOff', 'addition', 'reduction'].includes(key) && value !== '' && !isNumeric(value)
-      ? updated[i][key] // Revert to previous valid value
-      : value;
+    const processedValue =
+      ['provAmtStart', 'writeOff', 'addition', 'reduction'].includes(key) && value !== '' && !isNumeric(value)
+        ? updated[i][key] // Revert to previous valid value
+        : value;
 
     updated[i][key] = processedValue;
 
@@ -196,11 +206,6 @@ const RW04 = () => {
   const mapPayloadToSaveAndSubmit = (action) => {
     const payloadValue = [];
 
-    // Common data structure for both tabs
-    // Note: The sample payload for tab 1 shows 10 elements in each inner array.
-    // The sample payload for tab 2 shows 9 elements. We need to be consistent.
-    // Assuming the structure for all rows (static and dynamic) should align with the static row example (10 elements).
-
     if (tabIndex === 0) {
       // Data for RW-04(I)
       initialStaticRows.forEach((row, index) => {
@@ -216,7 +221,7 @@ const RW04 = () => {
           parseFloat(staticData[`${row.id}_provRequired`] || 0).toFixed(2), // [8] - provRequired
           (index + 1).toString(), // [9] - Serial number/ID
           (index + 1).toString(), // [10] - Another serial number/ID
-          "true", // [11] - Fixed boolean true
+          'true', // [11] - Fixed boolean true
         ];
         payloadValue.push(rowData);
       });
@@ -312,7 +317,6 @@ const RW04 = () => {
                           debounceDuration={1}
                           sx={{ width: '150px' }}
                           placeholder="0.00"
-                          type="number" // Ensure numeric keyboard on mobile
                         />
                       </TableCell>
                     ))}
@@ -326,7 +330,6 @@ const RW04 = () => {
                           debounceDuration={1}
                           sx={{ width: '150px' }}
                           placeholder="0.00"
-                          type="number"
                         />
                         {getProvAmtEndMismatchError(row.id) && (
                           <Typography fontSize={12} color="error" textAlign={'left'} sx={{ ml: 1 }}>
@@ -341,7 +344,6 @@ const RW04 = () => {
                         readOnly={true} // Rate is always readOnly for static rows
                         sx={{ width: '150px' }}
                         placeholder="0.00"
-                        type="number"
                       />
                     </TableCell>
                     <TableCell align="center">
@@ -350,7 +352,6 @@ const RW04 = () => {
                         readOnly={true}
                         sx={{ width: '150px' }}
                         placeholder="0.00"
-                        type="number"
                       />
                     </TableCell>
                   </TableRow>
@@ -424,7 +425,6 @@ const RW04 = () => {
                           debounceDuration={1}
                           sx={{ width: '150px' }}
                           placeholder="0.00"
-                          type="number"
                         />
                       </TableCell>
                     ))}
@@ -453,3 +453,14 @@ const RW04 = () => {
 };
 
 export default RW04;
+
+
+////////////////////////////////////////
+
+
+api calls to be inntegrated
+
+/RW04/getData
+/RW04/saveStatic
+/RW04/saveAddRow
+/RW04/deleteRow
