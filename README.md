@@ -1,4 +1,4 @@
-Payload:
+Payload: for tab1
 
 {"value":[[" ","Contiongent liability As per As-29","0","0","0","0.00","0.00","1","1","true"],
 [" ","Delayed reporting penalty","1212","12121","121","13212.00","12000.00","2","2","true"],
@@ -8,6 +8,10 @@ Payload:
 [" ","Provision for performance linked incentives","0","0","0","0.00","0.00","6","6","true"],
 [" ","Provision on account of entries outstanding in adjusting account for previous quarter(s) (i.e. prior to current quarter)","0","0","0","0.00","0.00","7","7","true"]],
 "tabValue":"1","tabName":"RW-05-I","reportId":"3009","submissionId":5262,"currentStatus":"11"}
+
+//////////////////////////////////
+payload for tab 2
+{"value":["ewewe","1","1","1","1.00","0.00","208","208","true"],"tabValue":"2","reportId":"3009","submissionId":5262,"currentStatus":"11"}
 
 //////////////////////////////////////////////////////
 import React, { useState } from 'react';
