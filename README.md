@@ -224,7 +224,6 @@ const RW04 = () => {
     }),
     [user, reportObject]
   );
-  console.log('reportObject', reportObject);
 
   // Recalculates derived fields for a given static row
   const calculateStaticRow = (updatedRow) => {
@@ -267,7 +266,7 @@ const RW04 = () => {
     // Prevent non-numeric input for specific fields
     const numericFields = ['provAmtStart', 'writeOff', 'addition', 'reduction', 'provAmtEnd'];
     if (numericFields.includes(key) && !isNumeric(value)) {
-      return; // Or show a brief error
+      return;
     }
 
     currentRow[key] = value;
@@ -330,7 +329,6 @@ const RW04 = () => {
         apiData.forEach((row) => {
           const dbId = parseInt(row[0], 10);
 
-          // Static rows have dbId from 1 to 11
           if (dbId >= 1 && dbId <= 11) {
             const staticRow = loadedStaticRows.find((r) => r.dbId === dbId);
             if (staticRow) {
@@ -354,7 +352,7 @@ const RW04 = () => {
               rate: row[7],
               provRequired: row[8],
               selected: false,
-              key: dbId, // Use dbId as key for saved rows
+              key: dbId,
             });
           }
         });
@@ -372,8 +370,11 @@ const RW04 = () => {
   }, [reportObject, user.quarterEndDate, callApi, getBasePayload, setSnackbarMessage]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (reportObject) {
+      loadData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportObject]);
 
   // Main function to handle Save/Submit actions
   const handleSubmit = async () => {
@@ -404,14 +405,11 @@ const RW04 = () => {
     } else if (tabIndex === 1) {
       // Dynamic "OTHERS" Tab
       try {
-        // Create a new array from state to avoid direct mutation during the loop
         const updatedRows = [...dynamicRows];
 
-        // Iterate sequentially to save each row
         for (let i = 0; i < updatedRows.length; i++) {
           const row = updatedRows[i];
 
-          // Skip empty, untouched new rows
           if (row.dbId === 0 && !row.particulars.trim()) {
             continue;
           }
@@ -425,28 +423,20 @@ const RW04 = () => {
             row.provAmtEnd || '0.00',
             row.rate || '100',
             row.provRequired || '0.00',
-            String(row.dbId), // This is value.get(8) in Java
+            String(row.dbId),
           ];
 
           const singleRowPayload = { ...getBasePayload(), value: singleRowPayloadValue };
-
-          // Await the API call and capture the response
           const response = await callApi('/RW04/saveAddRow', singleRowPayload, 'POST');
 
-          // If the row was new (dbId was 0) and the backend returned a new rowId, update it.
           if (row.dbId === 0 && response && response.data && response.data.rowId) {
-            // Update the dbId and key in our temporary array.
             updatedRows[i].dbId = response.data.rowId;
-            updatedRows[i].key = response.data.rowId; // Also update the React key for stable rendering
+            updatedRows[i].key = response.data.rowId;
           }
         }
 
-        // After the loop, update the state with the potentially modified rows
         setDynamicRows(updatedRows);
-
-        // Then, show a success message and perform a full reload for ultimate consistency.
         setSnackbarMessage('Data saved successfully!', 'success');
-        loadData();
       } catch (error) {
         console.error(`Error during save operation:`, error);
         setSnackbarMessage(`An error occurred while saving data.`, 'error');
@@ -454,14 +444,7 @@ const RW04 = () => {
     }
   };
 
-  /**
-   * BUG FIX:
-   * The condition to check for an unsaved row is now simplified.
-   * It now checks if there is ANY row with dbId === 0.
-   * This prevents adding a second new row (even a blank one) if the first one hasn't been saved yet.
-   */
   const handleAddRow = () => {
-    // Check if any row in the state is an unsaved row (dbId is 0).
     const hasUnsavedRow = dynamicRows.some((row) => row.dbId === 0);
 
     if (hasUnsavedRow) {
@@ -504,7 +487,6 @@ const RW04 = () => {
     } catch (error) {
       console.error('Error deleting rows:', error);
       setSnackbarMessage('An error occurred during deletion.', 'error');
-      loadData();
     }
   };
 
@@ -548,7 +530,6 @@ const RW04 = () => {
         <Button variant="contained" color="warning" onClick={handleSubmit} disabled={isLoading}>
           {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Save'}
         </Button>
-        {/* Submit functionality can be added here if different from save */}
       </Box>
 
       <TableContainer component={Paper} sx={{ mt: 2, maxHeight: 'calc(100vh - 250px)' }}>
