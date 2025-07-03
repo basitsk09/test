@@ -369,11 +369,11 @@ const RW04 = () => {
       console.error('Error loading data:', error);
       setSnackbarMessage('Failed to load data!', 'error');
     }
-  }, [reportObject, user.quarterEndDate]);
+  }, [reportObject, user.quarterEndDate, callApi, getBasePayload, setSnackbarMessage]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   // Main function to handle Save/Submit actions
   const handleSubmit = async () => {
@@ -449,8 +449,27 @@ const RW04 = () => {
     }
   };
 
+  /**
+   * MODIFIED FUNCTION
+   * This function now checks if there is an existing unsaved row in the dynamicRows state.
+   * An unsaved row is identified by `dbId === 0`.
+   * If an unsaved row exists and the user has started entering data in it,
+   * it prevents adding a new one and prompts the user to save the current row first.
+   */
   const handleAddRow = () => {
-    setDynamicRows([...dynamicRows, createInitialDynamicRow()]);
+    const hasUnsavedRow = dynamicRows.some(
+      (row) => row.dbId === 0 && (row.particulars || row.provAmtStart || row.writeOff || row.addition || row.reduction)
+    );
+
+    if (hasUnsavedRow) {
+      setSnackbar({
+        open: true,
+        message: 'Kindly save the current new row before adding another.',
+        severity: 'warning',
+      });
+    } else {
+      setDynamicRows([...dynamicRows, createInitialDynamicRow()]);
+    }
   };
 
   const handleDeleteRow = async () => {
@@ -458,8 +477,13 @@ const RW04 = () => {
     const newRowsToKeep = dynamicRows.filter((row) => !row.selected);
 
     if (rowsToDelete.length === 0) {
-      setSnackbarMessage('Please select a saved row to delete.', 'warning');
-      setDynamicRows(newRowsToKeep.length > 0 ? newRowsToKeep : [createInitialDynamicRow()]); // remove selected new rows
+      // This part handles deleting unsaved rows (which are only removed from the state)
+      if (dynamicRows.some((row) => row.selected && row.dbId === 0)) {
+        setDynamicRows(newRowsToKeep.length > 0 ? newRowsToKeep : [createInitialDynamicRow()]);
+        setSnackbarMessage('New row removed.', 'info');
+      } else {
+        setSnackbarMessage('Please select a saved row to delete.', 'warning');
+      }
       return;
     }
 
