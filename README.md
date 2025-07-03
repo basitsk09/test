@@ -1,496 +1,261 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Tabs,
-  Tab,
-  Box,
-  Typography,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  TableContainer,
-  Paper,
-  Button,
-  Snackbar,
-  Alert,
-  Checkbox,
-  CircularProgress,
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
-import FormInput from '../../../../common/components/ui/FormInput';
-import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
-import { useLocation } from 'react-router-dom';
-import useApi from '../../../../common/hooks/useApi';
+package com.tcs.dao;
 
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontSize: '0.875rem',
-  textAlign: 'center',
-  padding: '6px',
-  fontWeight: 'bold',
-  backgroundColor: 'hsl(220, 20%, 35%)',
-  color: 'white',
-}));
+import org.apache.log4j.Logger;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
 
-// A helper to generate an empty dynamic row object
-const createInitialDynamicRow = () => ({
-  dbId: 0, // 0 indicates a new, unsaved row
-  particulars: '',
-  provAmtStart: '',
-  writeOff: '',
-  addition: '',
-  reduction: '',
-  provAmtEnd: '0.00',
-  rate: '100', // Default rate for dynamic rows
-  provRequired: '0.00',
-  selected: false,
-  // React key for new rows, dbId will be used for saved rows
-  key: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-});
+import javax.sql.DataSource;
+import java.math.BigDecimal;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.*;
 
-// Initial structure for static rows, will be populated from API
-const getInitialStaticRows = (quarterEndDate) => [
-    { feId: '1', dbId: 1, label: 'FRAUDS - DEBITED TO RECALLED ASSETS A/c (Prod Cd 6998-9981)**', provAmtStart: '', writeOff: '', addition: '', reduction: '', provAmtEnd: '0.00', rate: '', provRequired: '0.00'},
-    { feId: '1.i', dbId: 2, label: `Frauds reported on or prior to ${quarterEndDate} provision @ 100% ##`, provAmtStart: '', writeOff: '', addition: '', reduction: '', provAmtEnd: '0.00', rate: '100', provRequired: '0.00'},
-    { feId: '1.ii', dbId: 3, label: `Delayed Reported frauds Provision @ 100% ##`, provAmtStart: '', writeOff: '', addition: '', reduction: '', provAmtEnd: '0.00', rate: '100', provRequired: '0.00'},
-    { feId: '2', dbId: 4, label: 'OTHERS LOSSES IN RECALLED ASSETS (Prod cd 6998 - 9982)#', provAmtStart: '', writeOff: '', addition: '', reduction: '', provAmtEnd: '0.00', rate: '100', provRequired: '0.00'},
-    { feId: '3', dbId: 5, label: 'FRAUDS - OTHER (NOT DEBITED TO RA A/c)$', provAmtStart: '', writeOff: '', addition: '', reduction: '', provAmtEnd: '0.00', rate: '', provRequired: '0.00'},
-    { feId: '3.i', dbId: 6, label: `Frauds reported on or prior to ${quarterEndDate} provision @ 100% ##`, provAmtStart: '', writeOff: '', addition: '', reduction: '', provAmtEnd: '0.00', rate: '100', provRequired: '0.00'},
-    { feId: '3.ii', dbId: 7, label: `Delayed Reported frauds Provision @ 100% ##`, provAmtStart: '', writeOff: '', addition: '', reduction: '', provAmtEnd: '0.00', rate: '100', provRequired: '0.00'},
-    { feId: '4', dbId: 8, label: 'REVENUE ITEM IN SYSTEM SUSPENSE', provAmtStart: '', writeOff: '', addition: '', reduction: '', provAmtEnd: '0.00', rate: '100', provRequired: '0.00'},
-    { feId: '5', dbId: 9, label: 'PROVISION ON ACCOUNT OF FSLO', provAmtStart: '', writeOff: '', addition: '', reduction: '', provAmtEnd: '0.00', rate: '100', provRequired: '0.00'},
-    { feId: '6', dbId: 10, label: 'PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING IN ADJUSTING ACCOUNT FOR PREVIOUS QUARTER(S) (i.e. PRIOR TO CURRENT QUARTER)', provAmtStart: '', writeOff: '', addition: '', reduction: '', provAmtEnd: '0.00', rate: '100', provRequired: '0.00'},
-    { feId: '7', dbId: 11, label: 'PROVISION ON N.P.A. INTEREST FREE STAFF LOANS', provAmtStart: '', writeOff: '', addition: '', reduction: '', provAmtEnd: '0.00', rate: '100', provRequired: '0.00'},
-];
+@Repository("RW04Dao")
+public class RW04DaoImpl implements RW04Dao{
 
+    static Logger log = Logger.getLogger(RW04DaoImpl.class.getName());
 
-const RW04 = () => {
-  const [tabIndex, setTabIndex] = useState(0);
-  const user = JSON.parse(localStorage.getItem('user'));
-  const { state } = useLocation();
-  
-  const [staticRows, setStaticRows] = useState(getInitialStaticRows(user.quarterEndDate));
-  const [dynamicRows, setDynamicRows] = useState([createInitialDynamicRow()]);
-  
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
-  const { callApi, isLoading } = useApi();
-  const setSnackbarMessage = useCustomSnackbar();
-  const [reportObject, setReportObject] = useState(state?.report || null);
+    final DataSource dataSource;
+    final PlatformTransactionManager transactionManager;
 
-  const headers = [
-    'PARTICULARS(2)',
-    `PROVISIONABLE AMT AS ON ${user.quarterStartDate} (3)`,
-    'WRITE OFF DURING THE QUARTER* (4)',
-    'ADDITONS IN PROVISIONABLE AMT DURING THE QUARTER (5)',
-    'REDUCTION IN PROVISIONABLE AMT (OTHER THAN WRITE OFF) DURING THE QUARTER^ (6)',
-    `PROVISIONABLE AMT AS ON ${user.quarterEndDate} (7)=3-4+5-6`,
-    'RATE OF PROVISION (%)(8)',
-    `PROVISION REQUIREMENT AS ON ${user.quarterEndDate} (9)=7*8`,
-  ];
-
-  const isNumeric = (val) => val === null || val === '' || (!isNaN(parseFloat(val)) && isFinite(val));
-
-  // Helper to construct the base payload for all API calls
-  const getBasePayload = useCallback(() => ({
-    circleCode: user?.circleCode,
-    qed: user?.quarterEndDate,
-    userCapacity: user?.userCapacity,
-    reportId: reportObject?.reportId,
-    currentStatus: reportObject?.status,
-  }), [user, reportObject]);
-
-  // Recalculates derived fields for a given static row
-  const calculateStaticRow = (updatedRow) => {
-    const isManualRow = ['1.i', '1.ii', '3.i', '3.ii'].includes(updatedRow.feId);
-    const start = parseFloat(updatedRow.provAmtStart || 0);
-    const write = parseFloat(updatedRow.writeOff || 0);
-    const add = parseFloat(updatedRow.addition || 0);
-    const reduce = parseFloat(updatedRow.reduction || 0);
-    const rate = parseFloat(updatedRow.rate || 0);
-
-    if (!isManualRow) {
-        const end = start - write + add - reduce;
-        updatedRow.provAmtEnd = end.toFixed(2);
-        updatedRow.provRequired = ((end * rate) / 100).toFixed(2);
-    } else {
-        const end = parseFloat(updatedRow.provAmtEnd || 0);
-        updatedRow.provRequired = ((end * rate) / 100).toFixed(2);
+    public RW04DaoImpl(DataSource dataSource,  PlatformTransactionManager transactionManager) {
+        this.dataSource = dataSource;
+        this.transactionManager = transactionManager;
     }
-    return updatedRow;
-  };
-  
-  // Recalculates derived fields for a given dynamic row
-  const calculateDynamicRow = (updatedRow) => {
-    const start = parseFloat(updatedRow.provAmtStart || 0);
-    const write = parseFloat(updatedRow.writeOff || 0);
-    const add = parseFloat(updatedRow.addition || 0);
-    const reduce = parseFloat(updatedRow.reduction || 0);
-    const rate = parseFloat(updatedRow.rate || 0);
-    
-    const end = start - write + add - reduce;
-    updatedRow.provAmtEnd = end.toFixed(2);
-    updatedRow.provRequired = ((end * rate) / 100).toFixed(2);
-    return updatedRow;
-  };
+    @Override
+    public Map<String, Object> getRW04Data(String circleCode, String quarterDate, String reportId) {
 
-  const handleStaticChange = (index, key, value) => {
-    const currentRows = [...staticRows];
-    const currentRow = { ...currentRows[index] };
-    
-    // Prevent non-numeric input for specific fields
-    const numericFields = ['provAmtStart', 'writeOff', 'addition', 'reduction', 'provAmtEnd'];
-    if (numericFields.includes(key) && !isNumeric(value)) {
-        return; // Or show a brief error
-    }
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
 
-    currentRow[key] = value;
-    const recalculatedRow = calculateStaticRow(currentRow);
-    currentRows[index] = recalculatedRow;
-    setStaticRows(currentRows);
-  };
+        List list;
+        Map<String, Object> resultMap = new HashMap<>();
 
-  const handleDynamicChange = (index, key, value) => {
-    const updatedRows = [...dynamicRows];
-    let rowToUpdate = { ...updatedRows[index] };
-    
-    const numericFields = ['provAmtStart', 'writeOff', 'addition', 'reduction'];
-    if (numericFields.includes(key) && !isNumeric(value)) {
-        return;
-    }
-
-    rowToUpdate[key] = value;
-    rowToUpdate = calculateDynamicRow(rowToUpdate);
-    updatedRows[index] = rowToUpdate;
-    setDynamicRows(updatedRows);
-  };
-
-  const isChildRowDisabled = (rowFeId, key) => {
-    return (
-      (rowFeId === '1.i' || rowFeId === '1.ii' || rowFeId === '3.i' || rowFeId === '3.ii') &&
-      !['provAmtEnd', 'rate', 'provRequired'].includes(key)
-    );
-  };
-  
-  // Mismatch validation for parent/child rows
-  const getProvAmtEndMismatchError = (rowFeId) => {
-    if (rowFeId === '1') {
-        const parent = parseFloat(staticRows.find(r => r.feId === '1')?.provAmtEnd || 0);
-        const child1i = parseFloat(staticRows.find(r => r.feId === '1.i')?.provAmtEnd || 0);
-        const child1ii = parseFloat(staticRows.find(r => r.feId === '1.ii')?.provAmtEnd || 0);
-        return Math.abs(parent - (child1i + child1ii)) > 0.01;
-    }
-    if (rowFeId === '3') {
-        const parent = parseFloat(staticRows.find(r => r.feId === '3')?.provAmtEnd || 0);
-        const child3i = parseFloat(staticRows.find(r => r.feId === '3.i')?.provAmtEnd || 0);
-        const child3ii = parseFloat(staticRows.find(r => r.feId === '3.ii')?.provAmtEnd || 0);
-        return Math.abs(parent - (child3i + child3ii)) > 0.01;
-    }
-    return false;
-  };
-
-  // Load data from the backend
-  const loadData = useCallback(async () => {
-    if (!reportObject) return;
-
-    try {
-      const response = await callApi('/RW04/getData', getBasePayload(), 'POST');
-      if (response && response.data) {
-        const apiData = response.data.data || [];
-        
-        const loadedStaticRows = getInitialStaticRows(user.quarterEndDate);
-        const loadedDynamicRows = [];
-
-        apiData.forEach(row => {
-            const dbId = parseInt(row[0], 10);
-            
-            // Static rows have dbId from 1 to 11
-            if (dbId >= 1 && dbId <= 11) {
-                const staticRow = loadedStaticRows.find(r => r.dbId === dbId);
-                if(staticRow) {
-                    staticRow.provAmtStart = row[2];
-                    staticRow.writeOff = row[3];
-                    staticRow.addition = row[4];
-                    staticRow.reduction = row[5];
-                    staticRow.provAmtEnd = row[6];
-                    staticRow.rate = row[7];
-                    staticRow.provRequired = row[8];
+        String getData = "select BS_RW04_ID, BS_RW04_PARTICULARS, BS_RW04_PY, BS_RW04_WRITE_OFF, BS_RW04_ADDITION, BS_RW04_REDUCTION, BS_RW04_CY, " +
+                "BS_RW04_PROVI_RATE, BS_RW04_PROVI_REQ, BS_RW04_SEQ from BS_RW04 where BS_RW04_CIRCLE = ? and BS_RW04_DATE = to_date(?,'dd/MM/yyyy') and RML_ID_FK = ? order by BS_RW04_ID";
+        list = jdbcTemplate.query(getData, new Object[]{circleCode, quarterDate, reportId}, new ResultSetExtractor<List<List<String>>>() {
+            @Override
+            public List<List<String>> extractData(ResultSet resultSet) throws SQLException, DataAccessException {
+                List<List<String>> branch1 = new ArrayList<>();
+                while (resultSet.next()) {
+                    List<String> branchlist = new ArrayList<>();
+                    branchlist.add(String.valueOf(resultSet.getInt(1)));
+                    branchlist.add(resultSet.getString(2));
+                    branchlist.add(String.valueOf(resultSet.getBigDecimal(3)));
+                    branchlist.add(String.valueOf(resultSet.getBigDecimal(4)));
+                    branchlist.add(String.valueOf(resultSet.getBigDecimal(5)));
+                    branchlist.add(String.valueOf(resultSet.getBigDecimal(6)));
+                    branchlist.add(String.valueOf(resultSet.getBigDecimal(7)));
+                    branchlist.add(String.valueOf(resultSet.getBigDecimal(8)));
+                    branchlist.add(String.valueOf(resultSet.getBigDecimal(9)));
+                    branchlist.add(String.valueOf(resultSet.getInt(10)));
+                    branch1.add(branchlist);
                 }
-            } else { // All other IDs are for dynamic rows
-                loadedDynamicRows.push({
-                    dbId: dbId,
-                    particulars: row[1],
-                    provAmtStart: row[2],
-                    writeOff: row[3],
-                    addition: row[4],
-                    reduction: row[5],
-                    provAmtEnd: row[6],
-                    rate: row[7],
-                    provRequired: row[8],
-                    selected: false,
-                    key: dbId, // Use dbId as key for saved rows
-                });
+                return branch1;
             }
         });
-        
-        setStaticRows(loadedStaticRows);
-        setDynamicRows(loadedDynamicRows.length > 0 ? loadedDynamicRows : [createInitialDynamicRow()]);
-        setSnackbarMessage('Data loaded successfully!', 'success');
-      } else if (response && response.data.message) {
-         setSnackbarMessage(response.data.message, 'warning');
-      }
-    } catch (error) {
-      console.error('Error loading data:', error);
-      setSnackbarMessage('Failed to load data!', 'error');
+        log.info("list :: " + list);
+        resultMap.put("data", list);
+
+        return resultMap;
     }
-  }, [callApi, getBasePayload, reportObject, setSnackbarMessage, user.quarterEndDate]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+    @Override
+    public Map<String, Object> insertStaticTable(ArrayList<String> particularsList, String circleCode, String quarterDate, String reportId, List<List<String>> value) {
+        int insert = 0;
+        int check = 0;
+        Map<String, Object> resultMap = null;
+try {
+    String insertQuery = "insert into BS_RW04 (BS_RW04_ID,BS_RW04_CIRCLE,BS_RW04_DATE,RML_ID_FK,BS_RW04_PARTICULARS,BS_RW04_PY,BS_RW04_WRITE_OFF," +
+            "BS_RW04_ADDITION,BS_RW04_REDUCTION,BS_RW04_CY,BS_RW04_PROVI_RATE,BS_RW04_PROVI_REQ,BS_RW04_SEQ) " +
+            "values (?,?,to_date(?,'DD/MM/YYYY'),?,?,?,?,?,?,?,?,?,?)";
 
-  // Main function to handle Save/Submit actions
-  const handleSubmit = async () => {
-    let endpoint = '';
-    let payload = {};
+    JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
 
-    if (tabIndex === 0) { // Static Tab
-        endpoint = '/RW04/saveStatic';
-        // Backend expects a List of Lists (string arrays)
-        const value = staticRows.map(row => ([
-            row.provAmtStart || '0.00',
-            row.writeOff || '0.00',
-            row.addition || '0.00',
-            row.reduction || '0.00',
-            row.provAmtEnd || '0.00',
-            row.rate || '0',
-            row.provRequired || '0.00',
-            String(row.dbId) // Send dbId for update mapping
-        ]));
-        payload = { ...getBasePayload(), value };
+    TransactionDefinition def = new DefaultTransactionDefinition();
+    TransactionStatus status = transactionManager.getTransaction(def);
+
+    for (int i = 0; i < particularsList.size(); i++) {
+        String particulars = particularsList.get(i).split("~")[1];
+        int rowId = Integer.parseInt(particularsList.get(i).split("~")[0]);
+        List<String> row = value.get(i) != null ? value.get(i) : new ArrayList<>();
+        BigDecimal prevProvAmt = row.get(0) != null ? new BigDecimal(row.get(0)) : i == 11 ? null : new BigDecimal("0.00");
+        BigDecimal writeOffAmt = row.get(1) != null ? new BigDecimal(row.get(1)) : i == 11 ? null : new BigDecimal("0.00");
+        BigDecimal additionAmt = row.get(2) != null ? new BigDecimal(row.get(2)) : i == 11 ? null : new BigDecimal("0.00");
+        BigDecimal reductionAmt = row.get(3) != null ? new BigDecimal(row.get(3)) : i == 11 ? null : new BigDecimal("0.00");
+        BigDecimal currProvAmt = row.get(4) != null ? new BigDecimal(row.get(4)) : i == 11 ? null : new BigDecimal("0.00");
+        BigDecimal provRate = row.get(5) != null ? new BigDecimal(row.get(5)) : i == 11 ? null : new BigDecimal("0.00");
+        BigDecimal provReqAmt = row.get(6) != null ? new BigDecimal(row.get(6)) : i == 11 ? null : new BigDecimal("0.00");
+
+        insert = jdbcTemplate.update(insertQuery, rowId, circleCode, quarterDate, reportId, particulars,
+                prevProvAmt, writeOffAmt, additionAmt, reductionAmt, currProvAmt, provRate, provReqAmt, rowId);
+        check++;
+    }
+     resultMap = new HashMap<>();
+    if (check == 11) {
+        resultMap.put("insert", "11");
+        transactionManager.commit(status);
+    } else {
+        resultMap.put("message", "Insert was not complete. Try Again.");
+        transactionManager.rollback(status);
+    }
+} catch (Exception e) {
+    log.info(e.getMessage());
+}
+        return resultMap;
+    }
+
+    @Override
+    public Map<String, Object> updateStaticTable(String circleCode, String quarterDate, String reportId, List<List<String>> value) {
+        int update = 0;
+        int count = 0;
+
+        String updateQuery = "update BS_RW04 set BS_RW04_PY = ?, BS_RW04_WRITE_OFF = ?, BS_RW04_ADDITION = ?, BS_RW04_REDUCTION = ?, BS_RW04_CY = ?, " +
+                "BS_RW04_PROVI_RATE = ?, BS_RW04_PROVI_REQ = ? where BS_RW04_CIRCLE = ? and BS_RW04_DATE = to_date(?,'DD/MM/YYYY') and RML_ID_FK = ? and BS_RW04_ID = ?";
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+
+        TransactionDefinition def = new DefaultTransactionDefinition();
+        TransactionStatus status = transactionManager.getTransaction(def);
+
+        for(int i = 0; i < value.size(); i++){
+            List<String> row = value.get(i);
+            BigDecimal prevProvAmt = row.get(0) != null ? new BigDecimal(row.get(0)) : new BigDecimal("0.00");
+            BigDecimal writeOffAmt = row.get(1) != null ? new BigDecimal(row.get(1)) : new BigDecimal("0.00");
+            BigDecimal additionAmt = row.get(2) != null ? new BigDecimal(row.get(2)) : new BigDecimal("0.00");
+            BigDecimal reductionAmt = row.get(3) != null ? new BigDecimal(row.get(3)) : new BigDecimal("0.00");
+            BigDecimal currProvAmt = row.get(4)  != null ? new BigDecimal(row.get(4)) : new BigDecimal("0.00");
+            BigDecimal provRate = row.get(5)  != null ? new BigDecimal(row.get(5)) : new BigDecimal("0.00");
+            BigDecimal provReqAmt = row.get(6)  != null ? new BigDecimal(row.get(6)) : new BigDecimal("0.00");
+            int rowId = row.get(7) != null ? Integer.parseInt(row.get(7)) : 0;
+
+            update = jdbcTemplate.update(updateQuery, prevProvAmt, writeOffAmt, additionAmt, reductionAmt, currProvAmt, provRate, provReqAmt,
+                    circleCode, quarterDate, reportId, rowId);
+            count++;
+        }
+        Map<String, Object> resultMap = new HashMap<>();
+        if (count == 11) {
+            resultMap.put("update", update);
+            transactionManager.commit(status);
+        } else {
+            resultMap.put("message", "Update was not complete. Try Again.");
+            transactionManager.rollback(status);
+        }
+        return resultMap;
+    }
+
+    public int getRowSeq(){
+        int rowSeq;
+        String seq = "select BS_RW04_SEQ.nextval from dual";
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        rowSeq = jdbcTemplate.queryForObject(seq, Integer.class);
+        return rowSeq;
+    }
+
+    @Override
+    public Map<String, Object> saveAddRow(String circleCode, String quarterDate, String reportId, List<String> value) {
+        int insert;
+        int update;
+
+        int rowId = Integer.parseInt(value.get(7));
         
-        try {
-            await callApi(endpoint, payload, 'POST');
-            setSnackbarMessage('Data saved successfully!', 'success');
-        } catch (error) {
-            console.error(`Error during save operation:`, error);
-            setSnackbarMessage(`An error occurred while saving data.`, 'error');
+        String insertQuery = "insert into BS_RW04 (BS_RW04_ID,BS_RW04_CIRCLE,BS_RW04_DATE,RML_ID_FK,BS_RW04_PARTICULARS,BS_RW04_PY,BS_RW04_WRITE_OFF, " +
+                " BS_RW04_ADDITION,BS_RW04_REDUCTION,BS_RW04_CY,BS_RW04_PROVI_RATE,BS_RW04_PROVI_REQ,BS_RW04_SEQ) " +
+                " values (?,?,to_date(?,'DD/MM/YYYY'),?,?,?,?,?,?,?,?,?,?) ";
+
+        String updateQuery = "update BS_RW04 set BS_RW04_ID = ?, BS_RW04_PARTICULARS = ?, BS_RW04_PY = ?, BS_RW04_WRITE_OFF = ?, BS_RW04_ADDITION = ?, BS_RW04_REDUCTION = ?, BS_RW04_CY = ?, " +
+                " BS_RW04_PROVI_RATE = ?, BS_RW04_PROVI_REQ = ? where BS_RW04_CIRCLE = ? and BS_RW04_DATE = to_date(?,'DD/MM/YYYY') and RML_ID_FK = ? and BS_RW04_SEQ = ?";
+
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+
+        TransactionDefinition def = new DefaultTransactionDefinition();
+        TransactionStatus status = transactionManager.getTransaction(def);
+
+        String particulars = value.get(0) != null ? value.get(0) : "" ;
+        BigDecimal prevProvAmt = value.get(1) != null ? new BigDecimal(value.get(1)) : new BigDecimal("0.00");
+        BigDecimal writeOffAmt = value.get(2) != null ? new BigDecimal(value.get(2)) : new BigDecimal("0.00");
+        BigDecimal additionAmt = value.get(3) != null ? new BigDecimal(value.get(3)) : new BigDecimal("0.00");
+        BigDecimal reductionAmt = value.get(4) != null ? new BigDecimal(value.get(4)) : new BigDecimal("0.00");
+        BigDecimal currProvAmt = value.get(5)  != null ? new BigDecimal(value.get(5)) : new BigDecimal("0.00");
+        BigDecimal provRate = value.get(6)  != null ? new BigDecimal(value.get(6)) : new BigDecimal("0.00");
+        BigDecimal provReqAmt = value.get(7)  != null ? new BigDecimal(value.get(7)) : new BigDecimal("0.00");
+
+        Map<String, Object> resultMap = new HashMap<>();
+
+        if (rowId == 0) {
+            rowId = getRowSeq();
+
+            insert = jdbcTemplate.update(insertQuery, rowId, circleCode, quarterDate, reportId, particulars, prevProvAmt, writeOffAmt, additionAmt, reductionAmt, currProvAmt, provRate, provReqAmt, rowId);
+
+            if (insert == 1) {
+                resultMap.put("insert", insert);
+                transactionManager.commit(status);
+            }
+            else{
+                resultMap.put("message", "Insert was not complete. Try Again.");
+                transactionManager.rollback(status);
+            }
+        } else {
+            update = jdbcTemplate.update(updateQuery, rowId, particulars, prevProvAmt, writeOffAmt, additionAmt, reductionAmt, currProvAmt, provRate, provReqAmt, circleCode, quarterDate, reportId, rowId);
+            if (update == 1) {
+                resultMap.put("update", update);
+                transactionManager.commit(status);
+            }
+            else{
+                resultMap.put("message", "Update was not complete. Try Again.");
+                transactionManager.rollback(status);
+            }
+        }
+        return resultMap;
+    }
+
+    @Override
+    public Map<String, Object> deleteRow(int rowId) {
+        int delete;
+
+        String deleteQuery = "delete from BS_RW04 where BS_RW04_SEQ = ?";
+
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+
+        TransactionDefinition def = new DefaultTransactionDefinition();
+        TransactionStatus status = transactionManager.getTransaction(def);
+
+        delete = jdbcTemplate.update(deleteQuery, rowId);
+
+        Map<String, Object> resultMap = new HashMap<>();
+        if (delete == 1) {
+            resultMap.put("delete", delete);
+            transactionManager.commit(status);
+        }
+        else {
+            resultMap.put("message", "Delete was not complete. Try Again.");
+            transactionManager.rollback(status);
+        }
+        return resultMap;
+    }
+
+    @Override
+    public void updateRMLentry(String reportId, String userId, String rMId, String circleCode, String qed) {
+
+        int update;
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+
+        TransactionDefinition def = new DefaultTransactionDefinition();
+        TransactionStatus status = transactionManager.getTransaction(def);
+
+        String updateQuery = "update BS_MISCRPT set MISC_STATUS = ? where MISC_REPORTID_FK = ? and MISC_CIRCLE = ? and  MISC_QDATE = ? and MISC_MAKERID = ?";
+
+        update = jdbcTemplate.update(updateQuery, "11", rMId, circleCode, qed, userId);
+        if (update == 1) {
+            transactionManager.commit(status);
+        }
+        else {
+            transactionManager.rollback(status);
         }
 
-    } else if (tabIndex === 1) { // Dynamic "OTHERS" Tab
-        try {
-            // Backend handles one row at a time, so we must iterate and call for each.
-            const savePromises = dynamicRows.map(row => {
-                // Skip empty, untouched new rows
-                if (row.dbId === 0 && !row.particulars.trim()) {
-                    return Promise.resolve();
-                }
-
-                const singleRowPayloadValue = [
-                    row.particulars,
-                    row.provAmtStart || '0.00',
-                    row.writeOff || '0.00',
-                    row.addition || '0.00',
-                    row.reduction || '0.00',
-                    row.provAmtEnd || '0.00',
-                    row.rate || '100',
-                    row.provRequired || '0.00',
-                    // NOTE: Backend code has a potential bug, reading rowId and provReqAmt from the same index (7).
-                    // Assuming rowId should be at index 8. Adjust if backend is fixed differently.
-                    String(row.dbId), // Send dbId (0 for new rows, >0 for existing)
-                ];
-
-                const singleRowPayload = { ...getBasePayload(), value: singleRowPayloadValue };
-                return callApi('/RW04/saveAddRow', singleRowPayload, 'POST');
-            });
-
-            await Promise.all(savePromises);
-            setSnackbarMessage('Data saved successfully!', 'success');
-            loadData(); // Reload data to get new dbIds
-        } catch (error) {
-            console.error(`Error during save operation:`, error);
-            setSnackbarMessage(`An error occurred while saving data.`, 'error');
-        }
     }
-  };
-
-  const handleAddRow = () => {
-    setDynamicRows([...dynamicRows, createInitialDynamicRow()]);
-  };
-
-  const handleDeleteRow = async () => {
-    const rowsToDelete = dynamicRows.filter(row => row.selected && row.dbId !== 0);
-    const newRowsToKeep = dynamicRows.filter(row => !row.selected);
-
-    if (rowsToDelete.length === 0) {
-      setSnackbarMessage('Please select a saved row to delete.', 'warning');
-      setDynamicRows(newRowsToKeep.length > 0 ? newRowsToKeep : [createInitialDynamicRow()]); // remove selected new rows
-      return;
-    }
-    
-    try {
-        // Backend deletes one row at a time by its ID.
-        const deletePromises = rowsToDelete.map(row => {
-            const payload = {
-                userCapacity: user.userCapacity,
-                rowId: row.dbId
-            };
-            return callApi('/RW04/deleteRow', payload, 'POST');
-        });
-
-        await Promise.all(deletePromises);
-        setSnackbarMessage('Selected rows deleted successfully!', 'success');
-        setDynamicRows(newRowsToKeep.length > 0 ? newRowsToKeep : [createInitialDynamicRow()]);
-
-    } catch (error) {
-        console.error('Error deleting rows:', error);
-        setSnackbarMessage('An error occurred during deletion.', 'error');
-        // Optionally, reload data to ensure UI consistency
-        loadData();
-    }
-  };
-
-  const renderHeader = () => (
-    <TableHead>
-      <TableRow>
-        <StyledTableCell sx={{minWidth: '60px'}}>Sr No(1)</StyledTableCell>
-        {tabIndex === 1 && <StyledTableCell>SELECT</StyledTableCell>}
-        {headers.map((head, idx) => (
-          <StyledTableCell key={idx} sx={{ minWidth: '160px' }}>{head}</StyledTableCell>
-        ))}
-      </TableRow>
-    </TableHead>
-  );
-
-  return (
-    <Box>
-      <Tabs value={tabIndex} onChange={(e, i) => setTabIndex(i)}>
-        <Tab label="RW-04(I)" />
-        <Tab label="RW-04(II) - OTHERS" />
-      </Tabs>
-
-      <Box mt={2} display="flex" gap={2}>
-         {tabIndex === 1 && (
-            <>
-            <Button variant="contained" color="secondary" onClick={handleAddRow} disabled={isLoading}>
-              Add Row
-            </Button>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={handleDeleteRow}
-              disabled={isLoading || dynamicRows.every((row) => !row.selected)}
-            >
-              Delete Row
-            </Button>
-            </>
-         )}
-        <Button variant="contained" color="warning" onClick={handleSubmit} disabled={isLoading}>
-          {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Save'}
-        </Button>
-        {/* Submit functionality can be added here if different from save */}
-      </Box>
-
-      <TableContainer component={Paper} sx={{ mt: 2, maxHeight: 'calc(100vh - 250px)' }}>
-        <Table stickyHeader>
-          {renderHeader()}
-          <TableBody>
-            {tabIndex === 0 && staticRows.map((row, index) => (
-              <TableRow key={row.feId}>
-                <TableCell align="center">{row.feId}</TableCell>
-                <TableCell sx={{ width: '280px', textAlign: 'left' }}>
-                  {row.label}
-                </TableCell>
-                {['provAmtStart', 'writeOff', 'addition', 'reduction'].map((key) => (
-                  <TableCell key={key} align="center">
-                    <FormInput
-                      value={row[key]}
-                      onChange={(e) => handleStaticChange(index, key, e.target.value)}
-                      readOnly={isChildRowDisabled(row.feId, key)}
-                      sx={{ width: '150px' }}
-                      placeholder="0.00"
-                    />
-                  </TableCell>
-                ))}
-                <TableCell align="center">
-                    <Box display="flex" flexDirection="column">
-                        <FormInput
-                        value={row.provAmtEnd}
-                        onChange={(e) => handleStaticChange(index, 'provAmtEnd', e.target.value)}
-                        readOnly={!['1.i', '1.ii', '3.i', '3.ii'].includes(row.feId)}
-                        error={getProvAmtEndMismatchError(row.feId)}
-                        sx={{ width: '150px' }}
-                        placeholder="0.00"
-                        />
-                        {getProvAmtEndMismatchError(row.feId) && (
-                        <Typography fontSize={12} color="error" textAlign={'left'} sx={{ ml: 1 }}>
-                            Sum of children must match parent
-                        </Typography>
-                        )}
-                    </Box>
-                </TableCell>
-                <TableCell align="center">
-                    <FormInput value={row.rate} readOnly={true} sx={{ width: '150px' }} />
-                </TableCell>
-                <TableCell align="center">
-                    <FormInput value={row.provRequired} readOnly={true} sx={{ width: '150px' }} />
-                </TableCell>
-              </TableRow>
-            ))}
-
-            {tabIndex === 1 && dynamicRows.map((row, i) => (
-              <TableRow key={row.key}>
-                <TableCell align="center">{i + 1}</TableCell>
-                <TableCell padding="checkbox" align="center">
-                  <Checkbox
-                    checked={row.selected}
-                    onChange={() => {
-                      const updated = [...dynamicRows];
-                      updated[i].selected = !updated[i].selected;
-                      setDynamicRows(updated);
-                    }}
-                  />
-                </TableCell>
-                <TableCell>
-                  <FormInput
-                    maxLength={100}
-                    value={row.particulars}
-                    onChange={(e) => handleDynamicChange(i, 'particulars', e.target.value)}
-                    sx={{ width: '150px' }}
-                    placeholder="Enter Particulars"
-                  />
-                </TableCell>
-                {['provAmtStart', 'writeOff', 'addition', 'reduction'].map((key) => (
-                  <TableCell key={key} align="center">
-                    <FormInput
-                      value={row[key]}
-                      onChange={(e) => handleDynamicChange(i, key, e.target.value)}
-                      sx={{ width: '150px' }}
-                      placeholder="0.00"
-                    />
-                  </TableCell>
-                ))}
-                <TableCell align="center">
-                  <FormInput value={row.provAmtEnd} readOnly={true} sx={{ width: '150px' }} />
-                </TableCell>
-                <TableCell align="center">
-                  <FormInput value={row.rate} readOnly={true} sx={{ width: '150px' }} />
-                </TableCell>
-                <TableCell align="center">
-                  <FormInput value={row.provRequired} readOnly={true} sx={{ width: '150px' }} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
-  );
-};
-
-export default RW04;
+}
