@@ -433,9 +433,7 @@ const RW04 = () => {
           // Await the API call and capture the response
           const response = await callApi('/RW04/saveAddRow', singleRowPayload, 'POST');
 
-          // MODIFIED LOGIC:
           // If the row was new (dbId was 0) and the backend returned a new rowId, update it.
-          // This matches the `return resultMap.put("rowId", rowId);` from the Java code.
           if (row.dbId === 0 && response && response.data && response.data.rowId) {
             // Update the dbId and key in our temporary array.
             updatedRows[i].dbId = response.data.rowId;
@@ -456,10 +454,15 @@ const RW04 = () => {
     }
   };
 
+  /**
+   * BUG FIX:
+   * The condition to check for an unsaved row is now simplified.
+   * It now checks if there is ANY row with dbId === 0.
+   * This prevents adding a second new row (even a blank one) if the first one hasn't been saved yet.
+   */
   const handleAddRow = () => {
-    const hasUnsavedRow = dynamicRows.some(
-      (row) => row.dbId === 0 && (row.particulars || row.provAmtStart || row.writeOff || row.addition || row.reduction)
-    );
+    // Check if any row in the state is an unsaved row (dbId is 0).
+    const hasUnsavedRow = dynamicRows.some((row) => row.dbId === 0);
 
     if (hasUnsavedRow) {
       setSnackbar({
