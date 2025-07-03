@@ -414,11 +414,12 @@ const RW04 = () => {
     } else if (tabIndex === 1) {
       // Dynamic "OTHERS" Tab
       try {
-        // Backend handles one row at a time, so we must iterate and call for each.
-        const savePromises = dynamicRows.map((row) => {
-          // Skip empty, untouched new rows
+        // MODIFIED LOGIC:
+        // Iterate over each dynamic row and save it sequentially without using Promise.all.
+        for (const row of dynamicRows) {
+          // Skip empty, untouched new rows.
           if (row.dbId === 0 && !row.particulars.trim()) {
-            return Promise.resolve();
+            continue; // Go to the next iteration.
           }
 
           const singleRowPayloadValue = [
@@ -430,18 +431,18 @@ const RW04 = () => {
             row.provAmtEnd || '0.00',
             row.rate || '100',
             row.provRequired || '0.00',
-            // NOTE: Backend code has a potential bug, reading rowId and provReqAmt from the same index (7).
-            // Assuming rowId should be at index 8. Adjust if backend is fixed differently.
             String(row.dbId), // Send dbId (0 for new rows, >0 for existing)
           ];
 
           const singleRowPayload = { ...getBasePayload(), value: singleRowPayloadValue };
-          return callApi('/RW04/saveAddRow', singleRowPayload, 'POST');
-        });
 
-        await Promise.all(savePromises);
+          // Await the API call for each row. The loop will pause here until the request is complete.
+          await callApi('/RW04/saveAddRow', singleRowPayload, 'POST');
+        }
+
+        // After all rows are saved successfully, show a message and reload the data.
         setSnackbarMessage('Data saved successfully!', 'success');
-        loadData(); // Reload data to get new dbIds
+        loadData(); // Reload data to get new dbIds.
       } catch (error) {
         console.error(`Error during save operation:`, error);
         setSnackbarMessage(`An error occurred while saving data.`, 'error');
@@ -449,13 +450,6 @@ const RW04 = () => {
     }
   };
 
-  /**
-   * MODIFIED FUNCTION
-   * This function now checks if there is an existing unsaved row in the dynamicRows state.
-   * An unsaved row is identified by `dbId === 0`.
-   * If an unsaved row exists and the user has started entering data in it,
-   * it prevents adding a new one and prompts the user to save the current row first.
-   */
   const handleAddRow = () => {
     const hasUnsavedRow = dynamicRows.some(
       (row) => row.dbId === 0 && (row.particulars || row.provAmtStart || row.writeOff || row.addition || row.reduction)
@@ -489,6 +483,7 @@ const RW04 = () => {
 
     try {
       // Backend deletes one row at a time by its ID.
+      // This can also be converted to a sequential loop if needed, but parallel is often fine for deletion.
       const deletePromises = rowsToDelete.map((row) => {
         const payload = {
           userCapacity: user.userCapacity,
