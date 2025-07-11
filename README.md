@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { Decoder } = require("base64-stream"); // OK
+const Base64Decode = require("base64-stream"); // ✅ Correct
 const { Readable } = require("stream");
 
 router.post("/submitLFARZipDownload", async (req, res) => {
@@ -37,19 +37,19 @@ router.post("/submitLFARZipDownload", async (req, res) => {
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
 
     const base64Stream = Readable.from(base64Data);
-    const decodeStream = Decoder(); // ✅ NO `new`
+    const decodeStream = new Base64Decode.Decoder(); // ✅ Must use `new`
     const writeStream = fs.createWriteStream(filePath);
 
-    base64Stream.pipe(decodeStream).pipe(writeStream);
-
-    writeStream.on("finish", () => {
-      res.json({ message: "ZIP file saved successfully", path: filePath });
-    });
-
-    writeStream.on("error", (err) => {
-      console.error("Write error:", err);
-      res.status(500).json({ message: "Error writing file" });
-    });
+    base64Stream
+      .pipe(decodeStream)
+      .pipe(writeStream)
+      .on("finish", () => {
+        res.json({ message: "ZIP file saved successfully", path: filePath });
+      })
+      .on("error", (err) => {
+        console.error("Stream error:", err);
+        res.status(500).json({ message: "Error writing file" });
+      });
   } catch (err) {
     console.error(err);
     res.status(500).send("Failed to fetch ZIP file");
