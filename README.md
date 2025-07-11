@@ -1,40 +1,82 @@
+let express = require("express");
+let morgan = require("morgan");
+let fetch = require("node-fetch");
 const fs = require("fs");
 const path = require("path");
-const { Decoder } = require("base64-stream"); // ✅ Correct import
+const { Decoder } = require("base64-stream");
 const { Readable } = require("stream");
 
-router.post("/submitLFARZipDownload", async (req, res) => {
-  try {
-    const springResponse = await fetch(/* your fetch config */);
-    const data = await springResponse.json();
-    const base64Zip = data.result.pdfContent;
 
-    // Clean Base64 prefix
-    const cleanedBase64 = base64Zip.replace(/^data:application\/zip;base64,/, "");
 
-    const filePath = path.join(__dirname, "zips", filename);
+router.post(
+  "/submitLFARZipDownload",
+  extractToken,
+  DataValidator,
+  LegalRequest,
+  async (req, res) => {
+    let filename =
+      req.user.circleCode +
+      "_" +
+      req.user.quarterEndDate.replaceAll("/", "") +
+      "_" +
+      req.data.reportName +
+      ".zip";
+    console.log(filename);
 
-    // Ensure directory exists
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    console.log(req.data);
 
-    // Create a readable stream from base64 string
-    const base64Stream = Readable.from(cleanedBase64);
-    const decodeStream = new Decoder(); // ✅ Now works
-    const writeStream = fs.createWriteStream(filePath);
+    try {
+      const springResponse = await fetch(
+        URL_CONST.PROD_URL[req.user.module].submitDownload,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user: req.user,
+            data: req.data,
+          }),
+        }
+      );
 
-    base64Stream
-      .pipe(decodeStream)
-      .pipe(writeStream)
-      .on("finish", () => {
-        res.json({ message: "ZIP file saved successfully", path: filePath });
-      })
-      .on("error", (err) => {
-        console.error("Write error:", err);
-        res.status(500).json({ message: "Error writing file" });
-      });
+      const data = await springResponse.json();
+      let base64Zip = data.result.pdfContent;
 
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Failed to fetch ZIP file");
+      try {
+        const base64Data = base64Zip.replace(
+          /^data:application\/zip;base64,/,
+          ""
+        );
+
+        const filePath = path.join(__dirname, "zips", filename);
+        //const buffer = Buffer.from(base64Data, "base64");
+
+        // Make sure the directory exists
+        //  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+
+        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+
+        const base64Stream = Readable.from(base64Data);
+        const decodeStream = new Decoder();
+        const writeStream = fs.createWriteStream(filePath);
+
+        base64Stream.pipe(decodeStream).pipe(writeStream);
+
+        writeStream.on("finish", () => {
+          res.json({ message: "ZIP file saved successfully", path: filePath });
+        });
+
+        writeStream.on("error", (err) => {
+          console.error("Write error:", err);
+          res.status(500).json({ message: "Error writing file" });
+        });
+      } catch (err) {
+        console.error(err);
+        res.status(500).send("Failed to fetch ZIP file");
+      }
+    } catch (err) {
+      console.error(err);
+      res.status(500).send("Failed to fetch ZIP file");
+    }
   }
-});
+);
+
