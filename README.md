@@ -1,13 +1,10 @@
-
-let express = require("express");
-let morgan = require("morgan");
-let fetch = require("node-fetch");
+const express = require("express");
+const morgan = require("morgan");
+const fetch = require("node-fetch");
 const fs = require("fs");
 const path = require("path");
-const Base64Decode = require("base64-stream"); // ? Correct
+const Base64Decode = require("base64-stream");
 const { Readable } = require("stream");
-
-
 
 router.post(
   "/submitLFARZipDownload",
@@ -15,15 +12,8 @@ router.post(
   DataValidator,
   LegalRequest,
   async (req, res) => {
-    let filename =
-      req.user.circleCode +
-      "_" +
-      req.user.quarterEndDate.replaceAll("/", "") +
-      "_" +
-      req.data.reportName +
-      ".zip";
+    const filename = `${req.user.circleCode}_${req.user.quarterEndDate.replaceAll("/", "")}_${req.data.reportName}.zip`;
     console.log(filename);
-
     console.log(req.data);
 
     try {
@@ -39,52 +29,51 @@ router.post(
         }
       );
 
-      const data = await springResponse.json();
-      let base64Zip = data.result.pdfContent;
-
-      try {
-        const base64Data = base64Zip.replace(
-          /^data:application\/zip;base64,/,
-          ""
-        );
-
-        const filePath = path.join(__dirname, "zips", filename);
-        //const buffer = Buffer.from(base64Data, "base64");
-
-        // Make sure the directory exists
-        //  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-
-        fs.mkdirSync(path.dirname(filePath), { recursive: true });
-
-        const base64Stream = Readable.from(base64Data);
-        const decodeStream = new Base64Decode.Decoder();
-        const writeStream = fs.createWriteStream(filePath);
-
-        base64Stream.pipe(decodeStream).pipe(writeStream);
-
-        writeStream.on("finish", () => {
-          res.json({ message: "ZIP file saved successfully", path: filePath });
-        });
-
-        writeStream.on("error", (err) => {
-          console.error("Write error:", err);
-          res.status(500).json({ message: "Error writing file" });
-        });
-      } catch (err) {
-        console.error(err);
-        res.status(500).send("Failed to fetch ZIP file");
+      // Check for a successful response from the Spring application
+      if (!springResponse.ok) {
+        throw new Error(`Failed to fetch from Spring service: ${springResponse.statusText}`);
       }
+
+      const data = await springResponse.json();
+      const base64Zip = data.result.pdfContent;
+
+      if (!base64Zip) {
+        return res.status(404).json({ message: "No ZIP content found in response" });
+      }
+
+      const base64Data = base64Zip.replace(/^data:application\/zip;base64,/, "");
+      const filePath = path.join(__dirname, "zips", filename);
+
+      // Ensure the 'zips' directory exists
+      await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+
+      const readableStream = Readable.from(base64Data);
+      const decodeStream = new Base64Decode(); // Corrected instantiation
+      const writeStream = fs.createWriteStream(filePath);
+
+      // Pipe the streams together
+      readableStream.pipe(decodeStream).pipe(writeStream);
+
+      // Handle successful file write
+      writeStream.on("finish", () => {
+        console.log("ZIP file saved successfully at:", filePath);
+        res.status(200).json({ message: "ZIP file saved successfully", path: filePath });
+      });
+
+      // Handle errors during the streaming process
+      writeStream.on("error", (err) => {
+        console.error("Error writing file:", err);
+        res.status(500).json({ message: "Error saving the ZIP file" });
+      });
+
+      decodeStream.on("error", (err) => {
+        console.error("Error decoding Base64 stream:", err);
+        res.status(500).json({ message: "Error decoding the file content" });
+      });
+
     } catch (err) {
-      console.error(err);
-      res.status(500).send("Failed to fetch ZIP file");
+      console.error("An error occurred:", err);
+      res.status(500).send("Failed to process the download request.");
     }
   }
 );
-
-/////////////////////////////
-TypeError: Base64Decode.Decoder is not a constructor
-    at D:\@NewCrsFrontend\Server\routes\DownloadReportService\DownloadReports.js:316:30
-    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
-POST /Server/downloadReports/submitLFARZipDownload 500 99170.823 ms - 24
-
-
