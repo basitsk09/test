@@ -1,82 +1,75 @@
-let express = require("express");
-let morgan = require("morgan");
-let fetch = require("node-fetch");
-const fs = require("fs");
-const path = require("path");
+Thanks for sharing your full code — I now clearly see the problem. The issue you're facing:
+
+TypeError: Decoder is not a constructor
+
+is happening because the base64-stream library does not export Decoder as a named export like this:
+
+const { Decoder } = require("base64-stream"); // ❌ Wrong
+
+
+---
+
+✅ Correct Way to Import Decoder from base64-stream:
+
+Change this line:
+
 const { Decoder } = require("base64-stream");
-const { Readable } = require("stream");
+
+To:
+
+const Base64Decode = require("base64-stream").Decoder; // ✅ Correct
+
+Or simply:
+
+const Base64Decode = require("base64-stream"); // ✅ Also works
+const decodeStream = new Base64Decode.Decoder(); // ✅
+
+
+---
+
+🔁 Then update this part:
+
+const decodeStream = new Decoder(); // ❌ Will throw error
+
+To:
+
+const decodeStream = new Base64Decode(); // ✅ Works now
+
+
+---
+
+✅ Final Working Snippet
+
+const Base64Decode = require("base64-stream").Decoder; // ✅ Correct
+
+...
+
+const base64Stream = Readable.from(base64Data);
+const decodeStream = new Base64Decode(); // ✅ Fixed
+const writeStream = fs.createWriteStream(filePath);
+
+base64Stream.pipe(decodeStream).pipe(writeStream);
+
+
+---
+
+🧪 Sanity Check: Make sure you have the package installed
+
+npm install base64-stream
+
+
+---
+
+✅ Summary
+
+Problem	Fix
+
+Decoder is not a constructor	Use require("base64-stream").Decoder not destructuring
+Readable.from(...) + Base64Decode()	Correct stream piping method for large base64 files
 
 
 
-router.post(
-  "/submitLFARZipDownload",
-  extractToken,
-  DataValidator,
-  LegalRequest,
-  async (req, res) => {
-    let filename =
-      req.user.circleCode +
-      "_" +
-      req.user.quarterEndDate.replaceAll("/", "") +
-      "_" +
-      req.data.reportName +
-      ".zip";
-    console.log(filename);
+---
 
-    console.log(req.data);
-
-    try {
-      const springResponse = await fetch(
-        URL_CONST.PROD_URL[req.user.module].submitDownload,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user: req.user,
-            data: req.data,
-          }),
-        }
-      );
-
-      const data = await springResponse.json();
-      let base64Zip = data.result.pdfContent;
-
-      try {
-        const base64Data = base64Zip.replace(
-          /^data:application\/zip;base64,/,
-          ""
-        );
-
-        const filePath = path.join(__dirname, "zips", filename);
-        //const buffer = Buffer.from(base64Data, "base64");
-
-        // Make sure the directory exists
-        //  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-
-        fs.mkdirSync(path.dirname(filePath), { recursive: true });
-
-        const base64Stream = Readable.from(base64Data);
-        const decodeStream = new Decoder();
-        const writeStream = fs.createWriteStream(filePath);
-
-        base64Stream.pipe(decodeStream).pipe(writeStream);
-
-        writeStream.on("finish", () => {
-          res.json({ message: "ZIP file saved successfully", path: filePath });
-        });
-
-        writeStream.on("error", (err) => {
-          console.error("Write error:", err);
-          res.status(500).json({ message: "Error writing file" });
-        });
-      } catch (err) {
-        console.error(err);
-        res.status(500).send("Failed to fetch ZIP file");
-      }
-    } catch (err) {
-      console.error(err);
-      res.status(500).send("Failed to fetch ZIP file");
-    }
-  }
-);
+Let me know if you want help modifying this to support raw binary download from Spring Boot — that will eliminate all base64-related issues permanently.
 
