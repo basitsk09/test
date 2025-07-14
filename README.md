@@ -1,11 +1,7 @@
-let express = require("express");
-let morgan = require("morgan");
-let fetch = require("node-fetch");
-const fs = require("fs");
-const path = require("path");
-//const Base64Decode = require("base64-stream");
-const { Readable } = require("stream");
-
+const { pipeline } = require("stream/promises");
+const { createWriteStream } = require("fs");
+const { Readable, Transform } = require("stream");
+const JSONStream = require("JSONStream");
 
 router.post(
   "/submitLFARZipDownload",
@@ -22,8 +18,6 @@ router.post(
       ".zip";
     console.log(filename);
 
-    console.log(req.data);
-
     try {
       const springResponse = await fetch(
         URL_CONST.PROD_URL[req.user.module].submitDownload,
@@ -37,41 +31,44 @@ router.post(
         }
       );
 
-      const data = await springResponse.json();
-      let base64Zip = data.result.pdfContent;
-
-      try {
-        const base64Data = base64Zip.replace(
-          /^data:application\/zip;base64,/,
-          ""
-        );
-
-        //const filePath = path.join(__dirname, "zips", filename);
-        //const buffer = Buffer.from(base64Data, "base64");
-
-        // Make sure the directory exists
-        //  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-
-        // fs.mkdirSync(path.dirname(filePath), { recursive: true });
-
-        const fileBuffer = Buffer.from(base64Data, "base64");
-
-        const filePath = path.join(__dirname, "zips", filename);
-
-        await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-        await fs.promises.writeFile(filePath, fileBuffer);
-
-        console.log("File saved successfully at:", filePath);
-        res
-          .status(200)
-          .json({ message: "ZIP file saved successfully", path: filePath });
-      } catch (err) {
-        console.error(err);
-        res.status(500).send("Failed to fetch ZIP file");
+      if (!springResponse.ok) {
+        const errorBody = await springResponse.text();
+        console.error("Backend error:", errorBody);
+        return res
+          .status(springResponse.status)
+          .send("Failed to fetch ZIP file from backend.");
       }
+
+      const filePath = path.join(__dirname, "zips", filename);
+      await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+      
+      // Transform stream to decode base64 chunks
+      const base64Decoder = new Transform({
+        transform(chunk, encoding, callback) {
+          this.push(Buffer.from(chunk.toString(), "base64"));
+          callback();
+        },
+      });
+
+      // Build the pipeline
+      await pipeline(
+        // 1. Get the readable stream from the fetch response
+        springResponse.body,
+        // 2. Parse the stream to extract the 'pdfContent' value
+        JSONStream.parse("result.pdfContent"),
+        // 3. Decode the base64 chunks
+        base64Decoder,
+        // 4. Write the binary chunks to a file
+        createWriteStream(filePath)
+      );
+
+      console.log("File saved successfully at:", filePath);
+      res
+        .status(200)
+        .json({ message: "ZIP file saved successfully", path: filePath });
     } catch (err) {
       console.error(err);
-      res.status(500).send("Failed to fetch ZIP file");
+      res.status(500).send("Failed to process ZIP file");
     }
   }
 );
