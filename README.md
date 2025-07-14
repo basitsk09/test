@@ -71,7 +71,6 @@ const DrawerHeader = styled("div")(({ theme }) => ({
   alignItems: "center",
   justifyContent: "flex-end",
   padding: theme.spacing(0, 1),
-  // necessary for content to be below app bar
   ...theme.mixins.toolbar,
 }));
 
@@ -118,7 +117,6 @@ const FrtMakerLayout = ({ children }) => {
   const [changeModuleModalOpen, setChangeModuleModalOpen] = useState(false);
   const user = JSON.parse(localStorage.getItem("user"));
   
-  // State for collapsible menus
   const [auditMenuOpen, setAuditMenuOpen] = useState(false);
   const [scopeMenuOpen, setScopeMenuOpen] = useState(false);
 
@@ -129,6 +127,14 @@ const FrtMakerLayout = ({ children }) => {
   };
 
   const handleListClick = (vd, data) => {
+    // Treeview items are handled by their own onClick handlers
+    if (vd.type === 'treeview') {
+        if (vd.id === 'Change Audit Status') setAuditMenuOpen(!auditMenuOpen);
+        if (vd.id === 'CRS Scope') setScopeMenuOpen(!scopeMenuOpen);
+        return;
+    }
+
+    // Handle navigation for simple items
     if (vd.id === "Home") {
       navigate("/FrtMakerHome");
     } else if (vd.id === "Branch Details") {
@@ -139,7 +145,7 @@ const FrtMakerLayout = ({ children }) => {
       navigate("/FrtMakerRequestActivity");
     } else if (vd.id === "Dashboard") {
       navigate("/FrtMakerDashboard");
-    }else if(vd.id === "Help"){
+    } else if(vd.id === "Help"){
       navigate("/FrtMakerHelp");
     }
   };
@@ -153,7 +159,28 @@ const FrtMakerLayout = ({ children }) => {
     setOpen(false);
   };
 
+  // Restructured data array
   let data = [
+    {
+      id: "Change Audit Status",
+      type: 'treeview',
+      isOpen: auditMenuOpen,
+      icon: <FolderOpenIcon sx={{ color: "#7f8c8d" }} />,
+      children: [
+        { id: "Single Branch", path: "/FRTUser/singleBranch" },
+        { id: "Multiple Branch", path: "/FRTUser/bulkUpload" },
+      ],
+    },
+    {
+      id: "CRS Scope",
+      type: 'treeview',
+      isOpen: scopeMenuOpen,
+      icon: <FolderOpenIcon sx={{ color: "#7f8c8d" }} />,
+      children: [
+        { id: "Add Branch", path: "/FRTUser/branchStatus" },
+        { id: "Delete Branch", path: "/FRTUser/deleteBranch" },
+      ],
+    },
     { id: "Home", element: <Home sx={{ color: "#7f8c8d" }} /> },
     { id: "Branch Details", element: <LayersIcon sx={{ color: "#7f8c8d" }} /> },
     { id: "User Module", element: <GroupIcon sx={{ color: "#7f8c8d" }} /> },
@@ -239,115 +266,91 @@ const FrtMakerLayout = ({ children }) => {
           </DrawerHeader>
           <Divider />
 
-          <List sx={{ p: 0 }}>
-             <ListItem sx={{ color: 'grey', mt: 1 }}>
-                 <ListItemText primary="FRT MAKER" primaryTypographyProps={{ variant: 'caption', fontWeight: 'bold' }} />
-             </ListItem>
-            {/* Change Audit Status */}
-            <ListItemButton onClick={() => setAuditMenuOpen(!auditMenuOpen)}>
-                <ListItemIcon><FolderOpenIcon sx={{ color: "#7f8c8d" }}/></ListItemIcon>
-                <ListItemText primary="Change Audit Status" />
-                {auditMenuOpen ? <ExpandLess /> : <ExpandMore />}
-            </ListItemButton>
-            <Collapse in={auditMenuOpen && open} timeout="auto" unmountOnExit>
-                <List component="div" disablePadding>
-                    <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FRTUser/singleBranch')}>
-                        <ListItemIcon><CircleOutlinedIcon sx={{ color: "#7f8c8d", fontSize: '1rem' }}/></ListItemIcon>
-                        <ListItemText primary="Single Branch" />
-                    </ListItemButton>
-                    <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FRTUser/bulkUpload')}>
-                        <ListItemIcon><CircleOutlinedIcon sx={{ color: "#7f8c8d", fontSize: '1rem' }}/></ListItemIcon>
-                        <ListItemText primary="Multiple Branch" />
-                    </ListItemButton>
-                </List>
-            </Collapse>
-
-            {/* CRS Scope */}
-            <ListItemButton onClick={() => setScopeMenuOpen(!scopeMenuOpen)}>
-                <ListItemIcon><FolderOpenIcon sx={{ color: "#7f8c8d" }}/></ListItemIcon>
-                <ListItemText primary="CRS Scope" />
-                {scopeMenuOpen ? <ExpandLess /> : <ExpandMore />}
-            </ListItemButton>
-            <Collapse in={scopeMenuOpen && open} timeout="auto" unmountOnExit>
-                <List component="div" disablePadding>
-                    <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FRTUser/branchStatus')}>
-                        <ListItemIcon><CircleOutlinedIcon sx={{ color: "#7f8c8d", fontSize: '1rem' }}/></ListItemIcon>
-                        <ListItemText primary="Add Branch" />
-                    </ListItemButton>
-                    <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FRTUser/deleteBranch')}>
-                        <ListItemIcon><CircleOutlinedIcon sx={{ color: "#7f8c8d", fontSize: '1rem' }}/></ListItemIcon>
-                        <ListItemText primary="Delete Branch" />
-                    </ListItemButton>
-                </List>
-            </Collapse>
-          </List>
-          
-          <Divider />
           <List
-            sx={{ display: "flex", flexDirection: "column", height: "100%", p: 0 }}
+            sx={{ display: "flex", flexDirection: "column", height: "100%" }}
           >
-            {data.map((vd) => (
-              <Tooltip key={`title${vd.id}`} title={vd.id} placement="right">
-                <ListItem
-                  key={vd.id}
-                  disablePadding
-                  onClick={() => handleListClick(vd, data)}
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <ListItemButton
-                    sx={{
-                      alignItems: "center",
-                    }}
-                  >
-                    {vd.element}
-                  </ListItemButton>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      textWrap: "wrap",
-                      textAlign: "center",
-                      cursor: "pointer",
-                      lineHeight: '1.2'
-                    }}
-                  >
-                    {vd.id.length <= 15 ? vd.id : vd.id.slice(0, 15) + "..."}
-                  </Typography>
-                </ListItem>
-              </Tooltip>
-            ))}
-            <Divider />
+            {data.map((vd) => {
+              if (vd.type === 'treeview') {
+                return (
+                  <React.Fragment key={vd.id}>
+                    <ListItemButton onClick={() => handleListClick(vd)}>
+                      <ListItemIcon>{vd.icon}</ListItemIcon>
+                      <ListItemText primary={vd.id} sx={{ opacity: open ? 1 : 0 }} />
+                      {vd.isOpen ? <ExpandLess /> : <ExpandMore />}
+                    </ListItemButton>
+                    <Collapse in={vd.isOpen && open} timeout="auto" unmountOnExit>
+                      <List component="div" disablePadding>
+                        {vd.children.map(child => (
+                           <ListItemButton key={child.id} sx={{ pl: 4 }} onClick={() => navigate(child.path)}>
+                             <ListItemIcon><CircleOutlinedIcon sx={{fontSize: '0.8rem'}} /></ListItemIcon>
+                             <ListItemText primary={child.id} />
+                           </ListItemButton>
+                        ))}
+                      </List>
+                    </Collapse>
+                  </React.Fragment>
+                );
+              } else {
+                return (
+                  <Tooltip key={`title-${vd.id}`} title={vd.id} placement="right">
+                    <ListItem
+                      key={vd.id}
+                      disablePadding
+                      onClick={() => handleListClick(vd, data)}
+                      sx={{
+                        display: "block",
+                      }}
+                    >
+                      <ListItemButton
+                        sx={{
+                          minHeight: 48,
+                          justifyContent: open ? 'initial' : 'center',
+                          px: 2.5,
+                        }}
+                      >
+                        <ListItemIcon
+                            sx={{
+                                minWidth: 0,
+                                mr: open ? 3 : 'auto',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            {vd.element}
+                        </ListItemIcon>
+                        <ListItemText primary={vd.id} sx={{ opacity: open ? 1 : 0 }} />
+                      </ListItemButton>
+                    </ListItem>
+                  </Tooltip>
+                );
+              }
+            })}
 
+            <Box sx={{ flexGrow: 1 }} /> 
+            
             <Tooltip title="Logout">
               <ListItem
                 disablePadding
-                sx={{ display: "block", marginTop: "auto" }}
+                sx={{ display: "block" }}
                 onClick={handleLogout}
               >
                 <ListItemButton
                   sx={{
                     minHeight: 48,
-                    display: "flex",
-                    justifyContent: "center",
-                    flexDirection: "column",
-                    alignItems: "center",
+                    justifyContent: open ? 'initial' : 'center',
                     px: 2.5,
                   }}
                 >
                   <ListItemIcon
                     sx={{
                       minWidth: 0,
-                      m: 1,
+                      mr: open ? 3 : 'auto',
+                      justifyContent: 'center',
                       color: "red",
                     }}
                   >
                     <Logout />
                   </ListItemIcon>
-                  <Typography variant="caption">Logout</Typography>
+                   <ListItemText primary="Logout" sx={{ opacity: open ? 1 : 0, color: 'red' }} />
                 </ListItemButton>
               </ListItem>
             </Tooltip>
@@ -364,7 +367,6 @@ const FrtMakerLayout = ({ children }) => {
           }}
         >
           <DrawerHeader />
-          {/*Main Contain comes here*/}
           {children}
         </Box>
         <Box
@@ -405,7 +407,7 @@ const ModuleChange = ({ changeModuleModalOpen, setChangeModuleModalOpen }) => {
     <Dialog
       sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}
       maxWidth="lg"
-      open={changeModuleModuleModalOpen}
+      open={changeModuleModalOpen}
       onClose={() => setChangeModuleModalOpen(false)}
     >
       <DialogTitle
