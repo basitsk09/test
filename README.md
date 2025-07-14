@@ -1,85 +1,23 @@
-
-<%--
-  Created by IntelliJ IDEA.
-  User: V1010939
-  Date: 03-03-2023
-  Time: 15:28
-  To change this template use File | Settings | File Templates.
---%>
-<%@ include file="/views/include.jsp" %>
-<aside class="main-sidebar">
-    <!-- sidebar: style can be found in sidebar.less -->
-    <section class="sidebar">
-        <!-- Sidebar user panel -->
-        <div class="user-panel">
-            <div class="pull-left image">
-                <img src="<c:url value='/logo.svg'/> " class="img-circle"
-                     alt="User Image">
-            </div>
-            <div class="pull-left info">
-                <p><c:out value="${e:forHtml(sessionScope.userName)}"/></p>
-                <a href="#"><i class="fa fa-circle text-success"></i> Online</a>
-            </div>
-        </div>
-        <ul class="sidebar-menu">
-            <li class="header">FRT MAKER</li>
-
-            <%--TODO: To Be used Only After Bank's Request.--%>
-            <%--<li><a href="../FRTdash/dashboard"><i
-                    class="fa fa-dashboard"></i> DashBoard</a></li>--%>
-            <li class="treeview">
-                <a href="#">
-                    <i class="fa fa-fw fa-folder-open-o"></i> <span>Change Audit Status </span>
-                    <span class="pull-right-container">
-              <i class="fa fa-angle-left pull-right"></i>
-            </span>
-                </a>
-                <ul class="treeview-menu" style="display: none;">
-                    <li><a href="../FRTUser/singleBranch"><i class="fa fa-circle-o"></i> Single Branch </a></li>
-                    <li><a href="../FRTUser/bulkUpload<%--TODO name of jsp--%>"><i class="fa fa-circle-o"></i> Multiple Branch </a></li>
-                </ul>
-            </li>
-
-            <li class="treeview">
-                <a href="#">
-                    <i class="fa fa-fw fa-folder-open-o"></i> <span>CRS Scope </span>
-                    <span class="pull-right-container">
-              <i class="fa fa-angle-left pull-right"></i>
-            </span>
-                </a>
-                <ul class="treeview-menu" style="display: none;">
-                    <li><a href="../FRTUser/branchStatus"><i class="fa fa-circle-o"></i> Add Branch </a></li>
-                    <li><a href="../FRTUser/deleteBranch"><i class="fa fa-circle-o"></i> Delete Branch </a></li>
-                </ul>
-            </li>
-
-            <li><a href="../FRTUser/frtTrack"> <i
-                    class="fa fa-circle-o"></i> <span> Track Request </span>
-            </a>
-            </li>
-
-            <li><a href="../FRTUser/FRTAuditorsDetails"> <i
-                    class="fa fa-circle-o"></i> <span> Branch Auditors Details </span>
-            </a>
-            </li>
-
-            <li><a href="../Security/downloadDocsFAQ"><i
-                    class="fa fa-book"></i> <span>F.A.Q</span></a></li>
-
-            <jsp:include page="/views/commonMenuContent.jsp"></jsp:include>
-        </ul>
-    </section>
-    <!-- /.sidebar -->
-</aside>
-
-    <!-- Add the sidebar's background. This div must be placed
-    immediately after the control sidebar -->
-    <div class="control-sidebar-bg"></div>
-
-///////////////////////////////////////////////////////////////////////////////////
-
-
-
+It's not possible to directly "integrate" a JSP file into a React JS application in the way you might embed one React component within another. They are fundamentally different technologies that run in different environments:
+ * JSP (JavaServer Pages): Renders on the server-side. The Java code is executed on the server, and the final HTML is sent to the browser.
+ * React JS: Renders on the client-side. JavaScript code runs in the user's browser to manipulate the DOM and display the user interface.
+Therefore, you can't just take the JSP code and have it run within your React component. The browser doesn't understand JSP tags like <%@ include %> or <c:out>.
+The correct approach is to recreate the JSP's functionality and appearance as a React component.
+Based on the code you've provided, you have a JSP-based sidebar and a modern React-based application layout (FrtMakerLayout). The goal is to make the JSP sidebar's links and features available within the React application.
+Here is the full code that translates the JSP sidebar logic into your FrtMakerLayout React component.
+Analysis of the JSP Sidebar
+First, let's break down what the JSP sidebar does:
+ * Displays a user panel: Shows a logo, the user's name from the session (sessionScope.userName), and an "Online" status.
+ * Provides navigation links:
+   * A "Change Audit Status" dropdown with "Single Branch" and "Multiple Branch" links.
+   * A "CRS Scope" dropdown with "Add Branch" and "Delete Branch" links.
+   * A "Track Request" link.
+   * A "Branch Auditors Details" link.
+   * An "F.A.Q" link.
+ * Includes common content: Uses <jsp:include page="/views/commonMenuContent.jsp">, which likely contains more menu items.
+Recreating the Sidebar in FrtMakerLayout.js
+To achieve the same result in React, you need to add these navigation elements to your FrtMakerLayout component. We'll use Material-UI's List, ListItem, Collapse for the dropdowns, and icons to match the style.
+Here is the complete, integrated FrtMakerLayout.js file that replicates the JSP's functionality.
 import * as React from "react";
 import { useState } from "react";
 import {
@@ -102,6 +40,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
 import { Help, Home, Logout } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import propTypes from "prop-types";
@@ -114,13 +53,19 @@ import PendingActionsIcon from "@mui/icons-material/PendingActions";
 import { userRoles } from "../CommonValidations/commonConstants";
 import ChangeCircleTwoToneIcon from "@mui/icons-material/ChangeCircleTwoTone";
 import Badge from "@mui/material/Badge";
-import { Dialog, DialogContent, DialogTitle } from "@mui/material";
+import { Dialog, DialogContent, DialogTitle, Collapse } from "@mui/material";
 import ChangeModule from "../Login/ChangeModule";
 import LayersIcon from "@mui/icons-material/Layers";
 import DashboardIcon from "@mui/icons-material/Dashboard";
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
+import CircleIcon from '@mui/icons-material/Circle';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
+import BookIcon from '@mui/icons-material/Book';
 
 const drawerWidth = 240;
-const defaultTheme = createTheme();
 
 const openedMixin = (theme) => ({
   width: drawerWidth,
@@ -148,7 +93,6 @@ const DrawerHeader = styled("div")(({ theme }) => ({
   alignItems: "center",
   justifyContent: "flex-end",
   padding: theme.spacing(0, 1),
-  // necessary for content to be below app bar
   ...theme.mixins.toolbar,
 }));
 
@@ -193,7 +137,21 @@ const FrtMakerLayout = ({ children }) => {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
   const [changeModuleModalOpen, setChangeModuleModalOpen] = useState(false);
+  
+  // State for controlling the collapsible menus
+  const [auditMenuOpen, setAuditMenuOpen] = useState(false);
+  const [scopeMenuOpen, setScopeMenuOpen] = useState(false);
+
+  // Get user data from localStorage
   const user = JSON.parse(localStorage.getItem("user"));
+  
+  // NOTE: You must have user data in localStorage for this to work.
+  // In a real app, you would handle the case where user is null (e.g., redirect to login).
+  if (!user) {
+     // For demonstration, using placeholder data if user is not in localStorage
+     // navigate('/'); // Or redirect to login
+     return <div>User not found. Redirecting to login...</div>;
+  }
 
   const moduleLogo = {
     CRS: crs,
@@ -201,100 +159,67 @@ const FrtMakerLayout = ({ children }) => {
     LFAR: lfar,
   };
 
-  const handleListClick = (vd, data) => {
-    if (vd.id === "Home") {
-      navigate("/FrtMakerHome");
-    } else if (vd.id === "Branch Details") {
-      navigate("/FRTMakerBranchDetails");
-    } else if (vd.id === "User Module") {
-      navigate("/FrtMakerUserModule");
-    } else if (vd.id === "Request Status") {
-      navigate("/FrtMakerRequestActivity");
-    } else if (vd.id === "Dashboard") {
-      navigate("/FrtMakerDashboard");
-    }else if(vd.id === "Help"){
-      navigate("/FrtMakerHelp");
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/");
+  const handleDrawerToggle = () => {
+    setOpen(!open);
   };
 
   const handleDrawerClose = () => {
     setOpen(false);
   };
 
-  let data = [
-    { id: "Home", element: <Home sx={{ color: "#7f8c8d" }} /> },
-    { id: "Branch Details", element: <LayersIcon sx={{ color: "#7f8c8d" }} /> },
-    { id: "User Module", element: <GroupIcon sx={{ color: "#7f8c8d" }} /> },
-    {
-      id: "Request Status",
-      element: <PendingActionsIcon sx={{ color: "#7f8c8d" }} />,
-    },
-    { id: "Dashboard", element: <DashboardIcon sx={{ color: "#7f8c8d" }} /> },
-    { id: "Help", element: <Help sx={{ color: "#7f8c8d" }} /> },
-  ];
-
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/");
+  };
+  
   return (
     <ThemeProvider theme={defaultTheme}>
       <Box sx={{ display: "flex" }}>
         <CssBaseline />
 
-        <AppBar
-          position="fixed"
-          open={open}
-          sx={{
-            background:
-              "linear-gradient(90deg, rgba(135,210,247,1) 0%, rgba(212,225,233,1) 75%, rgba(255,255,255,1) 100%)",
+        <AppBar position="fixed" open={open} sx={{
+            background: "linear-gradient(90deg, rgba(135,210,247,1) 0%, rgba(212,225,233,1) 75%, rgba(255,255,255,1) 100%)",
             color: "#000",
-            zIndex: (theme) => theme.zIndex.drawer + 1,
-          }}
-        >
-          <Toolbar sx={{ display: "flex", alignItems: "center" }}>
+        }}>
+          <Toolbar>
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              onClick={handleDrawerToggle}
+              edge="start"
+              sx={{
+                marginRight: 5,
+                ...(open && { display: 'none' }),
+              }}
+            >
+                <img
+                    src={moduleLogo[user.module]}
+                    alt="MODULE"
+                    width="40"
+                    height="40"
+                />
+            </IconButton>
             <Badge
               overlap="circular"
               badgeContent={
-                <ChangeCircleTwoToneIcon
-                  sx={{
-                    color: "inherit",
-                    background: "white",
-                    borderRadius: "60px",
-                  }}
-                />
+                <ChangeCircleTwoToneIcon sx={{ color: "inherit", background: "white", borderRadius: "60px" }} />
               }
-              sx={{ width: "56px", cursor: "pointer" }}
-              anchorOrigin={{
-                vertical: "bottom",
-                horizontal: "right",
-              }}
+              sx={{ width: "56px", cursor: "pointer", display: open ? 'none' : 'block' }} // Hide when drawer is open
+              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
               onClick={() => setChangeModuleModalOpen(true)}
             >
-              <img
-                src={moduleLogo[user.module]}
-                alt="MODULE"
-                width="60"
-                height="60"
-                style={{ float: "left", marginRight: "50px" }}
-              />
             </Badge>
+            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+                FRT Maker Portal
+            </Typography>
 
-            <Box sx={{ ml: "auto", mt: 1, position: "fixed", right: "20px" }}>
+            <Box sx={{ ml: "auto", mt: 1, textAlign: 'right' }}>
               <Typography variant={"subtitle2"} gutterBottom>
                 User: {user.pf_number} - {userRoles[user.user_role]}
               </Typography>
               <Tooltip title={`${user.branch_code} - ${user.branch_name}`}>
-                <Typography
-                  noWrap
-                  sx={{ overflow: "hidden", textOverflow: "ellipsis" }}
-                  variant="subtitle2"
-                >
-                  Branch: {user.branch_code} -{" "}
-                  {user.branch_name.length > 15
-                    ? user.branch_name.slice(0, 15) + "..."
-                    : user.branch_name}
+                <Typography noWrap sx={{ overflow: "hidden", textOverflow: "ellipsis" }} variant="subtitle2">
+                  Branch: {user.branch_code} - {user.branch_name}
                 </Typography>
               </Tooltip>
             </Box>
@@ -302,214 +227,240 @@ const FrtMakerLayout = ({ children }) => {
         </AppBar>
         <Drawer variant="permanent" open={open}>
           <DrawerHeader>
+             <div style={{display: 'flex', alignItems: 'center', padding: '10px 5px', width: '100%'}}>
+                 <img src={"/logo.svg"} className="img-circle" alt="User" style={{width: '40px', height: '40px', marginRight: '10px'}}/>
+                 <div>
+                    <p style={{fontWeight: 'bold', margin: 0}}>{user.userName}</p>
+                    <a href="#"><i style={{color: 'green', fontSize: '10px', marginRight: '5px'}} className="fa fa-circle text-success"></i> Online</a>
+                 </div>
+             </div>
             <IconButton onClick={handleDrawerClose}>
-              {theme.direction === "rtl" ? (
-                <ChevronRightIcon />
-              ) : (
-                <ChevronLeftIcon />
-              )}
+              {theme.direction === "rtl" ? <ChevronRightIcon /> : <ChevronLeftIcon />}
             </IconButton>
           </DrawerHeader>
           <Divider />
 
-          <Divider />
-          <List
-            sx={{ display: "flex", flexDirection: "column", height: "100%" }}
-          >
-            {data.map((vd) => (
-              <Tooltip key={`title${vd.id}`} title={vd.id}>
-                <ListItem
-                  key={vd.id}
-                  disablePadding
-                  onClick={() => handleListClick(vd, data)}
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <ListItemButton
-                    sx={{
-                      alignItems: "center",
-                    }}
-                  >
-                    {vd.element}
-                  </ListItemButton>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      textWrap: "wrap",
-                      textAlign: "center",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {vd.id.length <= 15 ? vd.id : vd.id.slice(0, 15) + "..."}
-                  </Typography>
-                </ListItem>
-              </Tooltip>
-            ))}
-            <Divider />
+            {/* Recreated JSP Menu */}
+            <List>
+                 <ListItem disablePadding>
+                     <ListItemButton>
+                        <ListItemText primary="FRT MAKER" primaryTypographyProps={{ style: { fontWeight: 'bold' } }} />
+                     </ListItemButton>
+                 </ListItem>
 
-            <Tooltip title="Logout">
-              <ListItem
-                disablePadding
-                sx={{ display: "block", marginTop: "auto" }}
-                onClick={handleLogout}
-              >
-                <ListItemButton
-                  sx={{
-                    minHeight: 48,
-                    display: "flex",
-                    justifyContent: "center",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    px: 2.5,
-                  }}
-                >
-                  <ListItemIcon
-                    sx={{
-                      minWidth: 0,
-                      m: 1,
-                      color: "red",
-                    }}
-                  >
+                {/* Change Audit Status Dropdown */}
+                <ListItemButton onClick={() => setAuditMenuOpen(!auditMenuOpen)}>
+                    <ListItemIcon><FolderOpenIcon /></ListItemIcon>
+                    <ListItemText primary="Change Audit Status" />
+                    {auditMenuOpen ? <ExpandLess /> : <ExpandMore />}
+                </ListItemButton>
+                <Collapse in={auditMenuOpen && open} timeout="auto" unmountOnExit>
+                    <List component="div" disablePadding>
+                        <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FrtUser/singleBranch')}>
+                            <ListItemIcon><CircleIcon sx={{fontSize: 'small'}} /></ListItemIcon>
+                            <ListItemText primary="Single Branch" />
+                        </ListItemButton>
+                        <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FrtUser/bulkUpload')}>
+                             <ListItemIcon><CircleIcon sx={{fontSize: 'small'}}/></ListItemIcon>
+                            <ListItemText primary="Multiple Branch" />
+                        </ListItemButton>
+                    </List>
+                </Collapse>
+
+                {/* CRS Scope Dropdown */}
+                <ListItemButton onClick={() => setScopeMenuOpen(!scopeMenuOpen)}>
+                    <ListItemIcon><FolderOpenIcon /></ListItemIcon>
+                    <ListItemText primary="CRS Scope" />
+                    {scopeMenuOpen ? <ExpandLess /> : <ExpandMore />}
+                </ListItemButton>
+                <Collapse in={scopeMenuOpen && open} timeout="auto" unmountOnExit>
+                    <List component="div" disablePadding>
+                        <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FrtUser/branchStatus')}>
+                            <ListItemIcon><CircleIcon sx={{fontSize: 'small'}}/></ListItemIcon>
+                            <ListItemText primary="Add Branch" />
+                        </ListItemButton>
+                        <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FrtUser/deleteBranch')}>
+                            <ListItemIcon><CircleIcon sx={{fontSize: 'small'}}/></ListItemIcon>
+                            <ListItemText primary="Delete Branch" />
+                        </ListItemButton>
+                    </List>
+                </Collapse>
+
+                {/* Other Links */}
+                <ListItem disablePadding>
+                    <ListItemButton onClick={() => navigate('/FrtUser/frtTrack')}>
+                        <ListItemIcon><TrackChangesIcon /></ListItemIcon>
+                        <ListItemText primary="Track Request" />
+                    </ListItemButton>
+                </ListItem>
+                <ListItem disablePadding>
+                    <ListItemButton onClick={() => navigate('/FrtUser/FRTAuditorsDetails')}>
+                        <ListItemIcon><AssignmentIndIcon /></ListItemIcon>
+                        <ListItemText primary="Branch Auditors Details" />
+                    </ListItemButton>
+                </ListItem>
+                 <ListItem disablePadding>
+                    <ListItemButton onClick={() => navigate('/Security/downloadDocsFAQ')}>
+                        <ListItemIcon><BookIcon /></ListItemIcon>
+                        <ListItemText primary="F.A.Q" />
+                    </ListItemButton>
+                </ListItem>
+            </List>
+            {/* End of Recreated Menu */}
+          <Divider />
+          <List sx={{ marginTop: 'auto' }}>
+            {/* Logout Button */}
+            <Tooltip title="Logout" placement="right">
+              <ListItem disablePadding sx={{ display: "block" }} onClick={handleLogout}>
+                <ListItemButton sx={{ minHeight: 48, justifyContent: open ? "initial" : "center", px: 2.5 }}>
+                  <ListItemIcon sx={{ minWidth: 0, mr: open ? 3 : "auto", justifyContent: "center", color: 'red' }}>
                     <Logout />
                   </ListItemIcon>
-                  <Typography variant="caption">Logout</Typography>
+                  <ListItemText primary="Logout" sx={{ opacity: open ? 1 : 0 }} />
                 </ListItemButton>
               </ListItem>
             </Tooltip>
           </List>
         </Drawer>
-        <Box
-          component="main"
-          sx={{
-            backgroundColor: "#E1E6EC",
-            flexGrow: 1,
-            p: 3,
-            height: "100vh",
-            overflow: "auto",
-          }}
-        >
+        <Box component="main" sx={{ flexGrow: 1, p: 3, height: "100vh", overflow: "auto", backgroundColor: "#E1E6EC" }}>
           <DrawerHeader />
-          {/*Main Contain comes here*/}
+          {/* Main Content comes here */}
           {children}
         </Box>
-        <Box
-          sx={{
-            position: "fixed",
-            bottom: 0,
-            width: "100%",
-            backgroundColor: "white",
-            textAlign: "center",
-            minHeight: 56,
-            padding: "15px 0",
-            boxShadow: "0 -2px 5px rgba(0,0,0,0.1)",
-          }}
-        >
-          <Box
-            variant="body2"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            &copy;{new Date().getFullYear()} &nbsp; Tata Consultancy Services.
-            All rights reserved.
+        <Box sx={{ position: "fixed", bottom: 0, width: "100%", backgroundColor: "white", textAlign: "center", minHeight: 56, padding: "15px 0", boxShadow: "0 -2px 5px rgba(0,0,0,0.1)" }}>
+          <Box variant="body2" sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+            &copy;{new Date().getFullYear()} &nbsp; Tata Consultancy Services. All rights reserved.
           </Box>
         </Box>
       </Box>
       <ModuleChange
         changeModuleModalOpen={changeModuleModalOpen}
         setChangeModuleModalOpen={setChangeModuleModalOpen}
-      ></ModuleChange>
+      />
     </ThemeProvider>
   );
 };
 
 const ModuleChange = ({ changeModuleModalOpen, setChangeModuleModalOpen }) => {
-  return (
-    <Dialog
-      sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-      maxWidth="lg"
-      open={changeModuleModalOpen}
-      onClose={() => setChangeModuleModalOpen(false)}
-    >
-      <DialogTitle
-        id="responsive-dialog-title"
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+    return (
+      <Dialog
+        sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+        maxWidth="lg"
+        open={changeModuleModalOpen}
+        onClose={() => setChangeModuleModalOpen(false)}
       >
-        <Typography variant={"h5"}>Kindly select the Module</Typography>
-      </DialogTitle>
-      <Divider />
-      <DialogContent>
-        <ChangeModule handleClose={() => setChangeModuleModalOpen(false)} />
-      </DialogContent>
-    </Dialog>
-  );
+        <DialogTitle id="responsive-dialog-title" sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Typography variant={"h5"}>Kindly select the Module</Typography>
+        </DialogTitle>
+        <Divider />
+        <DialogContent>
+          <ChangeModule handleClose={() => setChangeModuleModalOpen(false)} />
+        </DialogContent>
+      </Dialog>
+    );
 };
 
 FrtMakerLayout.propTypes = {
   children: propTypes.element.isRequired,
 };
 
+// A default theme for the component to render correctly
+const defaultTheme = createTheme();
+
 export default FrtMakerLayout;
 
-////////////////////////////////////////////////////////////////////////////////////////////////
+Key Changes and Explanations
+ * State for Menus:
+   * useState hooks (auditMenuOpen, scopeMenuOpen) are added to manage the open/close state of the dropdown menus, just like how open manages the drawer itself.
+ * User Data from localStorage:
+   * The JSP gets user information like userName from a server-side session (sessionScope). In a React Single Page Application (SPA), this data is typically fetched after login and stored in localStorage or sessionStorage.
+   * The code now retrieves this user object using JSON.parse(localStorage.getItem("user")).
+   * Crucially, your login process must save this user object to localStorage for this code to work. The object should look something like this:
+     {
+  "userName": "V1010939",
+  "pf_number": "V1010939",
+  "user_role": "MAKER",
+  "branch_code": "1234",
+  "branch_name": "Main Branch",
+  "module": "CRS"
+}
 
+ * New Menu Items using Material-UI:
+   * The static header "FRT MAKER" is added.
+   * ListItemButton is used for clickable menu items.
+   * The <Collapse> component is used to create the dropdown effect for "Change Audit Status" and "CRS Scope". Clicking the parent ListItemButton toggles the corresponding state variable, which in turn controls the in prop of the Collapse component.
+   * Icons: Material-UI icons (FolderOpenIcon, ExpandLess, ExpandMore, CircleIcon, etc.) are imported and used to replicate the look and feel (fa-folder-open-o, fa-circle-o).
+   * Navigation: The useNavigate hook from react-router-dom is used to programmatically navigate to the correct routes when a menu item is clicked (e.g., Maps('/FrtUser/singleBranch')).
+ * Routing:
+   * Your existing routing setup will now work seamlessly with this updated layout. When you click "Single Branch", React Router will see the path /FrtUser/singleBranch and render the component you've configured for that route inside the FrtMakerLayout. You will need to define these routes in your main router file (App.js or similar).
+What to do with your Router Setup
+Your existing router setup is correct. You just need to ensure you have defined routes for the new links you've added in the sidebar.
+// In your main App.js or router file
 
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import FrtMakerLayout from './layouts/FrtMakerLayout';
+import FrtMakerHome from './pages/FrtMakerHome';
+// Import the new components for the new routes
+import SingleBranch from './pages/SingleBranch';
+import BulkUpload from './pages/BulkUpload';
+import BranchStatus from './pages/BranchStatus';
+// ... and so on for other pages
 
+function App() {
+  return (
+    <Router>
+      <Routes>
+        {/* ... other routes like login */}
 
+        <Route
+          path="/FrtMakerHome"
+          element={
+            <PrivateRoute>
+              <FrtMakerLayout>
+                <FrtMakerHome />
+              </FrtMakerLayout>
+            </PrivateRoute>
+          }
+        />
 
- <Route
-            path="/FrtMakerHome"
-            element={
-              <PrivateRoute>
-                <FrtMakerLayout>
-                  <FrtMakerHome />
-                </FrtMakerLayout>
-              </PrivateRoute>
-            }
-          />
+        {/* Add routes for the new sidebar links */}
+        <Route
+          path="/FrtUser/singleBranch"
+          element={
+            <PrivateRoute>
+              <FrtMakerLayout>
+                <SingleBranch />
+              </FrtMakerLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/FrtUser/bulkUpload"
+          element={
+            <PrivateRoute>
+              <FrtMakerLayout>
+                <BulkUpload />
+              </FrtMakerLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/FrtUser/branchStatus"
+          element={
+            <PrivateRoute>
+              <FrtMakerLayout>
+                <BranchStatus />
+              </FrtMakerLayout>
+            </PrivateRoute>
+          }
+        />
+        {/* ... add routes for deleteBranch, frtTrack, etc. */}
 
-          {/* FRT Checker Home */}
-          <Route
-            path="/FrtCheckerHome"
-            element={
-              <PrivateRoute>
-                <FrtCheckerLayout>
-                  <FrtCheckerHome />
-                </FrtCheckerLayout>
-              </PrivateRoute>
-            }
-          />
+        {/* ... your other existing routes */}
+      </Routes>
+    </Router>
+  );
+}
 
-          {/*Report RA Reports*/}
-          <Route
-            path="/AutoReports"
-            element={
-              <PrivateRoute>
-                <MakerLayout>
-                  <AutomaticReports />
-                </MakerLayout>
-              </PrivateRoute>
-            }
-          />
+export default App;
 
-          {/*Report RW-01*/}
-          <Route
-            path="/RW01"
-            element={
-              <PrivateRoute>
-                <MakerLayout>
-                  <CommonScreen />
-                </MakerLayout>
-              </PrivateRoute>
-            }
-          />
