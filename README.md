@@ -20,7 +20,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
-import ListItemText from "@mui/material/ListItemText"; // Import ListItemText
+import ListItemText from "@mui/material/ListItemText";
 import { Help, Home, Logout } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import propTypes from "prop-types";
@@ -33,7 +33,7 @@ import PendingActionsIcon from "@mui/icons-material/PendingActions";
 import { userRoles } from "../CommonValidations/commonConstants";
 import ChangeCircleTwoToneIcon from "@mui/icons-material/ChangeCircleTwoTone";
 import Badge from "@mui/material/Badge";
-import { Dialog, DialogContent, DialogTitle, Collapse } from "@mui/material"; // Import Collapse
+import { Dialog, DialogContent, DialogTitle, Collapse } from "@mui/material";
 import ChangeModule from "../Login/ChangeModule";
 import LayersIcon from "@mui/icons-material/Layers";
 import DashboardIcon from "@mui/icons-material/Dashboard";
@@ -41,9 +41,6 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import CircleOutlinedIcon from '@mui/icons-material/CircleOutlined';
-import TrackChangesIcon from '@mui/icons-material/TrackChanges';
-import BookIcon from '@mui/icons-material/Book';
-
 
 const drawerWidth = 240;
 const defaultTheme = createTheme();
@@ -119,9 +116,9 @@ const FrtMakerLayout = ({ children }) => {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
   const [changeModuleModalOpen, setChangeModuleModalOpen] = useState(false);
-  const user = JSON.parse(localStorage.getItem("user")) || { userName: 'Guest' }; // Fallback for user
-
-  // State for collapsible JSP menus
+  const user = JSON.parse(localStorage.getItem("user"));
+  
+  // State for collapsible menus
   const [auditMenuOpen, setAuditMenuOpen] = useState(false);
   const [scopeMenuOpen, setScopeMenuOpen] = useState(false);
 
@@ -131,7 +128,7 @@ const FrtMakerLayout = ({ children }) => {
     LFAR: lfar,
   };
 
-  const handleListClick = (vd) => { // Removed 'data' param as it's not used
+  const handleListClick = (vd, data) => {
     if (vd.id === "Home") {
       navigate("/FrtMakerHome");
     } else if (vd.id === "Branch Details") {
@@ -142,7 +139,7 @@ const FrtMakerLayout = ({ children }) => {
       navigate("/FrtMakerRequestActivity");
     } else if (vd.id === "Dashboard") {
       navigate("/FrtMakerDashboard");
-    } else if (vd.id === "Help") {
+    }else if(vd.id === "Help"){
       navigate("/FrtMakerHelp");
     }
   };
@@ -222,7 +219,7 @@ const FrtMakerLayout = ({ children }) => {
                   variant="subtitle2"
                 >
                   Branch: {user.branch_code} -{" "}
-                  {user.branch_name && user.branch_name.length > 15
+                  {user.branch_name.length > 15
                     ? user.branch_name.slice(0, 15) + "..."
                     : user.branch_name}
                 </Typography>
@@ -232,18 +229,6 @@ const FrtMakerLayout = ({ children }) => {
         </AppBar>
         <Drawer variant="permanent" open={open}>
           <DrawerHeader>
-            {/* JSP User Panel Recreation */}
-            <div style={{ display: 'flex', alignItems: 'center', padding: '0 8px', flexGrow: 1 }}>
-                <div className="pull-left image">
-                    <img src={'/logo.svg'} className="img-circle" alt="User Image" style={{width: 40, height: 40}} />
-                </div>
-                <div className="pull-left info" style={{ marginLeft: '10px' }}>
-                    <p style={{margin: 0, fontWeight: 'bold'}}>{user.userName}</p>
-                    <a href="#" style={{fontSize: '0.8rem', color: 'inherit', textDecoration: 'none'}}>
-                        <i className="fa fa-circle text-success" style={{color: '#28a745', fontSize: '0.6rem'}}></i> Online
-                    </a>
-                </div>
-            </div>
             <IconButton onClick={handleDrawerClose}>
               {theme.direction === "rtl" ? (
                 <ChevronRightIcon />
@@ -254,68 +239,50 @@ const FrtMakerLayout = ({ children }) => {
           </DrawerHeader>
           <Divider />
 
-            {/* INTEGRATED JSP NAVBAR */}
-            <List sx={{ p: 0 }}>
-                <ListItem sx={{ color: 'grey', mt: 1 }}>
-                    <ListItemText primary="FRT MAKER" primaryTypographyProps={{ variant: 'caption', fontWeight: 'bold' }} />
-                </ListItem>
+          <List sx={{ p: 0 }}>
+             <ListItem sx={{ color: 'grey', mt: 1 }}>
+                 <ListItemText primary="FRT MAKER" primaryTypographyProps={{ variant: 'caption', fontWeight: 'bold' }} />
+             </ListItem>
+            {/* Change Audit Status */}
+            <ListItemButton onClick={() => setAuditMenuOpen(!auditMenuOpen)}>
+                <ListItemIcon><FolderOpenIcon sx={{ color: "#7f8c8d" }}/></ListItemIcon>
+                <ListItemText primary="Change Audit Status" />
+                {auditMenuOpen ? <ExpandLess /> : <ExpandMore />}
+            </ListItemButton>
+            <Collapse in={auditMenuOpen && open} timeout="auto" unmountOnExit>
+                <List component="div" disablePadding>
+                    <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FRTUser/singleBranch')}>
+                        <ListItemIcon><CircleOutlinedIcon sx={{ color: "#7f8c8d", fontSize: '1rem' }}/></ListItemIcon>
+                        <ListItemText primary="Single Branch" />
+                    </ListItemButton>
+                    <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FRTUser/bulkUpload')}>
+                        <ListItemIcon><CircleOutlinedIcon sx={{ color: "#7f8c8d", fontSize: '1rem' }}/></ListItemIcon>
+                        <ListItemText primary="Multiple Branch" />
+                    </ListItemButton>
+                </List>
+            </Collapse>
 
-                {/* Change Audit Status */}
-                <ListItemButton onClick={() => setAuditMenuOpen(!auditMenuOpen)}>
-                    <ListItemIcon><FolderOpenIcon /></ListItemIcon>
-                    <ListItemText primary="Change Audit Status" />
-                    {auditMenuOpen ? <ExpandLess /> : <ExpandMore />}
-                </ListItemButton>
-                <Collapse in={auditMenuOpen} timeout="auto" unmountOnExit>
-                    <List component="div" disablePadding>
-                        <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FRTUser/singleBranch')}>
-                            <ListItemIcon><CircleOutlinedIcon sx={{ fontSize: '1rem' }} /></ListItemIcon>
-                            <ListItemText primary="Single Branch" />
-                        </ListItemButton>
-                        <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FRTUser/bulkUpload')}>
-                            <ListItemIcon><CircleOutlinedIcon sx={{ fontSize: '1rem' }} /></ListItemIcon>
-                            <ListItemText primary="Multiple Branch" />
-                        </ListItemButton>
-                    </List>
-                </Collapse>
-
-                {/* CRS Scope */}
-                <ListItemButton onClick={() => setScopeMenuOpen(!scopeMenuOpen)}>
-                    <ListItemIcon><FolderOpenIcon /></ListItemIcon>
-                    <ListItemText primary="CRS Scope" />
-                    {scopeMenuOpen ? <ExpandLess /> : <ExpandMore />}
-                </ListItemButton>
-                <Collapse in={scopeMenuOpen} timeout="auto" unmountOnExit>
-                    <List component="div" disablePadding>
-                        <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FRTUser/branchStatus')}>
-                            <ListItemIcon><CircleOutlinedIcon sx={{ fontSize: '1rem' }} /></ListItemIcon>
-                            <ListItemText primary="Add Branch" />
-                        </ListItemButton>
-                        <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FRTUser/deleteBranch')}>
-                            <ListItemIcon><CircleOutlinedIcon sx={{ fontSize: '1rem' }} /></ListItemIcon>
-                            <ListItemText primary="Delete Branch" />
-                        </ListItemButton>
-                    </List>
-                </Collapse>
-
-                {/* Other Links */}
-                <ListItemButton onClick={() => navigate('/FRTUser/frtTrack')}>
-                    <ListItemIcon><TrackChangesIcon /></ListItemIcon>
-                    <ListItemText primary="Track Request" />
-                </ListItemButton>
-                <ListItemButton onClick={() => navigate('/FRTUser/FRTAuditorsDetails')}>
-                    <ListItemIcon><GroupIcon /></ListItemIcon>
-                    <ListItemText primary="Branch Auditors Details" />
-                </ListItemButton>
-                <ListItemButton onClick={() => navigate('/Security/downloadDocsFAQ')}>
-                    <ListItemIcon><BookIcon /></ListItemIcon>
-                    <ListItemText primary="F.A.Q" />
-                </ListItemButton>
-            </List>
-            <Divider />
-            {/* END INTEGRATED JSP NAVBAR */}
-
-
+            {/* CRS Scope */}
+            <ListItemButton onClick={() => setScopeMenuOpen(!scopeMenuOpen)}>
+                <ListItemIcon><FolderOpenIcon sx={{ color: "#7f8c8d" }}/></ListItemIcon>
+                <ListItemText primary="CRS Scope" />
+                {scopeMenuOpen ? <ExpandLess /> : <ExpandMore />}
+            </ListItemButton>
+            <Collapse in={scopeMenuOpen && open} timeout="auto" unmountOnExit>
+                <List component="div" disablePadding>
+                    <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FRTUser/branchStatus')}>
+                        <ListItemIcon><CircleOutlinedIcon sx={{ color: "#7f8c8d", fontSize: '1rem' }}/></ListItemIcon>
+                        <ListItemText primary="Add Branch" />
+                    </ListItemButton>
+                    <ListItemButton sx={{ pl: 4 }} onClick={() => navigate('/FRTUser/deleteBranch')}>
+                        <ListItemIcon><CircleOutlinedIcon sx={{ color: "#7f8c8d", fontSize: '1rem' }}/></ListItemIcon>
+                        <ListItemText primary="Delete Branch" />
+                    </ListItemButton>
+                </List>
+            </Collapse>
+          </List>
+          
+          <Divider />
           <List
             sx={{ display: "flex", flexDirection: "column", height: "100%", p: 0 }}
           >
@@ -324,7 +291,7 @@ const FrtMakerLayout = ({ children }) => {
                 <ListItem
                   key={vd.id}
                   disablePadding
-                  onClick={() => handleListClick(vd)}
+                  onClick={() => handleListClick(vd, data)}
                   sx={{
                     display: "flex",
                     flexDirection: "column",
@@ -438,7 +405,7 @@ const ModuleChange = ({ changeModuleModalOpen, setChangeModuleModalOpen }) => {
     <Dialog
       sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}
       maxWidth="lg"
-      open={changeModuleModalOpen}
+      open={changeModuleModuleModalOpen}
       onClose={() => setChangeModuleModalOpen(false)}
     >
       <DialogTitle
