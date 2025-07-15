@@ -1,715 +1,980 @@
-import React, { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
-  TextField,
-  Grid,
-  MenuItem,
+  Snackbar,
+  IconButton,
   Button,
-  Typography,
-  DialogTitle,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Paper,
+  Typography,
+  Grid,
+  Card,
+  CardHeader,
+  CardContent,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Chip,
 } from "@mui/material";
-import PhoneIcon from "@mui/icons-material/Phone";
-import HomeIcon from "@mui/icons-material/Home";
-import PinDropIcon from "@mui/icons-material/PinDrop";
-import AccountBalanceRoundedIcon from "@mui/icons-material/AccountBalanceRounded";
-import LocationCityRoundedIcon from "@mui/icons-material/LocationCityRounded";
-import PhoneAndroidRoundedIcon from "@mui/icons-material/PhoneAndroidRounded";
-import CorporateFareRoundedIcon from "@mui/icons-material/CorporateFareRounded";
-import WifiCalling3Icon from "@mui/icons-material/WifiCalling3";
-import EmergencyShareIcon from "@mui/icons-material/EmergencyShare";
-import DnsIcon from "@mui/icons-material/Dns";
-import PublicIcon from "@mui/icons-material/Public";
-import SensorsIcon from "@mui/icons-material/Sensors";
-import LanIcon from "@mui/icons-material/Lan";
-import { Container } from "@mui/system";
-import DialogContent from "@mui/material/DialogContent";
-import Dialog from "@mui/material/Dialog";
-import axios from "axios";
-import Box from "@mui/material/Box";
-import { validations } from "../CommonValidations/Validations";
-import { useNavigate } from "react-router-dom";
-import { encrypt } from "../Security/AES-GCM256";
+import { Box, styled } from "@mui/system";
+import DialogActions from "@mui/material/DialogActions";
+import CloseIcon from "@mui/icons-material/Close";
+import EditIcon from "@mui/icons-material/Edit";
+import PreviewIcon from "@mui/icons-material/Preview";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import SaveIcon from "@mui/icons-material/Save";
-import SearchIcon from "@mui/icons-material/Search";
-import CircularProgress from "@mui/material/CircularProgress";
-import Snackbar from "@mui/material/Snackbar";
-import Alert from "@mui/material/Alert";
-import { SnackbarProvider } from "notistack";
-import PersonIcon from "@mui/icons-material/Person";
-import { Cached } from "@mui/icons-material";
+import CancelIcon from "@mui/icons-material/Cancel";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import ReactQuill from "react-quill";
+import Quill from "quill";
+import "react-quill/dist/quill.snow.css";
+import "./quill.css";
+import axios from "axios";
+import { encrypt } from "../../Security/AES-GCM256";
+import ImageResize from "quill-image-resize-module-react";
+
+// 100 * 100 image size
+const Clipboard = Quill.import("modules/clipboard");
+class CustomClipboard extends Clipboard {
+  async onPaste(e) {
+    e.preventDefault();
+
+    // Get plain text or HTML from clipboard
+    const clipboardData = e.clipboardData || window.clipboardData;
+    const text = clipboardData.getData("text/plain");
+    const html = clipboardData.getData("text/html");
+
+    if (html && html.includes("<img")) {
+      // If there's an image, force width and height
+      const modifiedHtml = html.replace(
+        /<img([^>]*)>/g,
+        '<img$1 width="100" height="100">'
+      );
+      this.quill.clipboard.dangerouslyPasteHTML(
+        this.quill.getSelection().index,
+        modifiedHtml
+      );
+    } else {
+      super.onPaste(e);
+    }
+  }
+}
+Quill.register("modules/clipboard", CustomClipboard, true);
+
+// --- Quill Blots and Registrations ---
+const Embed = Quill.import("blots/embed");
+
+class VariableBlot extends Embed {
+  static create(value) {
+    const node = super.create();
+    node.setAttribute("contenteditable", "false");
+    node.classList.add("variable-blot");
+    const text = document.createElement("span");
+    text.innerText = value;
+    const closer = document.createElement("span");
+    closer.innerText = "X";
+    closer.classList.add("variable-delete-icon");
+    node.appendChild(text);
+    node.appendChild(closer);
+    Object.assign(node.style, {
+      position: "relative",
+      backgroundColor: "#A9A9A9",
+      color: "black",
+      padding: "5px 20px 5px 8px",
+      fontWeight: "500",
+      margin: "0 4px",
+      cursor: "default",
+      userSelect: "none",
+      display: "inline-block",
+    });
+    return node;
+  }
+
+  // --- START: Corrected Logic ---
+  // This static method is now more defensive.
+  static value(domNode) {
+    // Check if the node and its first child exist before accessing innerText
+    if (domNode && domNode.firstChild) {
+      return domNode.firstChild.innerText;
+    }
+    // If the node is malformed, return a safe default (empty string)
+    // instead of letting it result in an error.
+    return "";
+  }
+
+  // The instance method correctly defers to the safe static method.
+  value() {
+    return this.statics.value(this.domNode);
+  }
+  // --- END: Corrected Logic ---
+}
+VariableBlot.blotName = "variable";
+VariableBlot.tagName = "span";
+Quill.register(VariableBlot);
+
+const Size = Quill.import("formats/size");
+Size.whitelist = [
+  "2px",
+  "4px",
+  "6px",
+  "8px",
+  "10px",
+  "12px",
+  "14px",
+  "16px",
+  "18px",
+  "20px",
+  "22px",
+  "24px",
+  "26px",
+];
+Quill.register(Size, true);
+
+const Font = Quill.import("formats/font");
+Font.whitelist = [
+  "arial",
+  "times-new-roman",
+  "courier-new",
+  "sans-serif",
+  "serif",
+  "monospace",
+  "georgia",
+  "tahoma",
+  "verdana",
+  "sofia",
+];
+Quill.register(Font, true);
+
+Quill.register("modules/imageResize", ImageResize);
+
+const AlignStyle = Quill.import("attributors/style/align");
+Quill.register(AlignStyle, true);
+const BackgroundStyle = Quill.import("attributors/style/background");
+Quill.register(BackgroundStyle, true);
+const ColorStyle = Quill.import("attributors/style/color");
+Quill.register(ColorStyle, true);
+const DirectionStyle = Quill.import("attributors/style/direction");
+Quill.register(DirectionStyle, true);
+const FontStyle = Quill.import("attributors/style/font");
+Quill.register(FontStyle, true);
+const SizeStyle = Quill.import("attributors/style/size");
+Quill.register(SizeStyle, true);
+
+// --- Remove X from export helper ---
+function removeVariableDeleteIcons(html) {
+  const container = document.createElement("div");
+  container.innerHTML = html;
+  container.querySelectorAll(".variable-delete-icon").forEach((el) => {
+    el.parentNode && el.parentNode.removeChild(el);
+  });
+  return container.innerHTML;
+}
+
+// --- Remove all styling and classes for backend ---
+function stripStyling(html) {
+  const container = document.createElement("div");
+  container.innerHTML = html;
+  const all = container.querySelectorAll("*");
+  all.forEach((el) => {
+    // el.removeAttribute("style");
+    el.removeAttribute("class");
+  });
+  return container.innerHTML;
+}
 
 const iv = crypto.getRandomValues(new Uint8Array(12));
 const ivBase64 = btoa(String.fromCharCode.apply(null, iv));
 const salt = crypto.getRandomValues(new Uint8Array(16));
 const saltBase64 = btoa(String.fromCharCode.apply(null, salt));
 
-export default function FrtAddBranch() {
-  const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("user"));
+const EmailTemplate = () => {
+  const [headerContent, setHeaderContent] = useState(
+    "Non-editable header will appear here"
+  );
+  const [bodyContent, setBodyContent] = useState(
+    "Editable body will appear here"
+  );
+  const [sbar, setSbar] = useState({ isOpen: false, Msg: "" });
+  const [wordCount, setWordCount] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [templateContent, settemplateContent] = useState(null);
 
-  const emptyBranchDataMap = {
-    NAME: "",
-    CIRCLE: "",
-    NETWORK: "",
-    MODULE: "",
-    REGION: "",
-    ADDRESS: "",
-    CITY: "",
-    STATE: "",
-    PIN: "",
-    STDCODE: "",
-    PHONE: "",
-    MOBILE: "",
-    IPPHONE: "",
-    AUDITABLE: "",
+  const draftVar = [
+    "{{DATE}}",
+    "{{REF_NO}}",
+    "{{FIRM_NAME}}",
+    "{{FRN_NO}}",
+    "{{FIRM_ADDR}}",
+    "{{ASSIGNMENT_TYPE}}",
+    "{{GSTN}}",
+  ];
+
+  const bodyEditorRef = useRef(null);
+  const headerEditorRef = useRef(null);
+
+  const modules = {
+    toolbar: [
+      [{ font: Font.whitelist }],
+      [{ size: Size.whitelist }],
+      [
+        {
+          color: [
+            "red",
+            "green",
+            "blue",
+            "black",
+            "orange",
+            "#ffffff",
+            "#000000",
+          ],
+        },
+        { background: ["red", "green", "blue", "yellow", "gray"] },
+      ],
+      [
+        { align: [] },
+        { align: "center" },
+        { align: "right" },
+        { align: "justify" },
+      ],
+      [{ script: "sub" }, { script: "super" }],
+      [{ header: [1, 2, 3, false] }],
+      [{ list: "ordered" }, { list: "bullet" }],
+      ["bold", "italic", "underline", "strike"],
+      ["link", "clean"],
+      [{ indent: "-1" }, { indent: "+1" }],
+    ],
+    clipboard: { matchVisual: false },
   };
 
-  if (user.user_role !== "94" && user.user_role !== "96") {
-    navigate("/");
+  const formats = [
+    "header",
+    "font",
+    "size",
+    "bold",
+    "italic",
+    "underline",
+    "strike",
+    "blockquote",
+    "list",
+    "bullet",
+    "indent",
+    "link",
+    "image",
+    "color",
+    "background",
+    "align",
+    "script",
+    "variable",
+    "bb",
+  ];
+
+  // useEffect(() => {
+  //   if (!isEditing) return;
+  //   const quill = bodyEditorRef.current?.getEditor();
+  //   if (!quill) return;
+  //   const editorRoot = quill.root;
+
+  //   const handleEditorDrop = (e) => {
+  //     e.preventDefault();
+  //     const text = e.dataTransfer.getData("text");
+  //     if (!text) return;
+
+  //     const range = quill.getSelection(true);
+  //     if (!range) return;
+
+  //     const currentIndex = range.index;
+
+  //     if (currentIndex > 0) {
+  //       // Use Quill's API to get the content of the single blot/char before the cursor
+  //       const oneCharBefore = quill.getContents(currentIndex - 1, 1);
+  //       const previousOp = oneCharBefore.ops?.[0]; // Safely access the first operation
+
+  //       // Check if the previous operation was the same variable blot
+  //       if (
+  //         previousOp &&
+  //         typeof previousOp.insert === "object" &&
+  //         previousOp.insert.variable &&
+  //         previousOp.insert.variable === text
+  //       ) {
+  //         setSbar({
+  //           isOpen: true,
+  //           Msg: `? Cannot add the same variable consecutively.`,
+  //         });
+  //         return;
+  //       }
+  //     }
+
+  //     quill.insertEmbed(currentIndex, "variable", text, Quill.sources.USER);
+  //     quill.setSelection(currentIndex + 1, Quill.sources.USER);
+  //   };
+
+  //   const handleEditorDragOver = (e) => {
+  //     e.preventDefault();
+  //   };
+
+  //   editorRoot.addEventListener("drop", handleEditorDrop);
+  //   editorRoot.addEventListener("dragover", handleEditorDragOver);
+
+  //   return () => {
+  //     editorRoot.removeEventListener("drop", handleEditorDrop);
+  //     editorRoot.removeEventListener("dragover", handleEditorDragOver);
+  //   };
+  // }, [isEditing, setSbar]);
+  useEffect(() => {
+    if (!isEditing) return;
+    const quill = bodyEditorRef.current?.getEditor();
+    if (!quill) return;
+    const editorRoot = quill.root;
+
+    const handleEditorDrop = (e) => {
+      e.preventDefault();
+      const text = e.dataTransfer.getData("text");
+      if (!text) return;
+
+      // --- START: New logic to calculate the correct drop index ---
+      let dropRange;
+      let currentIndex;
+
+      // Use browser APIs to find the text range from the mouse coordinates
+      if (document.caretRangeFromPoint) {
+        dropRange = document.caretRangeFromPoint(e.clientX, e.clientY);
+      } else {
+        // Fallback for Firefox
+        const position = document.caretPositionFromPoint(e.clientX, e.clientY);
+        dropRange = document.createRange();
+        if (position) {
+          dropRange.setStart(position.offsetNode, position.offset);
+        }
+      }
+
+      // If we couldn't determine the range, fallback to the current selection
+      if (!dropRange) {
+        const fallbackRange = quill.getSelection(true);
+        if (!fallbackRange) return;
+        currentIndex = fallbackRange.index;
+      } else {
+        // Find the Quill blot (leaf) at that DOM range
+        const leaf = Quill.find(dropRange.startContainer, true);
+        if (!leaf) {
+          // If no leaf found, use fallback
+          const fallbackRange = quill.getSelection(true);
+          if (!fallbackRange) return;
+          currentIndex = fallbackRange.index;
+        } else {
+          // Calculate the precise Quill index from the blot and offset
+          const blotIndex = quill.getIndex(leaf);
+          currentIndex = blotIndex + dropRange.startOffset;
+        }
+      }
+      // --- END: New logic ---
+
+      // The rest of the logic is the same, but now uses the correct `currentIndex`
+      if (currentIndex > 0) {
+        const oneCharBefore = quill.getContents(currentIndex - 1, 1);
+        const previousOp = oneCharBefore.ops?.[0];
+
+        if (
+          previousOp &&
+          typeof previousOp.insert === "object" &&
+          previousOp.insert.variable &&
+          previousOp.insert.variable === text
+        ) {
+          setSbar({
+            isOpen: true,
+            Msg: `❌ Cannot add the same variable consecutively.`,
+          });
+          return;
+        }
+      }
+
+      quill.insertEmbed(currentIndex, "variable", text, Quill.sources.USER);
+      quill.setSelection(currentIndex + 1, Quill.sources.USER);
+    };
+
+    const handleEditorDragOver = (e) => {
+      e.preventDefault();
+    };
+
+    editorRoot.addEventListener("drop", handleEditorDrop);
+    editorRoot.addEventListener("dragover", handleEditorDragOver);
+
+    return () => {
+      editorRoot.removeEventListener("drop", handleEditorDrop);
+      editorRoot.removeEventListener("dragover", handleEditorDragOver);
+    };
+  }, [isEditing, setSbar]);
+
+  useEffect(() => {
+    const editor = bodyEditorRef.current?.getEditor();
+    if (!editor || !isEditing) return;
+
+    const handleClick = (e) => {
+      if (e.target.classList.contains("variable-delete-icon")) {
+        const blotNode = e.target.closest(".variable-blot");
+        if (blotNode) {
+          const blot = Quill.find(blotNode, true);
+          if (blot) {
+            const index = editor.getIndex(blot);
+            editor.deleteText(index, blot.length(), "user");
+          }
+        }
+      }
+    };
+
+    editor.root.addEventListener("click", handleClick);
+    return () => {
+      editor.root.removeEventListener("click", handleClick);
+    };
+  }, [isEditing]);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // const fetchData = async () => {
+  //   try {
+  //     const response = await axios.post(
+  //       "Server/IAMServices/EmailTemplate",
+  //       {},
+  //       {
+  //         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+  //       }
+  //     );
+  //     let res = response.data.result;
+  //     console.log(res);
+  //     let deliminator = "INTIMATION</h4>";
+  //     const splitIndex = res.indexOf("INTIMATION</h4>") + deliminator.length;
+  //     // console.log(splitIndex);
+  //     // const splitIndex = res.indexOf("Dear Sir/Madam");
+  //     if (splitIndex !== -1) {
+  //       setHeaderContent(res.substring(0, splitIndex));
+  //       setBodyContent(res.substring(splitIndex));
+  //     } else {
+  //       setHeaderContent(res);
+  //       setBodyContent("");
+  //     }
+  //     setWordCount(countWord(res));
+  //   } catch (e) {
+  //     // Optionally fallback to handleReset
+  //   }
+  // };
+  const fetchData = async () => {
+    try {
+      const response = await axios.post(
+        "Server/IAMServices/EmailTemplate",
+        {},
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+      let htmlResponse = response.data.result;
+
+      // Create a temporary, in-memory element to parse the HTML string
+      const container = document.createElement("div");
+      container.innerHTML = htmlResponse;
+
+      // Find the h4 element that acts as our structural delimiter
+      const delimiterNode = container.querySelector("h4");
+
+      if (delimiterNode) {
+        let headerHtml = "";
+        let bodyHtml = "";
+        let bodyHasStarted = false;
+
+        // Loop through all top-level nodes in the response
+        for (const node of container.childNodes) {
+          if (bodyHasStarted) {
+            // Once the flag is set, everything else goes into the body
+            bodyHtml += node.outerHTML || node.textContent;
+          } else {
+            // Until the flag is set, everything goes into the header
+            headerHtml += node.outerHTML || node.textContent;
+          }
+
+          // After processing the current node, check if it was our delimiter.
+          // If so, all subsequent nodes belong to the body.
+          if (node === delimiterNode) {
+            bodyHasStarted = true;
+          }
+        }
+        setHeaderContent(headerHtml);
+        setBodyContent(bodyHtml);
+      } else {
+        // Fallback if an h4 tag is not found in the template
+        console.error("Could not find the h4 delimiter in the template.");
+        setHeaderContent(htmlResponse);
+        setBodyContent("");
+      }
+    } catch (e) {
+      console.error("Failed to fetch email template:", e);
+    }
+  };
+
+  const handleDragStart = (e) => {
+    const text = e.target.innerText;
+    e.dataTransfer.setData("text", text);
+  };
+  function countWord(str) {
+    const text = str.replace(/<[^>]*>/g, "");
+    const words = text.trim().split(/\s+/).filter(Boolean);
+    return words.length;
   }
 
-  const [branchDetailErrors, setBranchDetailErrors] = useState({});
-  const [error, setError] = useState(false);
-  const [branchData, setbranchData] = useState(emptyBranchDataMap);
-  const [loadOpen, setLoadOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState(null);
-  const [branchCode, setBranchCode] = useState("");
-  const [circleList, setCircleList] = useState([]);
-  const [fieldsDisabled, setFieldsDisabled] = useState(true);
-
-  const handleCloseSnackbar = () => setSnackbar(null);
-  const handleDialogClose = () => setLoadOpen(false);
-
-  const handleBranchCodeChange = (e) => {
-    setError(false);
-    let result = validations("numInput", e.target.value);
-    if (result === "") {
-      setBranchCode(e.target.value);
-    } else {
-      setSnackbar({ children: result, severity: "error" });
-    }
-  };
-
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    const error = validateInputFields(name, value);
-    setBranchDetailErrors({ ...branchDetailErrors, [name]: error });
-    setbranchData({ ...branchData, [name]: value });
-  };
-
-  const validateInputFields = (name, value) => {
-    let error = "";
-    if (!value) {
-      error = "This field is required.";
-    } else {
-      switch (name) {
-        case "MOBILE":
-          error = validations("mobileNumber", value);
-          break;
-        case "PIN":
-          error = validations("postCode", value);
-          break;
-        case "ADDRESS":
-        case "CITY":
-        case "STATE":
-          error = validations("splAlphaNumeric", value);
-          break;
-        case "MODULE":
-        case "NETWORK":
-        case "REGION":
-          const regex1 = /^\d{3}$/;
-          if (!regex1.test(value) || value === "") {
-            error = "Should be in 3 digits only";
-          }
-          break;
-        case "IPPHONE":
-        case "PHONE":
-          error = validations("numInput", value);
-          break;
-        case "STDCODE":
-          const regex = /^\d{2,5}$/;
-          if (!regex.test(value) || value === "") {
-            error = "STD Code will be in between 2 to 5 digits";
-          }
-          break;
-        default:
-          break;
-      }
-    }
-    return error;
-  };
-
-  const handleReset = () => {
-    setbranchData(emptyBranchDataMap);
-    setCircleList([]);
-    setBranchCode("");
-    setFieldsDisabled(true);
-    setBranchDetailErrors({});
-  };
-
-  /**
-   * This function first checks if a branch exists. If not, it fetches its details
-   * from the core banking system to populate the form for adding.
-   */
-  const handleSearch = async () => {
-    if (branchCode.length < 5) {
-      setSnackbar({
-        children: "Kindly enter branch code upto 5 digits.",
-        severity: "error",
-      });
+  // function verifyLine(line) {
+  //   let array1 = line?.match(/\{{2}[A-Z_]+\}{2}/g);
+  //   let set1 = new Set(array1);
+  //   if (array1?.length != set1?.length) {
+  //     let pos = bodyEditorRef.current.editor.getSelection();
+  //     bodyEditorRef.current.editor.deleteText(pos - 1, 1, "silent");
+  //   }
+  // }
+  const handleBodyChange = (content, delta, source, editor) => {
+    if (source == "api") {
       return;
     }
-    setLoadOpen(true);
+    console.log(delta);
+    let htmlContent = editor.getHTML();
+    console.log(htmlContent);
+    let length = countWord(htmlContent);
+    let lines = htmlContent.split(/[!?.]|(<p><br><\/p>)/gi);
+    console.log(lines);
+    // lines.forEach((line) => verifyLine(line));
+
+    // Validation for special characters
+    const insertedOp = delta.ops?.find((op) => typeof op.insert === "string");
+    if (insertedOp) {
+      const inserted = insertedOp.insert;
+      const len = insertedOp.insert.length;
+
+      // Block characters that are NOT allowed
+      const illegalChar = inserted.match(/[^a-zA-Z0-9_\s.,;!?'"()\{\}\-@]/);
+
+      if (illegalChar) {
+        setTimeout(() => {
+          const quillEditor = bodyEditorRef.current?.getEditor();
+          if (quillEditor) {
+            const selection = quillEditor.getSelection();
+            let position = selection?.index || quillEditor.getLength();
+            quillEditor.deleteText(position - len, len, "silent");
+          }
+        }, 10);
+        setSbar({
+          isOpen: true,
+          Msg: "❌ Special characters are not allowed!",
+        });
+      }
+    }
+    if (insertedOp && insertedOp.insert === "\n") {
+      const quillEditor = bodyEditorRef.current?.getEditor();
+      if (quillEditor) {
+        const selection = quillEditor.getSelection();
+        let index = selection?.index || quillEditor.getLength();
+
+        // Get text up to the cursor
+        const text = quillEditor.getText(0, index);
+        // If the last 4 characters are all newlines, block the 4th
+        const match = text.match(/(\n{4,})$/);
+
+        if (match) {
+          setTimeout(() => {
+            quillEditor.deleteText(index - 1, 1, "silent");
+            quillEditor.setSelection(index - 1, 0, "silent"); // cursor stays where user tried to type
+          }, 0);
+          setSbar({
+            isOpen: true,
+            Msg: "❌ You cannot enter more than 3 consecutive blank lines.",
+          });
+          return;
+        }
+      }
+    }
+
+    // Word limit validation
+    if (length > 2000) {
+      const quillEditor = bodyEditorRef.current?.getEditor();
+      if (quillEditor) {
+        const selection = quillEditor.getSelection();
+        let position = selection?.index || quillEditor.getLength();
+        quillEditor.deleteText(position - 1, 1, "silent");
+        setSbar({
+          isOpen: true,
+          Msg: "Word limit exceeded. Please reduce content.",
+        });
+        return;
+      }
+    }
+
+    setBodyContent(htmlContent);
+    setWordCount(length);
+  };
+  // ---- MAIN CHANGE: strip styling before sending to backend ----
+  const handleSave = async () => {
+    setIsEditing(false);
+    let i = bodyContent.search(/<p><br><\/p>/g);
+    let fullContent =
+      i === 0
+        ? headerContent + bodyContent
+        : headerContent + "<p><br/></p>" + bodyContent;
+
+    // Remove X icon for save/export
+    let cleanContent = removeVariableDeleteIcons(fullContent);
+
+    // STRIP STYLING for backend only
+    let backendContent = stripStyling(cleanContent);
+
+    let str = backendContent.match(/\{{2}[A-Z_]+\}{2}/g);
+    let checked = str?.filter((w) => draftVar.some((s) => s === w));
+    if (str != null && str.length > checked.length) {
+      setSbar({
+        isOpen: true,
+        Msg: "Invalid Variable Names added! Ensure variables are correct without whitespaces.",
+      });
+      handleCloseDialog();
+      return;
+    }
+    let SanStr = backendContent.replace(/[^\x00-\x7F]/g, "");
+    let dataToSend = { MASTER_TEMPLATE: `<html>${SanStr}</html>` };
+    console.log(dataToSend);
+
     try {
-      let jsonFormData = JSON.stringify({ branchCode: branchCode });
+      let jsonFormData = JSON.stringify(dataToSend);
       await encrypt(iv, salt, jsonFormData).then(function (result) {
         jsonFormData = result;
       });
       let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
-
-      // Check if branch already exists in main database
       const response = await axios.post(
-        "/Server/AddBranch/fetchBranchDetails",
+        "Server/IAMServices/saveMasterTemplate",
         payload,
-        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
       );
-
-      // If branchData is NOT empty, it means the branch already exists. This is an error for an "Add" page.
-      if (
-        response.data?.result &&
-        Object.keys(response.data?.result?.branchData).length !== 0
-      ) {
-        setSnackbar({
-          children: "Branch " + branchCode + " already exists. Cannot add.",
-          severity: "error",
-        });
-        handleDialogClose();
+      if (response.data.statusCode === 200 && response.data.result !== "") {
+        setSbar({ isOpen: true, Msg: "✅ Template saved successfully!" });
       }
-      // If branch does not exist, proceed to fetch from CBS to pre-populate form
-      else if (
-        response.data?.result &&
-        Object.keys(response.data?.result?.branchData).length === 0
-      ) {
-        fetchFromCbs();
-      } else {
-        setSnackbar({
-          children: "An error occurred. Please try again after some time.",
-          severity: "error",
-        });
-        handleDialogClose();
-      }
-    } catch (e) {
-      console.error(e);
-      setSnackbar({
-        children: "An error occurred. Please try again after some time.",
-        severity: "error",
-      });
-      handleDialogClose();
+    } catch (error) {
+      setSbar({ isOpen: true, Msg: "❌ Error saving template." });
     }
+    setIsPreviewing(false);
+    handleCloseDialog();
   };
 
-  /**
-   * This function fetches branch details from the CBS table to populate the 'Add Branch' form.
-   */
-  const fetchFromCbs = async () => {
-    try {
-      let jsonFormData = JSON.stringify({ branchCode: branchCode });
-      await encrypt(iv, salt, jsonFormData).then(function (result) {
-        jsonFormData = result;
-      });
-      let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
+  const handlePreview = async () => {
+    let i = bodyContent.search(/<p><br><\/p>/g);
+    let fullContent =
+      i === 0
+        ? headerContent + bodyContent
+        : headerContent + "<p><br/></p>" + bodyContent;
 
-      const response = await axios.post(
-        "/Server/AddBranch/fetchBranchDetailsCbs",
-        payload,
-        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
-      );
+    // Remove the delete "X" icons (but DO NOT remove styling for frontend preview)
+    const cleanContent = removeVariableDeleteIcons(fullContent);
 
-      // If data is found in CBS, populate the form so the user can add it.
-      if (
-        response.data?.result &&
-        Object.keys(response.data?.result?.branchData).length !== 0
-      ) {
-        setCircleList(response.data.result.circleList);
-        setbranchData(response.data.result.branchData);
-        setFieldsDisabled(false); // Enable the form for saving
-        handleDialogClose();
-      } else {
-        setSnackbar({
-          children: "Branch does not exist. Please contact 'Finance One Core Team'",
-          severity: "error",
-        });
-        handleDialogClose();
-      }
-    } catch (e) {
-      console.error(e);
-      setSnackbar({
-        children: "An error occurred. Please try again after some time.",
-        severity: "error",
-      });
-      handleDialogClose();
-    }
-  };
-
-  /**
-   * This function validates all fields and submits the new branch data.
-   */
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    if (!branchCode) {
-      setError(true);
-      return;
-    }
-    const errors = {};
-    Object.keys(branchData).forEach((field) => {
-      const error = validateInputFields(field, branchData[field]);
-      if (error) {
-        errors[field] = error;
+    let data = {
+      DATE: "xx/xx/xxxx",
+      REF_NO: "9999xxx",
+      FIRM_NAME: "xxxxxxxxxx",
+      FRN_NO: "999999999",
+      GSTN: "99xx99xx",
+      FIRM_ADDR: "xxxxxxxx,xxxxxxxx",
+      ASSIGNMENT_TYPE: "xxxxxxx",
+    };
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = cleanContent;
+    const variableBlots = tempDiv.querySelectorAll(".variable-blot");
+    variableBlots.forEach((blot) => {
+      const variableName = blot.textContent.replace("X", "").trim();
+      const key = variableName.substring(2, variableName.length - 2);
+      if (data[key]) {
+        blot.replaceWith(document.createTextNode(data[key]));
       }
     });
+    let StrToSend = tempDiv.innerHTML.replace(/<br\s*\/?>/gi, "<br></br>");
+    settemplateContent(StrToSend);
+    setIsPreviewing(true);
+  };
 
-    setBranchDetailErrors(errors);
+  const handleCloseDialog = () => setIsPreviewing(false);
 
-    if (Object.keys(errors).length !== 0) {
-      setSnackbar({
-        children: "Kindly make sure all fields are filled correctly.",
-        severity: "error",
-      });
-    } else {
-      setLoadOpen(true);
-      handleConfirmSubmit();
+  const handleReset = async () => {
+    try {
+      const response = await axios.post(
+        "Server/IAMServices/resetTemplate",
+        {},
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+      let res = response.data.result;
+      const splitIndex = res.indexOf("Dear Sir/Madam");
+      if (splitIndex !== -1) {
+        setHeaderContent(res.substring(0, splitIndex));
+        setBodyContent(res.substring(splitIndex));
+      } else {
+        setHeaderContent(res);
+        setBodyContent("");
+      }
+      setSbar({ isOpen: true, Msg: "✅ Template has been reset to default." });
+    } catch (e) {
+      setSbar({ isOpen: true, Msg: "❌ Error resetting template." });
     }
   };
 
-  /**
-   * This function is an axios call to add the new branch to the database.
-   */
-  const handleConfirmSubmit = async () => {
-    try {
-      let jsonFormData = JSON.stringify({ branchData: branchData });
-      await encrypt(iv, salt, jsonFormData).then(function (result) {
-        jsonFormData = result;
-      });
-      let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
-
-      const response = await axios.post(
-        "/Server/AddBranch/submitNewBranch",
-        payload,
-        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
-      );
-
-      if (response.data?.result?.status) {
-        handleReset();
-        setSnackbar({
-          children: `The new branch ${branchCode} has been successfully created.`,
-          severity: "success",
-        });
-        handleDialogClose();
-      } else {
-        setSnackbar({
-          children: "An error occurred. Please try again after some time.",
-          severity: "error",
-        });
-        handleDialogClose();
-      }
-    } catch (e) {
-      console.error(e);
-      setSnackbar({
-        children: "An error occurred. Please try again after some time.",
-        severity: "error",
-      });
-      handleDialogClose();
-    }
+  const handleHeaderCopy = (e) => {
+    e.preventDefault();
+    setSbar({
+      isOpen: true,
+      Msg: "❌ Copying from the header section is not allowed!",
+    });
   };
 
   return (
     <>
-      <Box sx={{ display: "flex", height: 50, alignItems: "bottom" }}>
-        <Typography variant="h5" gutterBottom sx={{ textAlign: "flex-start", p: 2 }}>
-          Add Branch
-        </Typography>
-      </Box>
-      <Divider />
-      <Container
-        maxWidth={false}
-        disableGutters
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          flexDirection: "column",
-        }}
-      >
-        <Box
-          sx={{
-            width: "100%",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            padding: 4,
-            display: "flex",
-            flexDirection: "column",
-            backgroundColor: "#fff",
-          }}
-        >
-          <Grid container spacing={2}>
-            {/* First row */}
-            <Grid item xs={12} sm={4}>
-              <TextField
-                label="Branch Code"
-                name="CODE"
-                error={error}
-                helperText={error && "This field is required."}
-                onChange={handleBranchCodeChange}
-                value={branchCode}
-                disabled={!fieldsDisabled}
-                variant="outlined"
-                fullWidth
-                inputProps={{ maxLength: 5 }}
+      <Typography gutterBottom variant="h5" component="div" sx={{ mb: 1 }}>
+        Empanelment Intimation Letter Template
+      </Typography>
+      <Divider sx={{ mb: 1 }} />
+      <Box sx={{ p: 1, minHeight: "80%" }}>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={4}>
+            <Card sx={{ mb: 3 }}>
+              <CardHeader
+                title="Variables"
+                titleTypographyProps={{ variant: "h6" }}
               />
-            </Grid>
-            <Grid item xs={12} sm={2}>
-              <Button
-                variant="contained"
-                disableElevation
-                startIcon={<SearchIcon />}
-                sx={{ mt: 1 }}
-                onClick={handleSearch}
-              >
-                Search
-              </Button>
-              &nbsp;
-              <Button
-                variant="contained"
-                color="warning"
-                disableElevation
-                startIcon={<Cached />}
-                sx={{ mt: 1 }}
-                onClick={handleReset}
-              >
-                Reset
-              </Button>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Branch Name"
-                name="NAME"
-                onChange={handleInputChange}
-                value={branchData.NAME}
-                error={!!branchDetailErrors.NAME}
-                helperText={branchDetailErrors.NAME}
-                disabled={fieldsDisabled}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <AccountBalanceRoundedIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 40 }}
-              />
-            </Grid>
-
-            {/* Second row */}
-            <Grid item xs={6} sm={6}>
-              <TextField
-                label="Circle Name"
-                name="CIRCLE"
-                error={!!branchDetailErrors.CIRCLE}
-                helperText={branchDetailErrors.CIRCLE}
-                select
-                disabled={fieldsDisabled}
-                value={branchData.CIRCLE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <LanIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                SelectProps={{
-                  MenuProps: { sx: { height: 350 } },
-                }}
-              >
-                {circleList.map((choices) => (
-                  <MenuItem key={choices} value={choices.split("~")[0]}>
-                    {choices.split("~")[1]}
-                  </MenuItem>
+              <CardContent sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                {draftVar.map((label) => (
+                  <Chip
+                    key={label}
+                    label={label}
+                    color="primary"
+                    draggable={isEditing}
+                    onDragStart={(e) => handleDragStart(e, label)}
+                    sx={{
+                      borderRadius: "0",
+                      cursor: isEditing ? "move" : "not-allowed",
+                      fontWeight: "medium",
+                    }}
+                  />
                 ))}
-              </TextField>
-            </Grid>
-
-            {/* Third row */}
-            <Grid item xs={6} sm={2}>
-              <TextField
-                label="Network"
-                name="NETWORK"
-                disabled={fieldsDisabled}
-                value={branchData.NETWORK}
-                error={!!branchDetailErrors.NETWORK}
-                helperText={branchDetailErrors.NETWORK}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <SensorsIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                inputProps={{ maxLength: 3 }}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader
+                title="Instructions"
+                titleTypographyProps={{ variant: "h6" }}
               />
-            </Grid>
-            <Grid item xs={6} sm={2}>
-              <TextField
-                label="Module"
-                name="MODULE"
-                disabled={fieldsDisabled}
-                value={branchData.MODULE}
-                error={!!branchDetailErrors.MODULE}
-                helperText={branchDetailErrors.MODULE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <DnsIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                inputProps={{ maxLength: 3 }}
-              />
-            </Grid>
-            <Grid item xs={6} sm={2}>
-              <TextField
-                label="Region"
-                name="REGION"
-                disabled={fieldsDisabled}
-                value={branchData.REGION}
-                error={!!branchDetailErrors.REGION}
-                helperText={branchDetailErrors.REGION}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <PublicIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                inputProps={{ maxLength: 3 }}
-              />
-            </Grid>
-
-            {/* Fourth row */}
-            <Grid item xs={12}>
-              <TextField
-                label="Address"
-                name="ADDRESS"
-                disabled={fieldsDisabled}
-                value={branchData.ADDRESS}
-                error={!!branchDetailErrors.ADDRESS}
-                helperText={branchDetailErrors.ADDRESS}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <HomeIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                inputProps={{ maxLength: 40 }}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                label="City"
-                name="CITY"
-                disabled={fieldsDisabled}
-                value={branchData.CITY}
-                error={!!branchDetailErrors.CITY}
-                helperText={branchDetailErrors.CITY}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <LocationCityRoundedIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 40 }}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                label="State"
-                name="STATE"
-                disabled={fieldsDisabled}
-                value={branchData.STATE}
-                error={!!branchDetailErrors.STATE}
-                helperText={branchDetailErrors.STATE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <CorporateFareRoundedIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 40 }}
-              />
-            </Grid>
-
-            {/* Fifth row */}
-            <Grid item xs={6} sm={4}>
-              <TextField
-                label="Pin Code"
-                name="PIN"
-                disabled={fieldsDisabled}
-                value={branchData.PIN}
-                error={!!branchDetailErrors.PIN}
-                helperText={branchDetailErrors.PIN}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <PinDropIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                inputProps={{ maxLength: 6 }}
-              />
-            </Grid>
-            <Grid item xs={6} sm={4}>
-              <TextField
-                label="STD Code"
-                name="STDCODE"
-                disabled={fieldsDisabled}
-                value={branchData.STDCODE}
-                error={!!branchDetailErrors.STDCODE}
-                helperText={branchDetailErrors.STDCODE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <EmergencyShareIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 5 }}
-              />
-            </Grid>
-            <Grid item xs={6} sm={4}>
-              <TextField
-                label="Phone No."
-                name="PHONE"
-                disabled={fieldsDisabled}
-                value={branchData.PHONE}
-                error={!!branchDetailErrors.PHONE}
-                helperText={branchDetailErrors.PHONE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <PhoneIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                inputProps={{ maxLength: 10 }}
-              />
-            </Grid>
-
-            {/* Sixth row */}
-            <Grid item xs={6} sm={4}>
-              <TextField
-                label="Mobile No."
-                name="MOBILE"
-                disabled={fieldsDisabled}
-                value={branchData.MOBILE}
-                error={!!branchDetailErrors.MOBILE}
-                helperText={branchDetailErrors.MOBILE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <PhoneAndroidRoundedIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 10 }}
-              />
-            </Grid>
-            <Grid item xs={6} sm={4}>
-              <TextField
-                label="IP Phone"
-                name="IPPHONE"
-                disabled={fieldsDisabled}
-                value={branchData.IPPHONE}
-                error={!!branchDetailErrors.IPPHONE}
-                helperText={branchDetailErrors.IPPHONE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <WifiCalling3Icon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 10 }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}></Grid>
-
-            {/* Seventh row */}
-            <Grid item xs={6} sm={6}>
-              <TextField
-                name="AUDITABLE"
-                disabled={fieldsDisabled}
-                fullWidth
-                select
-                InputProps={{
-                  startAdornment: <PersonIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                SelectProps={{ MenuProps: { sx: { height: 350 } } }}
-                error={!!branchDetailErrors.AUDITABLE}
-                helperText={branchDetailErrors.AUDITABLE}
-                value={branchData.AUDITABLE}
-                onChange={handleInputChange}
-                label="Branch Audit Status"
-              >
-                <MenuItem value="">---Select---</MenuItem>
-                <MenuItem value="A">Audited</MenuItem>
-                <MenuItem value="N">Non Audited</MenuItem>
-                <MenuItem value="I">IFCOFR Audited</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={6} sm={6}></Grid>
-
-            {/* Submit Button */}
-            <Grid item xs={12} sm={12}>
-              <Box sx={{ display: "flex", justifyContent: "center", p: 1 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  size="medium"
-                  disabled={fieldsDisabled}
-                  onClick={handleSubmit}
-                  startIcon={<SaveIcon />}
-                >
-                  Save
-                </Button>
-              </Box>
-            </Grid>
+              <CardContent>
+                <List dense>
+                  {[
+                    "Special characters are not allowed.",
+                    "Only use variables from the list above.",
+                    "Header section is non-editable.",
+                    "Click 'Edit' to modify the template body.",
+                    "Maximum word limit is 2000 words.",
+                  ].map((text) => (
+                    <ListItem key={text} disablePadding>
+                      <ListItemIcon sx={{ minWidth: 32 }}>
+                        <CheckCircleOutlineIcon
+                          color="primary"
+                          fontSize="small"
+                        />
+                      </ListItemIcon>
+                      <ListItemText primary={text} />
+                    </ListItem>
+                  ))}
+                </List>
+              </CardContent>
+            </Card>
           </Grid>
-        </Box>
-      </Container>
+          <Grid item xs={12} md={8}>
+            <Card>
+              <CardHeader
+                title="Empanelment Intimation Letter Draft"
+                titleTypographyProps={{ variant: "h6" }}
+              />
+              <CardContent>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ fontWeight: "medium", color: "text.secondary" }}
+                >
+                  Non Configurable
+                </Typography>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    bgcolor: "#f5f5f5",
+                    p: 1,
+                    mb: 3,
+                    border: "1px solid #e0e0e0",
+                    borderRadius: 1,
+                  }}
+                  onCopy={handleHeaderCopy}
+                >
+                  <ReactQuill
+                    style={{ height: "23vh" }}
+                    theme="bubble"
+                    value={headerContent}
+                    ref={headerEditorRef}
+                    readOnly={true}
+                    modules={{ toolbar: false }}
+                  />
+                </Paper>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ fontWeight: "medium", color: "text.secondary" }}
+                >
+                  Configurable
+                </Typography>
+                <Paper variant="outlined">
+                  <ReactQuill
+                    theme="snow"
+                    style={{ height: "23vh", marginBottom: "4%" }}
+                    modules={modules}
+                    formats={formats}
+                    value={bodyContent}
+                    ref={bodyEditorRef}
+                    onChange={handleBodyChange}
+                    readOnly={!isEditing}
+                  />
 
-      {/* Loading Dialog */}
-      <Dialog
-        PaperProps={{ style: { backgroundColor: "transparent", boxShadow: "none" } }}
-        open={loadOpen}
-      >
-        <DialogContent sx={{ display: "Grid" }}>
-          <CircularProgress />
-        </DialogContent>
-      </Dialog>
-
-      {/* Snackbar */}
-      {snackbar && (
-        <SnackbarProvider maxSnack={3}>
-          <Snackbar
-            open
-            anchorOrigin={{ vertical: "top", horizontal: "center" }}
-            onClose={handleCloseSnackbar}
-            autoHideDuration={5000}
-          >
-            <Alert variant="filled" {...snackbar} onClose={handleCloseSnackbar} />
-          </Snackbar>
-        </SnackbarProvider>
-      )}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      mt: 2,
+                      mb: 1,
+                    }}
+                  >
+                    <Typography variant="body2" color="textSecondary">
+                      Word Count: {wordCount} / 2000
+                    </Typography>
+                    <Box sx={{ display: "flex", gap: 1 }}>
+                      {!isEditing ? (
+                        <Button
+                          variant="contained"
+                          startIcon={<EditIcon />}
+                          onClick={() => setIsEditing(true)}
+                        >
+                          Edit
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          startIcon={<CancelIcon />}
+                          onClick={() => setIsEditing(false)}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                      <Button
+                        variant="outlined"
+                        color="info"
+                        startIcon={<PreviewIcon />}
+                        onClick={handlePreview}
+                      >
+                        Preview
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="secondary"
+                        startIcon={<RestartAltIcon />}
+                        onClick={handleReset}
+                      >
+                        Reset
+                      </Button>
+                    </Box>
+                  </Box>
+                </Paper>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+        <Dialogue
+          open={isPreviewing}
+          close={handleCloseDialog}
+          save={handleSave}
+          content={templateContent}
+        />
+        <Snackbar
+          open={sbar.isOpen}
+          autoHideDuration={6000}
+          onClose={() => setSbar({ isOpen: false, Msg: "" })}
+          message={sbar.Msg}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        />
+      </Box>
     </>
   );
-}
+};
+
+// --- Preview Dialog Component as separate function ---
+const BootstrapDialog = styled(Dialog)(({ theme }) => ({
+  "& .MuiDialogContent-root": {
+    padding: theme.spacing(2),
+    backgroundColor: "#f4f6f8",
+  },
+  "& .MuiDialogActions-root": {
+    padding: theme.spacing(1.5),
+    borderTop: `1px solid ${theme.palette.divider}`,
+  },
+  "& .MuiDialogTitle-root": {
+    borderBottom: `1px solid ${theme.palette.divider}`,
+  },
+}));
+
+const Dialogue = ({ open, close, save, content }) => (
+  <BootstrapDialog onClose={close} open={open} fullWidth maxWidth="md">
+    <DialogTitle sx={{ m: 0, p: 2, fontWeight: "bold" }}>
+      Intimation Letter Draft Preview
+    </DialogTitle>
+    <IconButton
+      aria-label="close"
+      onClick={close}
+      sx={{
+        position: "absolute",
+        right: 8,
+        top: 8,
+        color: (theme) => theme.palette.grey[500],
+      }}
+    >
+      <CloseIcon />
+    </IconButton>
+    <DialogContent>
+      <Paper
+        elevation={3}
+        dangerouslySetInnerHTML={{ __html: content }}
+        sx={{
+          width: "210mm",
+          minHeight: "297mm",
+          margin: "2rem auto",
+          padding: "20mm",
+          boxSizing: "border-box",
+          backgroundColor: "#ffffff",
+          overflow: "auto",
+          overflowWrap: "break-word",
+        }}
+      />
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={close} color="secondary">
+        Cancel
+      </Button>
+      <Button
+        autoFocus
+        onClick={save}
+        variant="contained"
+        startIcon={<SaveIcon />}
+      >
+        Save Draft
+      </Button>
+    </DialogActions>
+  </BootstrapDialog>
+);
+
+export default EmailTemplate;
