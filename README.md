@@ -1,893 +1,1070 @@
-import React, { useState } from "react";
-import {
-  TextField,
-  Grid,
-  MenuItem,
-  FormControl,
-  Button,
-  Typography,
-  DialogTitle,
-  Divider,
-  TableContainer,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-} from "@mui/material";
-import PhoneIcon from "@mui/icons-material/Phone";
-import HomeIcon from "@mui/icons-material/Home";
-import PinDropIcon from "@mui/icons-material/PinDrop";
-import AccountBalanceRoundedIcon from "@mui/icons-material/AccountBalanceRounded";
-import LocationCityRoundedIcon from "@mui/icons-material/LocationCityRounded";
-import PhoneAndroidRoundedIcon from "@mui/icons-material/PhoneAndroidRounded";
-import CorporateFareRoundedIcon from "@mui/icons-material/CorporateFareRounded";
-import WifiCalling3Icon from "@mui/icons-material/WifiCalling3";
-import EmergencyShareIcon from "@mui/icons-material/EmergencyShare";
-import DnsIcon from "@mui/icons-material/Dns";
-import PublicIcon from "@mui/icons-material/Public";
-import SensorsIcon from "@mui/icons-material/Sensors";
-import LanIcon from "@mui/icons-material/Lan";
-import { Container } from "@mui/system";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogActions from "@mui/material/DialogActions";
-import Dialog from "@mui/material/Dialog";
+import { useEffect, useState } from "react";
+import { createTheme, styled, ThemeProvider } from "@mui/material/styles";
+import Grid from "@mui/material/Grid";
+import IconButton from "@mui/material/IconButton";
+import Typography from "@mui/material/Typography";
 import axios from "axios";
-import Box from "@mui/material/Box";
-import { validations } from "../CommonValidations/Validations";
 import { useNavigate } from "react-router-dom";
-import { encrypt } from "../Security/AES-GCM256";
-import SaveIcon from "@mui/icons-material/Save";
-import DeleteIcon from "@mui/icons-material/Delete";
-import SearchIcon from "@mui/icons-material/Search";
+import Divider from "@mui/material/Divider";
+import { Box } from "@mui/system";
+import {
+  Avatar,
+  Card,
+  CardContent,
+  Chip,
+  Menu,
+  MenuItem,
+  InputBase,
+  Button,
+} from "@mui/material";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import CardActions from "@mui/material/CardActions";
+import DialogContent from "@mui/material/DialogContent";
+import Dialog from "@mui/material/Dialog";
 import CircularProgress from "@mui/material/CircularProgress";
+import { SnackbarProvider } from "notistack";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
-import { SnackbarProvider } from "notistack";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+import { encrypt } from "../Security/AES-GCM256";
 import Paper from "@mui/material/Paper";
-import PersonIcon from "@mui/icons-material/Person";
-import { Cached } from "@mui/icons-material";
-import {
-  AUDITED_REPORT_STATUS_CONSTANTS,
-  REPORT_STATUS_CONSTANTS,
-} from "../CommonValidations/commonConstants";
+import FilterAltIcon from "@mui/icons-material/FilterAlt";
+import { Close, DoneAll } from "@mui/icons-material";
+import FrtViewModel from "./FrtViewModel";
 
 const iv = crypto.getRandomValues(new Uint8Array(12)); // for encryption
 const ivBase64 = btoa(String.fromCharCode.apply(null, iv)); // for be decryption
 const salt = crypto.getRandomValues(new Uint8Array(16)); // for encryption
 const saltBase64 = btoa(String.fromCharCode.apply(null, salt)); // for be decryption
 
-export default function FrtMakerDeleteBranchDetails() {
-  const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("user"));
+const defaultTheme = createTheme();
 
-  const emptyBranchDataMap = {
-    NAME: "",
-    CIRCLE: "",
-    NETWORK: "",
-    MODULE: "",
-    REGION: "",
-    ADDRESS: "",
-    CITY: "",
-    STATE: "",
-    PIN: "",
-    STDCODE: "",
-    PHONE: "",
-    MOBILE: "",
-    IPPHONE: "",
-    AUDITABLE: "",
-    SCOPE: "",
-  };
+const CardContainer = styled(Card)(({ theme }) => ({
+  position: "relative",
+  overflow: "visible",
+  backgroundColor: "inherit",
+  boxShadow: "none",
+  //padding: theme.spacing(2),
+}));
 
-  const emptyAuditorMap = {
-    NAME: "",
-    TYPE: "",
-    MEMNO: "",
-    FIRMNO: "",
-    FIRMNAME: "",
-    ADDR: "",
-    CITY: "",
-    POST: "",
-    EMAIL: "",
-    PHONE: "",
-  };
+const IconButtonWrapper = styled("div")({
+  position: "absolute",
+  top: 0,
+  right: 0,
+  padding: "8px",
+});
 
-  if (user.user_role !== "94" && user.user_role !== "96") {
-    navigate("/");
-  }
-  const [branchDetailErrors, setBranchDetailErrors] = useState({});
-  const [openWarningDialog, setOpenWarningDialog] = useState(false);
-  const [fetchedData, setFetchedData] = useState({});
-  const [error, setError] = useState(false);
-  const [branchData, setbranchData] = useState(emptyBranchDataMap);
-  const [auditorData, setAuditorData] = useState(emptyAuditorMap);
-  const [loadOpen, setLoadOpen] = useState(false);
+const AvatarWrapper = styled("div")({
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  height: "100%",
+});
+
+const FrtRequestActivity = () => {
+  document.title = "CRS | Request Status";
+
+  const [requestList, setRequestList] = useState([]);
+  const [content, setContent] = useState("Loading . . .");
+  const [anchorEl, setAnchorEl] = useState(null);
   const [snackbar, setSnackbar] = useState(null);
-  const [branchCode, setBranchCode] = useState("");
-  const [circleList, setCircleList] = useState([]);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [reportsList, setReportsList] = useState([]);
-  const [fieldsDisabled, setFieldsDisabled] = useState(true);
+  const open = Boolean(anchorEl);
+  const [loadOpen, setLoadOpen] = useState(false);
+  const [index, setIndex] = useState("");
+  const [userData, setUserData] = useState(null);
+  const [searchUser, setSearchUser] = useState("");
+  const [viewOpen, setViewOpen] = useState(false);
+  const [hideCancel, setHideCancel] = useState(false);
 
+  const navigate = useNavigate();
+
+  const loggedInUser = JSON.parse(localStorage.getItem("user"));
+
+  useEffect(() => {
+    if (
+      loggedInUser.user_role !== "96" &&
+      loggedInUser.user_role !== "94" &&
+      loggedInUser.user_role !== "50" &&
+      loggedInUser.user_role !== "9"
+    ) {
+      navigate("/"); // logout
+    }
+
+    fetchData().then((r) => {
+      console.log("data fetched");
+    });
+  }, []);
+
+  /**
+   * This function is to open the sub menu.
+   *
+   * e : contains the event.
+   * i : contains the index of data.
+   * data : contains the selected request details.
+   *
+   * @Author : V1014064
+   **/
+  const handleClick = (e, i, data) => {
+    setAnchorEl(e.currentTarget);
+    setIndex(i);
+    setUserData(data);
+    if (
+      loggedInUser.user_role === "50" &&
+      loggedInUser.pf_number !== data.REQUESTED_USER
+    ) {
+      setHideCancel(true);
+    }
+  };
+
+  /**
+   * This function is to close the sub menu.
+   *
+   * @Author : V1014064
+   **/
+  const handleClose = () => {
+    setAnchorEl(null);
+    setIndex("");
+    setUserData(null);
+    setHideCancel(false);
+  };
+
+  /**
+   * This function is to open loading.
+   *
+   * @Author : V1014064
+   **/
+  const handleLoadOpen = () => {
+    setLoadOpen(true);
+  };
+
+  /**
+   * This function is to close the view modal.
+   *
+   * @Author : V1014064
+   **/
+  const handleViewClose = () => {
+    setAnchorEl(null);
+    setViewOpen(false);
+    setHideCancel(false);
+  };
+
+  /**
+   * This function is for closing the snackbar.
+   *
+   * @Author : V1014064
+   **/
   const handleCloseSnackbar = () => setSnackbar(null);
+
+  /**
+   * This function is for closing the loading icon.
+   *
+   * @Author : V1014064
+   **/
   const handleDialogClose = () => setLoadOpen(false);
 
-  const handleBranchCodeChange = (e) => {
-    setError(false);
-    let result = validations("numInput", e.target.value);
-    if (result === "") {
-      setBranchCode(e.target.value);
-    } else {
-      setSnackbar({ children: result, severity: "error" });
-    }
+  /**
+   * This function is for opening the view modal to reject/accept request.
+   *
+   * @Author : V1014064
+   **/
+  const handleMenuAction = () => {
+    setViewOpen(true);
   };
 
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    const error = validateInputFields(name, value);
-    setBranchDetailErrors({ ...branchDetailErrors, [name]: error });
-    setbranchData({ ...branchData, [name]: value });
-  };
-
-  const validateInputFields = (name, value) => {
-    let error = "";
-    if (!value) {
-      error = "This field is required.";
-    } else {
-      switch (name) {
-        case "MOBILE":
-          error = validations("mobileNumber", value);
-          break;
-        case "PIN":
-          error = validations("postCode", value);
-          break;
-        case "ADDRESS":
-        case "CITY":
-        case "STATE":
-          error = validations("splAlphaNumeric", value);
-          break;
-        case "MODULE":
-        case "NETWORK":
-        case "REGION":
-          if (!/^\d{3}$/.test(value)) {
-            error = "Should be 3 digits only";
-          }
-          break;
-        case "IPPHONE":
-        case "PHONE":
-          error = validations("numInput", value);
-          break;
-        case "STDCODE":
-          if (!/^\d{2,5}$/.test(value)) {
-            error = "STD Code must be between 2 to 5 digits";
-          }
-          break;
-        default:
-          break;
-      }
-    }
-    return error;
-  };
-
-  const handleReset = () => {
-    setbranchData(emptyBranchDataMap);
-    setFetchedData({});
-    setAuditorData(emptyAuditorMap);
-    setCircleList([]);
-    setBranchCode("");
-    setFieldsDisabled(true);
-    setReportsList([]);
-    setBranchDetailErrors({});
-  };
-
-  const checkIfChanged = () => {
-    return Object.keys(branchData).some(
-      (key) => branchData[key] !== fetchedData[key]
+  let filteredUsers = requestList
+    .map((row, index) => ({
+      ...row,
+      originalIndex: index,
+    }))
+    .filter((row) =>
+      row.PF_NUMBER.toString().includes(searchUser.toLowerCase())
     );
+
+  /**
+   * This function is axios call for fetching the list of requests from the backend.
+   *
+   * @Author : V1014064
+   **/
+  const fetchData = async () => {
+    try {
+      const response = await axios.post(
+        "Server/frtRequestActivityService/fetchData",
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      setRequestList(response.data.result);
+      setContent("No pending requests.");
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
   };
 
-  const handleSearch = async () => {
-    if (branchCode.length < 5) {
-      setSnackbar({
-        children: "Kindly enter branch code upto 5 digits.",
-        severity: "error",
-      });
-      return;
-    }
-    setLoadOpen(true);
+  /**
+   * This function is axios call to reject/cancel the request.
+   *
+   * type : type of operation i.e rejection/cancellation.
+   *
+   * @Author : V1014064
+   **/
+  const handleAction = async (type) => {
     try {
-      let jsonFormData = JSON.stringify({ branchCode: branchCode });
-      await encrypt(iv, salt, jsonFormData).then((r) => (jsonFormData = r));
-      let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
+      let data;
+      let statusValue;
+      let successMessage;
+      let errorMessage;
+
+      if (type === "reject") {
+        data = { id: userData.ID, status: "3" };
+        statusValue = "3";
+        successMessage =
+          "Request succesfully rejected for Req Id : " + userData.ID + ".";
+        errorMessage =
+          "Failed to reject the request for Req Id : " + userData.ID + ".";
+      } else {
+        data = { id: userData.ID, status: "4" };
+        statusValue = "4";
+        successMessage =
+          "Request succesfully cancelled for Req Id : " + userData.ID + ".";
+        errorMessage =
+          "Failed to cancel the request for Req Id : " + userData.ID + ".";
+      }
+
+      let jsonFormData = JSON.stringify(data);
+
+      await encrypt(iv, salt, jsonFormData).then(function (result) {
+        jsonFormData = result;
+      });
+
+      let payload = {
+        iv: ivBase64,
+        salt: saltBase64,
+        data: jsonFormData,
+      };
 
       const response = await axios.post(
-        "/Server/EditBranch/fetchBranchDetails",
+        "Server/frtRequestActivityService/requestAction",
         payload,
         {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
         }
       );
 
-      if (
-        response.data?.result &&
-        Object.keys(response.data?.result?.branchData).length !== 0
-      ) {
-        setCircleList(response.data.result.circleList);
-        setbranchData(response.data.result.branchData);
-        setFetchedData({ ...response.data.result.branchData });
-        setAuditorData(response.data.result.auditorData);
-        setFieldsDisabled(false);
-      } else {
+      if (response.data.statusCode === 200) {
+        await fetchData();
+        handleViewClose();
+        handleDialogClose();
+        handleClose();
         setSnackbar({
-          children:
-            "Branch does not exist. Please contact 'Finance One Core Team'",
-          severity: "error",
+          children: successMessage,
+          severity: "success",
         });
-        handleReset();
-      }
-    } catch (e) {
-      console.error(e);
-      setSnackbar({
-        children: "An error occurred. Please try again later.",
-        severity: "error",
-      });
-    } finally {
-      handleDialogClose();
-    }
-  };
-
-  /**
-   * Fetches reports for the current branch to show in the delete confirmation dialog.
-   */
-  const fetchReportsForDelete = async () => {
-    setLoadOpen(true);
-    try {
-      let jsonFormData = JSON.stringify({ branchCode: branchCode });
-      await encrypt(iv, salt, jsonFormData).then((r) => (jsonFormData = r));
-      let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
-
-      const response = await axios.post(
-        "/Server/EditBranch/fetchReports",
-        payload,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
-
-      if (response.data?.result) {
-        setReportsList(response.data.result.reportList || []);
-        setShowDeleteConfirm(true); // Open dialog even if no reports exist
       } else {
+        handleDialogClose();
         setSnackbar({
-          children: "Failed to fetch reports data.",
-          severity: "error",
-        });
-      }
-    } catch (e) {
-      console.error(e);
-      setSnackbar({
-        children: "An error occurred. Please try again later.",
-        severity: "error",
-      });
-    } finally {
-      handleDialogClose();
-    }
-  };
-
-  /**
-   * Handles the click of the main 'Save' button.
-   */
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    const errors = {};
-    Object.keys(branchData).forEach((field) => {
-      const error = validateInputFields(field, branchData[field]);
-      if (error) errors[field] = error;
-    });
-
-    setBranchDetailErrors(errors);
-
-    if (Object.keys(errors).length !== 0) {
-      setSnackbar({
-        children: "Kindly make sure all fields are filled.",
-        severity: "error",
-      });
-    } else if (!checkIfChanged()) {
-      setOpenWarningDialog(true);
-    } else {
-      setLoadOpen(true);
-      handleConfirmSubmit(branchData);
-    }
-  };
-
-  /**
-   * Resets all reports for a branch before deletion. Returns true on success.
-   */
-  const resetAllReports = async () => {
-    if (reportsList.length === 0) return true;
-    let successCount = 0;
-    for (const report of reportsList) {
-      try {
-        let data = {
-          submissionId: report.SUBMISSION_ID,
-          reportId: report.REPORT_ID,
-          reportType: report.REPORT_TYPE,
-          module: report.MODULE,
-          method: "resetAll",
-        };
-        let jsonFormData = JSON.stringify(data);
-        await encrypt(iv, salt, jsonFormData).then((r) => (jsonFormData = r));
-        let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
-
-        const response = await axios.post(
-          "/Server/EditBranch/resetReportsForDeletion",
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
-
-        if (
-          response.data.result?.reset === 1 ||
-          response.data.result?.Reset === 1 ||
-          response.data.result?.status
-        ) {
-          successCount++;
-        }
-      } catch (e) {
-        console.error("Failed to reset report:", report.REPORT_ID, e);
-      }
-    }
-    return successCount === reportsList.length;
-  };
-
-  /**
-   * Handles the final deletion process after user confirmation.
-   */
-  const handleConfirmDeletion = async () => {
-    setShowDeleteConfirm(false);
-    setLoadOpen(true);
-
-    const reportsResetSuccess = await resetAllReports();
-
-    if (reportsResetSuccess) {
-      const dataForDeletion = { ...branchData, SCOPE: "O" };
-      await handleConfirmSubmit(dataForDeletion);
-    } else {
-      setSnackbar({
-        children: "Could not delete all associated reports. Aborting.",
-        severity: "error",
-      });
-      handleDialogClose();
-    }
-  };
-
-  /**
-   * Submits data to the backend for both 'Update' and 'Delete' operations.
-   */
-  const handleConfirmSubmit = async (dataToSubmit) => {
-    try {
-      let jsonFormData = JSON.stringify({ branchData: dataToSubmit });
-      await encrypt(iv, salt, jsonFormData).then((r) => (jsonFormData = r));
-      let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
-
-      const response = await axios.post(
-        "/Server/EditBranch/FrtSubmitData",
-        payload,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
-
-      if (response.data?.result?.status) {
-        let message = "";
-        if (dataToSubmit.SCOPE === "I") {
-          message = `Branch ${branchCode} details have been successfully updated.`;
-        } else {
-          message = `Branch ${branchCode} has been successfully deleted.`;
-        }
-        handleReset();
-        setSnackbar({ children: message, severity: "success" });
-      } else {
-        setSnackbar({
-          children: "An error occurred. Please try again later.",
+          children: errorMessage,
           severity: "error",
         });
       }
     } catch (e) {
       console.error(e);
+      handleDialogClose();
       setSnackbar({
-        children: "An error occurred. Please try again later.",
+        children: "An error occurred. Please try again.",
         severity: "error",
       });
-    } finally {
-      handleDialogClose();
     }
   };
+
+  /**
+   * This function is axios call to accept the request.
+   *
+   * @Author : V1014064
+   **/
+  const handleAccept = async () => {
+    try {
+      let jsonFormData = JSON.stringify({ id: userData.ID, status: "2" });
+
+      await encrypt(iv, salt, jsonFormData).then(function (result) {
+        jsonFormData = result;
+      });
+
+      let payload = {
+        iv: ivBase64,
+        salt: saltBase64,
+        data: jsonFormData,
+      };
+
+      const response = await axios.post(
+        "Server/frtRequestActivityService/requestAction",
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (response.data.result) {
+        await fetchData();
+        handleViewClose();
+        handleDialogClose();
+        handleClose();
+        setSnackbar({
+          children: response.data.message,
+          severity: "success",
+        });
+      } else if (response.data.message) {
+        handleDialogClose();
+        setSnackbar({
+          children: response.data.message,
+          severity: "error",
+        });
+      } else {
+        handleDialogClose();
+        setSnackbar({
+          children: "An error occurred. Please try again.",
+          severity: "error",
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      handleDialogClose();
+      setSnackbar({
+        children: "An error occurred. Please try again.",
+        severity: "error",
+      });
+    }
+  };
+
+  /**
+   * This function is axios call to accept all the requests.
+   *
+   * @Author : V1014064
+   **/
+  const handleAcceptAll = async () => {
+    try {
+      let newList = [];
+      for(const samp of requestList) {
+        if(samp.REQUESTED_USER !== loggedInUser.pf_number) newList.push(samp);
+      }
+
+      console.log(newList);
+
+      let successCount = 0;
+      let failedCount = 0;
+
+      for(const newSamp of newList) {
+        let jsonFormData = JSON.stringify({ id: newSamp.ID, status: "2" });
+
+      await encrypt(iv, salt, jsonFormData).then(function (result) {
+        jsonFormData = result;
+      });
+
+      let payload = {
+        iv: ivBase64,
+        salt: saltBase64,
+        data: jsonFormData,
+      };
+
+      const response = await axios.post(
+        "Server/frtRequestActivityService/requestAction",
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      if (response.data.result) {
+        successCount+=1;
+      } else {
+        failedCount+=1;
+      }
+      }
+      console.log('newList length :: '+newList.length);
+      console.log('success count :: '+successCount);
+      console.log('failed count :: '+failedCount);
+      if(newList.length === successCount) {
+        await fetchData();
+        handleViewClose();
+        handleDialogClose();
+        handleClose();
+        setSnackbar({
+          children: "All requests succesfully accepted.",
+          severity: "success",
+        });
+      } else {
+        handleDialogClose();
+        setSnackbar({
+          children: failedCount +" number of requests failed to be accepted.",
+          severity: "error",
+        });
+      }
+
+    } catch (e) {
+      console.error(e);
+      handleDialogClose();
+      setSnackbar({
+        children: "An error occurred. Please try again.",
+        severity: "error",
+      });
+    }
+  };
+
+
 
   return (
-    <>
-      <Box sx={{ display: "flex", height: 50, alignItems: "bottom" }}>
-        <Typography
-          variant="h5"
-          gutterBottom
-          sx={{ textAlign: "flex-start", p: 2 }}
-        >
-          Delete Branch
-        </Typography>
-      </Box>
-      <Divider />
-      <Container
-        maxWidth={false}
-        disableGutters
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          flexDirection: "column",
-        }}
-      >
-        <Box
-          sx={{
-            width: "100%",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            padding: 4,
-            display: "flex",
-            flexDirection: "column",
-            backgroundColor: "#fff",
-          }}
-        >
-          <Grid container spacing={2}>
-            {/* Search and Branch Name */}
-            <Grid item xs={12} sm={4}>
-              <TextField
-                label="Branch Code"
-                name="CODE"
-                error={error}
-                helperText={error && "This field is required."}
-                onChange={handleBranchCodeChange}
-                value={branchCode}
-                disabled={!fieldsDisabled}
-                variant="outlined"
-                fullWidth
-                inputProps={{ maxLength: 5 }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={2}>
-              <Button
-                variant="contained"
-                disableElevation
-                startIcon={<SearchIcon />}
-                sx={{ mt: 1 }}
-                onClick={handleSearch}
-              >
-                Search
-              </Button>
-              &nbsp;
-              <Button
-                variant="contained"
-                color="warning"
-                disableElevation
-                startIcon={<Cached />}
-                sx={{ mt: 1 }}
-                onClick={handleReset}
-              >
-                Reset
-              </Button>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Branch Name"
-                name="NAME"
-                onChange={handleInputChange}
-                value={branchData.NAME}
-                error={!!branchDetailErrors.NAME}
-                helperText={branchDetailErrors.NAME}
-                disabled={fieldsDisabled}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <AccountBalanceRoundedIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 40 }}
-              />
-            </Grid>
+    <ThemeProvider theme={defaultTheme}>
+      <Box sx={{ display: "flex", flexDirection: "column" }}>
+        <Grid container>
+          <Typography variant={"h5"}>Request Status</Typography>
+        </Grid>
+        <Grid container sx={{ justifyContent: "flex-end" }}>
+          <Paper
+            style={{ textAlign: "center" }}
+            component="form"
+            sx={{
+              p: "2px 4px",
+              display: "flex",
+              alignItems: "center",
+              width: 450,
+            }}
+          >
+            <FilterAltIcon sx={{ ml: 1 }} />
+            <Divider sx={{ height: 28, m: 1.0 }} orientation="vertical" />
+            <InputBase
+              sx={{ ml: 1, flex: 1 }}
+              placeholder=" Filter by PF Number"
+              inputProps={{ "aria-label": "search Req id" }}
+              value={searchUser}
+              onChange={(e) => {
+                setContent("No data available for the entered req ID");
+                setSearchUser(e.target.value);
+              }}
+            />
+            <Divider sx={{ height: 28, m: 1.0 }} orientation="vertical" />
+            <IconButton
+              type="button"
+              sx={{ p: "10px" }}
+              aria-label="clear"
+              onClick={() => {
+                setSearchUser("");
+              }}
+            >
+              <Close />
+            </IconButton>
+          </Paper>
+          &nbsp;
+          {requestList.length > 0 && loggedInUser.user_role === "50" && (
+            <Button
+              onClick={() => {setLoadOpen(true);handleAcceptAll();}}
+              variant="contained"
+              disableElevation
+              color="success"
+              startIcon={<DoneAll />}
+            >
+              Accept All
+            </Button>
+          )}
+        </Grid>
+        <br />
+        <Divider />
+        <Box sx={{ height: "67vh", overflow: "auto", mt: 1 }}>
+          <Grid container spacing={2} direction="row">
+            {filteredUsers.length > 0 ? (
+              <>
+                {filteredUsers.map((vd, i) => (
+                  <Grid item key={vd.ID}>
+                    <Card sx={{ width: 280, height: 280 }}>
+                      <CardContent sx={{ textAlign: "center" }}>
+                        <CardContainer>
+                          {vd.STATUS === "1" && (
+                            <IconButtonWrapper>
+                              <IconButton
+                                value={vd.ID}
+                                aria-label="settings"
+                                onClick={(e) => handleClick(e, i, vd)}
+                                aria-controls={open ? "basic-menu" : undefined}
+                                aria-haspopup="true"
+                                aria-expanded={open ? "true" : undefined}
+                              >
+                                <MoreVertIcon />
+                              </IconButton>
+                            </IconButtonWrapper>
+                          )}
+                          <CardContent>
+                            <AvatarWrapper>
+                              <Avatar
+                                variant="Large"
+                                sx={{
+                                  alignItems: "center",
+                                  width: 50,
+                                  height: 50,
+                                  mt: 2,
+                                  textAlign: "center",
+                                }}
+                              />
+                            </AvatarWrapper>
+                          </CardContent>
+                        </CardContainer>
 
-            {/* Circle, Network, Module, Region */}
-            <Grid item xs={6} sm={6}>
-              <TextField
-                label="Circle Name"
-                name="CIRCLE"
-                error={!!branchDetailErrors.CIRCLE}
-                helperText={branchDetailErrors.CIRCLE}
-                select
-                disabled={fieldsDisabled}
-                value={branchData.CIRCLE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <LanIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                SelectProps={{ MenuProps: { sx: { height: 350 } } }}
-              >
-                {circleList.map((choices) => (
-                  <MenuItem key={choices} value={choices.split("~")[0]}>
-                    {choices.split("~")[1]}
-                  </MenuItem>
+                        <Menu
+                          elevation={1}
+                          id="account-menu"
+                          open={open}
+                          anchorEl={anchorEl}
+                          onClose={handleClose}
+                          transformOrigin={{
+                            horizontal: "right",
+                            vertical: "top",
+                          }}
+                          anchorOrigin={{
+                            horizontal: "right",
+                            vertical: "bottom",
+                          }}
+                        >
+                          {anchorEl && (
+                            <MenuItem onClick={handleMenuAction}>
+                              <ListItemIcon>
+                                <VisibilityIcon fontSize="small" />
+                              </ListItemIcon>
+                              View Request
+                            </MenuItem>
+                          )}
+                        </Menu>
+
+                        <Typography variant="body1" color="text.secondary">
+                          {vd.PF_NUMBER}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Req id - {vd.ID}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Requested by - {vd.REQUESTED_USER}
+                        </Typography>
+
+                        <Typography
+                          noWrap
+                          sx={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: "250px",
+                          }}
+                          style={{
+                            textAlign: "center",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {vd.MESSAGE}
+                        </Typography>
+                      </CardContent>
+                      <CardActions
+                        sx={{ alignItems: "center", justifyContent: "center" }}
+                      >
+                        <Chip
+                          style={{
+                            width: "auto",
+                            height: 30,
+                            alignItems: "center",
+                          }}
+                          label={
+                            vd.STATUS === "1"
+                              ? "Pending"
+                              : vd.STATUS === "2"
+                              ? "Accepted"
+                              : vd.STATUS === "3"
+                              ? "Rejected"
+                              : "Cancelled"
+                          }
+                          sx={
+                            vd.STATUS === "1"
+                              ? {
+                                  backgroundColor: "#F5BC51",
+                                  color: "white",
+                                  fontSize: 16,
+                                }
+                              : vd.STATUS === "2"
+                              ? {
+                                  backgroundColor: "#51B92D",
+                                  color: "white",
+                                  fontSize: 16,
+                                }
+                              : vd.STATUS === "3"
+                              ? {
+                                  backgroundColor: "#8471FE",
+                                  color: "white",
+                                  fontSize: 16,
+                                }
+                              : {
+                                  backgroundColor: "#F9805C",
+                                  color: "white",
+                                  fontSize: 16,
+                                }
+                          }
+                        />
+                      </CardActions>
+                    </Card>
+                  </Grid>
                 ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={6} sm={2}>
-              <TextField
-                label="Network"
-                name="NETWORK"
-                disabled={fieldsDisabled}
-                value={branchData.NETWORK}
-                error={!!branchDetailErrors.NETWORK}
-                helperText={branchDetailErrors.NETWORK}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <SensorsIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 3 }}
-              />
-            </Grid>
-            <Grid item xs={6} sm={2}>
-              <TextField
-                label="Module"
-                name="MODULE"
-                disabled={fieldsDisabled}
-                value={branchData.MODULE}
-                error={!!branchDetailErrors.MODULE}
-                helperText={branchDetailErrors.MODULE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <DnsIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                inputProps={{ maxLength: 3 }}
-              />
-            </Grid>
-            <Grid item xs={6} sm={2}>
-              <TextField
-                label="Region"
-                name="REGION"
-                disabled={fieldsDisabled}
-                value={branchData.REGION}
-                error={!!branchDetailErrors.REGION}
-                helperText={branchDetailErrors.REGION}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <PublicIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                inputProps={{ maxLength: 3 }}
-              />
-            </Grid>
-
-            {/* Address Details */}
-            <Grid item xs={12}>
-              <TextField
-                label="Address"
-                name="ADDRESS"
-                disabled={fieldsDisabled}
-                value={branchData.ADDRESS}
-                error={!!branchDetailErrors.ADDRESS}
-                helperText={branchDetailErrors.ADDRESS}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <HomeIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                inputProps={{ maxLength: 40 }}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                label="City"
-                name="CITY"
-                disabled={fieldsDisabled}
-                value={branchData.CITY}
-                error={!!branchDetailErrors.CITY}
-                helperText={branchDetailErrors.CITY}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <LocationCityRoundedIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 40 }}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                label="State"
-                name="STATE"
-                disabled={fieldsDisabled}
-                value={branchData.STATE}
-                error={!!branchDetailErrors.STATE}
-                helperText={branchDetailErrors.STATE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <CorporateFareRoundedIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 40 }}
-              />
-            </Grid>
-
-            {/* Contact Details */}
-            <Grid item xs={6} sm={4}>
-              <TextField
-                label="Pin Code"
-                name="PIN"
-                disabled={fieldsDisabled}
-                value={branchData.PIN}
-                error={!!branchDetailErrors.PIN}
-                helperText={branchDetailErrors.PIN}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <PinDropIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 6 }}
-              />
-            </Grid>
-            <Grid item xs={6} sm={4}>
-              <TextField
-                label="STD Code"
-                name="STDCODE"
-                disabled={fieldsDisabled}
-                value={branchData.STDCODE}
-                error={!!branchDetailErrors.STDCODE}
-                helperText={branchDetailErrors.STDCODE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <EmergencyShareIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 5 }}
-              />
-            </Grid>
-            <Grid item xs={6} sm={4}>
-              <TextField
-                label="Phone No."
-                name="PHONE"
-                disabled={fieldsDisabled}
-                value={branchData.PHONE}
-                error={!!branchDetailErrors.PHONE}
-                helperText={branchDetailErrors.PHONE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <PhoneIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                inputProps={{ maxLength: 10 }}
-              />
-            </Grid>
-            <Grid item xs={6} sm={4}>
-              <TextField
-                label="Mobile No."
-                name="MOBILE"
-                disabled={fieldsDisabled}
-                value={branchData.MOBILE}
-                error={!!branchDetailErrors.MOBILE}
-                helperText={branchDetailErrors.MOBILE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <PhoneAndroidRoundedIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 10 }}
-              />
-            </Grid>
-            <Grid item xs={6} sm={4}>
-              <TextField
-                label="IP Phone"
-                name="IPPHONE"
-                disabled={fieldsDisabled}
-                value={branchData.IPPHONE}
-                error={!!branchDetailErrors.IPPHONE}
-                helperText={branchDetailErrors.IPPHONE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <WifiCalling3Icon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 10 }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}></Grid>
-
-            {/* Audit Status and Auditor Details */}
-            <Grid item xs={6} sm={6}>
-              <TextField
-                name="AUDITABLE"
-                disabled={fieldsDisabled}
-                fullWidth
-                select
-                InputProps={{
-                  startAdornment: <PersonIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                SelectProps={{ MenuProps: { sx: { height: 350 } } }}
-                error={!!branchDetailErrors.AUDITABLE}
-                helperText={branchDetailErrors.AUDITABLE}
-                value={branchData.AUDITABLE}
-                onChange={handleInputChange}
-                label="Branch Audit Status"
-              >
-                <MenuItem value="">---Select---</MenuItem>
-                <MenuItem value="A">Audited</MenuItem>
-                <MenuItem value="N">Non Audited</MenuItem>
-                <MenuItem value="I">IFCOFR Audited</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={6} sm={6}></Grid>
-
-            {(branchData.AUDITABLE === "I" || branchData.AUDITABLE === "A") &&
-              !fieldsDisabled && <>{/* Auditor details fields here */}</>}
-
-            {/* Action Buttons */}
-            <Grid item xs={12}>
-              <Box sx={{ display: "flex", justifyContent: "center", p: 1 }}>
-                <Button
-                  variant="contained"
-                  color="error"
-                  size="medium"
-                  sx={{ ml: 2 }}
-                  onClick={fetchReportsForDelete}
-                  disabled={fieldsDisabled}
-                  startIcon={<DeleteIcon />}
-                >
-                  Delete
-                </Button>
-              </Box>
-            </Grid>
+              </>
+            ) : (
+              <Grid item key="message">
+                <Typography>
+                  <Typography variant="h6">{content}</Typography>
+                </Typography>
+              </Grid>
+            )}
           </Grid>
         </Box>
-      </Container>
 
-      {/* Warning Dialog for no changes */}
-      <Dialog open={openWarningDialog}>
-        <DialogTitle>Warning</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Data is the same as before. Please modify data before saving.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenWarningDialog(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
+        {/* Reload button related code */}
+        <Dialog
+          PaperProps={{
+            style: {
+              backgroundColor: "transparent",
+              boxShadow: "none",
+            },
+          }}
+          open={loadOpen}
+          aria-labelledby="alert-dialog-title"
+          aria-describedby="alert-dialog-description"
+        >
+          <Box>
+            <DialogContent sx={{ display: "Grid" }}>
+              <CircularProgress />
+            </DialogContent>
+          </Box>
+        </Dialog>
 
-      {/* Loading Dialog */}
-      <Dialog
-        PaperProps={{
-          style: { backgroundColor: "transparent", boxShadow: "none" },
-        }}
-        open={loadOpen}
-      >
-        <DialogContent>
-          <CircularProgress />
-        </DialogContent>
-      </Dialog>
-
-      {/* Snackbar */}
-      {snackbar && (
-        <SnackbarProvider maxSnack={3}>
-          <Snackbar
-            open
-            anchorOrigin={{ vertical: "top", horizontal: "center" }}
-            onClose={handleCloseSnackbar}
-            autoHideDuration={5000}
-          >
-            <Alert
-              variant="filled"
-              {...snackbar}
+        {/* Snackbar realted code */}
+        {snackbar && (
+          <SnackbarProvider maxSnack={3}>
+            <Snackbar
+              open
+              anchorOrigin={{ vertical: "top", horizontal: "center" }}
               onClose={handleCloseSnackbar}
-            />
-          </Snackbar>
-        </SnackbarProvider>
-      )}
+              autoHideDuration={3000}
+            >
+              <Alert
+                variant="filled"
+                {...snackbar}
+                onClose={handleCloseSnackbar}
+              />
+            </Snackbar>
+          </SnackbarProvider>
+        )}
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteConfirm} maxWidth="xl">
-        <DialogTitle>
-          <Typography fontSize={20} fontWeight={750}>
-            If you are going to exclude this branch from scope all these reports
-            will be deleted. Do you want to continue?
-          </Typography>
-        </DialogTitle>
-        <DialogContent>
-          {reportsList.length > 0 ? (
-            <Paper elevation={0}>
-              <TableContainer sx={{ height: 500, minWidth: 1000 }}>
-                <Table stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell align="center">S.No</TableCell>
-                      <TableCell align="center">Module</TableCell>
-                      <TableCell align="center">Report Name</TableCell>
-                      <TableCell>Report Description</TableCell>
-                      <TableCell align="center">Report Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {reportsList.map((row, i) => (
-                      <TableRow key={i}>
-                        <TableCell align="center">{i + 1}</TableCell>
-                        <TableCell align="center">{row.MODULE}</TableCell>
-                        <TableCell align="center">{row.REPORT_NAME}</TableCell>
-                        <TableCell>{row.REPORT_DESC}</TableCell>
-                        <TableCell align="center">
-                          {branchData.AUDITABLE === "N"
-                            ? REPORT_STATUS_CONSTANTS[row.CURRENT_STATUS]?.text
-                            : AUDITED_REPORT_STATUS_CONSTANTS[
-                                row.CURRENT_STATUS
-                              ]?.text}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          ) : (
-            <DialogContentText>
-              This branch has no reports to delete. You can proceed with
-              deletion.
-            </DialogContentText>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setShowDeleteConfirm(false)}
-            variant="outlined"
-            color="primary"
-          >
-            No
-          </Button>
-          <Button
-            onClick={handleConfirmDeletion}
-            variant="contained"
-            color="error"
-          >
-            Yes, Delete Branch
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+        {/* View modal */}
+        <FrtViewModel
+          openViewModal={viewOpen}
+          handleAccept={handleAccept}
+          handleReject={handleAction}
+          userData={userData}
+          handleClose={handleViewClose}
+          handleLoadOpen={handleLoadOpen}
+          role={loggedInUser.user_role}
+          hideCancel={hideCancel}
+        />
+      </Box>
+    </ThemeProvider>
   );
+};
+
+export default FrtRequestActivity;
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+<%@ include file="/views/include.jsp" %>
+<!DOCTYPE html>
+<html>
+<head>
+
+    <script type="text/javascript">
+
+
+        function viewtrack(a, fileName, req_Id) {
+            console.log("before set Action");
+            console.log("a-" + a);
+            console.log("req_id-" + req_Id);
+            console.log("fileName" + fileName);
+            var filename = fileName;
+            console.log("req_Id" + req_Id);
+            console.log("before ajax");
+            $.ajax({
+                type: "POST",
+                url: "./getExcelFile",
+                data: {
+                    filename: filename,
+                    req_Id: req_Id
+                },
+
+                success: function (data) {
+                    console.log("data" + data);
+                    var msg = data;
+                    window.location.href = "./downloadXls?url=" + data;
+                },
+                error: function (jqXHR, textStatus, errorMessage) {
+                    alert("No response received");
+                },
+
+                complete: function () {
+                    $.unblockUI();
+
+                },
+            });
+        }
+
+        function changeRequest(req_Id, status, a) {
+            console.log("req_id: " + req_Id);
+            var status1 = document.getElementById("status" + a).value;
+            console.log("status: " + status);
+            console.log("status1: " + status1);
+            $.ajax({
+                type: "POST",
+                url: "./cancelReq",
+                data: {
+                    status: status,
+                    req_Id: req_Id
+                },
+
+                success: function (data) {
+                    console.log("data: " + data);
+                    if (data) {
+                            //status = document.getElementById("status" + a).value = "Cancelled";
+                        document.getElementById("cancel" + a).style.display = 'none';
+                        document.getElementById("status" + a).innerHTML= "CANCELLED";
+                        document.getElementById("status" + a).setAttribute("class",'label label-default');
+                        console.log("status: " + document.getElementById("status" + a).value);
+
+
+                    }
+                },
+                error: function (jqXHR, textStatus, errorMessage) {
+                    alert("No response received");
+                },
+
+                complete: function () {
+                    $.unblockUI();
+
+                },
+            });
+        }
+
+        $(document).ready(function () {
+            $('#example1').DataTable(
+                {
+                    "paging": true,
+                    "lengthChange": true,
+                    "searching": true,
+                    "ordering": false,
+                    select: true,
+                    "info": true,
+                    "autoWidth": false
+                    /*scrollY: 400*/
+                }
+            );
+
+            var table = $('#example1').DataTable();
+            var filteredData = table
+                .columns( [0, 1] )
+                .data()
+                .flatten()
+                .filter( function ( value, index ) {
+                    return value > 20 ? true : false;
+                } );
+        });
+    </script>
+</head>
+<body class="hold-transition skin-blue sidebar-mini">
+<div class="wrapper">
+    <div class="content-wrapper">
+        <section class="content-header">
+            <h1>TRACK REQUEST</h1>
+        </section>
+        <section class="content">
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="box box-primary box-solid">
+                        <div class="box-body">
+                            <div class="box-header">
+                            </div>
+                            <form:form action="submit" method="POST" id="frtTrack" style="overflow-y: auto; height: 70vh;">
+                                <input type="hidden" name="strRuleListCount" id="strRuleListCount"
+                                       value='<c:out value="${strRuleListCount}"></c:out>'/>
+                                <input type="hidden" name="Req_id" id="Req_id"
+                                       value='<c:out value="${frtTrack.req_Id}"></c:out>'/>
+                                <div class="col-md-12">
+                                    <div class="col-md-1"></div>
+                                    <div class="col-md-10">
+                                        <table id="example1" class="table">
+                                            <thead>
+                                            <tr style="background-color: #b9def0; height: 40px">
+                                                <th style="width: 50px;text-align: center ">Req ID</th>
+                                                <th style="text-align: center">Change Request For</th>
+                                                <th style="text-align: center">Branch</th>
+                                                <th style="width: 80px; text-align: center">Status</th>
+                                                <th style="width: 120px; text-align: center">Action</th>
+                                                <th style="text-align: center">Requested By</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            <c:if test="${strRuleListCount!=0}">
+                                                <c:forEach items="${list}" var="frtTrack" varStatus="reportStatus">
+                                                    <tr>
+                                                        <td style="text-align: center;">
+                                                            <input type="hidden" class="form-control"
+                                                                   style="width: 50px; background-color: white; border-style: hidden; text-align: center"
+                                                                   path="req_Id<c:out value='${reportStatus.count}'></c:out>"
+                                                                   name="req_Id" readonly="true"/>
+                                                                  <c:out value="${frtTrack.req_Id}"></c:out>
+                                                        </td>
+                                                        <td style="text-align: center"><c:out
+                                                                value="${frtTrack.changeReq_Type}"></c:out></td>
+                                                        <td style="text-align: center;">
+                                                            <c:if test="${frtTrack.branchCode eq 'Multiple Branches'}">
+                                                                <a href="#"
+                                                                   onclick="javascript:viewtrack('${reportStatus.count}','${frtTrack.fileName}','${frtTrack.req_Id}');">
+                                                                    <u onmouseover=""> Multiple Branches </u>
+                                                                </a>
+                                                                <input type="hidden" id="filename"
+                                                                       value="${frtTrack.fileName}"/>
+                                                            </c:if>
+                                                            <c:if test="${frtTrack.branchCode != 'Multiple Branches'}">
+                                                                <c:out value="${frtTrack.branchCode}"></c:out>
+                                                            </c:if>
+                                                        </td>
+                                                        <td style="text-align: center">
+                                                            <c:if test="${frtTrack.status == 'Pending'}">
+                                                                <label class="label label-primary"
+                                                                       value="<c:out value="${frtTrack.status}"></c:out>"
+                                                                       id="status<c:out value='${reportStatus.count}'></c:out>">
+                                                                    PENDING
+                                                                </label>
+                                                            </c:if>
+                                                            <c:if test="${frtTrack.status == 'Accepted'}">
+                                                                <label class="label label-success"
+                                                                       value="<c:out value="${frtTrack.status}"></c:out>"
+                                                                       id="status<c:out value='${reportStatus.count}'></c:out>">
+                                                                    APPROVED
+                                                                </label>
+                                                            </c:if>
+                                                            <c:if test="${frtTrack.status == 'Rejected'}">
+                                                                <label class="label label-danger"
+                                                                       value="<c:out value="${frtTrack.status}"></c:out>"
+                                                                       id="status<c:out value='${reportStatus.count}'></c:out>">
+                                                                    REJECTED
+                                                                </label>
+                                                            </c:if>
+                                                            <c:if test="${frtTrack.status == 'Cancelled'}">
+                                                                <label class="label label-default"
+                                                                       value="<c:out value="${frtTrack.status}"></c:out>"
+                                                                       id="status<c:out value='${reportStatus.count}'></c:out>">
+                                                                    CANCELLED
+                                                                </label>
+                                                            </c:if>
+                                                        </td>
+                                                        <td style="text-align: center">
+                                                            <c:if test="${frtTrack.status == 'Pending'}">
+                                                                <button type="button" class="btn btn-danger"
+                                                                        id="cancel<c:out value='${reportStatus.count}'></c:out>"
+                                                                        onclick="changeRequest('${frtTrack.req_Id}','${frtTrack.status}','${reportStatus.count}');">
+                                                                    Cancel Request
+                                                                </button>
+                                                            </c:if>
+                                                        </td>
+                                                        <td style="text-align: center"><c:out
+                                                                value="${frtTrack.request_maker}"></c:out>
+                                                            <input type="hidden" name="rowID"
+                                                                   id="rowID<c:out value='${reportStatus.count}'></c:out>"
+                                                                   value="${frtTrack.rowUniqueId}"/>
+                                                        </td>
+                                                    </tr>
+                                                </c:forEach>
+                                            </c:if>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-1"></div>
+                                </div>
+                            </form:form>
+                        </div>
+                        <div class="box-footer"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+    <div class="example-modal">
+        <div class="modal fade" id="infoModal">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-info">
+                        <h4 class="modal-title"><b>Attention!</b></h4>
+                    </div>
+                    <div class="modal-body">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-info" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+package com.tcs.dao;
+
+import org.apache.log4j.Logger;
+import com.tcs.beans.frtTrack;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import org.springframework.jdbc.core.ResultSetExtractor;
+
+import javax.sql.DataSource;
+import java.util.List;
+import org.springframework.dao.DataAccessException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
+
+@Repository("frtTrackDao")
+
+public class frtTrackDaoImpl implements frtTrackDao {
+
+
+    static Logger log = Logger.getLogger(MakerDaoImpl.class.getName());
+
+    @Autowired
+    DataSource dataSource;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplateObject;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @Override
+    public List<frtTrack> getFrtTrackList(String quarterEndDate) {
+        //JdbcTemplate jdbcTemplateObject = new JdbcTemplate(dataSource);
+
+
+        String query1 = "select RT_ID,RT_TYPE,RT_BRANCH,RT_STATUS,(SELECT NAME from WFL_user where wfl_user_id=rt_maker) " +
+                "RT_MAKER,RT_SUBTYPE,RT_FILE_NAME FROM CRS_REQUEST_TRACK WHERE RT_QED= to_date(?,'DD/MM/YYYY') order by RT_STATUS, RT_ID desc";
+
+        List<frtTrack> list = jdbcTemplateObject.query(query1, new Object[]{quarterEndDate}, new ResultSetExtractor<List<frtTrack>>() {
+            @Override
+
+            public List<frtTrack> extractData(ResultSet rs1) throws SQLException, DataAccessException {
+                List<frtTrack> list = new ArrayList<>();
+                frtTrack report = null;
+                while (rs1.next()) {
+                    frtTrack frtTrack = new frtTrack();
+                    frtTrack.setReq_Id(rs1.getString("RT_ID"));
+                    String reqType = rs1.getString("RT_TYPE");
+                    String reqSubType = rs1.getString("RT_SUBTYPE");
+                    if(reqType.equalsIgnoreCase("A")) {
+                        if(reqSubType.equalsIgnoreCase("S")) {
+                            frtTrack.setChangeReq_Type("Audit Status");
+                            frtTrack.setBranchCode(rs1.getString("RT_BRANCH"));
+                        }
+                        if(reqSubType.equalsIgnoreCase("M")) {
+                            frtTrack.setChangeReq_Type("Audit Status");
+                            frtTrack.setBranchCode("Multiple Branches");
+                        }
+                    }
+
+                    else if(reqType.equalsIgnoreCase("B")) {
+                        if(reqSubType.equalsIgnoreCase("A")) {
+                            frtTrack.setChangeReq_Type("Add Branch");
+                            frtTrack.setBranchCode(rs1.getString("RT_BRANCH"));
+                        }
+                        if(reqSubType.equalsIgnoreCase("D")) {
+                            frtTrack.setChangeReq_Type("Delete Branch");
+                            frtTrack.setBranchCode(rs1.getString("RT_BRANCH"));
+                        }
+                    }
+                    frtTrack.setFileName(rs1.getString("RT_FILE_NAME"));
+                    String status = rs1.getString("RT_STATUS");
+                    if(status.equalsIgnoreCase("1")) {
+                        frtTrack.setStatus("Pending");
+                    }
+                    else if(status.equalsIgnoreCase("2")) {
+                        frtTrack.setStatus("Accepted");
+                    }
+                    else if(status.equalsIgnoreCase("3")) {
+                        frtTrack.setStatus("Rejected");
+                    }
+                    else if(status.equalsIgnoreCase("4")) {
+                        frtTrack.setStatus("Cancelled");
+                    }
+                    frtTrack.setRequest_maker(rs1.getString("RT_MAKER"));
+
+                    list.add(frtTrack);
+                }
+
+                return list;
+            }
+        });
+        log.info("size of the list: "+list.size());
+        return list;
+
+    }
+
+    @Override
+    public boolean cancelReq(String req_Id){
+        //JdbcTemplate jdbcTemplateObject = new JdbcTemplate(dataSource);
+        TransactionDefinition def = new DefaultTransactionDefinition();
+        TransactionStatus status = transactionManager.getTransaction(def);
+
+        boolean flag= false;
+        List<Object[]> inputList1 = new ArrayList<Object[]>();
+        List<Object[]> inputList2 = new ArrayList<Object[]>();
+        try {
+            String crs_req= "update crs_request_track set rt_status=? where rt_id=?";
+            String crs_audit="update CRS_AUDIT_STATUS set AS_REQ_STATUS=? where AS_RT_ID=?";
+            //for query crs_req
+            Object[] temp1 = {"4", req_Id};
+            inputList1.add(temp1);
+            //for query crs_audit
+            Object[] temp2 = {"R", req_Id};
+            inputList2.add(temp2);
+            jdbcTemplateObject.batchUpdate(crs_req, inputList1);
+            jdbcTemplateObject.batchUpdate(crs_audit, inputList2);
+            transactionManager.commit(status);
+            flag=true;
+            log.info("after update complete");
+        } catch (DataAccessException e) {
+            log.error("exception " + e);
+            flag = false;
+            transactionManager.rollback(status);
+
+        }
+
+
+        return flag;
+    }
+
 }
