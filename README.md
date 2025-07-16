@@ -58,7 +58,7 @@ const ivBase64 = btoa(String.fromCharCode.apply(null, iv)); // for be decryption
 const salt = crypto.getRandomValues(new Uint8Array(16)); // for encryption
 const saltBase64 = btoa(String.fromCharCode.apply(null, salt)); // for be decryption
 
-export default function FRTBranchDetails() {
+export default function FrtMakerDeleteBranchDetails() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
 
@@ -204,10 +204,15 @@ export default function FRTBranchDetails() {
       const response = await axios.post(
         "/Server/EditBranch/fetchBranchDetails",
         payload,
-        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
       );
 
-      if (response.data?.result && Object.keys(response.data?.result?.branchData).length !== 0) {
+      if (
+        response.data?.result &&
+        Object.keys(response.data?.result?.branchData).length !== 0
+      ) {
         setCircleList(response.data.result.circleList);
         setbranchData(response.data.result.branchData);
         setFetchedData({ ...response.data.result.branchData });
@@ -215,7 +220,8 @@ export default function FRTBranchDetails() {
         setFieldsDisabled(false);
       } else {
         setSnackbar({
-          children: "Branch does not exist. Please contact 'Finance One Core Team'",
+          children:
+            "Branch does not exist. Please contact 'Finance One Core Team'",
           severity: "error",
         });
         handleReset();
@@ -230,7 +236,7 @@ export default function FRTBranchDetails() {
       handleDialogClose();
     }
   };
-  
+
   /**
    * Fetches reports for the current branch to show in the delete confirmation dialog.
    */
@@ -244,18 +250,26 @@ export default function FRTBranchDetails() {
       const response = await axios.post(
         "/Server/EditBranch/fetchReports",
         payload,
-        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
       );
 
       if (response.data?.result) {
         setReportsList(response.data.result.reportList || []);
         setShowDeleteConfirm(true); // Open dialog even if no reports exist
       } else {
-        setSnackbar({ children: "Failed to fetch reports data.", severity: "error" });
+        setSnackbar({
+          children: "Failed to fetch reports data.",
+          severity: "error",
+        });
       }
     } catch (e) {
       console.error(e);
-      setSnackbar({ children: "An error occurred. Please try again later.", severity: "error" });
+      setSnackbar({
+        children: "An error occurred. Please try again later.",
+        severity: "error",
+      });
     } finally {
       handleDialogClose();
     }
@@ -275,7 +289,10 @@ export default function FRTBranchDetails() {
     setBranchDetailErrors(errors);
 
     if (Object.keys(errors).length !== 0) {
-      setSnackbar({ children: "Kindly make sure all fields are filled.", severity: "error" });
+      setSnackbar({
+        children: "Kindly make sure all fields are filled.",
+        severity: "error",
+      });
     } else if (!checkIfChanged()) {
       setOpenWarningDialog(true);
     } else {
@@ -302,14 +319,22 @@ export default function FRTBranchDetails() {
         let jsonFormData = JSON.stringify(data);
         await encrypt(iv, salt, jsonFormData).then((r) => (jsonFormData = r));
         let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
-        
+
         const response = await axios.post(
           "/Server/EditBranch/resetReportsForDeletion",
           payload,
-          { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
         );
 
-        if (response.data.result?.reset === 1 || response.data.result?.Reset === 1 || response.data.result?.status) {
+        if (
+          response.data.result?.reset === 1 ||
+          response.data.result?.Reset === 1 ||
+          response.data.result?.status
+        ) {
           successCount++;
         }
       } catch (e) {
@@ -325,18 +350,21 @@ export default function FRTBranchDetails() {
   const handleConfirmDeletion = async () => {
     setShowDeleteConfirm(false);
     setLoadOpen(true);
-    
+
     const reportsResetSuccess = await resetAllReports();
 
     if (reportsResetSuccess) {
-      const dataForDeletion = { ...branchData, SCOPE: 'O' };
+      const dataForDeletion = { ...branchData, SCOPE: "O" };
       await handleConfirmSubmit(dataForDeletion);
     } else {
-      setSnackbar({ children: "Could not delete all associated reports. Aborting.", severity: "error" });
+      setSnackbar({
+        children: "Could not delete all associated reports. Aborting.",
+        severity: "error",
+      });
       handleDialogClose();
     }
   };
-  
+
   /**
    * Submits data to the backend for both 'Update' and 'Delete' operations.
    */
@@ -349,12 +377,14 @@ export default function FRTBranchDetails() {
       const response = await axios.post(
         "/Server/EditBranch/FrtSubmitData",
         payload,
-        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
       );
 
       if (response.data?.result?.status) {
         let message = "";
-        if (dataToSubmit.SCOPE === 'I') {
+        if (dataToSubmit.SCOPE === "I") {
           message = `Branch ${branchCode} details have been successfully updated.`;
         } else {
           message = `Branch ${branchCode} has been successfully deleted.`;
@@ -362,11 +392,17 @@ export default function FRTBranchDetails() {
         handleReset();
         setSnackbar({ children: message, severity: "success" });
       } else {
-        setSnackbar({ children: "An error occurred. Please try again later.", severity: "error" });
+        setSnackbar({
+          children: "An error occurred. Please try again later.",
+          severity: "error",
+        });
       }
     } catch (e) {
       console.error(e);
-      setSnackbar({ children: "An error occurred. Please try again later.", severity: "error" });
+      setSnackbar({
+        children: "An error occurred. Please try again later.",
+        severity: "error",
+      });
     } finally {
       handleDialogClose();
     }
@@ -375,8 +411,12 @@ export default function FRTBranchDetails() {
   return (
     <>
       <Box sx={{ display: "flex", height: 50, alignItems: "bottom" }}>
-        <Typography variant="h5" gutterBottom sx={{ textAlign: "flex-start", p: 2 }}>
-          Branch Details
+        <Typography
+          variant="h5"
+          gutterBottom
+          sx={{ textAlign: "flex-start", p: 2 }}
+        >
+          Delete Branch
         </Typography>
       </Box>
       <Divider />
@@ -461,72 +501,82 @@ export default function FRTBranchDetails() {
 
             {/* Circle, Network, Module, Region */}
             <Grid item xs={6} sm={6}>
-                <TextField
-                  label="Circle Name"
-                  name="CIRCLE"
-                  error={!!branchDetailErrors.CIRCLE}
-                  helperText={branchDetailErrors.CIRCLE}
-                  select
-                  disabled={fieldsDisabled}
-                  value={branchData.CIRCLE}
-                  onChange={handleInputChange}
-                  variant="outlined"
-                  fullWidth
-                  InputProps={{ startAdornment: <LanIcon sx={{ mr: 1, opacity: "50%" }} /> }}
-                  SelectProps={{ MenuProps: { sx: { height: 350 } } }}
-                >
-                  {circleList.map((choices) => (
-                    <MenuItem key={choices} value={choices.split("~")[0]}>
-                      {choices.split("~")[1]}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={6} sm={2}>
-                <TextField
-                  label="Network"
-                  name="NETWORK"
-                  disabled={fieldsDisabled}
-                  value={branchData.NETWORK}
-                  error={!!branchDetailErrors.NETWORK}
-                  helperText={branchDetailErrors.NETWORK}
-                  onChange={handleInputChange}
-                  variant="outlined"
-                  fullWidth
-                  InputProps={{ startAdornment: <SensorsIcon sx={{ mr: 1, opacity: "50%" }} /> }}
-                  inputProps={{ maxLength: 3 }}
-                />
-              </Grid>
-              <Grid item xs={6} sm={2}>
-                <TextField
-                  label="Module"
-                  name="MODULE"
-                  disabled={fieldsDisabled}
-                  value={branchData.MODULE}
-                  error={!!branchDetailErrors.MODULE}
-                  helperText={branchDetailErrors.MODULE}
-                  onChange={handleInputChange}
-                  variant="outlined"
-                  fullWidth
-                  InputProps={{ startAdornment: <DnsIcon sx={{ mr: 1, opacity: "50%" }} /> }}
-                  inputProps={{ maxLength: 3 }}
-                />
-              </Grid>
-              <Grid item xs={6} sm={2}>
-                <TextField
-                  label="Region"
-                  name="REGION"
-                  disabled={fieldsDisabled}
-                  value={branchData.REGION}
-                  error={!!branchDetailErrors.REGION}
-                  helperText={branchDetailErrors.REGION}
-                  onChange={handleInputChange}
-                  variant="outlined"
-                  fullWidth
-                  InputProps={{ startAdornment: <PublicIcon sx={{ mr: 1, opacity: "50%" }} /> }}
-                  inputProps={{ maxLength: 3 }}
-                />
-              </Grid>
+              <TextField
+                label="Circle Name"
+                name="CIRCLE"
+                error={!!branchDetailErrors.CIRCLE}
+                helperText={branchDetailErrors.CIRCLE}
+                select
+                disabled={fieldsDisabled}
+                value={branchData.CIRCLE}
+                onChange={handleInputChange}
+                variant="outlined"
+                fullWidth
+                InputProps={{
+                  startAdornment: <LanIcon sx={{ mr: 1, opacity: "50%" }} />,
+                }}
+                SelectProps={{ MenuProps: { sx: { height: 350 } } }}
+              >
+                {circleList.map((choices) => (
+                  <MenuItem key={choices} value={choices.split("~")[0]}>
+                    {choices.split("~")[1]}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={6} sm={2}>
+              <TextField
+                label="Network"
+                name="NETWORK"
+                disabled={fieldsDisabled}
+                value={branchData.NETWORK}
+                error={!!branchDetailErrors.NETWORK}
+                helperText={branchDetailErrors.NETWORK}
+                onChange={handleInputChange}
+                variant="outlined"
+                fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <SensorsIcon sx={{ mr: 1, opacity: "50%" }} />
+                  ),
+                }}
+                inputProps={{ maxLength: 3 }}
+              />
+            </Grid>
+            <Grid item xs={6} sm={2}>
+              <TextField
+                label="Module"
+                name="MODULE"
+                disabled={fieldsDisabled}
+                value={branchData.MODULE}
+                error={!!branchDetailErrors.MODULE}
+                helperText={branchDetailErrors.MODULE}
+                onChange={handleInputChange}
+                variant="outlined"
+                fullWidth
+                InputProps={{
+                  startAdornment: <DnsIcon sx={{ mr: 1, opacity: "50%" }} />,
+                }}
+                inputProps={{ maxLength: 3 }}
+              />
+            </Grid>
+            <Grid item xs={6} sm={2}>
+              <TextField
+                label="Region"
+                name="REGION"
+                disabled={fieldsDisabled}
+                value={branchData.REGION}
+                error={!!branchDetailErrors.REGION}
+                helperText={branchDetailErrors.REGION}
+                onChange={handleInputChange}
+                variant="outlined"
+                fullWidth
+                InputProps={{
+                  startAdornment: <PublicIcon sx={{ mr: 1, opacity: "50%" }} />,
+                }}
+                inputProps={{ maxLength: 3 }}
+              />
+            </Grid>
 
             {/* Address Details */}
             <Grid item xs={12}>
@@ -540,7 +590,9 @@ export default function FRTBranchDetails() {
                 onChange={handleInputChange}
                 variant="outlined"
                 fullWidth
-                InputProps={{ startAdornment: <HomeIcon sx={{ mr: 1, opacity: "50%" }} /> }}
+                InputProps={{
+                  startAdornment: <HomeIcon sx={{ mr: 1, opacity: "50%" }} />,
+                }}
                 inputProps={{ maxLength: 40 }}
               />
             </Grid>
@@ -555,7 +607,11 @@ export default function FRTBranchDetails() {
                 onChange={handleInputChange}
                 variant="outlined"
                 fullWidth
-                InputProps={{ startAdornment: <LocationCityRoundedIcon sx={{ mr: 1, opacity: "50%" }} /> }}
+                InputProps={{
+                  startAdornment: (
+                    <LocationCityRoundedIcon sx={{ mr: 1, opacity: "50%" }} />
+                  ),
+                }}
                 inputProps={{ maxLength: 40 }}
               />
             </Grid>
@@ -570,7 +626,11 @@ export default function FRTBranchDetails() {
                 onChange={handleInputChange}
                 variant="outlined"
                 fullWidth
-                InputProps={{ startAdornment: <CorporateFareRoundedIcon sx={{ mr: 1, opacity: "50%" }} /> }}
+                InputProps={{
+                  startAdornment: (
+                    <CorporateFareRoundedIcon sx={{ mr: 1, opacity: "50%" }} />
+                  ),
+                }}
                 inputProps={{ maxLength: 40 }}
               />
             </Grid>
@@ -587,7 +647,11 @@ export default function FRTBranchDetails() {
                 onChange={handleInputChange}
                 variant="outlined"
                 fullWidth
-                InputProps={{ startAdornment: <PinDropIcon sx={{ mr: 1, opacity: "50%" }} /> }}
+                InputProps={{
+                  startAdornment: (
+                    <PinDropIcon sx={{ mr: 1, opacity: "50%" }} />
+                  ),
+                }}
                 inputProps={{ maxLength: 6 }}
               />
             </Grid>
@@ -602,7 +666,11 @@ export default function FRTBranchDetails() {
                 onChange={handleInputChange}
                 variant="outlined"
                 fullWidth
-                InputProps={{ startAdornment: <EmergencyShareIcon sx={{ mr: 1, opacity: "50%" }} /> }}
+                InputProps={{
+                  startAdornment: (
+                    <EmergencyShareIcon sx={{ mr: 1, opacity: "50%" }} />
+                  ),
+                }}
                 inputProps={{ maxLength: 5 }}
               />
             </Grid>
@@ -617,7 +685,9 @@ export default function FRTBranchDetails() {
                 onChange={handleInputChange}
                 variant="outlined"
                 fullWidth
-                InputProps={{ startAdornment: <PhoneIcon sx={{ mr: 1, opacity: "50%" }} /> }}
+                InputProps={{
+                  startAdornment: <PhoneIcon sx={{ mr: 1, opacity: "50%" }} />,
+                }}
                 inputProps={{ maxLength: 10 }}
               />
             </Grid>
@@ -632,7 +702,11 @@ export default function FRTBranchDetails() {
                 onChange={handleInputChange}
                 variant="outlined"
                 fullWidth
-                InputProps={{ startAdornment: <PhoneAndroidRoundedIcon sx={{ mr: 1, opacity: "50%" }} /> }}
+                InputProps={{
+                  startAdornment: (
+                    <PhoneAndroidRoundedIcon sx={{ mr: 1, opacity: "50%" }} />
+                  ),
+                }}
                 inputProps={{ maxLength: 10 }}
               />
             </Grid>
@@ -647,7 +721,11 @@ export default function FRTBranchDetails() {
                 onChange={handleInputChange}
                 variant="outlined"
                 fullWidth
-                InputProps={{ startAdornment: <WifiCalling3Icon sx={{ mr: 1, opacity: "50%" }} /> }}
+                InputProps={{
+                  startAdornment: (
+                    <WifiCalling3Icon sx={{ mr: 1, opacity: "50%" }} />
+                  ),
+                }}
                 inputProps={{ maxLength: 10 }}
               />
             </Grid>
@@ -660,7 +738,9 @@ export default function FRTBranchDetails() {
                 disabled={fieldsDisabled}
                 fullWidth
                 select
-                InputProps={{ startAdornment: <PersonIcon sx={{ mr: 1, opacity: "50%" }} /> }}
+                InputProps={{
+                  startAdornment: <PersonIcon sx={{ mr: 1, opacity: "50%" }} />,
+                }}
                 SelectProps={{ MenuProps: { sx: { height: 350 } } }}
                 error={!!branchDetailErrors.AUDITABLE}
                 helperText={branchDetailErrors.AUDITABLE}
@@ -675,26 +755,13 @@ export default function FRTBranchDetails() {
               </TextField>
             </Grid>
             <Grid item xs={6} sm={6}></Grid>
-            
-            {(branchData.AUDITABLE === "I" || branchData.AUDITABLE === "A") && !fieldsDisabled && (
-              <>
-                {/* Auditor details fields here */}
-              </>
-            )}
+
+            {(branchData.AUDITABLE === "I" || branchData.AUDITABLE === "A") &&
+              !fieldsDisabled && <>{/* Auditor details fields here */}</>}
 
             {/* Action Buttons */}
             <Grid item xs={12}>
               <Box sx={{ display: "flex", justifyContent: "center", p: 1 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  size="medium"
-                  onClick={handleSubmit}
-                  disabled={fieldsDisabled}
-                  startIcon={<SaveIcon />}
-                >
-                  Save
-                </Button>
                 <Button
                   variant="contained"
                   color="error"
@@ -724,19 +791,33 @@ export default function FRTBranchDetails() {
           <Button onClick={() => setOpenWarningDialog(false)}>Close</Button>
         </DialogActions>
       </Dialog>
-      
+
       {/* Loading Dialog */}
-      <Dialog PaperProps={{ style: { backgroundColor: 'transparent', boxShadow: 'none' }}} open={loadOpen}>
+      <Dialog
+        PaperProps={{
+          style: { backgroundColor: "transparent", boxShadow: "none" },
+        }}
+        open={loadOpen}
+      >
         <DialogContent>
           <CircularProgress />
         </DialogContent>
       </Dialog>
-      
+
       {/* Snackbar */}
       {snackbar && (
         <SnackbarProvider maxSnack={3}>
-          <Snackbar open anchorOrigin={{ vertical: 'top', horizontal: 'center' }} onClose={handleCloseSnackbar} autoHideDuration={5000}>
-            <Alert variant="filled" {...snackbar} onClose={handleCloseSnackbar} />
+          <Snackbar
+            open
+            anchorOrigin={{ vertical: "top", horizontal: "center" }}
+            onClose={handleCloseSnackbar}
+            autoHideDuration={5000}
+          >
+            <Alert
+              variant="filled"
+              {...snackbar}
+              onClose={handleCloseSnackbar}
+            />
           </Snackbar>
         </SnackbarProvider>
       )}
@@ -745,50 +826,64 @@ export default function FRTBranchDetails() {
       <Dialog open={showDeleteConfirm} maxWidth="xl">
         <DialogTitle>
           <Typography fontSize={20} fontWeight={750}>
-            If you are going to exclude this branch from scope all these reports will be deleted. Do you want to continue?
+            If you are going to exclude this branch from scope all these reports
+            will be deleted. Do you want to continue?
           </Typography>
         </DialogTitle>
         <DialogContent>
-            {reportsList.length > 0 ? (
-                <Paper elevation={0}>
-                  <TableContainer sx={{ height: 500, minWidth: 1000 }}>
-                    <Table stickyHeader>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell align="center">S.No</TableCell>
-                          <TableCell align="center">Module</TableCell>
-                          <TableCell align="center">Report Name</TableCell>
-                          <TableCell>Report Description</TableCell>
-                          <TableCell align="center">Report Status</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {reportsList.map((row, i) => (
-                          <TableRow key={i}>
-                            <TableCell align="center">{i + 1}</TableCell>
-                            <TableCell align="center">{row.MODULE}</TableCell>
-                            <TableCell align="center">{row.REPORT_NAME}</TableCell>
-                            <TableCell>{row.REPORT_DESC}</TableCell>
-                            <TableCell align="center">
-                              {branchData.AUDITABLE === "N"
-                                ? REPORT_STATUS_CONSTANTS[row.CURRENT_STATUS]?.text
-                                : AUDITED_REPORT_STATUS_CONSTANTS[row.CURRENT_STATUS]?.text}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Paper>
-            ) : (
-                <DialogContentText>This branch has no reports to delete. You can proceed with deletion.</DialogContentText>
-            )}
+          {reportsList.length > 0 ? (
+            <Paper elevation={0}>
+              <TableContainer sx={{ height: 500, minWidth: 1000 }}>
+                <Table stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell align="center">S.No</TableCell>
+                      <TableCell align="center">Module</TableCell>
+                      <TableCell align="center">Report Name</TableCell>
+                      <TableCell>Report Description</TableCell>
+                      <TableCell align="center">Report Status</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {reportsList.map((row, i) => (
+                      <TableRow key={i}>
+                        <TableCell align="center">{i + 1}</TableCell>
+                        <TableCell align="center">{row.MODULE}</TableCell>
+                        <TableCell align="center">{row.REPORT_NAME}</TableCell>
+                        <TableCell>{row.REPORT_DESC}</TableCell>
+                        <TableCell align="center">
+                          {branchData.AUDITABLE === "N"
+                            ? REPORT_STATUS_CONSTANTS[row.CURRENT_STATUS]?.text
+                            : AUDITED_REPORT_STATUS_CONSTANTS[
+                                row.CURRENT_STATUS
+                              ]?.text}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          ) : (
+            <DialogContentText>
+              This branch has no reports to delete. You can proceed with
+              deletion.
+            </DialogContentText>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowDeleteConfirm(false)} variant="outlined" color="primary">
+          <Button
+            onClick={() => setShowDeleteConfirm(false)}
+            variant="outlined"
+            color="primary"
+          >
             No
           </Button>
-          <Button onClick={handleConfirmDeletion} variant="contained" color="error">
+          <Button
+            onClick={handleConfirmDeletion}
+            variant="contained"
+            color="error"
+          >
             Yes, Delete Branch
           </Button>
         </DialogActions>
