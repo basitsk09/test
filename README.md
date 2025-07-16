@@ -33,6 +33,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { encrypt } from "../Security/AES-GCM256";
 
+// Encryption constants
 const iv = crypto.getRandomValues(new Uint8Array(12));
 const ivBase64 = btoa(String.fromCharCode.apply(null, iv));
 const salt = crypto.getRandomValues(new Uint8Array(16));
@@ -51,26 +52,21 @@ export default function FrtSingleBranchAuditStatus() {
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState(null);
 
-  // This effect runs once to get the user role from localStorage
   useEffect(() => {
     const loggedInUser = JSON.parse(localStorage.getItem("user"));
     if (loggedInUser && loggedInUser.user_role) {
-      // Assuming '96' and '94' are the roles from the JSP/Controller logic
       if (loggedInUser.user_role !== "96" && loggedInUser.user_role !== "94") {
-        navigate("/"); // Redirect if role is not authorized
+        navigate("/");
       }
       setUserRole(loggedInUser.user_role);
     } else {
-      navigate("/"); // Redirect if no user is logged in
+      navigate("/");
     }
   }, [navigate]);
 
   // --- Handlers ---
   const handleSnackbarClose = () => setSnackbar(null);
 
-  /**
-   * Clears the form and resets all state variables to their initial values.
-   */
   const handleReset = () => {
     setBranchCode("");
     setBranchDetails(null);
@@ -81,6 +77,7 @@ export default function FrtSingleBranchAuditStatus() {
 
   /**
    * Fetches branch details from the server based on the entered branch code.
+   * Updated to use the new payload structure.
    */
   const handleSearch = async () => {
     if (!branchCode || branchCode.length < 5) {
@@ -91,19 +88,14 @@ export default function FrtSingleBranchAuditStatus() {
       return;
     }
     setLoading(true);
-    handleReset(); // Reset previous results before new search
-    setBranchCode(branchCode); // Keep the entered branch code after reset
+    handleReset(); 
+    setBranchCode(branchCode); 
 
     try {
-      // The JSP serializes the form, which sends a key-value pair.
-      // We replicate this with a URLSearchParams object.
-      let jsonFormData = JSON.stringify({ branchCode: branchCode });
-      await encrypt(iv, salt, jsonFormData).then(function (result) {
-        jsonFormData = result;
-      });
+      let jsonFormData = JSON.stringify({ branchCode });
+      jsonFormData = await encrypt(iv, salt, jsonFormData);
       let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
 
-      // Check if branch already exists in main database
       const response = await axios.post(
         "/Server/EditBranch/fetchBranchDetails",
         payload,
@@ -113,20 +105,14 @@ export default function FrtSingleBranchAuditStatus() {
       );
 
       if (
-        response.data?.result &&
-        Object.keys(response.data?.result?.branchData).length !== 0
+        response.data?.result?.branchData &&
+        response.data.result.branchData.CODE
       ) {
-        const details = response.data?.result?.branchData;
+        const details = response.data.result.branchData;
         setBranchDetails(details);
-
-        // Determine the initial combined audit status based on the logic in the JSP
-        let status = "N"; // Default to Non-Audited
-        if (response.data?.result?.branchData?.AUDITABLE === "A") {
-          status = "A"; // Audited
-          if (response.data?.result?.branchData?.AUDITABLE === "Y") {
-            status = "I"; // IFCOOR Audited
-          }
-        }
+        
+        // Directly use the AUDITABLE field which can be 'A', 'N', or 'I'
+        const status = details.AUDITABLE || "N";
         setInitialAuditStatus(status);
         setSelectedAuditStatus(status);
         setShowDetails(true);
@@ -149,6 +135,7 @@ export default function FrtSingleBranchAuditStatus() {
 
   /**
    * Submits the changed audit status to the server.
+   * Updated to map the new state structure to the expected save payload.
    */
   const handleSave = async () => {
     if (selectedAuditStatus === initialAuditStatus) {
@@ -160,20 +147,25 @@ export default function FrtSingleBranchAuditStatus() {
     }
 
     setLoading(true);
-    const payload = {
-      branchCode: branchDetails.branchCode,
-      branchName: branchDetails.branchName,
-      requestId: branchDetails.requestId,
-      circleCode: branchDetails.circleName,
-      roCode: branchDetails.roDetails,
+    // Construct the RO Details string from network, module, and region
+    const roDetails = `${branchDetails.NETWORK || ''} ${branchDetails.MODULE || ''} ${branchDetails.REGION || ''}`.trim();
+    
+    // Create the payload expected by the '/FRTUser/saveMe' endpoint
+    const savePayload = {
+      branchCode: branchDetails.CODE,
+      branchName: branchDetails.NAME,
+      requestId: branchDetails.requestId, // This might be undefined, which the backend handles as an insert
+      circleCode: branchDetails.CIRCLE,
+      roCode: roDetails,
       auditSts: selectedAuditStatus,
     };
 
     try {
-      const response = await axios.post("/FRTUser/saveMe", payload);
+      // NOTE: This assumes the save endpoint and its payload structure remain the same.
+      const response = await axios.post("/FRTUser/saveMe", savePayload);
       if (response.data && response.data !== "NODATA") {
         setSnackbar({ children: response.data, severity: "success" });
-        handleReset(); // Clear form on success
+        handleReset();
       } else {
         throw new Error("Failed to save data.");
       }
@@ -188,10 +180,6 @@ export default function FrtSingleBranchAuditStatus() {
     }
   };
 
-  /**
-   * Handles the download request by submitting a hidden form.
-   * This is a reliable way to trigger POST-based file downloads in the browser.
-   */
   const handleDownload = () => {
     const form = document.createElement("form");
     form.method = "post";
@@ -199,6 +187,12 @@ export default function FrtSingleBranchAuditStatus() {
     document.body.appendChild(form);
     form.submit();
     document.body.removeChild(form);
+  };
+
+  // --- Helper to format RO Details ---
+  const formatRoDetails = (details) => {
+    if (!details) return '--';
+    return `${details.NETWORK || '---'} ${details.MODULE || '---'} ${details.REGION || '---'}`;
   };
 
   // --- JSX ---
@@ -278,30 +272,12 @@ export default function FrtSingleBranchAuditStatus() {
                   </TableHead>
                   <TableBody>
                     <TableRow>
-                      <TableCell align="center">
-                        {branchDetails?.branchCode}
-                      </TableCell>
-                      <TableCell align="center">
-                        {branchDetails?.branchName}
-                      </TableCell>
-                      <TableCell align="center">
-                        {branchDetails?.circleName}
-                      </TableCell>
-                      <TableCell align="center">
-                        {branchDetails?.roDetails}
-                      </TableCell>
-                      <TableCell align="center">
-                        {branchDetails?.auditFlag === "Y"
-                          ? "Audited"
-                          : "Non-Audited"}
-                      </TableCell>
-                      <TableCell align="center">
-                        {branchDetails?.ifcofrFlag === "Y"
-                          ? "Yes"
-                          : branchDetails?.ifcofrFlag === "N"
-                          ? "No"
-                          : "--"}
-                      </TableCell>
+                      <TableCell align="center">{branchDetails?.CODE}</TableCell>
+                      <TableCell align="center">{branchDetails?.NAME}</TableCell>
+                      <TableCell align="center">{branchDetails?.CIRCLE}</TableCell>
+                      <TableCell align="center">{formatRoDetails(branchDetails)}</TableCell>
+                      <TableCell align="center">{branchDetails?.AUDITABLE === "N" ? "Non-Audited" : "Audited"}</TableCell>
+                      <TableCell align="center">{branchDetails?.AUDITABLE === "I" ? "Yes" : (branchDetails?.AUDITABLE === "A" ? "No" : "--")}</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
@@ -318,10 +294,8 @@ export default function FrtSingleBranchAuditStatus() {
                         </FormLabel>
                         <RadioGroup
                           row
-                          value={selectedAuditStatus.charAt(0)}
-                          onChange={(e) =>
-                            setSelectedAuditStatus(e.target.value)
-                          }
+                          value={selectedAuditStatus.charAt(0) === 'I' ? 'A' : selectedAuditStatus.charAt(0)}
+                          onChange={(e) => setSelectedAuditStatus(e.target.value)}
                         >
                           <FormControlLabel
                             value="N"
@@ -338,7 +312,7 @@ export default function FrtSingleBranchAuditStatus() {
                     </Grid>
 
                     {/* IFCOFR Section - visible only when 'Audited' is selected */}
-                    {selectedAuditStatus.charAt(0) === "A" && (
+                    {selectedAuditStatus.charAt(0) !== 'N' && (
                       <Grid item xs={12}>
                         <FormControl component="fieldset">
                           <FormLabel component="legend">IFCOFR Audit</FormLabel>
@@ -419,70 +393,4 @@ export default function FrtSingleBranchAuditStatus() {
       )}
     </>
   );
-}
-
-//////////////////////////////////
-
-
-{
-    "statusCode": 200,
-    "message": "data fetched successfully",
-    "result": {
-        "branchData": {
-            "NETWORK": null,
-            "PHONE": null,
-            "NAME": "DUMMY BRANCH",
-            "STATE": null,
-            "STDCODE": null,
-            "AUDITABLE": "A",
-            "REGION": null,
-            "MODULE": null,
-            "CITY": null,
-            "PIN": null,
-            "IPPHONE": null,
-            "ADDRESS": null,
-            "CODE": "27854",
-            "CIRCLE": "015",
-            "MOBILE": null
-        },
-        "auditorData": {
-            "FIRMNO": "666666666",
-            "ADDR": "Add1",
-            "FIRMNAME": null,
-            "NAME": "2785411-Test User Auditor",
-            "MEMNO": "555555555",
-            "PHONE": null,
-            "POST": "400010",
-            "TYPE": "Partnership",
-            "EMAIL": "aaa@aaa.com",
-            "CITY": "City"
-        },
-        "circleList": [
-            "001~KOLKATA",
-            "010~CHANDIGARH",
-            "011~BHUBANESWAR",
-            "012~GUWAHATI",
-            "013~BANGALORE",
-            "014~THIRUVANANTHAPURAM",
-            "015~CAG",
-            "016~CCG",
-            "017~SAMG",
-            "018~CAO-I",
-            "020~CAO-II",
-            "002~MAHARASHTRA",
-            "022~SECURITY SERVICE BRANCH",
-            "023~JAIPUR",
-            "024~AMARAVATHI",
-            "027~MUMBAI (METRO)",
-            "003~CHENNAI",
-            "004~NEW DELHI",
-            "005~LUCKNOW",
-            "006~AHMEDABAD",
-            "007~HYDERABAD",
-            "008~BHOPAL",
-            "009~PATNA",
-            "998~GITC",
-            "999~GITC"
-        ]
-    }
 }
