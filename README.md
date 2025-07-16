@@ -31,8 +31,14 @@ import SaveIcon from "@mui/icons-material/Save";
 import DiscardIcon from "@mui/icons-material/Cancel";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { encrypt } from "../Security/AES-GCM256";
 
-export default function SingleBranchAuditStatus() {
+const iv = crypto.getRandomValues(new Uint8Array(12));
+const ivBase64 = btoa(String.fromCharCode.apply(null, iv));
+const salt = crypto.getRandomValues(new Uint8Array(16));
+const saltBase64 = btoa(String.fromCharCode.apply(null, salt));
+
+export default function FrtSingleBranchAuditStatus() {
   const navigate = useNavigate();
 
   // --- State Management ---
@@ -91,22 +97,35 @@ export default function SingleBranchAuditStatus() {
     try {
       // The JSP serializes the form, which sends a key-value pair.
       // We replicate this with a URLSearchParams object.
-      const params = new URLSearchParams();
-      params.append('branchCode', branchCode);
+      let jsonFormData = JSON.stringify({ branchCode: branchCode });
+      await encrypt(iv, salt, jsonFormData).then(function (result) {
+        jsonFormData = result;
+      });
+      let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
 
-      const response = await axios.post("/FRTUser/searchBranchCode", params);
+      // Check if branch already exists in main database
+      const response = await axios.post(
+        "/Server/EditBranch/fetchBranchDetails",
+        payload,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
 
-      if (response.data && response.data.length > 0) {
-        const details = response.data[0];
+      if (
+        response.data?.result &&
+        Object.keys(response.data?.result?.branchData).length !== 0
+      ) {
+        const details = response.data?.result?.branchData;
         setBranchDetails(details);
 
         // Determine the initial combined audit status based on the logic in the JSP
-        let status = 'N'; // Default to Non-Audited
-        if (details.auditFlag === 'Y') {
-            status = 'A'; // Audited
-            if (details.ifcofrFlag === 'Y') {
-                status = 'I'; // IFCOOR Audited
-            }
+        let status = "N"; // Default to Non-Audited
+        if (response.data?.result?.branchData?.AUDITABLE === "A") {
+          status = "A"; // Audited
+          if (response.data?.result?.branchData?.AUDITABLE === "Y") {
+            status = "I"; // IFCOOR Audited
+          }
         }
         setInitialAuditStatus(status);
         setSelectedAuditStatus(status);
@@ -133,52 +152,54 @@ export default function SingleBranchAuditStatus() {
    */
   const handleSave = async () => {
     if (selectedAuditStatus === initialAuditStatus) {
-        setSnackbar({
-            children: "There is no change in audit status to save.",
-            severity: "info",
-        });
-        return;
+      setSnackbar({
+        children: "There is no change in audit status to save.",
+        severity: "info",
+      });
+      return;
     }
 
     setLoading(true);
     const payload = {
-        branchCode: branchDetails.branchCode,
-        branchName: branchDetails.branchName,
-        requestId: branchDetails.requestId,
-        circleCode: branchDetails.circleName,
-        roCode: branchDetails.roDetails,
-        auditSts: selectedAuditStatus,
+      branchCode: branchDetails.branchCode,
+      branchName: branchDetails.branchName,
+      requestId: branchDetails.requestId,
+      circleCode: branchDetails.circleName,
+      roCode: branchDetails.roDetails,
+      auditSts: selectedAuditStatus,
     };
 
     try {
-        const response = await axios.post("/FRTUser/saveMe", payload);
-        if (response.data && response.data !== 'NODATA') {
-            setSnackbar({ children: response.data, severity: "success" });
-            handleReset(); // Clear form on success
-        } else {
-            throw new Error('Failed to save data.');
-        }
+      const response = await axios.post("/FRTUser/saveMe", payload);
+      if (response.data && response.data !== "NODATA") {
+        setSnackbar({ children: response.data, severity: "success" });
+        handleReset(); // Clear form on success
+      } else {
+        throw new Error("Failed to save data.");
+      }
     } catch (error) {
-        console.error("Save failed:", error);
-        setSnackbar({ children: "The request could not be saved due to a technical error.", severity: "error" });
+      console.error("Save failed:", error);
+      setSnackbar({
+        children: "The request could not be saved due to a technical error.",
+        severity: "error",
+      });
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
-    /**
-     * Handles the download request by submitting a hidden form.
-     * This is a reliable way to trigger POST-based file downloads in the browser.
-     */
-    const handleDownload = () => {
-        const form = document.createElement('form');
-        form.method = 'post';
-        form.action = '/FRTUser/downloadForm';
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-    };
-
+  /**
+   * Handles the download request by submitting a hidden form.
+   * This is a reliable way to trigger POST-based file downloads in the browser.
+   */
+  const handleDownload = () => {
+    const form = document.createElement("form");
+    form.method = "post";
+    form.action = "/FRTUser/downloadForm";
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+  };
 
   // --- JSX ---
   return (
@@ -214,15 +235,26 @@ export default function SingleBranchAuditStatus() {
                 Search
               </Button>
             </Grid>
-            <Grid item xs={12} md={4} sx={{textAlign: {xs: 'left', md: 'right'} }}>
-                <Typography variant="body1">
-                    List Of All Branches With Audit Status:
-                </Typography>
+            <Grid
+              item
+              xs={12}
+              md={4}
+              sx={{ textAlign: { xs: "left", md: "right" } }}
+            >
+              <Typography variant="body1">
+                List Of All Branches With Audit Status:
+              </Typography>
             </Grid>
             <Grid item xs={12} md={3}>
-                <Button variant="contained" color="secondary" startIcon={<DownloadIcon />} onClick={handleDownload} fullWidth>
-                    Download List
-                </Button>
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<DownloadIcon />}
+                onClick={handleDownload}
+                fullWidth
+              >
+                Download List
+              </Button>
             </Grid>
           </Grid>
 
@@ -246,12 +278,30 @@ export default function SingleBranchAuditStatus() {
                   </TableHead>
                   <TableBody>
                     <TableRow>
-                      <TableCell align="center">{branchDetails?.branchCode}</TableCell>
-                      <TableCell align="center">{branchDetails?.branchName}</TableCell>
-                      <TableCell align="center">{branchDetails?.circleName}</TableCell>
-                      <TableCell align="center">{branchDetails?.roDetails}</TableCell>
-                      <TableCell align="center">{branchDetails?.auditFlag === 'Y' ? 'Audited' : 'Non-Audited'}</TableCell>
-                      <TableCell align="center">{branchDetails?.ifcofrFlag === 'Y' ? 'Yes' : (branchDetails?.ifcofrFlag === 'N' ? 'No' : '--')}</TableCell>
+                      <TableCell align="center">
+                        {branchDetails?.branchCode}
+                      </TableCell>
+                      <TableCell align="center">
+                        {branchDetails?.branchName}
+                      </TableCell>
+                      <TableCell align="center">
+                        {branchDetails?.circleName}
+                      </TableCell>
+                      <TableCell align="center">
+                        {branchDetails?.roDetails}
+                      </TableCell>
+                      <TableCell align="center">
+                        {branchDetails?.auditFlag === "Y"
+                          ? "Audited"
+                          : "Non-Audited"}
+                      </TableCell>
+                      <TableCell align="center">
+                        {branchDetails?.ifcofrFlag === "Y"
+                          ? "Yes"
+                          : branchDetails?.ifcofrFlag === "N"
+                          ? "No"
+                          : "--"}
+                      </TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
@@ -262,35 +312,75 @@ export default function SingleBranchAuditStatus() {
                 <Box mt={4}>
                   <Grid container spacing={2}>
                     <Grid item xs={12}>
-                        <FormControl component="fieldset">
-                            <FormLabel component="legend">Update Audit Status</FormLabel>
-                            <RadioGroup row value={selectedAuditStatus.charAt(0)} onChange={(e) => setSelectedAuditStatus(e.target.value)}>
-                                <FormControlLabel value="N" control={<Radio />} label="Non-Audited Branch" />
-                                <FormControlLabel value="A" control={<Radio />} label="Audited Branch" />
-                            </RadioGroup>
-                        </FormControl>
+                      <FormControl component="fieldset">
+                        <FormLabel component="legend">
+                          Update Audit Status
+                        </FormLabel>
+                        <RadioGroup
+                          row
+                          value={selectedAuditStatus.charAt(0)}
+                          onChange={(e) =>
+                            setSelectedAuditStatus(e.target.value)
+                          }
+                        >
+                          <FormControlLabel
+                            value="N"
+                            control={<Radio />}
+                            label="Non-Audited Branch"
+                          />
+                          <FormControlLabel
+                            value="A"
+                            control={<Radio />}
+                            label="Audited Branch"
+                          />
+                        </RadioGroup>
+                      </FormControl>
                     </Grid>
-                    
+
                     {/* IFCOFR Section - visible only when 'Audited' is selected */}
-                    {selectedAuditStatus.charAt(0) === 'A' && (
-                         <Grid item xs={12}>
-                            <FormControl component="fieldset">
-                                <FormLabel component="legend">IFCOFR Audit</FormLabel>
-                                <RadioGroup row value={selectedAuditStatus} onChange={(e) => setSelectedAuditStatus(e.target.value)}>
-                                    <FormControlLabel value="I" control={<Radio />} label="Yes (IFCOFR Audited)" />
-                                    <FormControlLabel value="A" control={<Radio />} label="No" />
-                                </RadioGroup>
-                            </FormControl>
-                        </Grid>
+                    {selectedAuditStatus.charAt(0) === "A" && (
+                      <Grid item xs={12}>
+                        <FormControl component="fieldset">
+                          <FormLabel component="legend">IFCOFR Audit</FormLabel>
+                          <RadioGroup
+                            row
+                            value={selectedAuditStatus}
+                            onChange={(e) =>
+                              setSelectedAuditStatus(e.target.value)
+                            }
+                          >
+                            <FormControlLabel
+                              value="I"
+                              control={<Radio />}
+                              label="Yes (IFCOFR Audited)"
+                            />
+                            <FormControlLabel
+                              value="A"
+                              control={<Radio />}
+                              label="No"
+                            />
+                          </RadioGroup>
+                        </FormControl>
+                      </Grid>
                     )}
                   </Grid>
 
                   {/* Save/Discard Buttons */}
                   <Box mt={3} display="flex" gap={2}>
-                    <Button variant="contained" color="success" startIcon={<SaveIcon />} onClick={handleSave}>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      startIcon={<SaveIcon />}
+                      onClick={handleSave}
+                    >
                       Save Changes
                     </Button>
-                    <Button variant="contained" color="error" startIcon={<DiscardIcon />} onClick={handleReset}>
+                    <Button
+                      variant="contained"
+                      color="error"
+                      startIcon={<DiscardIcon />}
+                      onClick={handleReset}
+                    >
                       Discard
                     </Button>
                   </Box>
@@ -303,7 +393,7 @@ export default function SingleBranchAuditStatus() {
 
       {/* Loading Dialog */}
       <Dialog open={loading}>
-        <DialogContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <DialogContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <CircularProgress />
           <Typography>Processing...</Typography>
         </DialogContent>
@@ -317,11 +407,82 @@ export default function SingleBranchAuditStatus() {
           onClose={handleSnackbarClose}
           autoHideDuration={6000}
         >
-          <Alert onClose={handleSnackbarClose} severity={snackbar.severity} variant="filled" sx={{ width: "100%" }}>
+          <Alert
+            onClose={handleSnackbarClose}
+            severity={snackbar.severity}
+            variant="filled"
+            sx={{ width: "100%" }}
+          >
             {snackbar.children}
           </Alert>
         </Snackbar>
       )}
     </>
   );
+}
+
+//////////////////////////////////
+
+
+{
+    "statusCode": 200,
+    "message": "data fetched successfully",
+    "result": {
+        "branchData": {
+            "NETWORK": null,
+            "PHONE": null,
+            "NAME": "DUMMY BRANCH",
+            "STATE": null,
+            "STDCODE": null,
+            "AUDITABLE": "A",
+            "REGION": null,
+            "MODULE": null,
+            "CITY": null,
+            "PIN": null,
+            "IPPHONE": null,
+            "ADDRESS": null,
+            "CODE": "27854",
+            "CIRCLE": "015",
+            "MOBILE": null
+        },
+        "auditorData": {
+            "FIRMNO": "666666666",
+            "ADDR": "Add1",
+            "FIRMNAME": null,
+            "NAME": "2785411-Test User Auditor",
+            "MEMNO": "555555555",
+            "PHONE": null,
+            "POST": "400010",
+            "TYPE": "Partnership",
+            "EMAIL": "aaa@aaa.com",
+            "CITY": "City"
+        },
+        "circleList": [
+            "001~KOLKATA",
+            "010~CHANDIGARH",
+            "011~BHUBANESWAR",
+            "012~GUWAHATI",
+            "013~BANGALORE",
+            "014~THIRUVANANTHAPURAM",
+            "015~CAG",
+            "016~CCG",
+            "017~SAMG",
+            "018~CAO-I",
+            "020~CAO-II",
+            "002~MAHARASHTRA",
+            "022~SECURITY SERVICE BRANCH",
+            "023~JAIPUR",
+            "024~AMARAVATHI",
+            "027~MUMBAI (METRO)",
+            "003~CHENNAI",
+            "004~NEW DELHI",
+            "005~LUCKNOW",
+            "006~AHMEDABAD",
+            "007~HYDERABAD",
+            "008~BHOPAL",
+            "009~PATNA",
+            "998~GITC",
+            "999~GITC"
+        ]
+    }
 }
