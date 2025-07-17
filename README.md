@@ -1,422 +1,951 @@
-import React, { useState } from "react";
+import * as React from "react";
+import { useState } from "react";
 import {
-  TextField,
-  Grid,
-  Button,
-  Typography,
-  Divider,
-  TableContainer,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  Paper,
-  Box,
-  Container,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  CircularProgress,
-  Snackbar,
-  Alert,
-  Checkbox,
-  Link,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-} from "@mui/material";
-import DownloadIcon from "@mui/icons-material/CloudDownload";
-import UploadIcon from "@mui/icons-material/CloudUpload";
-import SubmitIcon from "@mui/icons-material/Save";
-import DiscardIcon from "@mui/icons-material/DeleteForever";
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+  createTheme,
+  styled,
+  ThemeProvider,
+  useTheme,
+} from "@mui/material/styles";
+import Box from "@mui/material/Box";
+import MuiDrawer from "@mui/material/Drawer";
+import MuiAppBar from "@mui/material/AppBar";
+import Toolbar from "@mui/material/Toolbar";
+import List from "@mui/material/List";
+import CssBaseline from "@mui/material/CssBaseline";
+import Typography from "@mui/material/Typography";
+import Divider from "@mui/material/Divider";
+import IconButton from "@mui/material/IconButton";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ListItem from "@mui/material/ListItem";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import { Help, Home, Logout } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import * as XLSX from "xlsx";
+import propTypes from "prop-types";
+import crs from "../../Asset/img/crsLogo.svg";
+import tar from "../../Asset/img/TarLogo.svg";
+import lfar from "../../Asset/img/LfarLogo.svg";
+import Tooltip from "@mui/material/Tooltip";
+import PendingActionsIcon from "@mui/icons-material/PendingActions";
+import { userRoles } from "../CommonValidations/commonConstants";
+import ChangeCircleTwoToneIcon from "@mui/icons-material/ChangeCircleTwoTone";
+import Badge from "@mui/material/Badge";
+import { Dialog, DialogContent, DialogTitle } from "@mui/material";
+import ChangeModule from "../Login/ChangeModule";
+import LayersIcon from "@mui/icons-material/Layers";
+import DashboardIcon from "@mui/icons-material/Dashboard";
 
-export default function FrtMultipleBranchAuditStatus() {
+const drawerWidth = 240;
+const defaultTheme = createTheme();
+
+const openedMixin = (theme) => ({
+  width: drawerWidth,
+  transition: theme.transitions.create("width", {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.enteringScreen,
+  }),
+  overflowX: "hidden",
+});
+
+const closedMixin = (theme) => ({
+  transition: theme.transitions.create("width", {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  overflowX: "hidden",
+  width: `calc(${theme.spacing(7)} + 1px)`,
+  [theme.breakpoints.up("sm")]: {
+    width: `calc(${theme.spacing(8)} + 1px)`,
+  },
+});
+
+const DrawerHeader = styled("div")(({ theme }) => ({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  padding: theme.spacing(0, 1),
+  // necessary for content to be below app bar
+  ...theme.mixins.toolbar,
+}));
+
+const AppBar = styled(MuiAppBar, {
+  shouldForwardProp: (prop) => prop !== "open",
+})(({ theme, open }) => ({
+  zIndex: theme.zIndex.drawer + 1,
+  transition: theme.transitions.create(["width", "margin"], {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  ...(open && {
+    marginLeft: drawerWidth,
+    width: `calc(100% - ${drawerWidth}px)`,
+    transition: theme.transitions.create(["width", "margin"], {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
+  }),
+}));
+
+const Drawer = styled(MuiDrawer, {
+  shouldForwardProp: (prop) => prop !== "open",
+})(({ theme, open }) => ({
+  width: drawerWidth,
+  flexShrink: 0,
+  whiteSpace: "nowrap",
+  boxSizing: "border-box",
+  ...(open && {
+    ...openedMixin(theme),
+    "& .MuiDrawer-paper": openedMixin(theme),
+  }),
+  ...(!open && {
+    ...closedMixin(theme),
+    "& .MuiDrawer-paper": closedMixin(theme),
+  }),
+}));
+
+const FrtCheckerLayout = ({ children }) => {
+  document.title = "CRS | FRT Checker Home";
   const navigate = useNavigate();
+  const theme = useTheme();
+  const [open, setOpen] = useState(false);
+  const [changeModuleModalOpen, setChangeModuleModalOpen] = useState(false);
+  const user = JSON.parse(localStorage.getItem("user"));
 
-  // --- State Management ---
-  const [rows, setRows] = useState([]);
-  const [selected, setSelected] = useState([]);
-  const [showTable, setShowTable] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [snackbar, setSnackbar] = useState(null);
-  const [dialog, setDialog] = useState({ open: false, title: "", message: "", goNext: false });
-  const [fileInputKey, setFileInputKey] = useState(Date.now()); // Used to reset the file input
-
-  // --- Handlers ---
-  const handleSnackbarClose = () => setSnackbar(null);
-  const handleDialogClose = () => setDialog({ open: false, title: "", message: "" });
-  const goToSingleBranch = () => navigate('/FRTUser/singleBranch'); // Update with your actual route
-
-  /**
-   * Validates a single field value.
-   * @param {string} field - The name of the field ('branchCode' or 'auditStatus').
-   * @param {string} value - The value to validate.
-   * @returns {string|null} - An error message string or null if valid.
-   */
-  const validateField = (field, value) => {
-    if (field === "branchCode") {
-      if (!/^\d{1,5}$/.test(value)) {
-        return "Must be a 5-digit number.";
-      }
-    }
-    if (field === "auditStatus") {
-      const validStatuses = ["I", "A", "N"];
-      if (!validStatuses.includes(value.toUpperCase())) {
-        return "Must be I, A, or N.";
-      }
-    }
-    return null;
+  const moduleLogo = {
+    CRS: crs,
+    TAR: tar,
+    LFAR: lfar,
   };
 
-  /**
-   * Handles the file upload process, including parsing and validation.
-   */
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    setLoading(true);
-    // Reset state for new upload
-    setRows([]);
-    setShowTable(false);
-
-    const validExtensions = [".xlsx", ".xls"];
-    const fileExtension = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
-
-    if (!validExtensions.includes(fileExtension)) {
-      setSnackbar({ children: "Invalid file type. Please upload an Excel file.", severity: "error" });
-      setLoading(false);
-      return;
-    }
-
-    if (file.size > 2 * 1024 * 1024) { // 2 MB
-      setSnackbar({ children: "File size cannot exceed 2 MB.", severity: "error" });
-      setLoading(false);
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = e.target.result;
-        const workbook = XLSX.read(data, { type: "binary" });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(worksheet);
-
-        if (!json[0] || !json[0].hasOwnProperty("BranchCode") || !json[0].hasOwnProperty("AuditStatus")) {
-          throw new Error("Invalid Excel format. Please use the provided template.");
-        }
-
-        if (json.length < 5) {
-          setDialog({
-            open: true,
-            title: "Warning: Low Record Count",
-            message: "For bulk uploads, at least 5 records are recommended. Would you like to proceed or use the single branch page?",
-            goNext: true
-          });
-          setLoading(false);
-          return;
-        }
-
-        const parsedRows = json.map((row, index) => {
-          const branchCode = String(row.BranchCode || "").trim();
-          const auditStatus = String(row.AuditStatus || "").trim().toUpperCase();
-          return {
-            id: index,
-            branchCode: { value: branchCode, error: validateField("branchCode", branchCode) },
-            auditStatus: { value: auditStatus, error: validateField("auditStatus", auditStatus) },
-          };
-        });
-        
-        setRows(parsedRows);
-        setShowTable(true);
-      } catch (err) {
-        console.error(err);
-        setSnackbar({ children: err.message || "An error occurred while parsing the file.", severity: "error" });
-      } finally {
-        setLoading(false);
-        setFileInputKey(Date.now()); // Reset file input to allow re-uploading the same file
-      }
-    };
-    reader.readAsBinaryString(file);
-  };
-
-  /**
-   * Handles changes to the text fields within the table for real-time validation.
-   */
-  const handleInputChange = (id, field, value) => {
-    const newRows = rows.map((row) => {
-      if (row.id === id) {
-        const updatedField = { value, error: validateField(field, value) };
-        return { ...row, [field]: updatedField };
-      }
-      return row;
-    });
-    setRows(newRows);
-  };
-  
-  /**
-   * Handles row selection for the discard functionality.
-   */
-  const handleSelect = (event, id) => {
-    const selectedIndex = selected.indexOf(id);
-    let newSelected = [];
-
-    if (selectedIndex === -1) {
-      newSelected = newSelected.concat(selected, id);
-    } else {
-      newSelected = selected.filter(selId => selId !== id);
-    }
-    setSelected(newSelected);
-  };
-  
-  const handleSelectAll = (event) => {
-    if (event.target.checked) {
-      const newSelecteds = rows.map((n) => n.id);
-      setSelected(newSelecteds);
-      return;
-    }
-    setSelected([]);
-  };
-
-  /**
-   * Removes the selected rows from the table.
-   */
-  const handleDiscard = () => {
-    if (selected.length === 0) {
-      setSnackbar({ children: "Please select rows to discard.", severity: "info" });
-      return;
-    }
-    const newRows = rows.filter((row) => !selected.includes(row.id));
-    setRows(newRows);
-    setSelected([]);
-    setSnackbar({ children: `${selected.length} row(s) discarded.`, severity: "success" });
-  };
-  
-  /**
-   * Submits the valid data to the backend.
-   */
-  const handleSubmit = async () => {
-    setLoading(true);
-    const hasErrors = rows.some(row => row.branchCode.error || row.auditStatus.error);
-
-    if (hasErrors) {
-      setSnackbar({ children: "Please correct all errors before submitting.", severity: "error" });
-      setLoading(false);
-      return;
-    }
-
-    if (rows.length === 0) {
-        setSnackbar({ children: "There is no data to submit.", severity: "warning" });
-        setLoading(false);
-        return;
-    }
-    
-    // The backend expects separate arrays for branchcode and status
-    const branchCodeList = rows.map(row => String(row.branchCode.value).padStart(5, '0'));
-    const statusList = rows.map(row => row.auditStatus.value);
-    
-    // The JSP creates a form and submits it. We can replicate this with URLSearchParams for a standard form POST.
-    const params = new URLSearchParams();
-    branchCodeList.forEach(bc => params.append('branchcode', bc));
-    statusList.forEach(st => params.append('status', st));
-
-    try {
-        // We expect a file download (for errors) or a redirect with a message (for success).
-        // A standard form POST is the best way to handle this ambiguity without complex response parsing.
-        const form = document.createElement('form');
-        form.method = 'post';
-        form.action = '/FRTUser/bulkUpload'; // Your actual backend endpoint
-
-        branchCodeList.forEach(bc => {
-            const hiddenField = document.createElement('input');
-            hiddenField.type = 'hidden';
-            hiddenField.name = 'branchcode';
-            hiddenField.value = bc;
-            form.appendChild(hiddenField);
-        });
-
-        statusList.forEach(st => {
-            const hiddenField = document.createElement('input');
-            hiddenField.type = 'hidden';
-            hiddenField.name = 'status';
-            hiddenField.value = st;
-            form.appendChild(hiddenField);
-        });
-        
-        document.body.appendChild(form);
-        form.submit();
-        
-        // After submission, we can only provide generic feedback as we don't get a direct response in the SPA.
-        setSnackbar({ children: "Request submitted successfully. You will be notified of any invalid records.", severity: "success" });
-        // Optionally reset the page after a delay
-        setTimeout(() => {
-            setRows([]);
-            setShowTable(false);
-            setSelected([]);
-        }, 3000);
-
-    } catch (error) {
-        console.error("Submission failed:", error);
-        setSnackbar({ children: "An error occurred during submission.", severity: "error" });
-    } finally {
-        setLoading(false);
+  const handleListClick = (vd, data) => {
+    if (vd.id === "Home") {
+      navigate("/FrtCheckerHome");
+    } else if (vd.id === "Branch Details") {
+      navigate("/FRTCheckerBranchDetails");
+    } else if (vd.id === "Request Status") {
+      navigate("/FrtCheckerRequestActivity");
+    } else if (vd.id === "Dashboard") {
+      navigate("/FrtCheckerDashboard");
+    }else if(vd.id === "Help"){
+      navigate("/FrtCheckerHelp");
     }
   };
 
-  // --- JSX ---
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/");
+  };
+
+  const handleDrawerClose = () => {
+    setOpen(false);
+  };
+
+  let data = [
+    { id: "Home", element: <Home sx={{ color: "#7f8c8d" }} /> },
+    { id: "Branch Details", element: <LayersIcon sx={{ color: "#7f8c8d" }} /> },
+    {
+      id: "Request Status",
+      element: <PendingActionsIcon sx={{ color: "#7f8c8d" }} />,
+    },
+    { id: "Dashboard", element: <DashboardIcon sx={{ color: "#7f8c8d" }} /> },
+    { id: "Help", element: <Help sx={{ color: "#7f8c8d" }} /> },
+  ];
+
   return (
-    <>
-      <Box sx={{ p: 2 }}>
-        <Typography variant="h5" gutterBottom>
-          Change Multiple Branch Audit Status
-        </Typography>
-        <Divider />
-      </Box>
+    <ThemeProvider theme={defaultTheme}>
+      <Box sx={{ display: "flex" }}>
+        <CssBaseline />
 
-      <Container maxWidth="xl" sx={{ mt: 2 }}>
-        <Paper elevation={3} sx={{ p: 3 }}>
-            <Typography color="error" gutterBottom>[Note: For bulk upload, at least 5 records should be present in the Excel file.]</Typography>
-          <Grid container spacing={4}>
-            {/* Left Side: Instructions and Download */}
-            <Grid item xs={12} md={6}>
-                <Typography variant="h6" gutterBottom>Instructions</Typography>
-                <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                        <Typography variant="subtitle1" gutterBottom>1. Download Template</Typography>
-                        <Button
-                            variant="contained"
-                            color="success"
-                            startIcon={<DownloadIcon />}
-                            href="/FRTUser/downloadExcel" // Endpoint from controller
-                        >
-                            Download Excel
-                        </Button>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                        <Typography variant="subtitle1" gutterBottom>2. Status Guide</Typography>
-                        <List dense>
-                            <ListItem><ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon><ListItemText primary="N - For Non-Audited" /></ListItem>
-                            <ListItem><ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon><ListItemText primary="A - For Audited (Non-IFCOFR)" /></ListItem>
-                            <ListItem><ListItemIcon><CheckCircleIcon color="primary" /></ListItemIcon><ListItemText primary="I - For IFCOFR Audited" /></ListItem>
-                        </List>
-                    </Grid>
-                </Grid>
-            </Grid>
+        <AppBar
+          position="fixed"
+          open={open}
+          sx={{
+            background:
+              "linear-gradient(90deg, rgba(135,210,247,1) 0%, rgba(212,225,233,1) 75%, rgba(255,255,255,1) 100%)",
+            color: "#000",
+            zIndex: (theme) => theme.zIndex.drawer + 1,
+          }}
+        >
+          <Toolbar sx={{ display: "flex", alignItems: "center" }}>
+            <Badge
+              overlap="circular"
+              badgeContent={
+                <ChangeCircleTwoToneIcon
+                  sx={{
+                    color: "inherit",
+                    background: "white",
+                    borderRadius: "60px",
+                  }}
+                />
+              }
+              sx={{ width: "56px", cursor: "pointer" }}
+              anchorOrigin={{
+                vertical: "bottom",
+                horizontal: "right",
+              }}
+              onClick={() => setChangeModuleModalOpen(true)}
+            >
+              <img
+                src={moduleLogo[user.module]}
+                alt="MODULE"
+                width="60"
+                height="60"
+                style={{ float: "left", marginRight: "50px" }}
+              />
+            </Badge>
 
-            {/* Right Side: Upload */}
-            <Grid item xs={12} md={6}>
-                 <Typography variant="h6" gutterBottom>3. Upload File</Typography>
-                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2 }}>
-                    <Button variant="contained" component="label">
-                        Choose File
-                        <input type="file" hidden key={fileInputKey} accept=".xlsx, .xls" onChange={handleFileUpload} />
-                    </Button>
-                    <Typography variant="body2" color="text.secondary">Max size: 2MB</Typography>
-                 </Box>
-            </Grid>
-          </Grid>
-          
-          {/* Table Section */}
-          {showTable && (
-            <Box mt={4}>
-                <Divider sx={{ mb: 2 }} />
-                <Typography variant="h6" gutterBottom>Verify and Submit Data</Typography>
-                <TableContainer component={Paper}>
-                    <Table>
-                        <TableHead sx={{ backgroundColor: "#b9def0" }}>
-                            <TableRow>
-                                <TableCell padding="checkbox">
-                                    <Checkbox
-                                        color="primary"
-                                        indeterminate={selected.length > 0 && selected.length < rows.length}
-                                        checked={rows.length > 0 && selected.length === rows.length}
-                                        onChange={handleSelectAll}
-                                    />
-                                </TableCell>
-                                <TableCell align="center">Branch Code</TableCell>
-                                <TableCell align="center">Audit Status (I/A/N)</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {rows.map((row) => (
-                                <TableRow key={row.id} hover selected={selected.indexOf(row.id) !== -1}>
-                                    <TableCell padding="checkbox">
-                                        <Checkbox
-                                            color="primary"
-                                            checked={selected.indexOf(row.id) !== -1}
-                                            onClick={(event) => handleSelect(event, row.id)}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <TextField
-                                            fullWidth
-                                            variant="standard"
-                                            value={row.branchCode.value}
-                                            onChange={(e) => handleInputChange(row.id, "branchCode", e.target.value)}
-                                            error={!!row.branchCode.error}
-                                            helperText={row.branchCode.error}
-                                            inputProps={{ style: { textAlign: 'center' } }}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                         <TextField
-                                            fullWidth
-                                            variant="standard"
-                                            value={row.auditStatus.value}
-                                            onChange={(e) => handleInputChange(row.id, "auditStatus", e.target.value)}
-                                            error={!!row.auditStatus.error}
-                                            helperText={row.auditStatus.error}
-                                            inputProps={{ style: { textAlign: 'center', textTransform: 'uppercase' } }}
-                                        />
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-                <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                    <Button variant="contained" color="primary" startIcon={<SubmitIcon />} onClick={handleSubmit}>Submit</Button>
-                    <Button variant="outlined" color="error" startIcon={<DiscardIcon />} onClick={handleDiscard}>Discard Selected</Button>
-                </Box>
+            <Box sx={{ ml: "auto", mt: 1, position: "fixed", right: "20px" }}>
+              <Typography variant={"subtitle2"} gutterBottom>
+                User: {user.pf_number} - {userRoles[user.user_role]}
+              </Typography>
+              <Tooltip title={`${user.branch_code} - ${user.branch_name}`}>
+                <Typography
+                  noWrap
+                  sx={{ overflow: "hidden", textOverflow: "ellipsis" }}
+                  variant="subtitle2"
+                >
+                  Branch: {user.branch_code} -{" "}
+                  {user.branch_name.length > 15
+                    ? user.branch_name.slice(0, 15) + "..."
+                    : user.branch_name}
+                </Typography>
+              </Tooltip>
             </Box>
-          )}
+          </Toolbar>
+        </AppBar>
+        <Drawer variant="permanent" open={open}>
+          <DrawerHeader>
+            <IconButton onClick={handleDrawerClose}>
+              {theme.direction === "rtl" ? (
+                <ChevronRightIcon />
+              ) : (
+                <ChevronLeftIcon />
+              )}
+            </IconButton>
+          </DrawerHeader>
+          <Divider />
 
-        </Paper>
-      </Container>
-      
-      {/* --- Dialogs and Loaders --- */}
-      <Dialog open={loading}>
-        <DialogContent sx={{ display: "flex", alignItems: "center", gap: 2, p: 4 }}>
-          <CircularProgress />
-          <Typography>Processing...</Typography>
-        </DialogContent>
-      </Dialog>
-      
-      <Dialog open={dialog.open} onClose={handleDialogClose}>
-        <DialogTitle>{dialog.title}</DialogTitle>
-        <DialogContent><DialogContentText>{dialog.message}</DialogContentText></DialogContent>
-        <DialogActions>
-            <Button onClick={handleDialogClose}>Close</Button>
-            {dialog.goNext && <Button onClick={goToSingleBranch} variant="contained">Go to Single Branch Page</Button>}
-        </DialogActions>
-      </Dialog>
-      
-      {snackbar && (
-        <Snackbar open autoHideDuration={6000} onClose={handleSnackbarClose} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
-          <Alert onClose={handleSnackbarClose} severity={snackbar.severity} variant="filled" sx={{ width: "100%" }}>
-            {snackbar.children}
-          </Alert>
-        </Snackbar>
-      )}
-    </>
+          <Divider />
+          <List
+            sx={{ display: "flex", flexDirection: "column", height: "100%" }}
+          >
+            {data.map((vd) => (
+              <Tooltip key={`title${vd.id}`} title={vd.id}>
+                <ListItem
+                  key={vd.id}
+                  disablePadding
+                  onClick={() => handleListClick(vd, data)}
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <ListItemButton
+                    sx={{
+                      alignItems: "center",
+                    }}
+                  >
+                    {vd.element}
+                  </ListItemButton>
+                  <Typography
+                    variant="caption"
+                    sx={{ textWrap: "wrap", textAlign: "center" }}
+                  >
+                    {vd.id.length <= 15 ? vd.id : vd.id.slice(0, 15) + "..."}
+                  </Typography>
+                </ListItem>
+              </Tooltip>
+            ))}
+            <Divider />
+
+            <Tooltip title="Logout">
+              <ListItem
+                disablePadding
+                sx={{ display: "block", marginTop: "auto" }}
+                onClick={handleLogout}
+              >
+                <ListItemButton
+                  sx={{
+                    minHeight: 48,
+                    display: "flex",
+                    justifyContent: "center",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    px: 2.5,
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      m: 1,
+                      color: "red",
+                    }}
+                  >
+                    <Logout />
+                  </ListItemIcon>
+                  <Typography variant="caption">Logout</Typography>
+                </ListItemButton>
+              </ListItem>
+            </Tooltip>
+          </List>
+        </Drawer>
+        <Box
+          component="main"
+          sx={{
+            backgroundColor: "#E1E6EC",
+            flexGrow: 1,
+            p: 3,
+            height: "100vh",
+            overflow: "auto",
+          }}
+        >
+          <DrawerHeader />
+          {/*Main Contain comes here*/}
+          {children}
+        </Box>
+        <Box
+          sx={{
+            position: "fixed",
+            bottom: 0,
+            width: "100%",
+            backgroundColor: "white",
+            textAlign: "center",
+            minHeight: 56,
+            padding: "15px 0",
+            boxShadow: "0 -2px 5px rgba(0,0,0,0.1)",
+          }}
+        >
+          <Box
+            variant="body2"
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            &copy;{new Date().getFullYear()} &nbsp; Tata Consultancy Services.
+            All rights reserved.
+          </Box>
+        </Box>
+      </Box>
+      <ModuleChange
+        changeModuleModalOpen={changeModuleModalOpen}
+        setChangeModuleModalOpen={setChangeModuleModalOpen}
+      ></ModuleChange>
+    </ThemeProvider>
   );
-}
+};
+
+const ModuleChange = ({ changeModuleModalOpen, setChangeModuleModalOpen }) => {
+  return (
+    <Dialog
+      sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+      maxWidth="lg"
+      open={changeModuleModalOpen}
+      onClose={() => setChangeModuleModalOpen(false)}
+    >
+      <DialogTitle
+        id="responsive-dialog-title"
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Typography variant={"h5"}>Kindly select the Module</Typography>
+      </DialogTitle>
+      <Divider />
+      <DialogContent>
+        <ChangeModule handleClose={() => setChangeModuleModalOpen(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+FrtCheckerLayout.propTypes = {
+  children: propTypes.element.isRequired,
+};
+
+export default FrtCheckerLayout;
+//////////////////////////////////////////////////////////////////////
+
+
+import * as React from "react";
+import { useState } from "react";
+import {
+  createTheme,
+  styled,
+  ThemeProvider,
+  useTheme,
+} from "@mui/material/styles";
+import Box from "@mui/material/Box";
+import MuiDrawer from "@mui/material/Drawer";
+import MuiAppBar from "@mui/material/AppBar";
+import Toolbar from "@mui/material/Toolbar";
+import List from "@mui/material/List";
+import CssBaseline from "@mui/material/CssBaseline";
+import Typography from "@mui/material/Typography";
+import Divider from "@mui/material/Divider";
+import IconButton from "@mui/material/IconButton";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ListItem from "@mui/material/ListItem";
+import ListItemButton from "@mui/material/ListItemButton";
+import { Help, Home, Logout } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
+import propTypes from "prop-types";
+import crs from "../../Asset/img/crsLogo.svg";
+import tar from "../../Asset/img/TarLogo.svg";
+import lfar from "../../Asset/img/LfarLogo.svg";
+import Tooltip from "@mui/material/Tooltip";
+import GroupIcon from "@mui/icons-material/Group";
+import PendingActionsIcon from "@mui/icons-material/PendingActions";
+import { userRoles } from "../CommonValidations/commonConstants";
+import ChangeCircleTwoToneIcon from "@mui/icons-material/ChangeCircleTwoTone";
+import Badge from "@mui/material/Badge";
+import { Dialog, DialogContent, DialogTitle, Collapse } from "@mui/material";
+import ChangeModule from "../Login/ChangeModule";
+import LayersIcon from "@mui/icons-material/Layers";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import ExpandLess from "@mui/icons-material/ExpandLess";
+import ExpandMore from "@mui/icons-material/ExpandMore";
+import ChangeCircleSharpIcon from "@mui/icons-material/ChangeCircleSharp";
+import AccountBalanceSharpIcon from "@mui/icons-material/AccountBalanceSharp";
+import CircleSharpIcon from "@mui/icons-material/CircleSharp";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
+
+const drawerWidth = 240;
+const defaultTheme = createTheme();
+
+const openedMixin = (theme) => ({
+  width: drawerWidth,
+  transition: theme.transitions.create("width", {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.enteringScreen,
+  }),
+  overflowX: "hidden",
+});
+
+const closedMixin = (theme) => ({
+  transition: theme.transitions.create("width", {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  overflowX: "hidden",
+  width: `calc(${theme.spacing(7)} + 1px)`,
+  [theme.breakpoints.up("sm")]: {
+    width: `calc(${theme.spacing(8)} + 1px)`,
+  },
+});
+
+const DrawerHeader = styled("div")(({ theme }) => ({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  padding: theme.spacing(0, 1),
+  // necessary for content to be below app bar
+  ...theme.mixins.toolbar,
+}));
+
+const AppBar = styled(MuiAppBar, {
+  shouldForwardProp: (prop) => prop !== "open",
+})(({ theme, open }) => ({
+  zIndex: theme.zIndex.drawer + 1,
+  transition: theme.transitions.create(["width", "margin"], {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  ...(open && {
+    marginLeft: drawerWidth,
+    width: `calc(100% - ${drawerWidth}px)`,
+    transition: theme.transitions.create(["width", "margin"], {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
+  }),
+}));
+
+const Drawer = styled(MuiDrawer, {
+  shouldForwardProp: (prop) => prop !== "open",
+})(({ theme, open }) => ({
+  width: drawerWidth,
+  flexShrink: 0,
+  whiteSpace: "nowrap",
+  boxSizing: "border-box",
+  ...(open && {
+    ...openedMixin(theme),
+    "& .MuiDrawer-paper": openedMixin(theme),
+  }),
+  ...(!open && {
+    ...closedMixin(theme),
+    "& .MuiDrawer-paper": closedMixin(theme),
+  }),
+}));
+
+const FrtMakerLayout = ({ children }) => {
+  document.title = "CRS | FRT Maker Home";
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const [open, setOpen] = useState(false);
+  const [changeModuleModalOpen, setChangeModuleModalOpen] = useState(false);
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  const [auditMenuOpen, setAuditMenuOpen] = useState(false);
+  const [scopeMenuOpen, setScopeMenuOpen] = useState(false);
+
+  const moduleLogo = {
+    CRS: crs,
+    TAR: tar,
+    LFAR: lfar,
+  };
+
+  const handleListClick = (vd, data) => {
+    // Toggling state for treeview items
+    if (vd.type === "treeview") {
+      if (vd.id === "Change Audit Status") {
+        setAuditMenuOpen(!auditMenuOpen);
+        setOpen(true);
+      }
+      if (vd.id === "CRS Scope") {
+        setScopeMenuOpen(!scopeMenuOpen);
+        setOpen(true);
+      }
+      return;
+    }
+
+    // Navigation for simple items
+    if (vd.id === "Home") {
+      navigate("/FrtMakerHome");
+    } else if (vd.id === "Branch Auditor Details") {
+      navigate("/FRTMakerBranchDetails");
+    } else if (vd.id === "User Module") {
+      navigate("/FrtMakerUserModule");
+    } else if (vd.id === "Track Request") {
+      navigate("/FrtMakerRequestActivity");
+    } else if (vd.id === "Dashboard") {
+      navigate("/FrtMakerDashboard");
+    } else if (vd.id === "Help") {
+      navigate("/FrtMakerHelp");
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/");
+  };
+
+  const handleDrawerClose = () => {
+    setOpen(false);
+    setAuditMenuOpen(false);
+    setScopeMenuOpen(false);
+  };
+
+  let data = [
+    { id: "Home", element: <Home sx={{ color: "#7f8c8d" }} /> },
+    {
+      id: "Change Audit Status",
+      type: "treeview",
+      isOpen: auditMenuOpen,
+      element: <AccountBalanceSharpIcon sx={{ color: "#7f8c8d" }} />,
+      children: [
+        {
+          id: "Single Branch",
+          path: "/FRTMakerSingleBranchAuditStatus",
+          icon: (
+            <CircleSharpIcon sx={{ fontSize: "0.6rem", color: "#7f8c8d" }} />
+          ),
+        },
+        {
+          id: "Multiple Branch",
+          path: "/FrtMultipleBranchAuditStatus",
+          icon: (
+            <CircleSharpIcon sx={{ fontSize: "0.6rem", color: "#7f8c8d" }} />
+          ),
+        },
+      ],
+    },
+    {
+      id: "CRS Scope",
+      type: "treeview",
+      isOpen: scopeMenuOpen,
+      element: <ChangeCircleSharpIcon sx={{ color: "#7f8c8d" }} />,
+      children: [
+        {
+          id: "Add Branch",
+          path: "/FRTMakerAddBranchDetails",
+          icon: (
+            <CircleSharpIcon sx={{ fontSize: "0.6rem", color: "#7f8c8d" }} />
+          ),
+        },
+        {
+          id: "Delete Branch",
+          path: "/FRTMakerDeleteBranchDetails",
+          icon: (
+            <CircleSharpIcon sx={{ fontSize: "0.6rem", color: "#7f8c8d" }} />
+          ),
+        },
+      ],
+    },
+    {
+      id: "Branch Auditor Details",
+      element: <LayersIcon sx={{ color: "#7f8c8d" }} />,
+    },
+    // { id: "User Module", element: <GroupIcon sx={{ color: "#7f8c8d" }} /> },
+    {
+      id: "Track Request",
+      element: <PendingActionsIcon sx={{ color: "#7f8c8d" }} />,
+    },
+    // { id: "Dashboard", element: <DashboardIcon sx={{ color: "#7f8c8d" }} /> },
+    { id: "Help", element: <Help sx={{ color: "#7f8c8d" }} /> },
+  ];
+
+  return (
+    <ThemeProvider theme={defaultTheme}>
+      <Box sx={{ display: "flex" }}>
+        <CssBaseline />
+
+        <AppBar
+          position="fixed"
+          open={open}
+          sx={{
+            background:
+              "linear-gradient(90deg, rgba(135,210,247,1) 0%, rgba(212,225,233,1) 75%, rgba(255,255,255,1) 100%)",
+            color: "#000",
+            zIndex: (theme) => theme.zIndex.drawer + 1,
+          }}
+        >
+          <Toolbar sx={{ display: "flex", alignItems: "center" }}>
+            <Badge
+              overlap="circular"
+              badgeContent={
+                <ChangeCircleTwoToneIcon
+                  sx={{
+                    color: "inherit",
+                    background: "white",
+                    borderRadius: "60px",
+                  }}
+                />
+              }
+              sx={{ width: "56px", cursor: "pointer" }}
+              anchorOrigin={{
+                vertical: "bottom",
+                horizontal: "right",
+              }}
+              onClick={() => setChangeModuleModalOpen(true)}
+            >
+              <img
+                src={moduleLogo[user.module]}
+                alt="MODULE"
+                width="60"
+                height="60"
+                style={{ float: "left", marginRight: "50px" }}
+              />
+            </Badge>
+
+            <Box sx={{ ml: "auto", mt: 1, position: "fixed", right: "20px" }}>
+              <Typography variant={"subtitle2"} gutterBottom>
+                User: {user.pf_number} - {userRoles[user.user_role]}
+              </Typography>
+              <Tooltip title={`${user.branch_code} - ${user.branch_name}`}>
+                <Typography
+                  noWrap
+                  sx={{ overflow: "hidden", textOverflow: "ellipsis" }}
+                  variant="subtitle2"
+                >
+                  Branch: {user.branch_code} -{" "}
+                  {user.branch_name.length > 15
+                    ? user.branch_name.slice(0, 15) + "..."
+                    : user.branch_name}
+                </Typography>
+              </Tooltip>
+            </Box>
+          </Toolbar>
+        </AppBar>
+        <Drawer variant="permanent" open={open}>
+          <DrawerHeader>
+            <IconButton onClick={handleDrawerClose}>
+              {theme.direction === "rtl" ? (
+                <ChevronRightIcon />
+              ) : (
+                <ChevronLeftIcon />
+              )}
+            </IconButton>
+          </DrawerHeader>
+          <Divider />
+          <List
+            sx={{ display: "flex", flexDirection: "column", height: "100%" }}
+          >
+            {data.map((vd) => (
+              <React.Fragment key={vd.id}>
+                {vd.type === "treeview" ? (
+                  <ListItem
+                    disablePadding
+                    sx={{
+                      display: "block",
+                      flexDirection: "column",
+                    }}
+                  >
+                    <Tooltip title={vd.id} placement="right">
+                      <Box
+                        onClick={() => handleListClick(vd, data)}
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <ListItemButton
+                          sx={{ justifyContent: "center", width: "100%" }}
+                        >
+                          {vd.element}
+                        </ListItemButton>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            textWrap: "wrap",
+                            textAlign: "center",
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                        >
+                          {open || vd.id.length <= 15
+                            ? vd.id
+                            : vd.id.slice(0, 15) + "..."}
+                          {open &&
+                            (vd.isOpen ? (
+                              <ExpandLess sx={{ fontSize: "0.2rem" }} />
+                            ) : (
+                              <ExpandMore sx={{ fontSize: "0.2rem" }} />
+                            ))}
+                        </Typography>
+                        {open &&
+                          (vd.isOpen ? (
+                            <KeyboardArrowUpIcon sx={{ color: "#7f8c8d" }} />
+                          ) : (
+                            <KeyboardArrowDownIcon sx={{ color: "#7f8c8d" }} />
+                          ))}
+                      </Box>
+                    </Tooltip>
+                    <Collapse
+                      in={vd.isOpen && open}
+                      timeout="auto"
+                      unmountOnExit
+                    >
+                      {vd.children.map((child) => (
+                        <Tooltip
+                          key={child.id}
+                          title={child.id}
+                          placement="right"
+                        >
+                          <ListItemButton
+                            sx={{ pl: 2, justifyContent: "center" }}
+                            onClick={() => navigate(child.path)}
+                          >
+                            {child.icon}
+                            <Typography sx={{ ml: 1, fontSize: "0.8rem" }}>
+                              {child.id}
+                            </Typography>
+                          </ListItemButton>
+                        </Tooltip>
+                      ))}
+                    </Collapse>
+                  </ListItem>
+                ) : (
+                  <Tooltip key={`title-${vd.id}`} title={vd.id}>
+                    <ListItem
+                      disablePadding
+                      onClick={() => handleListClick(vd, data)}
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <ListItemButton sx={{ alignItems: "center" }}>
+                        {vd.element}
+                      </ListItemButton>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          textWrap: "wrap",
+                          textAlign: "center",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {open || vd.id.length <= 15
+                          ? vd.id
+                          : vd.id.slice(0, 15) + "..."}
+                      </Typography>
+                    </ListItem>
+                  </Tooltip>
+                )}
+              </React.Fragment>
+            ))}
+            <Box sx={{ flexGrow: 1 }} />
+            <Tooltip title="Logout">
+              <ListItem
+                disablePadding
+                sx={{ display: "block", marginTop: "auto" }}
+                onClick={handleLogout}
+              >
+                <ListItemButton
+                  sx={{
+                    minHeight: 48,
+                    display: "flex",
+                    justifyContent: "center",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    px: 2.5,
+                  }}
+                >
+                  <Logout sx={{ minWidth: 0, m: 1, color: "red" }} />
+                  <Typography variant="caption">Logout</Typography>
+                </ListItemButton>
+              </ListItem>
+            </Tooltip>
+          </List>
+        </Drawer>
+        <Box
+          component="main"
+          sx={{
+            backgroundColor: "#E1E6EC",
+            flexGrow: 1,
+            p: 3,
+            height: "100vh",
+            overflow: "auto",
+          }}
+        >
+          <DrawerHeader />
+          {children}
+        </Box>
+        <Box
+          sx={{
+            position: "fixed",
+            bottom: 0,
+            width: "100%",
+            backgroundColor: "white",
+            textAlign: "center",
+            minHeight: 56,
+            padding: "15px 0",
+            boxShadow: "0 -2px 5px rgba(0,0,0,0.1)",
+          }}
+        >
+          <Box
+            variant="body2"
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            &copy;{new Date().getFullYear()} &nbsp; Tata Consultancy Services.
+            All rights reserved.
+          </Box>
+        </Box>
+      </Box>
+      <ModuleChange
+        changeModuleModalOpen={changeModuleModalOpen}
+        setChangeModuleModalOpen={setChangeModuleModalOpen}
+      ></ModuleChange>
+    </ThemeProvider>
+  );
+};
+
+const ModuleChange = ({ changeModuleModalOpen, setChangeModuleModalOpen }) => {
+  return (
+    <Dialog
+      sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+      maxWidth="lg"
+      open={changeModuleModalOpen}
+      onClose={() => setChangeModuleModalOpen(false)}
+    >
+      <DialogTitle
+        id="responsive-dialog-title"
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Typography variant={"h5"}>Kindly select the Module</Typography>
+      </DialogTitle>
+      <Divider />
+      <DialogContent>
+        <ChangeModule handleClose={() => setChangeModuleModalOpen(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+FrtMakerLayout.propTypes = {
+  children: propTypes.element.isRequired,
+};
+
+export default FrtMakerLayout;
+////////////////////////////////////////////////////////////
+
+
+    <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+        <%--
+          Created by IntelliJ IDEA.
+          User: V1010939
+          Date: 17-01-2023
+          Time: 15:28
+          To change this template use File | Settings | File Templates.
+        --%>
+        <%@ include file="/views/include.jsp" %>
+        <aside class="main-sidebar">
+        <!-- sidebar: style can be found in sidebar.less -->
+        <section class="sidebar">
+        <!-- Sidebar user panel -->
+        <div class="user-panel">
+        <div class="pull-left image">
+        <img src="<c:url value='/logo.svg'/> " class="img-circle"
+        alt="User Image">
+        </div>
+        <div class="pull-left info">
+        <p><c:out value="${e:forHtml(sessionScope.userName)}"/></p>
+        <a href="#"><i class="fa fa-circle text-success"></i> Online</a>
+        </div>
+        </div>
+        <ul class="sidebar-menu">
+
+        <li class="header">FRT CHECKER</li>
+
+        <li class="treeview">
+        <a href="#">
+        <i class="fa fa-fw fa-file-text-o"></i> <span>View Requests</span>
+        <span class="pull-right-container">
+        <i class="fa fa-angle-left pull-right"></i>
+        </span>
+        </a>
+        <ul class="treeview-menu" style="display: none;">
+        <li><a href="../FRTChecker/FRTAuditStatusReq"><i class="fa fa-fw fa-tasks">
+        </i>Audit Status Change</a></li>
+        <li><a href="../FRTChecker/FRTBranchReq"><i class="fa fa-fw fa-list-alt">
+        </i>Add/Delete Branch</a></li>
+        </ul>
+        </li>
+        <li><a href="../FRTUser/singleBranch"><i
+        class="fa fa-fw fa-institution"></i> View Branch Details</a></li>
+        <li><a href="../FRTUser/FRTAuditorsDetails"> <i
+        class="fa fa-fw fa-users"></i> <span> Branch Auditors Details </span>
+        </a>
+        </li>
+
+
+        <%--<li><a href="../Security/downloadDocsFAQ"><i
+        class="fa fa-book"></i> <span>F.A.Q</span></a></li>--%>
+        <jsp:include page="/views/commonMenuContent.jsp"></jsp:include>
+        </ul>
+        </section>
+        <!-- /.sidebar -->
+        </aside>
+
