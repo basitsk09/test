@@ -949,3 +949,85 @@ export default FrtMakerLayout;
         <!-- /.sidebar -->
         </aside>
 
+////////////////////////////////////////////////////
+
+
+
+
+<%--
+  Created by IntelliJ IDEA.
+  User: V1010939
+  Date: 03-03-2023
+  Time: 15:28
+  To change this template use File | Settings | File Templates.
+--%>
+<%@ include file="/views/include.jsp" %>
+<aside class="main-sidebar">
+    <!-- sidebar: style can be found in sidebar.less -->
+    <section class="sidebar">
+        <!-- Sidebar user panel -->
+        <div class="user-panel">
+            <div class="pull-left image">
+                <img src="<c:url value='/logo.svg'/> " class="img-circle"
+                     alt="User Image">
+            </div>
+            <div class="pull-left info">
+                <p><c:out value="${e:forHtml(sessionScope.userName)}"/></p>
+                <a href="#"><i class="fa fa-circle text-success"></i> Online</a>
+            </div>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="header">FRT MAKER</li>
+
+            <%--TODO: To Be used Only After Bank's Request.--%>
+            <%--<li><a href="../FRTdash/dashboard"><i
+                    class="fa fa-dashboard"></i> DashBoard</a></li>--%>
+            <li class="treeview">
+                <a href="#">
+                    <i class="fa fa-fw fa-folder-open-o"></i> <span>Change Audit Status </span>
+                    <span class="pull-right-container">
+              <i class="fa fa-angle-left pull-right"></i>
+            </span>
+                </a>
+                <ul class="treeview-menu" style="display: none;">
+                    <li><a href="../FRTUser/singleBranch"><i class="fa fa-circle-o"></i> Single Branch </a></li>
+                    <li><a href="../FRTUser/bulkUpload<%--TODO name of jsp--%>"><i class="fa fa-circle-o"></i> Multiple Branch </a></li>
+                </ul>
+            </li>
+
+            <li class="treeview">
+                <a href="#">
+                    <i class="fa fa-fw fa-folder-open-o"></i> <span>CRS Scope </span>
+                    <span class="pull-right-container">
+              <i class="fa fa-angle-left pull-right"></i>
+            </span>
+                </a>
+                <ul class="treeview-menu" style="display: none;">
+                    <li><a href="../FRTUser/branchStatus"><i class="fa fa-circle-o"></i> Add Branch </a></li>
+                    <li><a href="../FRTUser/deleteBranch"><i class="fa fa-circle-o"></i> Delete Branch </a></li>
+                </ul>
+            </li>
+
+            <li><a href="../FRTUser/frtTrack"> <i
+                    class="fa fa-circle-o"></i> <span> Track Request </span>
+            </a>
+            </li>
+
+            <li><a href="../FRTUser/FRTAuditorsDetails"> <i
+                    class="fa fa-circle-o"></i> <span> Branch Auditors Details </span>
+            </a>
+            </li>
+
+            <li><a href="../Security/downloadDocsFAQ"><i
+                    class="fa fa-book"></i> <span>F.A.Q</span></a></li>
+
+            <jsp:include page="/views/commonMenuContent.jsp"></jsp:include>
+        </ul>
+    </section>
+    <!-- /.sidebar -->
+</aside>
+
+    <!-- Add the sidebar's background. This div must be placed
+    immediately after the control sidebar -->
+    <div class="control-sidebar-bg"></div>
+
