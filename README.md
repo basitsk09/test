@@ -18,10 +18,8 @@ import {
   TableHead,
   TableRow,
   TablePagination,
-  Toolbar,
   Typography,
   CircularProgress,
-  lighten,
 } from "@mui/material";
 import FrtCheckerLayout from "../Layouts/FrtCheckerLayout";
 
@@ -45,6 +43,7 @@ const initialRows = [
   createDummyData(102, "4567", "DELHI-CP", "Active", "Inactive", "Pending", "V1009205"),
   createDummyData(103, "1234", "KOLKATA-PARK-ST", "Inactive", "Active", "Pending", "V1009206"),
   createDummyData(104, "5678", "CHENNAI-T-NAGAR", "Active", "Inactive", "Pending", "V1009207"),
+  createDummyData(105, "9876", "BENGALURU-MG-ROAD", "Active", "Inactive", "Pending", "V1009208"),
 ];
 
 // Table Header Component
@@ -55,13 +54,16 @@ const EnhancedTableHead = (props) => {
     <TableHead>
       <TableRow sx={{ backgroundColor: "#b9def0" }}>
         <TableCell padding="checkbox">
-          <Checkbox
-            color="primary"
-            indeterminate={numSelected > 0 && numSelected < rowCount}
-            checked={rowCount > 0 && numSelected === rowCount}
-            onChange={onSelectAllClick}
-            inputProps={{ "aria-label": "select all requests" }}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Checkbox
+              color="primary"
+              indeterminate={numSelected > 0 && numSelected < rowCount}
+              checked={rowCount > 0 && numSelected === rowCount}
+              onChange={onSelectAllClick}
+              inputProps={{ "aria-label": "select all requests" }}
+            />
+            <Typography variant="body2">Select All</Typography>
+          </Box>
         </TableCell>
         <TableCell align="center">
           <b>Req ID</b>
@@ -79,66 +81,15 @@ const EnhancedTableHead = (props) => {
           <b>New Requested Status</b>
         </TableCell>
         <TableCell align="center">
+          <b>Requested Status</b>
+        </TableCell>
+        <TableCell align="center">
           <b>Requested By</b>
         </TableCell>
       </TableRow>
     </TableHead>
   );
 };
-
-// Table Toolbar Component
-const EnhancedTableToolbar = ({ numSelected, onApprove, onReject }) => {
-  return (
-    <Toolbar
-      sx={{
-        pl: { sm: 2 },
-        pr: { xs: 1, sm: 1 },
-        ...(numSelected > 0 && {
-          bgcolor: (theme) =>
-            lighten(theme.palette.primary.light, 0.85),
-        }),
-        borderBottom: "1px solid #ccc",
-      }}
-    >
-      {numSelected > 0 ? (
-        <Typography
-          sx={{ flex: "1 1 100%" }}
-          color="inherit"
-          variant="subtitle1"
-          component="div"
-        >
-          {numSelected} selected
-        </Typography>
-      ) : (
-        <Typography
-          sx={{ flex: "1 1 100%" }}
-          variant="h6"
-          id="tableTitle"
-          component="div"
-        >
-          Audit Status Change Requests
-        </Typography>
-      )}
-
-      {numSelected > 0 && (
-        <Box>
-          <Button
-            variant="contained"
-            color="success"
-            sx={{ mr: 1 }}
-            onClick={onApprove}
-          >
-            Approve
-          </Button>
-          <Button variant="contained" color="error" onClick={onReject}>
-            Reject
-          </Button>
-        </Box>
-      )}
-    </Toolbar>
-  );
-};
-
 
 const FRTAuditStatusReq = () => {
   const [requests, setRequests] = useState([]);
@@ -150,6 +101,7 @@ const FRTAuditStatusReq = () => {
 
   useEffect(() => {
     // Simulate fetching data
+    document.title = "FRT | Audit Status Requests";
     setTimeout(() => {
       setRequests(initialRows);
       setLoading(false);
@@ -192,11 +144,12 @@ const FRTAuditStatusReq = () => {
         (req) => !selected.includes(req.id)
       );
       setRequests(remainingRequests);
+      const successfulCount = selected.length;
       setSelected([]);
       setLoading(false);
       setDialog({
         open: true,
-        message: `Successfully ${action} ${selected.length} request(s).`,
+        message: `Successfully ${action} ${successfulCount} request(s).`,
         severity: "success",
       });
     }, 1000);
@@ -212,20 +165,37 @@ const FRTAuditStatusReq = () => {
 
   return (
     <FrtCheckerLayout>
-      <Container maxWidth="xl">
-        <Paper sx={{ width: "100%", mb: 2 }}>
-          <EnhancedTableToolbar
-            numSelected={selected.length}
-            onApprove={() => handleAction("approved")}
-            onReject={() => handleAction("rejected")}
-          />
+      <Container maxWidth={false}>
+        <Paper sx={{ width: "100%", mb: 2, p: 2 }}>
+          <Typography variant="h5" component="div" sx={{ mb: 2, textAlign: 'center' }}>
+            Audit Status Change Requests
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+            <Button
+              variant="contained"
+              color="success"
+              sx={{ mr: 2, width: '120px' }}
+              onClick={() => handleAction("approved")}
+              disabled={selected.length === 0}
+            >
+              Approve
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              sx={{ width: '120px' }}
+              onClick={() => handleAction("rejected")}
+              disabled={selected.length === 0}
+            >
+              Reject
+            </Button>
+          </Box>
           <TableContainer>
-            {loading && (
+            {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 370 }}>
                  <CircularProgress />
               </Box>
-            )}
-            {!loading && (
+            ) : (
             <Table sx={{ minWidth: 750 }} aria-labelledby="tableTitle">
               <EnhancedTableHead
                 numSelected={selected.length}
@@ -262,13 +232,14 @@ const FRTAuditStatusReq = () => {
                         <TableCell align="left">{row.branchName}</TableCell>
                         <TableCell align="center">{row.beforeSts}</TableCell>
                         <TableCell align="center">{row.afterSts}</TableCell>
+                        <TableCell align="center">{row.reqSts}</TableCell>
                         <TableCell align="center">{row.reqOn}</TableCell>
                       </TableRow>
                     );
                   })}
                 {emptyRows > 0 && (
                   <TableRow style={{ height: 53 * emptyRows }}>
-                    <TableCell colSpan={7} />
+                    <TableCell colSpan={8} />
                   </TableRow>
                 )}
               </TableBody>
@@ -303,4 +274,3 @@ const FRTAuditStatusReq = () => {
 };
 
 export default FRTAuditStatusReq;
-
