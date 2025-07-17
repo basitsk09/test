@@ -1,483 +1,251 @@
-import * as React from "react";
-import { useState } from "react";
-import {
-  createTheme,
-  styled,
-  ThemeProvider,
-  useTheme,
-} from "@mui/material/styles";
-import Box from "@mui/material/Box";
-import MuiDrawer from "@mui/material/Drawer";
-import MuiAppBar from "@mui/material/AppBar";
-import Toolbar from "@mui/material/Toolbar";
-import List from "@mui/material/List";
-import CssBaseline from "@mui/material/CssBaseline";
-import Typography from "@mui/material/Typography";
-import Divider from "@mui/material/Divider";
-import IconButton from "@mui/material/IconButton";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import ListItem from "@mui/material/ListItem";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemIcon from "@mui/material/ListItemIcon";
-import { Help, Home, Logout } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
-import propTypes from "prop-types";
-import crs from "../../Asset/img/crsLogo.svg";
-import tar from "../../Asset/img/TarLogo.svg";
-import lfar from "../../Asset/img/LfarLogo.svg";
-import Tooltip from "@mui/material/Tooltip";
-import PendingActionsIcon from "@mui/icons-material/PendingActions";
-import { userRoles } from "../CommonValidations/commonConstants";
-import ChangeCircleTwoToneIcon from "@mui/icons-material/ChangeCircleTwoTone";
-import Badge from "@mui/material/Badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  Collapse,
-} from "@mui/material";
-import ChangeModule from "../Login/ChangeModule";
-import LayersIcon from "@mui/icons-material/Layers";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import ExpandLess from "@mui/icons-material/ExpandLess";
-import ExpandMore from "@mui/icons-material/ExpandMore";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-import CircleSharpIcon from "@mui/icons-material/CircleSharp";
-import GroupIcon from "@mui/icons-material/Group";
+<%--
+  Created by IntelliJ IDEA.
+  User: V1009204
+  Date: 15-03-2023
+  Time: 12:55
+  To change this template use File | Settings | File Templates.
+--%>
+<%@ include file="/views/include.jsp" %>
+<!DOCTYPE html>
+<html>
+<head>
+    <script type="text/javascript">
 
-const drawerWidth = 240;
-const defaultTheme = createTheme();
+        function onload() {
+            var displayMessage = '${displayMessage}';
+            console.log(displayMessage);
+            if (displayMessage) {
+                $('#submitModal .modal-body').text(displayMessage);
+                $('#submitModal').modal('show');
+                $('#submitModal').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    modal: true
+                });
+            }
 
-const openedMixin = (theme) => ({
-  width: drawerWidth,
-  transition: theme.transitions.create("width", {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.enteringScreen,
-  }),
-  overflowX: "hidden",
-});
+            var displayMessage1 = '${displayMessage1}';
+            console.log(displayMessage1);
+            if (displayMessage1) {
+                $('#errorModal .modal-body').text(displayMessage1);
+                $('#errorModal').modal('show');
+                $('#errorModal').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    modal: true
+                });
+            }
+        }
 
-const closedMixin = (theme) => ({
-  transition: theme.transitions.create("width", {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
-  }),
-  overflowX: "hidden",
-  width: `calc(${theme.spacing(7)} + 1px)`,
-  [theme.breakpoints.up("sm")]: {
-    width: `calc(${theme.spacing(8)} + 1px)`,
-  },
-});
 
-const DrawerHeader = styled("div")(({ theme }) => ({
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  padding: theme.spacing(0, 1),
-  ...theme.mixins.toolbar,
-}));
+        $(document).ready(function () {
+            $('.recordSelector').on('click',function () {
+                if($('.recordSelector:checked').length==$('.recordSelector').length){
+                    $('#selAll').prop('checked',true);
+                }
+                else{
+                    $('#selAll').prop('checked',false);
+                }
+            });
 
-const AppBar = styled(MuiAppBar, {
-  shouldForwardProp: (prop) => prop !== "open",
-})(({ theme, open }) => ({
-  zIndex: theme.zIndex.drawer + 1,
-  transition: theme.transitions.create(["width", "margin"], {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
-  }),
-  ...(open && {
-    marginLeft: drawerWidth,
-    width: `calc(100% - ${drawerWidth}px)`,
-    transition: theme.transitions.create(["width", "margin"], {
-      easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-  }),
-}));
+            $('.recordSelectorAll').on('click',function () {
+                if($('.recordSelectorAll:checked').length==1){
+                    $('.recordSelector').prop('checked',true);
+                    document.getElementById("approve").disabled = false;
+                    document.getElementById("reject").disabled = false;
+                }
+                else{
+                    $('.recordSelector').prop('checked',false);
+                    document.getElementById("approve").disabled = true;
+                    document.getElementById("reject").disabled = true;
+                }
+            });
 
-const Drawer = styled(MuiDrawer, {
-  shouldForwardProp: (prop) => prop !== "open",
-})(({ theme, open }) => ({
-  width: drawerWidth,
-  flexShrink: 0,
-  whiteSpace: "nowrap",
-  boxSizing: "border-box",
-  ...(open && {
-    ...openedMixin(theme),
-    "& .MuiDrawer-paper": openedMixin(theme),
-  }),
-  ...(!open && {
-    ...closedMixin(theme),
-    "& .MuiDrawer-paper": closedMixin(theme),
-  }),
-}));
+            $('.recordSelector').on('click',function () {
+                if($('.recordSelector:checked').length<1){
+                    document.getElementById("approve").disabled = true;
+                    document.getElementById("reject").disabled = true;
+                }
+                else{
+                    document.getElementById("approve").disabled = false;
+                    document.getElementById("reject").disabled = false;
+                }
+            });
 
-const FrtCheckerLayout = ({ children }) => {
-  document.title = "CRS | FRT Checker Home";
-  const navigate = useNavigate();
-  const theme = useTheme();
-  const [open, setOpen] = useState(false);
-  const [changeModuleModalOpen, setChangeModuleModalOpen] = useState(false);
-  const user = JSON.parse(localStorage.getItem("user"));
-  const [requestsMenuOpen, setRequestsMenuOpen] = useState(false);
 
-  const moduleLogo = {
-    CRS: crs,
-    TAR: tar,
-    LFAR: lfar,
-  };
 
-  const handleListClick = (vd) => {
-    if (vd.type === "treeview") {
-      if (vd.id === "View Requests") {
-        setRequestsMenuOpen(!requestsMenuOpen);
-        setOpen(true);
-      }
-      return;
-    }
+            $(function () {
+                $('#auditReq').DataTable({
+                    "paging": false,
+                    "lengthChange": false,
+                    "searching": false,
+                    "ordering": false,
+                    "info": false,
+                    scrollY: 580,
+                    "autoWidth": false
+                });
+            });
+        });
 
-    if (vd.id === "Home") {
-      navigate("/FrtCheckerHome");
-    } else if (vd.id === "View Branch Details") {
-      navigate("/FRTCheckerBranchDetails");
-    } else if (vd.id === "Branch Auditors Details") {
-      navigate("/FRTCheckerAuditorsDetails");
-    } else if (vd.id === "Dashboard") {
-      navigate("/FrtCheckerDashboard");
-    } else if (vd.id === "Help") {
-      navigate("/FrtCheckerHelp");
-    }
-  };
+        function reload() {
+            window.location.replace("../FRTChecker/FRTAuditStatusReq");
+        }
 
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/");
-  };
+        function approve() {
+            $("#frtAuditStatusReq").submit();
+            document.getElementById("divMsg").hidden = false;
+        }
 
-  const handleDrawerClose = () => {
-    setOpen(false);
-    setRequestsMenuOpen(false);
-  };
 
-  let data = [
-    { id: "Home", element: <Home sx={{ color: "#7f8c8d" }} /> },
-    {
-      id: "View Requests",
-      type: "treeview",
-      isOpen: requestsMenuOpen,
-      element: <PendingActionsIcon sx={{ color: "#7f8c8d" }} />,
-      children: [
-        {
-          id: "Audit Status Change",
-          path: "/FRTChecker/FRTAuditStatusReq",
-          icon: (
-            <CircleSharpIcon sx={{ fontSize: "0.6rem", color: "#7f8c8d" }} />
-          ),
-        },
-        {
-          id: "Add/Delete Branch",
-          path: "/FRTChecker/FRTBranchReq",
-          icon: (
-            <CircleSharpIcon sx={{ fontSize: "0.6rem", color: "#7f8c8d" }} />
-          ),
-        },
-      ],
-    },
-    {
-      id: "View Branch Details",
-      element: <LayersIcon sx={{ color: "#7f8c8d" }} />,
-    },
-    {
-      id: "Branch Auditors Details",
-      element: <GroupIcon sx={{ color: "#7f8c8d" }} />,
-    },
-    { id: "Dashboard", element: <DashboardIcon sx={{ color: "#7f8c8d" }} /> },
-    { id: "Help", element: <Help sx={{ color: "#7f8c8d" }} /> },
-  ];
+        function reject(){
+            $('#frtAuditStatusReq').attr('action', "../FRTChecker/getrejected").submit();
+            document.getElementById("divMsg").hidden = false;
+        }
+    </script>
+</head>
+<body class="hold-transition skin-blue sidebar-mini" onload="onload();">
+<div class="wrapper">
+    <div class="content-wrapper">
+        <section class="content-header">
+            <h1>Audit Status Change Requests</h1>
+        </section>
+        <div class="content">
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="box box-primary box-solid">
+                        <div class="box-body">
+                            <div class="box-header">
+                                <div class="row" style="margin-bottom: 10px">
+                                    <div class="col-lg-4"></div>
+                                    <div class="col-lg-4">
+                                        <div class="col-lg-2"></div>
+                                        <div class="col-lg-10">
+                                            <button type="button" value="submit" class="btn btn-success" style="margin-left: 64px; width: 80px;" id="approve" onclick="approve();" disabled>Approve</button>
+                                            <button type="button" value="reject" class="btn btn-danger" style="margin-left: 10px; width: 80px;" id="reject" onclick="reject();" disabled>Reject</button>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <form:form action="getapproved" method="POST" id="frtAuditStatusReq">
+                                        <table id="auditReq" class="dataTable">
+                                            <thead>
+                                            <tr style="background-color: #b9def0; height: 40px">
+                                                <th style="width: 50px;text-align: center ">
+                                                    <input type="checkbox" name="selRadioAll" style="margin-top: 14px;" class="recordSelectorAll" id="selAll"/>
+                                                    Select All
+                                                </th>
+                                                <th style="width: 120px;text-align: center ">Req ID</th>
+                                                <th style="text-align: center">Branch</th>
+                                                <th style="text-align: center">Branch Name</th>
+                                                <th style="width: 150px; text-align: center">Existing Status</th>
+                                                <th style="width: 200px; text-align: center">New Requested Status</th>
+                                                <th style="text-align: center">Requested Status</th>
+                                                <th style="text-align: center">Requested By</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            <c:if test="${count!=0}">
+                                                <c:forEach items="${list}" var="FRTAuditStatusReq" varStatus="reportStatus">
+                                                    <tr>
+                                                        <input type="hidden" readonly="true" id="roCode<c:out value='${reportStatus.count}'></c:out>"
+                                                               value='<c:out value='${FRTAuditStatusReq.roCode}'></c:out>' name="roCode"/>
+                                                        <input type="hidden" readonly="true" id="circle_code<c:out value='${reportStatus.count}'></c:out>"
+                                                               value='<c:out value='${FRTAuditStatusReq.circle_code}'></c:out>' name="circle_code"/>
+                                                        <td style="text-align: center;">
+                                                            <input type="checkbox" name="selRadio" class="recordSelector"
+                                                                   value='<c:out value="${FRTAuditStatusReq.as_id}"></c:out>~<c:out value='${FRTAuditStatusReq.branchCode}'></c:out>~<c:out value='${FRTAuditStatusReq.beforeSts}'></c:out>~<c:out value='${FRTAuditStatusReq.afterSts}'></c:out>~<c:out value='${FRTAuditStatusReq.roCode}'></c:out>~<c:out value='${FRTAuditStatusReq.circle_code}'></c:out>~<c:out value='${FRTAuditStatusReq.as_rt_id}'></c:out>'
+                                                                   id="selRadio<c:out value='${reportStatus.count}'></c:out>"/>
+                                                        </td>
+                                                        <td style="text-align: center;">
+                                                            <input type="hidden" readonly="true" id="req_Id<c:out value='${reportStatus.count}'></c:out>" name="req_Id"  readonly="true"
+                                                                   value='<c:out value="${FRTAuditStatusReq.as_id}"></c:out>'/>
+                                                            <c:out value="${FRTAuditStatusReq.as_rt_id}-${FRTAuditStatusReq.as_id}"></c:out>
+                                                        </td>
+                                                        <td style="text-align: center;">
+                                                            <input type="hidden" readonly="true" id="branchCode<c:out value='${reportStatus.count}'></c:out>"
+                                                                   value='<c:out value='${FRTAuditStatusReq.branchCode}'></c:out>' name="branchCode"/>
+                                                            <c:out value='${FRTAuditStatusReq.branchCode}'></c:out>
+                                                        </td>
+                                                        <td style="text-align: center;">
+                                                            <input type="hidden" readonly="true" id="branchName<c:out value='${reportStatus.count}'></c:out>"
+                                                                   value='<c:out value='${FRTAuditStatusReq.branchName}'></c:out>'/>
+                                                            <c:out value='${FRTAuditStatusReq.branchName}'></c:out>
+                                                        </td>
+                                                        <td style="text-align: center;">
+                                                            <input type="hidden" readonly="true" id="beforeSts<c:out value='${reportStatus.count}'></c:out>"
+                                                                   value='<c:out value='${FRTAuditStatusReq.beforeSts}'></c:out>' name="beforeSts"/>
+                                                            <c:out value='${FRTAuditStatusReq.beforeSts}'></c:out>
+                                                        </td>
+                                                        <td style="text-align: center;">
+                                                            <input type="hidden" readonly="true" id="afterSts<c:out value='${reportStatus.count}'></c:out>"
+                                                                   value='<c:out value='${FRTAuditStatusReq.afterSts}'></c:out>' name="afterSts"/>
+                                                            <c:out value='${FRTAuditStatusReq.afterSts}'></c:out>
+                                                        </td>
+                                                        <td style="text-align: center;">
+                                                            <input type="hidden" readonly="true" style="border-style: hidden"
+                                                                   id="reqSts<c:out value='${reportStatus.count}'></c:out>"
+                                                                   value='<c:out value='${FRTAuditStatusReq.reqSts}'></c:out>'/>
+                                                            <c:out value='${FRTAuditStatusReq.reqSts}'></c:out>
+                                                        </td>
+                                                        <td style="text-align: center;">
+                                                            <input type="hidden" readonly="true" id="reqOn<c:out value='${reportStatus.count}'></c:out>"
+                                                                   value='<c:out value='${FRTAuditStatusReq.reqOn}'></c:out>'/>
+                                                            <c:out value='${FRTAuditStatusReq.reqOn}'></c:out>
+                                                        </td>
+                                                    </tr>
+                                                </c:forEach>
+                                            </c:if>
+                                            </tbody>
+                                        </table>
+                                    </form:form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="overlay" id="divMsg" hidden>
+                            <i class="fa fa-spinner fa-spin" style="color: #9a0200"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-  return (
-    <ThemeProvider theme={defaultTheme}>
-      <Box sx={{ display: "flex" }}>
-        <CssBaseline />
-        <AppBar
-          position="fixed"
-          open={open}
-          sx={{
-            background:
-              "linear-gradient(90deg, rgba(135,210,247,1) 0%, rgba(212,225,233,1) 75%, rgba(255,255,255,1) 100%)",
-            color: "#000",
-            zIndex: (theme) => theme.zIndex.drawer + 1,
-          }}
-        >
-          <Toolbar sx={{ display: "flex", alignItems: "center" }}>
-            <Badge
-              overlap="circular"
-              badgeContent={
-                <ChangeCircleTwoToneIcon
-                  sx={{
-                    color: "inherit",
-                    background: "white",
-                    borderRadius: "60px",
-                  }}
-                />
-              }
-              sx={{ width: "56px", cursor: "pointer" }}
-              anchorOrigin={{
-                vertical: "bottom",
-                horizontal: "right",
-              }}
-              onClick={() => setChangeModuleModalOpen(true)}
-            >
-              <img
-                src={moduleLogo[user.module]}
-                alt="MODULE"
-                width="60"
-                height="60"
-                style={{ float: "left", marginRight: "50px" }}
-              />
-            </Badge>
-            <Box sx={{ ml: "auto", mt: 1, position: "fixed", right: "20px" }}>
-              <Typography variant={"subtitle2"} gutterBottom>
-                User: {user.pf_number} - {userRoles[user.user_role]}
-              </Typography>
-              <Tooltip title={`${user.branch_code} - ${user.branch_name}`}>
-                <Typography
-                  noWrap
-                  sx={{ overflow: "hidden", textOverflow: "ellipsis" }}
-                  variant="subtitle2"
-                >
-                  Branch: {user.branch_code} -{" "}
-                  {user.branch_name.length > 15
-                    ? user.branch_name.slice(0, 15) + "..."
-                    : user.branch_name}
-                </Typography>
-              </Tooltip>
-            </Box>
-          </Toolbar>
-        </AppBar>
-        <Drawer variant="permanent" open={open}>
-          <DrawerHeader>
-            <IconButton onClick={handleDrawerClose}>
-              {theme.direction === "rtl" ? (
-                <ChevronRightIcon />
-              ) : (
-                <ChevronLeftIcon />
-              )}
-            </IconButton>
-          </DrawerHeader>
-          <Divider />
-          <List
-            sx={{ display: "flex", flexDirection: "column", height: "100%" }}
-          >
-            {data.map((vd) => (
-              <React.Fragment key={vd.id}>
-                {vd.type === "treeview" ? (
-                  <ListItem
-                    disablePadding
-                    sx={{
-                      display: "block",
-                      flexDirection: "column",
-                    }}
-                  >
-                    <Tooltip title={vd.id} placement="right">
-                      <Box
-                        onClick={() => handleListClick(vd)}
-                        sx={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <ListItemButton
-                          sx={{ justifyContent: "center", width: "100%" }}
-                        >
-                          {vd.element}
-                        </ListItemButton>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            textWrap: "wrap",
-                            textAlign: "center",
-                            display: "flex",
-                            alignItems: "center",
-                          }}
-                        >
-                          {open || vd.id.length <= 15
-                            ? vd.id
-                            : vd.id.slice(0, 15) + "..."}
-                          {open &&
-                            (vd.isOpen ? (
-                              <ExpandLess sx={{ fontSize: "0.2rem" }} />
-                            ) : (
-                              <ExpandMore sx={{ fontSize: "0.2rem" }} />
-                            ))}
-                        </Typography>
-                        {open &&
-                          (vd.isOpen ? (
-                            <KeyboardArrowUpIcon sx={{ color: "#7f8c8d" }} />
-                          ) : (
-                            <KeyboardArrowDownIcon sx={{ color: "#7f8c8d" }} />
-                          ))}
-                      </Box>
-                    </Tooltip>
-                    <Collapse
-                      in={vd.isOpen && open}
-                      timeout="auto"
-                      unmountOnExit
-                    >
-                      {vd.children.map((child) => (
-                        <Tooltip
-                          key={child.id}
-                          title={child.id}
-                          placement="right"
-                        >
-                          <ListItemButton
-                            sx={{ pl: 2, justifyContent: "center" }}
-                            onClick={() => navigate(child.path)}
-                          >
-                            {child.icon}
-                            <Typography sx={{ ml: 1, fontSize: "0.8rem" }}>
-                              {child.id}
-                            </Typography>
-                          </ListItemButton>
-                        </Tooltip>
-                      ))}
-                    </Collapse>
-                  </ListItem>
-                ) : (
-                  <Tooltip key={`title-${vd.id}`} title={vd.id}>
-                    <ListItem
-                      disablePadding
-                      onClick={() => handleListClick(vd)}
-                      sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <ListItemButton sx={{ alignItems: "center" }}>
-                        {vd.element}
-                      </ListItemButton>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          textWrap: "wrap",
-                          textAlign: "center",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {open || vd.id.length <= 15
-                          ? vd.id
-                          : vd.id.slice(0, 15) + "..."}
-                      </Typography>
-                    </ListItem>
-                  </Tooltip>
-                )}
-              </React.Fragment>
-            ))}
-            <Box sx={{ flexGrow: 1 }} />
-            <Tooltip title="Logout">
-              <ListItem
-                disablePadding
-                sx={{ display: "block", marginTop: "auto" }}
-                onClick={handleLogout}
-              >
-                <ListItemButton
-                  sx={{
-                    minHeight: 48,
-                    display: "flex",
-                    justifyContent: "center",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    px: 2.5,
-                  }}
-                >
-                  <Logout sx={{ minWidth: 0, m: 1, color: "red" }} />
-                  <Typography variant="caption">Logout</Typography>
-                </ListItemButton>
-              </ListItem>
-            </Tooltip>
-          </List>
-        </Drawer>
-        <Box
-          component="main"
-          sx={{
-            backgroundColor: "#E1E6EC",
-            flexGrow: 1,
-            p: 3,
-            height: "100vh",
-            overflow: "auto",
-          }}
-        >
-          <DrawerHeader />
-          {children}
-        </Box>
-        <Box
-          sx={{
-            position: "fixed",
-            bottom: 0,
-            width: "100%",
-            backgroundColor: "white",
-            textAlign: "center",
-            minHeight: 56,
-            padding: "15px 0",
-            boxShadow: "0 -2px 5px rgba(0,0,0,0.1)",
-          }}
-        >
-          <Box
-            variant="body2"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            &copy;{new Date().getFullYear()} &nbsp; Tata Consultancy Services.
-            All rights reserved.
-          </Box>
-        </Box>
-      </Box>
-      <ModuleChange
-        changeModuleModalOpen={changeModuleModalOpen}
-        setChangeModuleModalOpen={setChangeModuleModalOpen}
-      />
-    </ThemeProvider>
-  );
-};
+    <div class="example-modal">
+        <div class="modal fade" id="errorModal">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-info">
+                        <h4 class="modal-title"><b>Attention</b></h4>
+                    </div>
+                    <div class="modal-body">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-info" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="example-modal">
+    <div class="modal fade" id="submitModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success">
+                    <h4 class="modal-title" style="color: green;">Success</h4>
+                </div>
+                <div class="modal-body">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" data-dismiss="modal" onclick="reload();">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+</body>
+</html>
 
-const ModuleChange = ({ changeModuleModalOpen, setChangeModuleModalOpen }) => {
-  return (
-    <Dialog
-      sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-      maxWidth="lg"
-      open={changeModuleModalOpen}
-      onClose={() => setChangeModuleModalOpen(false)}
-    >
-      <DialogTitle
-        id="responsive-dialog-title"
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Typography variant={"h5"}>Kindly select the Module</Typography>
-      </DialogTitle>
-      <Divider />
-      <DialogContent>
-        <ChangeModule handleClose={() => setChangeModuleModalOpen(false)} />
-      </DialogContent>
-    </Dialog>
-  );
-};
 
-FrtCheckerLayout.propTypes = {
-  children: propTypes.element.isRequired,
-};
-
-export default FrtCheckerLayout;
