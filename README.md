@@ -1,742 +1,400 @@
-import React, { useState } from "react";
-import {
-  TextField,
-  Grid,
-  MenuItem,
-  Button,
-  Typography,
-  DialogTitle,
-  Divider,
-} from "@mui/material";
-import PhoneIcon from "@mui/icons-material/Phone";
-import HomeIcon from "@mui/icons-material/Home";
-import PinDropIcon from "@mui/icons-material/PinDrop";
-import AccountBalanceRoundedIcon from "@mui/icons-material/AccountBalanceRounded";
-import LocationCityRoundedIcon from "@mui/icons-material/LocationCityRounded";
-import PhoneAndroidRoundedIcon from "@mui/icons-material/PhoneAndroidRounded";
-import CorporateFareRoundedIcon from "@mui/icons-material/CorporateFareRounded";
-import WifiCalling3Icon from "@mui/icons-material/WifiCalling3";
-import EmergencyShareIcon from "@mui/icons-material/EmergencyShare";
-import DnsIcon from "@mui/icons-material/Dns";
-import PublicIcon from "@mui/icons-material/Public";
-import SensorsIcon from "@mui/icons-material/Sensors";
-import LanIcon from "@mui/icons-material/Lan";
-import { Container } from "@mui/system";
-import DialogContent from "@mui/material/DialogContent";
-import Dialog from "@mui/material/Dialog";
-import axios from "axios";
-import Box from "@mui/material/Box";
-import { validations } from "../CommonValidations/Validations";
-import { useNavigate } from "react-router-dom";
-import { encrypt } from "../Security/AES-GCM256";
-import SaveIcon from "@mui/icons-material/Save";
-import SearchIcon from "@mui/icons-material/Search";
-import CircularProgress from "@mui/material/CircularProgress";
-import Snackbar from "@mui/material/Snackbar";
-import Alert from "@mui/material/Alert";
-import { SnackbarProvider } from "notistack";
-import PersonIcon from "@mui/icons-material/Person";
-import { Cached } from "@mui/icons-material";
+package com.tcs.controllers;
 
-const iv = crypto.getRandomValues(new Uint8Array(12));
-const ivBase64 = btoa(String.fromCharCode.apply(null, iv));
-const salt = crypto.getRandomValues(new Uint8Array(16));
-const saltBase64 = btoa(String.fromCharCode.apply(null, salt));
+import com.tcs.beans.Frt;
+import com.tcs.beans.FrtAddBranch;
+import com.tcs.beans.SessionBean;
+import com.tcs.services.FrtAddBranchService;
+import com.tcs.utils.CommonConstants;
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.ModelAndView;
 
-export default function FrtMakerAddBranchDetails() {
-  document.title = "CRS | FRT Add Branch";
-  const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("user"));
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+import javax.sql.DataSource;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
-  const emptyBranchDataMap = {
-    NAME: "",
-    CIRCLE: "",
-    NETWORK: "",
-    MODULE: "",
-    REGION: "",
-    ADDRESS: "",
-    CITY: "",
-    STATE: "",
-    PIN: "",
-    STDCODE: "",
-    PHONE: "",
-    MOBILE: "",
-    IPPHONE: "",
-    AUDITABLE: "",
-    SCOPE: "I",
-  };
 
-  if (user.user_role !== "94" && user.user_role !== "96") {
-    navigate("/");
-  }
+@Controller
+@RequestMapping("/FRTUser")
 
-  const [branchDetailErrors, setBranchDetailErrors] = useState({});
-  const [error, setError] = useState(false);
-  const [branchData, setbranchData] = useState(emptyBranchDataMap);
-  const [loadOpen, setLoadOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState(null);
-  const [branchCode, setBranchCode] = useState("");
-  const [circleList, setCircleList] = useState([]);
-  const [fieldsDisabled, setFieldsDisabled] = useState(true);
-  const [visibleData, setVisibleData] = useState(false);
+public class FrtAddBranchController {
 
-  const handleCloseSnackbar = () => setSnackbar(null);
-  const handleDialogClose = () => setLoadOpen(false);
+    static Logger log = Logger.getLogger(FrtAddBranchController.class.getName());
 
-  const handleBranchCodeChange = (e) => {
-    setError(false);
-    let result = validations("numInput", e.target.value);
-    if (result === "") {
-      setBranchCode(e.target.value);
-    } else {
-      setSnackbar({ children: result, severity: "error" });
-    }
-  };
+    @Autowired
+    DataSource dataSource;
+    
+    @Autowired
+    JdbcTemplate jdbcTemplateObject; // Universal DB constructor added
 
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    const error = validateInputFields(name, value);
-    setBranchDetailErrors({ ...branchDetailErrors, [name]: error });
-    setbranchData({ ...branchData, [name]: value });
-  };
+    
 
-  const validateInputFields = (name, value) => {
-    let error = "";
-    if (!value) {
-      error = "This field is required.";
-    } else {
-      switch (name) {
-        case "MOBILE":
-          error = validations("mobileNumber", value);
-          break;
-        case "PIN":
-          error = validations("postCode", value);
-          break;
-        case "ADDRESS":
-        case "CITY":
-        case "STATE":
-          error = validations("splAlphaNumeric", value);
-          break;
-        case "MODULE":
-        case "NETWORK":
-        case "REGION":
-          const regex1 = /^\d{3}$/;
-          if (!regex1.test(value) || value === "") {
-            error = "Should be in 3 digits only";
-          }
-          break;
-        case "IPPHONE":
-        case "PHONE":
-          error = validations("numInput", value);
-          break;
-        case "STDCODE":
-          const regex = /^\d{2,5}$/;
-          if (!regex.test(value) || value === "") {
-            error = "STD Code will be in between 2 to 5 digits";
-          }
-          break;
-        default:
-          break;
-      }
-    }
-    return error;
-  };
+    @Autowired
+    FrtAddBranchService frtAddBranchService;
 
-  const handleReset = () => {
-    setbranchData(emptyBranchDataMap);
-    setCircleList([]);
-    setBranchCode("");
-    setFieldsDisabled(true);
-    setBranchDetailErrors({});
-  };
+    @GetMapping("/branchStatus")
+    public ModelAndView branchStatus(@ModelAttribute("command") Frt frt, BindingResult result, HttpServletRequest request) {
 
-  /**
-   * This function first checks if a branch exists. If not, it fetches its details
-   * from the core banking system to populate the form for adding.
-   */
-  const handleSearch = async () => {
-    if (branchCode.length < 5) {
-      setSnackbar({
-        children: "Kindly enter branch code upto 5 digits.",
-        severity: "error",
-      });
-      return;
-    }
-    setLoadOpen(true);
-    try {
-      let jsonFormData = JSON.stringify({ branchCode: branchCode });
-      await encrypt(iv, salt, jsonFormData).then(function (result) {
-        jsonFormData = result;
-      });
-      let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
-
-      // Check if branch already exists in main database
-      const response = await axios.post(
-        "/Server/EditBranch/fetchBranchDetails",
-        payload,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        HttpSession session = request.getSession();
+        if (session == null || session.getAttribute(CommonConstants.USER_ID) == null || request.getSession().getId() == null ||
+                !Objects.equals(session.getAttribute(CommonConstants.USER_CAPABILITY), new BigDecimal("96"))) {
+            log.info("User check " );
+            return new ModelAndView("500");
         }
-      );
 
-      // If branchData is NOT empty, it means the branch already exists. This is an error for an "Add" page.
-      if (
-        response.data?.result &&
-        Object.keys(response.data?.result?.branchData).length !== 0
-      ) {
-        setVisibleData(false);
-        setSnackbar({
-          children: "Branch " + branchCode + " already exists. Cannot add.",
-          severity: "error",
-        });
-        handleDialogClose();
-      }
-      // If branch does not exist, proceed to fetch from CBS to pre-populate form
-      else if (
-        response.data?.result &&
-        Object.keys(response.data?.result?.branchData).length === 0
-      ) {
-        fetchFromCbs();
-      } else {
-        setSnackbar({
-          children: "An error occurred. Please try again after some time.",
-          severity: "error",
-        });
-        handleDialogClose();
-      }
-    } catch (e) {
-      console.error(e);
-      setSnackbar({
-        children: "An error occurred. Please try again after some time.",
-        severity: "error",
-      });
-      handleDialogClose();
+        log.info("inside db");
+        List<FrtAddBranch> list = frtAddBranchService.getCircleCodeUs();
+        ModelAndView view = new ModelAndView("FRTUser/branchStatus");
+        String financialYear = session.getAttribute("year").toString();
+        String quarterCurrent = (String) session.getAttribute("quarter");
+        view.addObject("financialYear", financialYear);
+        view.addObject("quarterCurrent", quarterCurrent);
+        view.addObject("circleList", list);
+
+        return view;
     }
-  };
 
-  /**
-   * This function fetches branch details from the CBS table to populate the 'Add Branch' form.
-   */
-  const fetchFromCbs = async () => {
-    try {
-      let jsonFormData = JSON.stringify({ branchCode: branchCode });
-      await encrypt(iv, salt, jsonFormData).then(function (result) {
-        jsonFormData = result;
-      });
-      let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
 
-      const response = await axios.post(
-        "/Server/EditBranch/fetchBranchDetailsCbs",
-        payload,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    @PostMapping("/search")
+    @ResponseBody
+    public List<FrtAddBranch> search(@ModelAttribute("FRT") FrtAddBranch frt, @RequestParam("branchCode") String branchCode, BindingResult result,
+                                     HttpServletRequest request) {
+
+        log.info("branchCode : Inside Search in controller. :" + branchCode);
+        HttpSession session = request.getSession();
+        SessionBean sessionBean = new SessionBean(request.getSession());
+        String quarterEndDate = sessionBean.getQuarterEndDate();
+        String searchCode = branchCode;
+        log.error("errors :" + result.getFieldErrors());
+        List<FieldError> errors = result.getFieldErrors();
+        for (FieldError error : errors) {
+            log.error("errors :" + error.getField() + "name: " + error.getRejectedValue());
         }
-      );
+        log.error("errorname" + result.toString());
 
-      // If data is found in CBS, populate the form so the user can add it.
-      if (
-        response.data?.result &&
-        Object.keys(response.data?.result?.branchData).length !== 0
-      ) {
-        setVisibleData(true);
-        setCircleList(response.data.result.circleList);
-        setbranchData(response.data.result.branchData);
-        setFieldsDisabled(false); // Enable the form for saving
-        handleDialogClose();
-      } else {
-        setVisibleData(false);
-        setSnackbar({
-          children:
-            "Branch does not exist. Please contact 'Finance One Core Team'",
-          severity: "error",
-        });
-        handleDialogClose();
-      }
-    } catch (e) {
-      console.error(e);
-      setSnackbar({
-        children: "An error occurred. Please try again after some time.",
-        severity: "error",
-      });
-      handleDialogClose();
-    }
-  };
 
-  /**
-   * This function validates all fields and submits the new branch data.
-   */
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    if (!branchCode) {
-      setError(true);
-      return;
-    }
-    const errors = {};
-    Object.keys(branchData).forEach((field) => {
-      const error = validateInputFields(field, branchData[field]);
-      if (error) {
-        errors[field] = error;
-      }
-    });
+        List<FrtAddBranch> list1 = frtAddBranchService.searchBranch(branchCode, quarterEndDate);
 
-    setBranchDetailErrors(errors);
-
-    if (Object.keys(errors).length !== 0) {
-      setSnackbar({
-        children: "Kindly make sure all fields are filled correctly.",
-        severity: "error",
-      });
-    } else {
-      setLoadOpen(true);
-      handleConfirmSubmit();
-    }
-  };
-
-  /**
-   * This function is an axios call to add the new branch to the database.
-   */
-  const handleConfirmSubmit = async () => {
-    try {
-      let jsonFormData = JSON.stringify({ branchData: branchData });
-      await encrypt(iv, salt, jsonFormData).then(function (result) {
-        jsonFormData = result;
-      });
-      let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
-
-      const response = await axios.post(
-        "/Server/EditBranch/FrtSubmitData",
-        payload,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        if (list1.size() != 0) {
+            return list1;
+        } else {
+            return null;
         }
-      );
 
-      if (response?.data) {
-        handleReset();
-        setSnackbar({
-          children: `The new branch ${branchCode} has been successfully created.`,
-          severity: "success",
-        });
-        handleDialogClose();
-      } else {
-        setSnackbar({
-          children: "An error occurred. Please try again after some time.",
-          severity: "error",
-        });
-        handleDialogClose();
-      }
-    } catch (e) {
-      console.error(e);
-      setSnackbar({
-        children: "An error occurred. Please try again after some time.",
-        severity: "error",
-      });
-      handleDialogClose();
     }
-  };
 
-  return (
-    <>
-      <Box sx={{ display: "flex", height: 50, alignItems: "bottom" }}>
-        <Typography
-          variant="h5"
-          gutterBottom
-          sx={{ textAlign: "flex-start", p: 2 }}
-        >
-          Add Branch
-        </Typography>
-      </Box>
-      <Divider />
-      <Container
-        maxWidth={false}
-        disableGutters
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          flexDirection: "column",
-        }}
-      >
-        <Box
-          sx={{
-            width: "100%",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            padding: 4,
-            display: "flex",
-            flexDirection: "column",
-            backgroundColor: "#fff",
-          }}
-        >
-          <Grid container spacing={2}>
-            {/* First row */}
-            <Grid item xs={12} sm={4}>
-              <TextField
-                label="Branch Code"
-                name="CODE"
-                error={error}
-                helperText={error && "This field is required."}
-                onChange={handleBranchCodeChange}
-                value={branchCode}
-                disabled={!fieldsDisabled}
-                variant="outlined"
-                fullWidth
-                inputProps={{ maxLength: 5 }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={2}>
-              <Button
-                variant="contained"
-                disableElevation
-                startIcon={<SearchIcon />}
-                sx={{ mt: 1 }}
-                onClick={handleSearch}
-              >
-                Search
-              </Button>
-              &nbsp;
-              <Button
-                variant="contained"
-                color="warning"
-                disableElevation
-                startIcon={<Cached />}
-                sx={{ mt: 1 }}
-                onClick={handleReset}
-              >
-                Reset
-              </Button>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Branch Name"
-                name="NAME"
-                onChange={handleInputChange}
-                value={branchData.NAME}
-                error={!!branchDetailErrors.NAME}
-                helperText={branchDetailErrors.NAME}
-                disabled={fieldsDisabled}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <AccountBalanceRoundedIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 40 }}
-              />
-            </Grid>
+    @PostMapping(value = "/saveData")
+    public @ResponseBody
+    String saveData(@RequestBody Map map, HttpServletRequest request) {
 
-            {/* Second row */}
-            <Grid item xs={6} sm={6}>
-              <TextField
-                label="Circle Name"
-                name="CIRCLE"
-                error={!!branchDetailErrors.CIRCLE}
-                helperText={branchDetailErrors.CIRCLE}
-                select
-                disabled={fieldsDisabled}
-                value={branchData.CIRCLE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <LanIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                SelectProps={{
-                  MenuProps: { sx: { height: 350 } },
-                }}
-              >
-                {circleList.map((choices) => (
-                  <MenuItem key={choices} value={choices.split("~")[0]}>
-                    {choices.split("~")[1]}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
+        HttpSession session = request.getSession();
+        SessionBean sessionBean = new SessionBean(request.getSession());
+        String userId = sessionBean.getUserId();
+        String displayMessage = "NODATA";
+        log.info("userId :" + userId + " " + sessionBean.getBranchCode() + " " + sessionBean.getQuarterEndDate());
+        String branchCode1 = (String) map.get("branchCode1");
+        String branchName = (String) map.get("branchName");
+        String circleCode = (String) map.get("circleCode");
+        String auditStatus = (String) map.get("auditStatus");
+        String network = (String) map.get("network");
+        String module = (String) map.get("module");
+        String region = (String) map.get("region");
+        String address1 = (String) map.get("address1");
+        String address2 = (String) map.get("address2");
+        String address3 = (String) map.get("address3");
+        String pinCode = (String) map.get("pinCode");
+        String stdCode = (String) map.get("stdCode");
+        String phoneNo = (String) map.get("phoneNo");
+        String voipNo = (String) map.get("voipNo");
+        String manName = (String) map.get("manName");
+        String residencePhone = (String) map.get("residencePhone");
+        String mobileNo = (String) map.get("mobileNo");
+        String requestId = (String) map.get("isRequestExists");
 
-            {/* Third row */}
-            <Grid item xs={6} sm={2}>
-              <TextField
-                label="Network"
-                name="NETWORK"
-                disabled={fieldsDisabled}
-                value={branchData.NETWORK}
-                error={!!branchDetailErrors.NETWORK}
-                helperText={branchDetailErrors.NETWORK}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <SensorsIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 3 }}
-              />
-            </Grid>
-            <Grid item xs={6} sm={2}>
-              <TextField
-                label="Module"
-                name="MODULE"
-                disabled={fieldsDisabled}
-                value={branchData.MODULE}
-                error={!!branchDetailErrors.MODULE}
-                helperText={branchDetailErrors.MODULE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <DnsIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                inputProps={{ maxLength: 3 }}
-              />
-            </Grid>
-            <Grid item xs={6} sm={2}>
-              <TextField
-                label="Region"
-                name="REGION"
-                disabled={fieldsDisabled}
-                value={branchData.REGION}
-                error={!!branchDetailErrors.REGION}
-                helperText={branchDetailErrors.REGION}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <PublicIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                inputProps={{ maxLength: 3 }}
-              />
-            </Grid>
+        boolean flag = frtAddBranchService.updatebranchData(branchCode1, branchName, circleCode, auditStatus, network, module, region,
+                address1, address2, address3, pinCode, stdCode, phoneNo, voipNo, manName, residencePhone, mobileNo);
+        if(flag){
+            String id;
+            if(requestId.isEmpty()){
+                log.info("For insert");
+                 id = frtAddBranchService.insertTrack(userId, sessionBean.getQuarterEndDate(),branchCode1) ;
+            }else{
+                log.info("For update requestId :" +requestId);
+                 id  = frtAddBranchService.updateTrack(requestId,userId, sessionBean.getQuarterEndDate(),branchCode1);
+            }
+            if (!id.equalsIgnoreCase("error")) {
+                log.info("id :" +id);
+                displayMessage = "Request id "+id+" for adding "+ branchCode1+" "+branchName
+                        +" to CRS Scope for quarter ending "+sessionBean.getQuarterEndDate() +" is pending with FRT Checker.";
+                log.info(displayMessage);
+            } else {
+                displayMessage = "Error in saving the data. Please re-try.";
+            }
+        }
+        return displayMessage;
 
-            {/* Fourth row */}
-            <Grid item xs={12}>
-              <TextField
-                label="Address"
-                name="ADDRESS"
-                disabled={fieldsDisabled}
-                value={branchData.ADDRESS}
-                error={!!branchDetailErrors.ADDRESS}
-                helperText={branchDetailErrors.ADDRESS}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <HomeIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                inputProps={{ maxLength: 40 }}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                label="City"
-                name="CITY"
-                disabled={fieldsDisabled}
-                value={branchData.CITY}
-                error={!!branchDetailErrors.CITY}
-                helperText={branchDetailErrors.CITY}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <LocationCityRoundedIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 40 }}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                label="State"
-                name="STATE"
-                disabled={fieldsDisabled}
-                value={branchData.STATE}
-                error={!!branchDetailErrors.STATE}
-                helperText={branchDetailErrors.STATE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <CorporateFareRoundedIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 40 }}
-              />
-            </Grid>
+    }
 
-            {/* Fifth row */}
-            <Grid item xs={6} sm={4}>
-              <TextField
-                label="Pin Code"
-                name="PIN"
-                disabled={fieldsDisabled}
-                value={branchData.PIN}
-                error={!!branchDetailErrors.PIN}
-                helperText={branchDetailErrors.PIN}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <PinDropIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 6 }}
-              />
-            </Grid>
-            <Grid item xs={6} sm={4}>
-              <TextField
-                label="STD Code"
-                name="STDCODE"
-                disabled={fieldsDisabled}
-                value={branchData.STDCODE}
-                error={!!branchDetailErrors.STDCODE}
-                helperText={branchDetailErrors.STDCODE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <EmergencyShareIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 5 }}
-              />
-            </Grid>
-            <Grid item xs={6} sm={4}>
-              <TextField
-                label="Phone No."
-                name="PHONE"
-                disabled={fieldsDisabled}
-                value={branchData.PHONE}
-                error={!!branchDetailErrors.PHONE}
-                helperText={branchDetailErrors.PHONE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: <PhoneIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                inputProps={{ maxLength: 10 }}
-              />
-            </Grid>
+}
 
-            {/* Sixth row */}
-            <Grid item xs={6} sm={4}>
-              <TextField
-                label="Mobile No."
-                name="MOBILE"
-                disabled={fieldsDisabled}
-                value={branchData.MOBILE}
-                error={!!branchDetailErrors.MOBILE}
-                helperText={branchDetailErrors.MOBILE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <PhoneAndroidRoundedIcon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 10 }}
-              />
-            </Grid>
-            <Grid item xs={6} sm={4}>
-              <TextField
-                label="IP Phone"
-                name="IPPHONE"
-                disabled={fieldsDisabled}
-                value={branchData.IPPHONE}
-                error={!!branchDetailErrors.IPPHONE}
-                helperText={branchDetailErrors.IPPHONE}
-                onChange={handleInputChange}
-                variant="outlined"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <WifiCalling3Icon sx={{ mr: 1, opacity: "50%" }} />
-                  ),
-                }}
-                inputProps={{ maxLength: 10 }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}></Grid>
+/////////////////////////////////////////////////////////////////////
 
-            {/* Seventh row */}
-            <Grid item xs={6} sm={6}>
-              <TextField
-                name="AUDITABLE"
-                disabled={fieldsDisabled}
-                fullWidth
-                select
-                InputProps={{
-                  startAdornment: <PersonIcon sx={{ mr: 1, opacity: "50%" }} />,
-                }}
-                SelectProps={{ MenuProps: { sx: { height: 350 } } }}
-                error={!!branchDetailErrors.AUDITABLE}
-                helperText={branchDetailErrors.AUDITABLE}
-                value={branchData.AUDITABLE}
-                onChange={handleInputChange}
-                label="Branch Audit Status"
-              >
-                <MenuItem value="">---Select---</MenuItem>
-                <MenuItem value="A">Audited</MenuItem>
-                <MenuItem value="N">Non Audited</MenuItem>
-                <MenuItem value="I">IFCOFR Audited</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={6} sm={6}></Grid>
 
-            {/* Submit Button */}
-            <Grid item xs={12} sm={12}>
-              <Box sx={{ display: "flex", justifyContent: "center", p: 1 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  size="medium"
-                  disabled={fieldsDisabled}
-                  onClick={handleSubmit}
-                  startIcon={<SaveIcon />}
-                >
-                  Save
-                </Button>
-              </Box>
-            </Grid>
-          </Grid>
-        </Box>
-      </Container>
+package com.tcs.services;
 
-      {/* Loading Dialog */}
-      <Dialog
-        PaperProps={{
-          style: { backgroundColor: "transparent", boxShadow: "none" },
-        }}
-        open={loadOpen}
-      >
-        <DialogContent sx={{ display: "Grid" }}>
-          <CircularProgress />
-        </DialogContent>
-      </Dialog>
+import com.tcs.beans.FrtAddBranch;
+import com.tcs.dao.FrtAddBranchDao;
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-      {/* Snackbar */}
-      {snackbar && (
-        <SnackbarProvider maxSnack={3}>
-          <Snackbar
-            open
-            anchorOrigin={{ vertical: "top", horizontal: "center" }}
-            onClose={handleCloseSnackbar}
-            autoHideDuration={5000}
-          >
-            <Alert
-              variant="filled"
-              {...snackbar}
-              onClose={handleCloseSnackbar}
-            />
-          </Snackbar>
-        </SnackbarProvider>
-      )}
-    </>
-  );
+import java.util.List;
+
+@Service(value = "frtAddBranchService")
+public class FrtAddBranchServiceImpl implements FrtAddBranchService {
+
+    static Logger log = Logger.getLogger(FrtAddBranchServiceImpl.class.getName());
+
+    @Autowired
+    FrtAddBranchDao frtAddBranchDao;
+
+    @Override
+    public List<FrtAddBranch> searchBranch(String branchCode, String quarterEndDate ) {
+        log.info("branchCode :" + branchCode);
+        return frtAddBranchDao.searchBranch(branchCode, quarterEndDate);
+    }
+
+    @Override
+    public List<FrtAddBranch> getCircleCodeUs() {
+        return frtAddBranchDao.getCircleCodeUs();
+    }
+
+    @Override
+    public boolean updatebranchData(String branchCode1, String branchName, String circleCode, String auditStatus, String network, String module, String region, String address1, String address2, String address3,
+                                    String pinCode, String stdCode, String phoneNo, String voipNo, String manName, String residencePhone, String mobileNo) {
+        return frtAddBranchDao.updatebranchData(branchCode1, branchName, circleCode, auditStatus, network, module, region, address1, address2, address3,
+                pinCode, stdCode, phoneNo, voipNo, manName, residencePhone, mobileNo);
+    }
+
+    @Override
+    public String updateTrack(String requestId, String userId, String quarterEndDate, String branchCode1) {
+        return frtAddBranchDao.updateTrack(requestId, userId, quarterEndDate, branchCode1);
+    }
+
+    @Override
+    public String insertTrack(String userId, String quarterEndDate, String branchCode1) {
+        return frtAddBranchDao.insertTrack(userId, quarterEndDate, branchCode1);
+    }
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+
+
+package com.tcs.dao;
+
+import com.tcs.beans.FrtAddBranch;
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.PlatformTransactionManager;
+
+import javax.sql.DataSource;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+@Repository("frtAddBranchDao")
+public class FrtAddBranchDaoImpl implements FrtAddBranchDao {
+
+    static Logger log = Logger.getLogger(FrtAddBranchDaoImpl.class.getName());
+    @Autowired
+    DataSource dataSource;
+    @Autowired
+    JdbcTemplate jdbcTemplateObject;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @Override
+    public List<FrtAddBranch> searchBranch(String branchCode, String quarterEndDate) {
+
+        //JdbcTemplate jdbcTemplateObject = new JdbcTemplate(dataSource);
+        List<FrtAddBranch> list = null;
+        log.info("branchCode :" + branchCode);
+        String q;
+
+
+        q = "SELECT  BRANCHNO, BR_NAME, ADDRESS_1, ADDRESS_2, ADDRESS_3, POST_CODE, PHONE_NO, STD_CODE, CIRCLE_CODE,\n" +
+                "REGION_CODE, VOIP_PHONE_NO, MAN_RES_PHONE, MAN_MOBI_PHONE,INST,MANAGERS_NAME, CRS_AUDITABLE,\n" +
+                "(select branchno from branch_master where branch_master.branchno=cbs_brhm.BRANCHNO) isBranchExists,\n" +
+                "(select RT_ID from crs_request_track where RT_TYPE ='B' and RT_SUBTYPE = 'A' and RT_QED = to_date(?,'dd/mm/yyyy') and RT_BRANCH = branchno and \n" +
+                "RT_STATUS='1') isRequestExists\n" +
+                "FROM CBS_BRHM WHERE BRANCHNO = lpad(?,5,'0')";
+        try {
+            list = jdbcTemplateObject.query(q, new Object[]{quarterEndDate, branchCode},
+                    rs -> {
+                        FrtAddBranch report = null;
+                        List<FrtAddBranch> list1 = new ArrayList<FrtAddBranch>();
+
+                        while (rs.next()) {
+                            report = new FrtAddBranch();
+                            report.setBranchName(rs.getString("BR_NAME"));
+                            report.setAddress1(rs.getString("ADDRESS_1"));
+                            report.setAddress2(rs.getString("ADDRESS_2"));
+                            report.setAddress3(rs.getString("ADDRESS_3"));
+                            report.setPostCode(rs.getString("POST_CODE"));
+                            report.setPhoneNumber(rs.getString("PHONE_NO"));
+                            report.setStdCode(rs.getString("STD_CODE"));
+                            report.setCircleCode(rs.getString("CIRCLE_CODE"));
+                            report.setRegionCode(rs.getString("REGION_CODE"));
+                            if(!report.getRegionCode().isEmpty()){
+                                report.setNetwerkCode(report.getRegionCode().substring(0,3));
+                                report.setModuleCode(report.getRegionCode().substring(3,6));
+                                report.setRegionCode(report.getRegionCode().substring(6,9));
+                            }
+                            report.setVoipPhoneNumber(rs.getString("VOIP_PHONE_NO"));
+                            report.setManResPhoneNumber(rs.getString("MAN_RES_PHONE"));
+                            report.setManMobileNumber(rs.getString("MAN_MOBI_PHONE"));
+                            report.setInst(rs.getString("INST"));
+                            report.setManName(rs.getString("MANAGERS_NAME"));
+                            report.setCrsAuditSts(rs.getString("CRS_AUDITABLE"));
+                            report.setInsertId(rs.getString("isRequestExists"));
+                            report.setBranchExists(rs.getString("isBranchExists"));
+                            list1.add(report);
+                        }
+
+                        return list1;
+                    });
+            log.info("query result :" + list);
+            return list;
+        } catch (DataAccessException e) {
+            log.error("***Data Access Exception Occured***" + e.getMessage());
+        }
+        return list;
+    }
+
+    @Override
+    public List<FrtAddBranch> getCircleCodeUs() {
+        boolean status = false;
+
+        log.info("IN DAO IMPL");
+
+
+        //JdbcTemplate jdbcTemplateObject = new JdbcTemplate(dataSource);
+        String query = "";
+
+        query = "select CRS_SYS_PARAM_ID,CRS_SYS_PARAM_NAME from crs_sys_param where CRS_SYS_PARAM_TYPE='CIRCLE_MASTER' and CRS_SYS_PARAM_ID < '100' ORDER BY CRS_SYS_PARAM_ID";
+
+        List<FrtAddBranch> list = jdbcTemplateObject.query(query, new Object[]{},
+                new ResultSetExtractor<List<FrtAddBranch>>() {
+
+                    @Override
+                    public List<FrtAddBranch> extractData(ResultSet rs) throws SQLException, DataAccessException {
+                        FrtAddBranch circle = null;
+                        List<FrtAddBranch> list = new ArrayList<FrtAddBranch>();
+
+                        while (rs.next()) {
+                            circle = new FrtAddBranch();
+                            circle.setCircleCode(rs.getString("CRS_SYS_PARAM_ID"));
+                            circle.setCircleName(rs.getString("CRS_SYS_PARAM_NAME"));
+                            list.add(circle);
+                        }
+
+                        return list;
+                    }
+
+                });
+        return list;
+    }
+
+    @Override
+    public boolean updatebranchData(String branchCode1, String branchName, String circleCode, String auditStatus, String network, String module, String region,
+                                    String address1, String address2, String address3, String pinCode, String stdCode, String phoneNo,
+                                    String voipNo, String manName, String residencePhone, String mobileNo) {
+
+        log.info("branchCode1 :" + branchCode1);
+        String query = "";
+        String regionCode = network+module+region;
+        log.info(regionCode);
+        int updated = 0;
+        //JdbcTemplate jdbcTemplateObject = new JdbcTemplate(dataSource);
+
+
+        query = "update CBS_BRHM set  ADDRESS_1 = ?, ADDRESS_2 = ?, ADDRESS_3 = ?, POST_CODE = ?, PHONE_NO = ?,  STD_CODE = ?, CIRCLE_CODE = ?, \n" +
+                " REGION_CODE = ?, VOIP_PHONE_NO = ?, MAN_RES_PHONE = ?, MAN_MOBI_PHONE = ?,MANAGERS_NAME = ?, CRS_AUDITABLE = ? WHERE BRANCHNO = ?";
+        try {
+            updated = jdbcTemplateObject.update(query, new Object[]{address1, address2, address3, pinCode,
+                    phoneNo,  stdCode, circleCode, regionCode, voipNo, residencePhone, mobileNo, manName, auditStatus, branchCode1});
+        } catch (DataAccessException e) {
+            log.error("***Data Access Exception occured*** :" + e.getMessage());
+        }
+        if (updated != 0) {
+            return true;
+        } else {
+            return false;
+        }
+
+
+    }
+
+    @Override
+    public String updateTrack(String requestId, String userId, String quarterEndDate, String branchCode1) {
+
+        //JdbcTemplate jdbcTemplateObject = new JdbcTemplate(dataSource);
+        int updated = 0;
+        String query = "UPDATE CRS_REQUEST_TRACK SET RT_MAKER = ?, RT_STATUS = ?, RT_TYPE = ?, RT_SUBTYPE = ?, RT_QED = to_date(?,'dd/mm/yyyy'), RT_BRANCH = ? " +
+                "WHERE RT_ID = ?";
+        try {
+            updated = jdbcTemplateObject.update(query, new Object[]{userId, "1", "B", "A", quarterEndDate, branchCode1, requestId});
+        } catch (DataAccessException e) {
+            log.error("***Data Access Exception***" + e.getMessage());
+        }
+        if (updated != 0) {
+            return requestId;
+        } else {
+            return "error";
+        }
+
+    }
+
+    @Override
+    public String insertTrack(String userId, String quarterEndDate, String branchCode1) {
+        log.info("in insert");
+
+        String requestId = "error";
+        String query = "";
+        int i = 0;
+        //JdbcTemplate jdbcTemplateObject = new JdbcTemplate(dataSource);
+
+        query = "INSERT INTO CRS_REQUEST_TRACK (RT_ID, RT_MAKER, RT_STATUS, RT_TYPE, RT_SUBTYPE, RT_QED, RT_BRANCH) " +
+                "VALUES(CRS_REQUEST_TRACK_SEQ.nextval,?,?,?,?,to_date(?,'dd/mm/yyyy'),?)";
+        try {
+            i = jdbcTemplateObject.update(query, new Object[]{userId, "1", "B", "A", quarterEndDate, branchCode1});
+            log.info("i :" + i);
+        } catch (DataAccessException e) {
+            e.printStackTrace();
+        }
+        String q2 = "select CRS_REQUEST_TRACK_SEQ.currval from dual";
+        if (i != 0) {
+            try {
+                requestId = jdbcTemplateObject.queryForObject(q2, String.class);
+                log.info("requestId :" + requestId);
+            } catch (DataAccessException e) {
+                e.printStackTrace();
+            }
+        }
+        return requestId;
+    }
 }
