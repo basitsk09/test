@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Box,
   Button,
   Container,
@@ -21,8 +18,11 @@ import {
   TableHead,
   TableRow,
   Alert,
+  Collapse,
+  IconButton,
 } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import FrtCheckerLayout from "../Layouts/FrtCheckerLayout";
 
 // Dummy data simulating the initial list of requests
@@ -70,42 +70,108 @@ const initialRequests = [
 
 // Dummy data simulating the reports list for a 'Delete Branch' request
 const reportsForDelete = [
-  { MODULE: "LFAR", REPORT_NAME: "ADVANCES-REPORT", REPORT_DESC: "Report on Advances granted" },
-  { MODULE: "LFAR", REPORT_NAME: "DEPOSITS-ANALYSIS", REPORT_DESC: "Analysis of various deposits" },
-  { MODULE: "CRS", REPORT_NAME: "CRS-COMPLIANCE-01", REPORT_DESC: "Compliance status for Q1" },
+  { MODULE: "LFAR", REPORT: "RN-50", NAME: "Certificate for capturing details of all the assets repossessed" },
+  { MODULE: "CRS", REPORT: "RN-48", NAME: "Details of Branch / ATM / Office Premises / Staff Quarters" },
 ];
+
+function Row(props) {
+  const { row, onAction } = props;
+  const [open, setOpen] = useState(false);
+  const [reports, setReports] = useState([]);
+  const [loadingReports, setLoadingReports] = useState(false);
+  const isDelete = row.requestType === "Delete Branch";
+
+  const handleRowClick = () => {
+    const shouldOpen = !open;
+    setOpen(shouldOpen);
+    if (shouldOpen && isDelete && reports.length === 0) {
+      setLoadingReports(true);
+      // Simulate API call
+      setTimeout(() => {
+        setReports(reportsForDelete);
+        setLoadingReports(false);
+      }, 1500);
+    }
+  };
+  
+  const rowStyle = {
+    backgroundColor: isDelete ? "#ffebee" : "#e8f5e9", // Red for delete, Green for add
+    "& > *": { borderBottom: "unset" },
+  };
+
+  return (
+    <React.Fragment>
+      <TableRow sx={rowStyle}>
+        <TableCell>
+          <IconButton aria-label="expand row" size="small" onClick={handleRowClick}>
+            {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+          </IconButton>
+        </TableCell>
+        <TableCell>{row.req_Id}</TableCell>
+        <TableCell>{row.branchCode}</TableCell>
+        <TableCell>{row.branchName}</TableCell>
+        <TableCell>{row.requestType}</TableCell>
+        <TableCell>{row.status}</TableCell>
+        <TableCell>{row.requestedOn}</TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box sx={{ margin: 1, p: 2, backgroundColor: isDelete ? "#fff0f0" : "#f0fff0" }}>
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={3}><b>Circle:</b> {row.circleCode}</Grid>
+                <Grid item xs={3}><b>RO:</b> {row.roCode}</Grid>
+                <Grid item xs={3}><b>Audited Status:</b> {row.auditStatus}</Grid>
+                <Grid item xs={3}><b>Requested By:</b> {row.requestedBy}</Grid>
+                <Grid item xs={12}><b>No of Branches in Circle:</b> {row.noOfBranches}</Grid>
+              </Grid>
+
+              {isDelete && (
+                <Box sx={{ my: 2 }}>
+                  {loadingReports ? (
+                    <CircularProgress size={24} />
+                  ) : (
+                    <>
+                      <Typography sx={{ color: "red", mb: 1 }}>*Following reports will be deleted on branch deletion.</Typography>
+                      <TableContainer component={Paper}>
+                        <Table size="small">
+                          <TableHead><TableRow><TableCell>MODULE</TableCell><TableCell>REPORT</TableCell><TableCell>NAME</TableCell></TableRow></TableHead>
+                          <TableBody>
+                            {reports.map((report) => (
+                              <TableRow key={report.REPORT}><TableCell>{report.MODULE}</TableCell><TableCell>{report.REPORT}</TableCell><TableCell>{report.NAME}</TableCell></TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </>
+                  )}
+                </Box>
+              )}
+              
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 2, gap: 2 }}>
+                <Button variant="contained" color="success" onClick={() => onAction(row.req_Id, "approved")}>Approve</Button>
+                <Button variant="contained" color="error" onClick={() => onAction(row.req_Id, "rejected")}>Reject</Button>
+              </Box>
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </React.Fragment>
+  );
+}
 
 const FRTBranchReq = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState(false);
   const [dialog, setDialog] = useState({ open: false, title: "", message: "" });
-  const [reports, setReports] = useState({});
-  const [loadingReports, setLoadingReports] = useState({});
 
   useEffect(() => {
     document.title = "FRT | Scope Change Requests";
-    // Simulate fetching initial request list
     setTimeout(() => {
       setRequests(initialRequests);
       setLoading(false);
     }, 1000);
   }, []);
-
-  const handleAccordionChange = (panelId) => async (event, isExpanded) => {
-    setExpanded(isExpanded ? panelId : false);
-    const request = requests.find((r) => r.req_Id === panelId);
-
-    // If expanding a 'Delete Branch' request for the first time, fetch its reports
-    if (isExpanded && request.requestType === "Delete Branch" && !reports[panelId]) {
-      setLoadingReports((prev) => ({ ...prev, [panelId]: true }));
-      // Simulate API call to fetch reports
-      setTimeout(() => {
-        setReports((prev) => ({ ...prev, [panelId]: reportsForDelete }));
-        setLoadingReports((prev) => ({ ...prev, [panelId]: false }));
-      }, 1500);
-    }
-  };
 
   const handleAction = (reqId, action) => {
     const request = requests.find((r) => r.req_Id === reqId);
@@ -124,111 +190,45 @@ const FRTBranchReq = () => {
 
     setDialog({ open: true, title: `Request ${action}`, message });
     setRequests(requests.filter((r) => r.req_Id !== reqId));
-    setExpanded(false);
   };
-
+  
   const handleDialogClose = () => {
     setDialog({ open: false, title: '', message: '' });
   };
 
-  const getAccordionStyles = (type) => {
-    if (type === "Add Branch") {
-      return {
-        "&.Mui-expanded": { backgroundColor: "#f0fff0" },
-        "& .MuiAccordionSummary-root": { backgroundColor: "#e8f5e9" },
-      };
-    }
-    if (type === "Delete Branch") {
-      return {
-        "&.Mui-expanded": { backgroundColor: "#fff0f0" },
-        "& .MuiAccordionSummary-root": { backgroundColor: "#ffebee" },
-      };
-    }
-    return {};
-  };
-
   return (
     <FrtCheckerLayout>
-      {/* Changed maxWidth from "xl" to false to make the component wider */}
       <Container maxWidth={false}>
-        <Typography variant="h5" sx={{ mb: 2 }}>
-          CRS Scope Change Requests
-        </Typography>
-        <Paper sx={{ p: 2 }}>
-          {loading && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-              <CircularProgress />
-            </Box>
+        <Typography variant="h5" sx={{ mb: 2 }}>CRS Scope Change Requests</Typography>
+        <TableContainer component={Paper}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+          ) : (
+            <Table aria-label="collapsible table">
+              <TableHead sx={{ backgroundColor: "#b9def0" }}>
+                <TableRow>
+                  <TableCell />
+                  <TableCell><b>Request ID</b></TableCell>
+                  <TableCell><b>Branch</b></TableCell>
+                  <TableCell><b>Branch Name</b></TableCell>
+                  <TableCell><b>Request Type</b></TableCell>
+                  <TableCell><b>Status</b></TableCell>
+                  <TableCell><b>Requested on</b></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {requests.map((row) => (
+                  <Row key={row.req_Id} row={row} onAction={handleAction} />
+                ))}
+              </TableBody>
+            </Table>
           )}
-          {!loading && requests.map((req) => (
-            <Accordion
-              key={req.req_Id}
-              expanded={expanded === req.req_Id}
-              onChange={handleAccordionChange(req.req_Id)}
-              sx={getAccordionStyles(req.requestType)}
-            >
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Grid container spacing={2} alignItems="center">
-                  <Grid item xs={1.5}><Typography variant="body2"><b>{req.req_Id}</b></Typography></Grid>
-                  <Grid item xs={1}><Typography variant="body2">{req.branchCode}</Typography></Grid>
-                  <Grid item xs={3.5}><Typography variant="body2">{req.branchName}</Typography></Grid>
-                  <Grid item xs={2}><Typography variant="body2">{req.requestType}</Typography></Grid>
-                  <Grid item xs={1.5}><Typography variant="body2">{req.status}</Typography></Grid>
-                  <Grid item xs={2.5}><Typography variant="body2">{req.requestedOn}</Typography></Grid>
-                </Grid>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Grid container spacing={2} sx={{ mb: 2, p: 2, border: '1px solid #eee', borderRadius: '4px' }}>
-                  <Grid item xs={3}><Typography variant="body2"><b>Circle:</b> {req.circleCode}</Typography></Grid>
-                  <Grid item xs={3}><Typography variant="body2"><b>RO:</b> {req.roCode}</Typography></Grid>
-                  <Grid item xs={3}><Typography variant="body2"><b>Audited Status:</b> {req.auditStatus}</Typography></Grid>
-                  <Grid item xs={3}><Typography variant="body2"><b>Requested By:</b> {req.requestedBy}</Typography></Grid>
-                  <Grid item xs={12}><Typography variant="body2"><b>No of Branches in Circle:</b> {req.noOfBranches}</Typography></Grid>
-                </Grid>
-
-                {req.requestType === "Delete Branch" && expanded === req.req_Id && (
-                  <Box sx={{ my: 2 }}>
-                    {loadingReports[req.req_Id] ? (
-                      <CircularProgress size={24} />
-                    ) : (
-                      reports[req.req_Id] && (
-                        <>
-                          <Typography sx={{ color: 'red.800', mb: 1 }}>*Following reports will be deleted on branch deletion.</Typography>
-                          <TableContainer component={Paper}>
-                            <Table size="small">
-                              <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
-                                <TableRow><TableCell>Module</TableCell><TableCell>Report Name</TableCell><TableCell>Description</TableCell></TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {reports[req.req_Id].map((report) => (
-                                  <TableRow key={report.REPORT_NAME}><TableCell>{report.MODULE}</TableCell><TableCell>{report.REPORT_NAME}</TableCell><TableCell>{report.REPORT_DESC}</TableCell></TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </TableContainer>
-                        </>
-                      )
-                    )}
-                  </Box>
-                )}
-
-                <Box sx={{ display: "flex", justifyContent: "center", mt: 2, gap: 2 }}>
-                  <Button variant="contained" color="success" onClick={() => handleAction(req.req_Id, "approved")}>Approve</Button>
-                  <Button variant="contained" color="error" onClick={() => handleAction(req.req_Id, "rejected")}>Reject</Button>
-                </Box>
-              </AccordionDetails>
-            </Accordion>
-          ))}
-        </Paper>
+        </TableContainer>
       </Container>
       <Dialog open={dialog.open} onClose={handleDialogClose}>
         <DialogTitle>{dialog.title}</DialogTitle>
-        <DialogContent>
-            <Alert severity="success">{dialog.message}</Alert>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDialogClose}>Continue</Button>
-        </DialogActions>
+        <DialogContent><Alert severity="success">{dialog.message}</Alert></DialogContent>
+        <DialogActions><Button onClick={handleDialogClose}>Continue</Button></DialogActions>
       </Dialog>
     </FrtCheckerLayout>
   );
