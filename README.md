@@ -126,7 +126,7 @@ const FRTBranchReq = () => {
     setRequests(requests.filter((r) => r.req_Id !== reqId));
     setExpanded(false);
   };
-  
+
   const handleDialogClose = () => {
     setDialog({ open: false, title: '', message: '' });
   };
@@ -149,7 +149,8 @@ const FRTBranchReq = () => {
 
   return (
     <FrtCheckerLayout>
-      <Container maxWidth="xl">
+      {/* Changed maxWidth from "xl" to false to make the component wider */}
+      <Container maxWidth={false}>
         <Typography variant="h5" sx={{ mb: 2 }}>
           CRS Scope Change Requests
         </Typography>
@@ -184,7 +185,7 @@ const FRTBranchReq = () => {
                   <Grid item xs={3}><Typography variant="body2"><b>Requested By:</b> {req.requestedBy}</Typography></Grid>
                   <Grid item xs={12}><Typography variant="body2"><b>No of Branches in Circle:</b> {req.noOfBranches}</Typography></Grid>
                 </Grid>
-                
+
                 {req.requestType === "Delete Branch" && expanded === req.req_Id && (
                   <Box sx={{ my: 2 }}>
                     {loadingReports[req.req_Id] ? (
@@ -234,4 +235,3 @@ const FRTBranchReq = () => {
 };
 
 export default FRTBranchReq;
-
