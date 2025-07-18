@@ -19,9 +19,12 @@ import {
   TableRow,
   TablePagination,
   Paper,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from "@mui/material";
-import DialogContent from "@mui/material/DialogContent";
-import Dialog from "@mui/material/Dialog";
 import CircularProgress from "@mui/material/CircularProgress";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
@@ -45,10 +48,12 @@ const FrtRequestActivity = () => {
   const [snackbar, setSnackbar] = useState(null);
   const [loadOpen, setLoadOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-
-  // State for Table Pagination
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // State for the confirmation dialog
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [requestToCancel, setRequestToCancel] = useState(null);
 
   const navigate = useNavigate();
   const loggedInUser = JSON.parse(localStorage.getItem("user"));
@@ -140,15 +145,40 @@ const FrtRequestActivity = () => {
     setPage(0);
   };
 
+  // --- Start of Cancellation Logic ---
+
   /**
-   * NEW: Handles the "Cancel Request" button click.
-   * Calls the API to cancel a specific request.
-   * @param {object} requestData - The data of the row to be cancelled.
+   * Opens the confirmation dialog and sets the request to be cancelled.
+   */
+  const handleOpenConfirmDialog = (requestData) => {
+    setRequestToCancel(requestData);
+    setConfirmDialogOpen(true);
+  };
+
+  /**
+   * Closes the confirmation dialog and clears the selected request.
+   */
+  const handleCloseConfirmDialog = () => {
+    setConfirmDialogOpen(false);
+    setRequestToCancel(null);
+  };
+
+  /**
+   * Confirms the cancellation, closes the dialog, and proceeds with the API call.
+   */
+  const handleConfirmCancel = () => {
+    if (requestToCancel) {
+      handleCancelRequest(requestToCancel);
+    }
+    handleCloseConfirmDialog();
+  };
+
+  /**
+   * Handles the API call to cancel a specific request.
    */
   const handleCancelRequest = async (requestData) => {
     handleLoadOpen();
     try {
-      // Payload includes reqid, branchcode, and the status for 'Cancelled'
       const data = {
         reqid: requestData.ID,
         branchcode: requestData.BRANCH_CODE,
@@ -163,7 +193,6 @@ const FrtRequestActivity = () => {
 
       let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
 
-      // Assuming the same endpoint handles the cancel action
       const response = await axios.post(
         "Server/frtRequestActivityService/requestAction",
         payload,
@@ -189,47 +218,7 @@ const FrtRequestActivity = () => {
     }
   };
 
-  /**
-   * This function is axios call to accept the request.
-   **/
-  const handleAccept = async (requestData) => {
-    handleLoadOpen();
-    try {
-      let jsonFormData = JSON.stringify({
-        id: requestData.ID,
-        status: "2",
-      });
-      jsonFormData = await encrypt(iv, salt, jsonFormData);
-
-      let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
-
-      const response = await axios.post(
-        "Server/frtRequestActivityService/requestAction",
-        payload,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
-
-      if (response.data.result) {
-        await fetchData();
-        setSnackbar({ children: response.data.message, severity: "success" });
-      } else {
-        setSnackbar({
-          children: response.data.message || "An error occurred.",
-          severity: "error",
-        });
-      }
-    } catch (e) {
-      console.error(e);
-      setSnackbar({
-        children: "An error occurred. Please try again.",
-        severity: "error",
-      });
-    } finally {
-      handleDialogClose();
-    }
-  };
+  // --- End of Cancellation Logic ---
 
   const handleAcceptAll = async () => {
     handleLoadOpen();
@@ -314,6 +303,7 @@ const FrtRequestActivity = () => {
   return (
     <ThemeProvider theme={defaultTheme}>
       <Box sx={{ display: "flex", flexDirection: "column" }}>
+        {/* Main Content Grid */}
         <Grid container alignItems="center" justifyContent="space-between">
           <Grid item>
             <Typography variant={"h5"}>Track Request</Typography>
@@ -370,6 +360,7 @@ const FrtRequestActivity = () => {
         <br />
         <Divider />
 
+        {/* Data Table */}
         <Paper sx={{ width: "100%", overflow: "hidden", mt: 2 }}>
           <TableContainer sx={{ maxHeight: "calc(100vh - 280px)" }}>
             <Table stickyHeader aria-label="request status table">
@@ -407,14 +398,13 @@ const FrtRequestActivity = () => {
                           {renderStatusChip(row.STATUS)}
                         </TableCell>
                         <TableCell align="center">
-                          {/* UPDATED: Show Cancel button for user's own pending requests */}
                           {row.STATUS === "1" &&
                             row.REQUESTED_USER === loggedInUser.pf_number && (
                               <Button
                                 variant="contained"
                                 color="error"
                                 size="small"
-                                onClick={() => handleCancelRequest(row)}
+                                onClick={() => handleOpenConfirmDialog(row)}
                               >
                                 Cancel Request
                               </Button>
@@ -447,6 +437,24 @@ const FrtRequestActivity = () => {
             onRowsPerPageChange={handleChangeRowsPerPage}
           />
         </Paper>
+
+        {/* Confirmation Dialog for Cancellation */}
+        <Dialog open={confirmDialogOpen} onClose={handleCloseConfirmDialog}>
+          <DialogTitle>Confirm Cancellation</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Are you sure you want to cancel Request ID:{" "}
+              <strong>{requestToCancel?.ID}</strong>? This action cannot be
+              undone.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseConfirmDialog}>No</Button>
+            <Button onClick={handleConfirmCancel} color="error" autoFocus>
+              Yes, Cancel
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {/* Loading Dialog */}
         <Dialog
