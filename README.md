@@ -1,157 +1,673 @@
-package com.crs.commonReportsService.models;
 
-import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import { useEffect, useState } from "react";
+import { createTheme, styled, ThemeProvider } from "@mui/material/styles";
+import Grid from "@mui/material/Grid";
+import IconButton from "@mui/material/IconButton";
+import Typography from "@mui/material/Typography";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import Divider from "@mui/material/Divider";
+import { Box } from "@mui/system";
+import {
+  Menu,
+  MenuItem,
+  InputBase,
+  Button,
+  Chip,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  Paper,
+} from "@mui/material";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import DialogContent from "@mui/material/DialogContent";
+import Dialog from "@mui/material/Dialog";
+import CircularProgress from "@mui/material/CircularProgress";
+import { SnackbarProvider } from "notistack";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import FilterAltIcon from "@mui/icons-material/FilterAlt";
+import { Close, DoneAll } from "@mui/icons-material";
+import FrtViewModel from "./FrtViewModel";
+import { encrypt } from "../Security/AES-GCM256";
 
-// Report RW-02
+// Note: The crypto and encryption logic is retained as is from the original file.
+const iv = crypto.getRandomValues(new Uint8Array(12));
+const ivBase64 = btoa(String.fromCharCode.apply(null, iv));
+const salt = crypto.getRandomValues(new Uint8Array(16));
+const saltBase64 = btoa(String.fromCharCode.apply(null, salt));
 
-@Getter
-@Setter
-@Entity
-@Table(name = "CRS_STND_ASSETS")
-public class CrsStndAssets {
+const defaultTheme = createTheme();
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY, generator = "CRS_STND_SEQ")
-    @SequenceGenerator(name = "CRS_STND_SEQ", sequenceName = "CRS_STND_SEQ", allocationSize = 1)
-    @Column(name = "STND_ASSETS_SEQ")
-    private int stndassetsseq;
+const FrtRequestActivity = () => {
+  document.title = "CRS | Track Request";
 
-    @Column(name = "STND_ASTS_NAME_OF_BORROWER")
-    private String stndastsnameofborrower;
+  const [requestList, setRequestList] = useState([]);
+  const [content, setContent] = useState("Loading . . .");
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [snackbar, setSnackbar] = useState(null);
+  const open = Boolean(anchorEl);
+  const [loadOpen, setLoadOpen] = useState(false);
+  const [currentUserData, setCurrentUserData] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewOpen, setViewOpen] = useState(false);
+  const [hideCancel, setHideCancel] = useState(false);
 
-    @Column(name = "STND_ASTS_INFRA_NON_INFRA")
-    private String stndastsinfranoninfra;
+  // State for Table Pagination
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
-    @Column(name = "STND_ASTS_INFRA_WITHIN2YRS")
-    private String stndastsinfrawithin2YRS;
+  const navigate = useNavigate();
+  const loggedInUser = JSON.parse(localStorage.getItem("user"));
 
-    @Column(name = "STND_ASTS_INFRA_ACCTS2YRS")
-    private String stndastsinfraaccts2YRS;
-
-    @Column(name = "STND_ASTS_NONINFRA_WITHIN1YR")
-    private String stndastsnoninfrawithin1YR;
-
-    @Column(name = "STND_ASTS_NONINFRA_ACCTS1YR")
-    private String stndastsnoninfraaccts1YR;
-
-    @Column(name = "STND_ASSETS_BRANCH")
-    private String stndastsbranch;
-
-    @Column(name = "STND_ASSETS_DATE")
-    private String stndastsdate;
-
-    @Column(name = "REPORT_MASTER_LIST_ID_FK")
-    private int stndidfk;
-}
-
-////////////////////////////////
-
-
-{
-
-        log.info("map >>> " + map);
-
-        // Data Receive here
-        Map<String, Object> data = (Map<String, Object>) map.get("data");
-        Map<String, Object> loginuserData = (Map<String, Object>) map.get("user");
-        log.info("data >>> " + data);
-        log.info("loginuserData >>> " + loginuserData);
-
-        //List of ROW Data
-        List<String> dataList = (List<String>) data.get("value");
-
-        String submissionId=String.valueOf(data.get("submissionId"));
-
-        CrsStndAssets entity = new CrsStndAssets();
-        try {
-            // :: Insert the Branch ::
-            entity.setStndastsbranch((String) loginuserData.get("branch_code"));
-
-            // :: Insert the QED ::
-            entity.setStndastsdate((String) loginuserData.get("quarterEndDate"));
-
-            // Assign data based on dataList
-
-            // 1st Element :: nameOfBorrowerList
-            entity.setStndastsnameofborrower(dataList.get(0));
-            //2nd Element :: infraNonInfraList
-            entity.setStndastsinfranoninfra(dataList.get(1));
-
-            // Condition Check Variable INFRA or NONINFRA
-            String infraNonInfraList = dataList.get(1);
-            if (infraNonInfraList.equalsIgnoreCase("FOR INFRA")) {
-                entity.setStndastsinfraaccts2YRS(dataList.get(3));
-                entity.setStndastsinfrawithin2YRS(dataList.get(2));
-            } else if (infraNonInfraList.equalsIgnoreCase("FOR NON INFRA")) {
-                entity.setStndastsnoninfraaccts1YR(dataList.get(3));
-                entity.setStndastsnoninfrawithin1YR(dataList.get(2));
-            }
-
-            // Report Submission ID_FK
-            entity.setStndidfk(Integer.parseInt(submissionId));
-
-
-            // Check if ROW -ID is empty or null for insert scenario
-            if (dataList.get(5).trim().isEmpty() || dataList.get(5) == null) {
-                log.info("Entity Data for Insert: " + entity);
-
-                // Save the new entity
-                CrsStndAssets savedEntity = crsStndAssetsRepository.save(entity);
-                log.info("New row inserted successfully: " + savedEntity);
-
-                // Sending data to response MAP
-                Map<String,Object>resultDataMap=new HashMap<>();
-                resultDataMap.put("status",true);
-                resultDataMap.put("newRowNum",savedEntity.getStndassetsseq());
-
-                // Setting Up Success & Response Data
-                ResponseVO<Map<String,Object>> responseVO = new ResponseVO();
-                responseVO.setStatusCode(HttpStatus.OK.value());
-                responseVO.setMessage("Data Inserted successfully");
-                responseVO.setResult(resultDataMap);
-
-                return new ResponseEntity<>(responseVO, HttpStatus.OK);
-            } else {
-                // ID is provided, check for existence and update
-                int id = Integer.parseInt(dataList.get(5));
-                log.info("Received ID for Update: " + id + " Is ID Existed :" + crsStndAssetsRepository.existsBystndassetsseq(id));
-
-                ResponseVO<Map<String,Object>> responseVO = new ResponseVO();
-                Map<String,Object> resultDataMap=new HashMap<>();
-                if (crsStndAssetsRepository.existsBystndassetsseq(id)) {
-                    // Update existing row
-                    entity.setStndassetsseq(id);  // Set the ID for update
-
-                    CrsStndAssets updatedEntity = crsStndAssetsRepository.save(entity);
-                    log.info("Data Updated successfully: " + updatedEntity);
-
-                    resultDataMap.put("status",true);
-                    resultDataMap.put("newRowNum",entity.getStndassetsseq());
-
-                    responseVO.setStatusCode(HttpStatus.OK.value());
-                    responseVO.setMessage("Data Updated successfully");
-                    responseVO.setResult(resultDataMap);
-                    return new ResponseEntity<>(responseVO, HttpStatus.OK);
-                } else {
-                    // ID not found, handle error
-                    log.info("ID " + id + " not found for update");
-                    responseVO.setStatusCode(HttpStatus.BAD_REQUEST.value());
-                    responseVO.setMessage("Invalid ID provided. Record not found.");
-                    resultDataMap.put("status",false);
-                    responseVO.setResult(resultDataMap);
-                    return new ResponseEntity<>(responseVO, HttpStatus.BAD_REQUEST);
-                }
-            }
-
-        } catch (RuntimeException e) {
-            ResponseVO<String> responseVO = new ResponseVO();
-            log.info("Exception Occurred :"+e.getCause());
-            responseVO.setResult("false");
-            responseVO.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            responseVO.setMessage("Exception Occurred: " + e.getMessage());
-            return new ResponseEntity<>(responseVO, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-
+  useEffect(() => {
+    if (
+      loggedInUser.user_role !== "96" &&
+      loggedInUser.user_role !== "94" &&
+      loggedInUser.user_role !== "50" &&
+      loggedInUser.user_role !== "9"
+    ) {
+      navigate("/"); // logout
     }
+
+    fetchData().then(() => {
+      console.log("data fetched");
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * This function is axios call for fetching the list of requests from the backend.
+   * NOTE: It's assumed the API response objects contain fields similar to the JSP/DAO:
+   * { ID, CHANGE_REQ_TYPE, BRANCH_CODE, STATUS, REQUESTED_USER }
+   **/
+  const fetchData = async () => {
+    let jsonFormData = JSON.stringify({
+      quarterEndDate: loggedInUser.quarterEndDate,
+    });
+    await encrypt(iv, salt, jsonFormData).then(function (result) {
+      jsonFormData = result;
+    });
+    let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
+    try {
+      const response = await axios.post(
+        "/Server/EditBranch/fetchCrsRequests",
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      // Assuming response.data.result is an array of objects
+      // Example object: { ID: '101', CHANGE_REQ_TYPE: 'Audit Status', BRANCH_CODE: 'BR001', STATUS: '1', REQUESTED_USER: 'userpf' }
+      setRequestList(response.data.result);
+      console.log("data :", response.data.result);
+      setContent("No pending requests.");
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setContent("Error fetching data. Please try again.");
+    }
+  };
+
+  /**
+   * Opens the action menu for a specific table row.
+   * @param {object} event - The click event.
+   * @param {object} data - The request data for the selected row.
+   */
+  const handleMenuClick = (event, data) => {
+    setAnchorEl(event.currentTarget);
+    setCurrentUserData(data);
+    if (
+      loggedInUser.user_role === "50" &&
+      loggedInUser.pf_number !== data.REQUESTED_USER
+    ) {
+      setHideCancel(true);
+    }
+  };
+
+  /**
+   * Closes the action menu.
+   */
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setCurrentUserData(null);
+    setHideCancel(false);
+  };
+
+  const handleViewClose = () => {
+    setViewOpen(false);
+    handleMenuClose();
+  };
+
+  const handleMenuAction = () => {
+    setViewOpen(true);
+  };
+
+  const handleLoadOpen = () => setLoadOpen(true);
+  const handleDialogClose = () => setLoadOpen(false);
+  const handleCloseSnackbar = () => setSnackbar(null);
+
+  /**
+   * Filters the request list based on the search query (Branch Code).
+   */
+  const filteredRequests = requestList.filter((request) =>
+    request.BRANCH_CODE
+      ? request.BRANCH_CODE.toLowerCase().includes(searchQuery.toLowerCase())
+      : false
+  );
+
+  /**
+   * Handles page change event for table pagination.
+   */
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  /**
+   * Handles rows per page change event for table pagination.
+   */
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  // This function is for direct cancellation, similar to the JSP's "Cancel Request" button
+  // It is now integrated into the FrtViewModel, but the core logic is retained here.
+  const handleAction = async (type) => {
+    try {
+      let data;
+      let successMessage;
+      let errorMessage;
+
+      if (type === "reject") {
+        data = { id: currentUserData.ID, status: "3" };
+        successMessage = `Request successfully rejected for Req Id: ${currentUserData.ID}.`;
+        errorMessage = `Failed to reject the request for Req Id: ${currentUserData.ID}.`;
+      } else {
+        // 'cancel'
+        data = { id: currentUserData.ID, status: "4" };
+        successMessage = `Request successfully cancelled for Req Id: ${currentUserData.ID}.`;
+        errorMessage = `Failed to cancel the request for Req Id: ${currentUserData.ID}.`;
+      }
+
+      let jsonFormData = JSON.stringify(data);
+      jsonFormData = await encrypt(iv, salt, jsonFormData);
+
+      let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
+
+      const response = await axios.post(
+        "Server/frtRequestActivityService/requestAction",
+        payload,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+
+      if (response.data.statusCode === 200) {
+        await fetchData();
+        handleViewClose();
+        handleDialogClose();
+        setSnackbar({ children: successMessage, severity: "success" });
+      } else {
+        handleDialogClose();
+        setSnackbar({ children: errorMessage, severity: "error" });
+      }
+    } catch (e) {
+      console.error(e);
+      handleDialogClose();
+      setSnackbar({
+        children: "An error occurred. Please try again.",
+        severity: "error",
+      });
+    }
+  };
+
+  /**
+   * This function is axios call to accept the request.
+   **/
+  const handleAccept = async () => {
+    try {
+      let jsonFormData = JSON.stringify({
+        id: currentUserData.ID,
+        status: "2",
+      });
+      jsonFormData = await encrypt(iv, salt, jsonFormData);
+
+      let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
+
+      const response = await axios.post(
+        "Server/frtRequestActivityService/requestAction",
+        payload,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+
+      if (response.data.result) {
+        await fetchData();
+        handleViewClose();
+        handleDialogClose();
+        setSnackbar({ children: response.data.message, severity: "success" });
+      } else {
+        handleDialogClose();
+        setSnackbar({
+          children: response.data.message || "An error occurred.",
+          severity: "error",
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      handleDialogClose();
+      setSnackbar({
+        children: "An error occurred. Please try again.",
+        severity: "error",
+      });
+    }
+  };
+
+  const handleAcceptAll = async () => {
+    handleLoadOpen();
+    const requestsToAccept = requestList.filter(
+      (req) =>
+        req.REQUESTED_USER !== loggedInUser.pf_number && req.STATUS === "1"
+    );
+
+    let successCount = 0;
+
+    for (const req of requestsToAccept) {
+      try {
+        let jsonFormData = JSON.stringify({ id: req.ID, status: "2" });
+        jsonFormData = await encrypt(iv, salt, jsonFormData);
+        let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
+
+        const response = await axios.post(
+          "Server/frtRequestActivityService/requestAction",
+          payload,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        if (response.data.result) {
+          successCount++;
+        }
+      } catch (e) {
+        console.error(`Failed to accept request ID ${req.ID}:`, e);
+      }
+    }
+
+    await fetchData();
+    handleDialogClose();
+
+    if (requestsToAccept.length === successCount && successCount > 0) {
+      setSnackbar({
+        children: "All pending requests successfully accepted.",
+        severity: "success",
+      });
+    } else if (requestsToAccept.length > 0) {
+      const failedCount = requestsToAccept.length - successCount;
+      setSnackbar({
+        children: `${failedCount} request(s) failed to be accepted. ${successCount} accepted.`,
+        severity: "warning",
+      });
+    } else {
+      setSnackbar({
+        children: "No pending requests to accept.",
+        severity: "info",
+      });
+    }
+  };
+
+  /**
+   * Renders the status chip based on the status code.
+   * @param {string} status - The status code ('1', '2', '3', '4').
+   */
+  const renderStatusChip = (status) => {
+    let label, sx;
+    switch (status) {
+      case "1":
+        label = "Pending";
+        sx = { backgroundColor: "#F5BC51", color: "white" };
+        break;
+      case "2":
+        label = "Approved";
+        sx = { backgroundColor: "#51B92D", color: "white" };
+        break;
+      case "3":
+        label = "Rejected";
+        sx = { backgroundColor: "#8471FE", color: "white" };
+        break;
+      case "4":
+        label = "Cancelled";
+        sx = { backgroundColor: "#F9805C", color: "white" };
+        break;
+      default:
+        label = "Unknown";
+        sx = { backgroundColor: "grey", color: "white" };
+    }
+    return <Chip label={label} sx={{ ...sx, fontWeight: "bold" }} />;
+  };
+
+  return (
+    <ThemeProvider theme={defaultTheme}>
+      <Box sx={{ display: "flex", flexDirection: "column" }}>
+        <Grid container alignItems="center" justifyContent="space-between">
+          <Grid item>
+            <Typography variant={"h5"}>Track Request</Typography>
+          </Grid>
+          <Grid item>
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <Paper
+                component="form"
+                sx={{
+                  p: "2px 4px",
+                  display: "flex",
+                  alignItems: "center",
+                  width: 350,
+                }}
+                onSubmit={(e) => e.preventDefault()}
+              >
+                <FilterAltIcon sx={{ ml: 1, color: "text.secondary" }} />
+                <Divider sx={{ height: 28, m: 1.0 }} orientation="vertical" />
+                <InputBase
+                  sx={{ ml: 1, flex: 1 }}
+                  placeholder="Filter by Branch"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setPage(0); // Reset to first page on new search
+                    setSearchQuery(e.target.value);
+                  }}
+                />
+                <Divider sx={{ height: 28, m: 1.0 }} orientation="vertical" />
+                <IconButton
+                  type="button"
+                  sx={{ p: "10px" }}
+                  aria-label="clear"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <Close />
+                </IconButton>
+              </Paper>
+              {requestList.length > 0 && loggedInUser.user_role === "50" && (
+                <Button
+                  onClick={handleAcceptAll}
+                  variant="contained"
+                  disableElevation
+                  color="success"
+                  startIcon={<DoneAll />}
+                  sx={{ ml: 2 }}
+                >
+                  Accept All
+                </Button>
+              )}
+            </Box>
+          </Grid>
+        </Grid>
+
+        <br />
+        <Divider />
+
+        <Paper sx={{ width: "100%", overflow: "hidden", mt: 2 }}>
+          <TableContainer sx={{ maxHeight: "calc(100vh - 280px)" }}>
+            <Table stickyHeader aria-label="request status table">
+              <TableHead>
+                <TableRow
+                  sx={{
+                    "& th": { backgroundColor: "#b9def0", fontWeight: "bold" },
+                  }}
+                >
+                  <TableCell align="center">Req ID</TableCell>
+                  <TableCell align="left">Change Request For</TableCell>
+                  <TableCell align="left">Branch</TableCell>
+                  <TableCell align="center">Status</TableCell>
+                  <TableCell align="center">Action</TableCell>
+                  <TableCell align="left">Requested By</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredRequests.length > 0 ? (
+                  filteredRequests
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((row) => (
+                      <TableRow
+                        hover
+                        role="checkbox"
+                        tabIndex={-1}
+                        key={row.ID}
+                      >
+                        <TableCell align="center">{row.ID}</TableCell>
+                        <TableCell align="left">
+                          {row.CHANGE_REQ_TYPE}
+                        </TableCell>
+                        <TableCell align="left">{row.BRANCH_CODE}</TableCell>
+                        <TableCell align="center">
+                          {renderStatusChip(row.STATUS)}
+                        </TableCell>
+                        <TableCell align="center">
+                          {row.STATUS === "1" && (
+                            <IconButton
+                              aria-label="actions"
+                              onClick={(e) => handleMenuClick(e, row)}
+                            >
+                              <MoreVertIcon />
+                            </IconButton>
+                          )}
+                        </TableCell>
+                        <TableCell align="left">{row.REQUESTED_USER}</TableCell>
+                      </TableRow>
+                    ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center">
+                      <Typography variant="subtitle1" sx={{ p: 3 }}>
+                        {requestList.length === 0
+                          ? content
+                          : "No records match your search query."}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <TablePagination
+            rowsPerPageOptions={[10, 25, 100]}
+            component="div"
+            count={filteredRequests.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
+        </Paper>
+
+        {/* Action Menu */}
+        <Menu
+          elevation={1}
+          anchorEl={anchorEl}
+          open={open}
+          onClose={handleMenuClose}
+          transformOrigin={{ horizontal: "right", vertical: "top" }}
+          anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+        >
+          {anchorEl && (
+            <MenuItem onClick={handleMenuAction}>
+              <ListItemIcon>
+                <VisibilityIcon fontSize="small" />
+              </ListItemIcon>
+              View Request
+            </MenuItem>
+          )}
+        </Menu>
+
+        {/* Loading Dialog */}
+        <Dialog
+          open={loadOpen}
+          PaperProps={{
+            style: { backgroundColor: "transparent", boxShadow: "none" },
+          }}
+        >
+          <DialogContent>
+            <CircularProgress />
+          </DialogContent>
+        </Dialog>
+
+        {/* Snackbar */}
+        {snackbar && (
+          <Snackbar
+            open
+            anchorOrigin={{ vertical: "top", horizontal: "center" }}
+            onClose={handleCloseSnackbar}
+            autoHideDuration={4000}
+          >
+            <Alert
+              variant="filled"
+              {...snackbar}
+              onClose={handleCloseSnackbar}
+            />
+          </Snackbar>
+        )}
+
+        {/* View/Action Modal */}
+        {currentUserData && (
+          <FrtViewModel
+            openViewModal={viewOpen}
+            handleAccept={handleAccept}
+            handleReject={handleAction}
+            userData={currentUserData}
+            handleClose={handleViewClose}
+            handleLoadOpen={handleLoadOpen}
+            role={loggedInUser.user_role}
+            hideCancel={hideCancel}
+          />
+        )}
+      </Box>
+    </ThemeProvider>
+  );
+};
+
+export default FrtRequestActivity;
+////////////////////////////////////////////////////////////
+
+if(status.equalsIgnoreCase("1")) {
+
+                        frtTrack.setStatus("Pending");
+
+                    }
+
+                    else if(status.equalsIgnoreCase("2")) {
+
+                        frtTrack.setStatus("Accepted");
+
+                    }
+
+                    else if(status.equalsIgnoreCase("3")) {
+
+                        frtTrack.setStatus("Rejected");
+
+                    }
+
+                    else if(status.equalsIgnoreCase("4")) {
+
+                        frtTrack.setStatus("Cancelled");
+
+                    }
+ 
+if(reqType.equalsIgnoreCase("A")) {
+
+                        if(reqSubType.equalsIgnoreCase("S")) {
+
+                            frtTrack.setChangeReq_Type("Audit Status");
+
+                            frtTrack.setBranchCode(rs1.getString("RT_BRANCH"));
+
+                        }
+
+                        if(reqSubType.equalsIgnoreCase("M")) {
+
+                            frtTrack.setChangeReq_Type("Audit Status");
+
+                            frtTrack.setBranchCode("Multiple Branches");
+
+                        }
+
+                    }
+ 
+                    else if(reqType.equalsIgnoreCase("B")) {
+
+                        if(reqSubType.equalsIgnoreCase("A")) {
+
+                            frtTrack.setChangeReq_Type("Add Branch");
+
+                            frtTrack.setBranchCode(rs1.getString("RT_BRANCH"));
+
+                        }
+
+                        if(reqSubType.equalsIgnoreCase("D")) {
+
+                            frtTrack.setChangeReq_Type("Delete Branch");
+
+                            frtTrack.setBranchCode(rs1.getString("RT_BRANCH"));
+
+                        }
+
+                    }
+ 
+
+
+//////////////////////////////////////////////////////////
+[
+    {
+        "RT_MAKER": "FRT MAKER",
+        "RT_STATUS": 1,
+        "RT_FILE_NAME": null,
+        "RT_BRANCH": "00760",
+        "RT_SUBTYPE": "M",
+        "RT_ID": 325,
+        "RT_TYPE": "A"
+    },
+    {
+        "RT_MAKER": "FRT MAKER",
+        "RT_STATUS": 1,
+        "RT_FILE_NAME": null,
+        "RT_BRANCH": "70102",
+        "RT_SUBTYPE": "D",
+        "RT_TYPE": "B",
+        "RT_ID": 323
+    },
+    {
+        "RT_MAKER": "FRT MAKER",
+        "RT_STATUS": 1,
+        "RT_FILE_NAME": null,
+        "RT_SUBTYPE": "A",
+        "RT_ID": 322,
+        "RT_TYPE": "B",
+        "RT_BRANCH": "44444"
+    },
+    {
+        "RT_MAKER": "FRT MAKER",
+        "RT_STATUS": 2,
+        "RT_FILE_NAME": null,
+        "RT_BRANCH": "70102",
+        "RT_SUBTYPE": "S",
+        "RT_TYPE": "A",
+        "RT_ID": 324
+    },
+    {
+        "RT_MAKER": "FRT MAKER",
+        "RT_STATUS": 2,
+        "RT_FILE_NAME": null,
+        "RT_ID": 321,
+        "RT_SUBTYPE": "D",
+        "RT_TYPE": "B",
+        "RT_BRANCH": "44444"
+    }
+]
