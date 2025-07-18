@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createTheme, styled, ThemeProvider } from "@mui/material/styles";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
 import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
@@ -8,8 +8,6 @@ import { useNavigate } from "react-router-dom";
 import Divider from "@mui/material/Divider";
 import { Box } from "@mui/system";
 import {
-  Menu,
-  MenuItem,
   InputBase,
   Button,
   Chip,
@@ -22,18 +20,13 @@ import {
   TablePagination,
   Paper,
 } from "@mui/material";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
-import ListItemIcon from "@mui/material/ListItemIcon";
 import DialogContent from "@mui/material/DialogContent";
 import Dialog from "@mui/material/Dialog";
 import CircularProgress from "@mui/material/CircularProgress";
-import { SnackbarProvider } from "notistack";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import { Close, DoneAll } from "@mui/icons-material";
-import FrtViewModel from "./FrtViewModel";
 import { encrypt } from "../Security/AES-GCM256";
 
 // Note: The crypto and encryption logic is retained as is from the original file.
@@ -49,14 +42,9 @@ const FrtRequestActivity = () => {
 
   const [requestList, setRequestList] = useState([]);
   const [content, setContent] = useState("Loading . . .");
-  const [anchorEl, setAnchorEl] = useState(null);
   const [snackbar, setSnackbar] = useState(null);
-  const open = Boolean(anchorEl);
   const [loadOpen, setLoadOpen] = useState(false);
-  const [currentUserData, setCurrentUserData] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewOpen, setViewOpen] = useState(false);
-  const [hideCancel, setHideCancel] = useState(false);
 
   // State for Table Pagination
   const [page, setPage] = useState(0);
@@ -81,11 +69,6 @@ const FrtRequestActivity = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /**
-   * This function is axios call for fetching the list of requests from the backend.
-   * NOTE: It's assumed the API response objects contain fields similar to the JSP/DAO:
-   * { ID, CHANGE_REQ_TYPE, BRANCH_CODE, STATUS, REQUESTED_USER }
-   **/
   const fetchData = async () => {
     let jsonFormData = JSON.stringify({
       quarterEndDate: loggedInUser.quarterEndDate,
@@ -105,12 +88,10 @@ const FrtRequestActivity = () => {
         }
       );
 
-      // Transform the raw API data to match the component's expected structure
       const transformedData = response.data.result.map((item) => {
         let changeReqType = "Unknown";
         let branchCode = item.RT_BRANCH;
 
-        // Logic to determine Change Request Type based on RT_TYPE and RT_SUBTYPE
         if (item.RT_TYPE === "A") {
           changeReqType = "Audit Status";
           if (item.RT_SUBTYPE === "M") {
@@ -123,19 +104,16 @@ const FrtRequestActivity = () => {
             changeReqType = "Delete Branch";
           }
         }
-
-        // Return the object in the format the table expects
         return {
           ID: item.RT_ID,
           CHANGE_REQ_TYPE: changeReqType,
           BRANCH_CODE: branchCode,
-          STATUS: String(item.RT_STATUS), // Convert number to string for renderStatusChip
+          STATUS: String(item.RT_STATUS),
           REQUESTED_USER: item.RT_MAKER,
         };
       });
 
       setRequestList(transformedData);
-      console.log("Transformed data:", transformedData);
       setContent("No pending requests.");
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -143,87 +121,49 @@ const FrtRequestActivity = () => {
     }
   };
 
-  const handleMenuClick = (event, data) => {
-    setAnchorEl(event.currentTarget);
-    setCurrentUserData(data);
-    if (
-      loggedInUser.user_role === "50" &&
-      loggedInUser.pf_number !== data.REQUESTED_USER
-    ) {
-      setHideCancel(true);
-    }
-  };
-
-  /**
-   * Closes the action menu.
-   */
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setCurrentUserData(null);
-    setHideCancel(false);
-  };
-
-  const handleViewClose = () => {
-    setViewOpen(false);
-    handleMenuClose();
-  };
-
-  const handleMenuAction = () => {
-    setViewOpen(true);
-  };
-
   const handleLoadOpen = () => setLoadOpen(true);
   const handleDialogClose = () => setLoadOpen(false);
   const handleCloseSnackbar = () => setSnackbar(null);
 
-  /**
-   * Filters the request list based on the search query (Branch Code).
-   */
   const filteredRequests = requestList.filter((request) =>
     request.BRANCH_CODE
       ? request.BRANCH_CODE.toLowerCase().includes(searchQuery.toLowerCase())
       : false
   );
 
-  /**
-   * Handles page change event for table pagination.
-   */
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
 
-  /**
-   * Handles rows per page change event for table pagination.
-   */
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
-  // This function is for direct cancellation, similar to the JSP's "Cancel Request" button
-  // It is now integrated into the FrtViewModel, but the core logic is retained here.
-  const handleAction = async (type) => {
+  /**
+   * NEW: Handles the "Cancel Request" button click.
+   * Calls the API to cancel a specific request.
+   * @param {object} requestData - The data of the row to be cancelled.
+   */
+  const handleCancelRequest = async (requestData) => {
+    handleLoadOpen();
     try {
-      let data;
-      let successMessage;
-      let errorMessage;
+      // Payload includes reqid, branchcode, and the status for 'Cancelled'
+      const data = {
+        reqid: requestData.ID,
+        branchcode: requestData.BRANCH_CODE,
+        status: "4", // '4' for Cancelled
+      };
 
-      if (type === "reject") {
-        data = { id: currentUserData.ID, status: "3" };
-        successMessage = `Request successfully rejected for Req Id: ${currentUserData.ID}.`;
-        errorMessage = `Failed to reject the request for Req Id: ${currentUserData.ID}.`;
-      } else {
-        // 'cancel'
-        data = { id: currentUserData.ID, status: "4" };
-        successMessage = `Request successfully cancelled for Req Id: ${currentUserData.ID}.`;
-        errorMessage = `Failed to cancel the request for Req Id: ${currentUserData.ID}.`;
-      }
+      const successMessage = `Request successfully cancelled for Req Id: ${requestData.ID}.`;
+      const errorMessage = `Failed to cancel the request for Req Id: ${requestData.ID}.`;
 
       let jsonFormData = JSON.stringify(data);
       jsonFormData = await encrypt(iv, salt, jsonFormData);
 
       let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
 
+      // Assuming the same endpoint handles the cancel action
       const response = await axios.post(
         "Server/frtRequestActivityService/requestAction",
         payload,
@@ -233,31 +173,30 @@ const FrtRequestActivity = () => {
       );
 
       if (response.data.statusCode === 200) {
-        await fetchData();
-        handleViewClose();
-        handleDialogClose();
+        await fetchData(); // Refresh list on success
         setSnackbar({ children: successMessage, severity: "success" });
       } else {
-        handleDialogClose();
         setSnackbar({ children: errorMessage, severity: "error" });
       }
     } catch (e) {
-      console.error(e);
-      handleDialogClose();
+      console.error("Error cancelling request:", e);
       setSnackbar({
         children: "An error occurred. Please try again.",
         severity: "error",
       });
+    } finally {
+      handleDialogClose();
     }
   };
 
   /**
    * This function is axios call to accept the request.
    **/
-  const handleAccept = async () => {
+  const handleAccept = async (requestData) => {
+    handleLoadOpen();
     try {
       let jsonFormData = JSON.stringify({
-        id: currentUserData.ID,
+        id: requestData.ID,
         status: "2",
       });
       jsonFormData = await encrypt(iv, salt, jsonFormData);
@@ -274,11 +213,8 @@ const FrtRequestActivity = () => {
 
       if (response.data.result) {
         await fetchData();
-        handleViewClose();
-        handleDialogClose();
         setSnackbar({ children: response.data.message, severity: "success" });
       } else {
-        handleDialogClose();
         setSnackbar({
           children: response.data.message || "An error occurred.",
           severity: "error",
@@ -286,11 +222,12 @@ const FrtRequestActivity = () => {
       }
     } catch (e) {
       console.error(e);
-      handleDialogClose();
       setSnackbar({
         children: "An error occurred. Please try again.",
         severity: "error",
       });
+    } finally {
+      handleDialogClose();
     }
   };
 
@@ -348,10 +285,6 @@ const FrtRequestActivity = () => {
     }
   };
 
-  /**
-   * Renders the status chip based on the status code.
-   * @param {string} status - The status code ('1', '2', '3', '4').
-   */
   const renderStatusChip = (status) => {
     let label, sx;
     switch (status) {
@@ -404,7 +337,7 @@ const FrtRequestActivity = () => {
                   placeholder="Filter by Branch"
                   value={searchQuery}
                   onChange={(e) => {
-                    setPage(0); // Reset to first page on new search
+                    setPage(0);
                     setSearchQuery(e.target.value);
                   }}
                 />
@@ -474,14 +407,18 @@ const FrtRequestActivity = () => {
                           {renderStatusChip(row.STATUS)}
                         </TableCell>
                         <TableCell align="center">
-                          {row.STATUS === "1" && (
-                            <IconButton
-                              aria-label="actions"
-                              onClick={(e) => handleMenuClick(e, row)}
-                            >
-                              <MoreVertIcon />
-                            </IconButton>
-                          )}
+                          {/* UPDATED: Show Cancel button for user's own pending requests */}
+                          {row.STATUS === "1" &&
+                            row.REQUESTED_USER === loggedInUser.pf_number && (
+                              <Button
+                                variant="contained"
+                                color="error"
+                                size="small"
+                                onClick={() => handleCancelRequest(row)}
+                              >
+                                Cancel Request
+                              </Button>
+                            )}
                         </TableCell>
                         <TableCell align="left">{row.REQUESTED_USER}</TableCell>
                       </TableRow>
@@ -511,25 +448,6 @@ const FrtRequestActivity = () => {
           />
         </Paper>
 
-        {/* Action Menu */}
-        <Menu
-          elevation={1}
-          anchorEl={anchorEl}
-          open={open}
-          onClose={handleMenuClose}
-          transformOrigin={{ horizontal: "right", vertical: "top" }}
-          anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-        >
-          {anchorEl && (
-            <MenuItem onClick={handleMenuAction}>
-              <ListItemIcon>
-                <VisibilityIcon fontSize="small" />
-              </ListItemIcon>
-              View Request
-            </MenuItem>
-          )}
-        </Menu>
-
         {/* Loading Dialog */}
         <Dialog
           open={loadOpen}
@@ -556,20 +474,6 @@ const FrtRequestActivity = () => {
               onClose={handleCloseSnackbar}
             />
           </Snackbar>
-        )}
-
-        {/* View/Action Modal */}
-        {currentUserData && (
-          <FrtViewModel
-            openViewModal={viewOpen}
-            handleAccept={handleAccept}
-            handleReject={handleAction}
-            userData={currentUserData}
-            handleClose={handleViewClose}
-            handleLoadOpen={handleLoadOpen}
-            role={loggedInUser.user_role}
-            hideCancel={hideCancel}
-          />
         )}
       </Box>
     </ThemeProvider>
