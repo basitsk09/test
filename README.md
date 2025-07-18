@@ -1,137 +1,157 @@
-Thanks! You’ve shared all the key pieces:
+package com.crs.commonReportsService.models;
 
-Java code that saves a new CrsRequestTrack
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
-Oracle table schema
+// Report RW-02
 
-Your entity class
-
-
-Now let’s pinpoint why you're getting:
-
-> ❌ DataIntegrityViolationException
-
-
-
-
----
-
-🔍 Root Cause: Date Fields as Strings
-
-Your entity has 3 DATE columns in Oracle:
-
-"RT_DATE"       DATE DEFAULT sysdate,
-"RT_ACTION_DT"  DATE,
-"RT_QED"        DATE NOT NULL ENABLE,
-
-But in your Java entity, they are all defined as:
-
-public String rtDate;
-public String rtActionDt;
-public String rtQed;
-
-You're assigning this in your Java code:
-
-crsRequestTrack.setRtQed(quarterEndDate); // quarterEndDate is likely a String in dd/MM/yyyy
-
-If quarterEndDate is "18/07/2025" → this will fail, because Oracle expects a valid DATE, but you're passing a String that cannot be parsed correctly by Hibernate.
-
-
----
-
-✅ FIX
-
-✅ Step 1: Convert String to LocalDate
-
-Change the date fields in the entity from String to LocalDate (or java.util.Date if you're not using Java 8+):
-
-@Column(name="RT_QED")
-private LocalDate rtQed;
-
-@Column(name="RT_DATE", insertable = false, updatable = false)
-private LocalDate rtDate; // handled by Oracle default sysdate
-
-@Column(name="RT_ACTION_DT")
-private LocalDate rtActionDt;
-
-> ☝️ RT_DATE has a DEFAULT sysdate — so you don’t need to set it manually.
-
-
-
-✅ Step 2: Format the input
-
-In your code, parse the date from dd/MM/yyyy:
-
-DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-LocalDate qedDate = LocalDate.parse(quarterEndDate, formatter);
-crsRequestTrack.setRtQed(qedDate);
-
-✅ Step 3: Do not set RT_DATE manually
-
-Let Oracle handle it with DEFAULT sysdate, so remove any call like:
-
-crsRequestTrack.setRtDate(...); // ❌ Don’t do this
-
-
----
-
-✅ Updated Entity (Partial)
-
+@Getter
+@Setter
 @Entity
-@Table(name = "CRS_REQUEST_TRACK")
-public class CrsRequestTrack {
+@Table(name = "CRS_STND_ASSETS")
+public class CrsStndAssets {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "crs_seq")
-    @SequenceGenerator(name = "crs_seq", sequenceName = "CRS_REQUEST_TRACK_SEQ", allocationSize = 1)
-    @Column(name="RT_ID")
-    private Long rtId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY, generator = "CRS_STND_SEQ")
+    @SequenceGenerator(name = "CRS_STND_SEQ", sequenceName = "CRS_STND_SEQ", allocationSize = 1)
+    @Column(name = "STND_ASSETS_SEQ")
+    private int stndassetsseq;
 
-    @Column(name="RT_MAKER")
-    private String rtMaker;
+    @Column(name = "STND_ASTS_NAME_OF_BORROWER")
+    private String stndastsnameofborrower;
 
-    @Column(name="RT_DATE", insertable = false, updatable = false)
-    private LocalDate rtDate;
+    @Column(name = "STND_ASTS_INFRA_NON_INFRA")
+    private String stndastsinfranoninfra;
 
-    @Column(name="RT_STATUS")
-    private Integer rtStatus;
+    @Column(name = "STND_ASTS_INFRA_WITHIN2YRS")
+    private String stndastsinfrawithin2YRS;
 
-    @Column(name="RT_TYPE")
-    private String rtType;
+    @Column(name = "STND_ASTS_INFRA_ACCTS2YRS")
+    private String stndastsinfraaccts2YRS;
 
-    @Column(name="RT_SUBTYPE")
-    private String rtSubType;
+    @Column(name = "STND_ASTS_NONINFRA_WITHIN1YR")
+    private String stndastsnoninfrawithin1YR;
 
-    @Column(name="RT_CHECKER")
-    private String rtChecker;
+    @Column(name = "STND_ASTS_NONINFRA_ACCTS1YR")
+    private String stndastsnoninfraaccts1YR;
 
-    @Column(name="RT_ACTION_DT")
-    private LocalDate rtActionDt;
+    @Column(name = "STND_ASSETS_BRANCH")
+    private String stndastsbranch;
 
-    @Column(name="RT_QED")
-    private LocalDate rtQed;
+    @Column(name = "STND_ASSETS_DATE")
+    private String stndastsdate;
 
-    @Column(name="RT_BRANCH")
-    private String rtBranch;
-
-    @Column(name="RT_FILE_NAME")
-    private String rtFileName;
+    @Column(name = "REPORT_MASTER_LIST_ID_FK")
+    private int stndidfk;
 }
 
-
----
-
-✅ Summary
-
-Problem	Fix
-
-RT_QED is NOT NULL in DB, but you're passing string (invalid format)	Change to LocalDate in entity, and parse input date
-RT_DATE has default in DB	Let Oracle handle it; do not set it manually
-Entity has String instead of Date types	Replace with LocalDate or Date
+////////////////////////////////
 
 
+{
 
----
+        log.info("map >>> " + map);
 
-Let me know if you want the java.util.Date version or complete working code based on your quarterEndDate variable.
+        // Data Receive here
+        Map<String, Object> data = (Map<String, Object>) map.get("data");
+        Map<String, Object> loginuserData = (Map<String, Object>) map.get("user");
+        log.info("data >>> " + data);
+        log.info("loginuserData >>> " + loginuserData);
 
+        //List of ROW Data
+        List<String> dataList = (List<String>) data.get("value");
+
+        String submissionId=String.valueOf(data.get("submissionId"));
+
+        CrsStndAssets entity = new CrsStndAssets();
+        try {
+            // :: Insert the Branch ::
+            entity.setStndastsbranch((String) loginuserData.get("branch_code"));
+
+            // :: Insert the QED ::
+            entity.setStndastsdate((String) loginuserData.get("quarterEndDate"));
+
+            // Assign data based on dataList
+
+            // 1st Element :: nameOfBorrowerList
+            entity.setStndastsnameofborrower(dataList.get(0));
+            //2nd Element :: infraNonInfraList
+            entity.setStndastsinfranoninfra(dataList.get(1));
+
+            // Condition Check Variable INFRA or NONINFRA
+            String infraNonInfraList = dataList.get(1);
+            if (infraNonInfraList.equalsIgnoreCase("FOR INFRA")) {
+                entity.setStndastsinfraaccts2YRS(dataList.get(3));
+                entity.setStndastsinfrawithin2YRS(dataList.get(2));
+            } else if (infraNonInfraList.equalsIgnoreCase("FOR NON INFRA")) {
+                entity.setStndastsnoninfraaccts1YR(dataList.get(3));
+                entity.setStndastsnoninfrawithin1YR(dataList.get(2));
+            }
+
+            // Report Submission ID_FK
+            entity.setStndidfk(Integer.parseInt(submissionId));
+
+
+            // Check if ROW -ID is empty or null for insert scenario
+            if (dataList.get(5).trim().isEmpty() || dataList.get(5) == null) {
+                log.info("Entity Data for Insert: " + entity);
+
+                // Save the new entity
+                CrsStndAssets savedEntity = crsStndAssetsRepository.save(entity);
+                log.info("New row inserted successfully: " + savedEntity);
+
+                // Sending data to response MAP
+                Map<String,Object>resultDataMap=new HashMap<>();
+                resultDataMap.put("status",true);
+                resultDataMap.put("newRowNum",savedEntity.getStndassetsseq());
+
+                // Setting Up Success & Response Data
+                ResponseVO<Map<String,Object>> responseVO = new ResponseVO();
+                responseVO.setStatusCode(HttpStatus.OK.value());
+                responseVO.setMessage("Data Inserted successfully");
+                responseVO.setResult(resultDataMap);
+
+                return new ResponseEntity<>(responseVO, HttpStatus.OK);
+            } else {
+                // ID is provided, check for existence and update
+                int id = Integer.parseInt(dataList.get(5));
+                log.info("Received ID for Update: " + id + " Is ID Existed :" + crsStndAssetsRepository.existsBystndassetsseq(id));
+
+                ResponseVO<Map<String,Object>> responseVO = new ResponseVO();
+                Map<String,Object> resultDataMap=new HashMap<>();
+                if (crsStndAssetsRepository.existsBystndassetsseq(id)) {
+                    // Update existing row
+                    entity.setStndassetsseq(id);  // Set the ID for update
+
+                    CrsStndAssets updatedEntity = crsStndAssetsRepository.save(entity);
+                    log.info("Data Updated successfully: " + updatedEntity);
+
+                    resultDataMap.put("status",true);
+                    resultDataMap.put("newRowNum",entity.getStndassetsseq());
+
+                    responseVO.setStatusCode(HttpStatus.OK.value());
+                    responseVO.setMessage("Data Updated successfully");
+                    responseVO.setResult(resultDataMap);
+                    return new ResponseEntity<>(responseVO, HttpStatus.OK);
+                } else {
+                    // ID not found, handle error
+                    log.info("ID " + id + " not found for update");
+                    responseVO.setStatusCode(HttpStatus.BAD_REQUEST.value());
+                    responseVO.setMessage("Invalid ID provided. Record not found.");
+                    resultDataMap.put("status",false);
+                    responseVO.setResult(resultDataMap);
+                    return new ResponseEntity<>(responseVO, HttpStatus.BAD_REQUEST);
+                }
+            }
+
+        } catch (RuntimeException e) {
+            ResponseVO<String> responseVO = new ResponseVO();
+            log.info("Exception Occurred :"+e.getCause());
+            responseVO.setResult("false");
+            responseVO.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+            responseVO.setMessage("Exception Occurred: " + e.getMessage());
+            return new ResponseEntity<>(responseVO, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+    }
