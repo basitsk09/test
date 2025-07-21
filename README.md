@@ -21,33 +21,7 @@ import {
   Typography,
   CircularProgress,
 } from "@mui/material";
-//import FrtCheckerLayout from "../Layouts/FrtCheckerLayout";
-
-// Dummy data to simulate API response based on JSP variables
-const createDummyData = (
-  id,
-  branchCode,
-  branchName,
-  beforeSts,
-  afterSts,
-  reqSts,
-  reqOn
-) => {
-  // Combines rt_id and id for a unique request identifier, similar to the JSP
-  const reqId = `FRT-AS-${id}`;
-  return {
-    id,
-    reqId,
-    branchCode,
-    branchName,
-    beforeSts,
-    afterSts,
-    reqSts,
-    reqOn,
-  };
-};
-
-const initialRows = [];
+import axios from "axios";
 
 // Table Header Component
 const EnhancedTableHead = (props) => {
@@ -67,7 +41,6 @@ const EnhancedTableHead = (props) => {
               onChange={onSelectAllClick}
               inputProps={{ "aria-label": "select all requests" }}
             />
-
             <b>Select All</b>
           </Box>
         </TableCell>
@@ -87,10 +60,10 @@ const EnhancedTableHead = (props) => {
           <b>New Requested Status</b>
         </TableCell>
         <TableCell align="center">
-          <b>Requested Status</b>
+          <b>Request Status</b>
         </TableCell>
         <TableCell align="center">
-          <b>Requested By</b>
+          <b>Requested On</b>
         </TableCell>
       </TableRow>
     </TableHead>
@@ -109,13 +82,42 @@ const FRTAuditStatusReq = () => {
     severity: "success",
   });
 
-  useEffect(() => {
-    // Simulate fetching data
-    document.title = "FRT | Audit Status Requests";
-    setTimeout(() => {
-      setRequests(initialRows);
+  const fetchRequests = async () => {
+    setLoading(true);
+    try {
+      // Get quarter date from user session in localStorage
+      const user = JSON.parse(localStorage.getItem("user"));
+      const quarterDate = user?.quarterEndDate || "31-03-2024"; // Fallback date
+
+      const response = await axios.get(
+        `/api/frt/requests/${quarterDate}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      
+      // Map the response to ensure each row has a unique 'id' for selection
+      const mappedData = response.data.map(item => ({ ...item, id: item.as_id }));
+      setRequests(mappedData);
+
+    } catch (error) {
+      console.error("Failed to fetch requests:", error);
+      setDialog({
+        open: true,
+        message: "Failed to load requests. Please try again later.",
+        severity: "error",
+      });
+      setRequests([]); // Clear data on error
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
+  };
+
+  useEffect(() => {
+    document.title = "FRT | Audit Status Requests";
+    fetchRequests();
   }, []);
 
   const handleSelectAllClick = (event) => {
@@ -146,28 +148,48 @@ const FRTAuditStatusReq = () => {
     setSelected(newSelected);
   };
 
-  const handleAction = (action) => {
+  const handleAction = async (action) => {
     setLoading(true);
-    // Simulate API call for approve/reject
-    setTimeout(() => {
-      const remainingRequests = requests.filter(
-        (req) => !selected.includes(req.id)
+    // 'action' will be 'approve' or 'reject'
+    const endpoint = `/api/frt/${action}`; 
+    
+    try {
+      const response = await axios.post(
+        endpoint,
+        { requestIds: selected }, // Send selected IDs in the request body
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
       );
-      setRequests(remainingRequests);
-      const successfulCount = selected.length;
-      setSelected([]);
-      setLoading(false);
+      
+      // Show success message from backend
       setDialog({
         open: true,
-        message: `Successfully ${action} ${successfulCount} request(s).`,
+        message: response.data.message || `Successfully performed action on ${selected.length} request(s).`,
         severity: "success",
       });
-    }, 1000);
+      setSelected([]); // Clear selection
+      fetchRequests(); // Refresh the data table
+
+    } catch (error) {
+      console.error(`Failed to ${action} requests:`, error);
+      setDialog({
+        open: true,
+        message: error.response?.data?.message || `Failed to ${action} requests.`,
+        severity: "error",
+      });
+    } finally {
+       setLoading(false);
+    }
   };
 
   const handleDialogClose = () => {
     setDialog({ ...dialog, open: false });
   };
+
+
 
   const isSelected = (id) => selected.indexOf(id) !== -1;
 
@@ -190,8 +212,8 @@ const FRTAuditStatusReq = () => {
               variant="contained"
               color="success"
               sx={{ mr: 2, width: "120px" }}
-              onClick={() => handleAction("approved")}
-              disabled={selected.length === 0}
+              onClick={() => handleAction("approve")}
+              disabled={selected.length === 0 || loading}
             >
               Approve
             </Button>
@@ -199,8 +221,8 @@ const FRTAuditStatusReq = () => {
               variant="contained"
               color="error"
               sx={{ width: "120px" }}
-              onClick={() => handleAction("rejected")}
-              disabled={selected.length === 0}
+              onClick={() => handleAction("reject")}
+              disabled={selected.length === 0 || loading}
             >
               Reject
             </Button>
@@ -249,7 +271,8 @@ const FRTAuditStatusReq = () => {
                               inputProps={{ "aria-labelledby": labelId }}
                             />
                           </TableCell>
-                          <TableCell align="center">{row.reqId}</TableCell>
+                          {/* Use keys from the backend map */}
+                          <TableCell align="center">{row.as_rt_id}</TableCell>
                           <TableCell align="center">{row.branchCode}</TableCell>
                           <TableCell align="left">{row.branchName}</TableCell>
                           <TableCell align="center">{row.beforeSts}</TableCell>
@@ -262,6 +285,13 @@ const FRTAuditStatusReq = () => {
                   {emptyRows > 0 && (
                     <TableRow style={{ height: 53 * emptyRows }}>
                       <TableCell colSpan={8} />
+                    </TableRow>
+                  )}
+                   {requests.length === 0 && !loading && (
+                    <TableRow>
+                      <TableCell colSpan={8} align="center">
+                        No pending requests found.
+                      </TableCell>
                     </TableRow>
                   )}
                 </TableBody>
