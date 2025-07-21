@@ -1,19 +1,57 @@
-Of course. You can achieve the same file streaming behavior using only the native fetch API in your Express backend.
-The key is to read the response body from fetch as a stream and write its chunks directly to the Express response, rather than trying to parse it as JSON.
-Express Backend Fix (Using Fetch Only)
-Here’s the updated code for your Express route. This version correctly handles the binary file stream from your Java service.
-// backend express route
+const handleDownload = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.post(
+        "/Server/EditBranch/downloadBranchList", // Correct new endpoint
+        {}, // No request body is needed, but sending an empty object for POST
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          responseType: "blob", // IMPORTANT: This tells axios to handle the response as binary data
+        }
+      );
 
-router.post("/downloadBranchList", extractToken, async (req, res) => {
-  if (!req.headers.authorization) {
-    return res.status(401).json({ message: "Unauthorized" });
+      // Create a URL for the blob data
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+
+      // Create a temporary link element to trigger the download
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "AuditedBranchStatus.xlsx"); // Set the filename
+
+      // Append to the DOM, click, and then remove
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up by removing the link and revoking the object URL
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Download failed:", error);
+      setSnackbar({
+        children: "Failed to download the report. Please try again later.",
+        severity: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+ //////////////////////////////////////////
+ 
+ 
+ router.post("/downloadBranchList", extractToken, async (req, res) => {
+  let token = req.headers.authorization;
+  if (!token) {
+    return res.status(401).json({
+      message: "Unauthorized api call, request not from legal source",
+    });
   }
-
   try {
     const serviceUrl = devBaseServiceUrl + "/LHODashBoard/downloadBranchList";
 
-    // Call the Java service
-    const serviceResponse = await fetch(serviceUrl, {
+    const response = await fetch(serviceUrl, {
       method: "POST",
       body: JSON.stringify({
         user: req.user,
@@ -21,20 +59,15 @@ router.post("/downloadBranchList", extractToken, async (req, res) => {
       }),
       headers: {
         "Content-Type": "application/json",
-        // Forward the auth token if your Java service needs it
-        "Authorization": req.headers.authorization, 
       },
     });
-
-    // Check if the Java service returned an error
-    if (!serviceResponse.ok) {
-      const errorText = await serviceResponse.text();
-      return res.status(serviceResponse.status).send(errorText);
-    }
-
-    // Forward the file headers from the Java service to the client
-    res.setHeader('Content-Type', serviceResponse.headers.get('content-type'));
-    res.setHeader('Content-Disposition', serviceResponse.headers.get('content-disposition'));
+    // const data = await response.json();
+    // res.json(data);
+    res.setHeader("Content-Type", serviceResponse.headers.get("content-type"));
+    res.setHeader(
+      "Content-Disposition",
+      serviceResponse.headers.get("content-disposition")
+    );
 
     // Manually pipe the stream from fetch to the Express response
     // This is the correct way to handle a file stream with fetch
@@ -42,13 +75,9 @@ router.post("/downloadBranchList", extractToken, async (req, res) => {
       res.write(chunk);
     }
     res.end();
-
-  } catch (error) {
-    console.error("Failed to proxy download request:", error);
+  } catch (e) {
     res.status(500).json({
-      status: "Failed to download file due to a proxy error.",
+      status: "Failed to bring response, no connection between LB and APP",
     });
   }
 });
-
-Your frontend code does not need any changes from the previously corrected version. This backend fix ensures the file is properly streamed through your Express server to the browser.
