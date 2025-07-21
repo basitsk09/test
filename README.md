@@ -1,110 +1,300 @@
-Of course. You can achieve this without a DTO by moving the data transformation logic directly into the SQL query using CASE statements. The repository will then return a List<Map<String, Object>>, where each map represents a row of data.
-This approach simplifies the Java code, making the service layer a simple pass-through.
-1. Repository Layer (DAO)
-The repository's native query is updated with CASE statements to format the status fields directly. The return type is changed to List<Map<String, Object>>. The projection interface is no longer needed.
-FrtRequestRepository.java
-package com.yourpackage.repository;
+import * as React from "react";
+import { useState, useEffect } from "react";
+import {
+  Box,
+  Button,
+  Checkbox,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Alert,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  Typography,
+  CircularProgress,
+} from "@mui/material";
+//import FrtCheckerLayout from "../Layouts/FrtCheckerLayout";
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-import com.yourpackage.model.CrsRequestTrack; // Anchor entity
-import java.util.List;
-import java.util.Map;
+// Dummy data to simulate API response based on JSP variables
+const createDummyData = (
+  id,
+  branchCode,
+  branchName,
+  beforeSts,
+  afterSts,
+  reqSts,
+  reqOn
+) => {
+  // Combines rt_id and id for a unique request identifier, similar to the JSP
+  const reqId = `FRT-AS-${id}`;
+  return {
+    id,
+    reqId,
+    branchCode,
+    branchName,
+    beforeSts,
+    afterSts,
+    reqSts,
+    reqOn,
+  };
+};
 
-@Repository
-public interface FrtRequestRepository extends JpaRepository<CrsRequestTrack, String> {
+const initialRows = [];
 
-    @Query(value = "SELECT " +
-            "cas.as_rt_id AS \"as_rt_id\", " +
-            "cas.as_id AS \"as_id\", " +
-            "cas.as_branch AS \"branchCode\", " +
-            "bm.br_name AS \"branchName\", " +
-            "SUBSTR(bm.region_code,1,3) ||''|| SUBSTR(bm.region_code,4,3) ||''|| SUBSTR(bm.region_code,7,3) AS \"roCode\", " +
-            "bm.circle_code AS \"circle_code\", " +
-            "crt.rt_status AS \"req_tracksts\", " +
-            "crt.rt_date AS \"reqOn\", " +
-            // Logic for 'beforeSts'
-            "CASE WHEN bm.crs_auditable = 'Y' " +
-            "THEN CASE WHEN nvl((select ifcofr_audit_flag from crs_ifcofr_audit where ifcofr_branch=cas.as_branch and ifcofr_date=to_date(:quarterDate,'dd/mm/yyyy')),'N') = 'Y' " +
-            "THEN 'IFCOFR Audited' ELSE 'Audited' END " +
-            "ELSE 'Non-Audited' END AS \"beforeSts\", " +
-            // Logic for 'afterSts'
-            "CASE cas.as_new_status " +
-            "WHEN 'A' THEN 'Audited' " +
-            "WHEN 'I' THEN 'IFCOFR Audited' " +
-            "ELSE 'Non-Audited' END AS \"afterSts\", " +
-            // Logic for 'reqSts'
-            "CASE cas.as_req_status " +
-            "WHEN 'P' THEN 'Pending' " +
-            "ELSE cas.as_req_status END AS \"reqSts\" " +
-            "FROM crs_request_track crt, crs_audit_status cas, branch_master bm " +
-            "WHERE cas.as_rt_id = crt.rt_id AND cas.as_branch=bm.branch_no AND cas.as_req_status NOT IN ('R','A') " +
-            "ORDER BY cas.as_rt_id, cas.as_id",
-            nativeQuery = true)
-    List<Map<String, Object>> findPendingRequestsFormatted(@Param("quarterDate") String quarterDate);
-}
+// Table Header Component
+const EnhancedTableHead = (props) => {
+  const { onSelectAllClick, numSelected, rowCount } = props;
 
-2. Service Layer
-The service layer is now much simpler. It directly calls the repository and returns its result without any mapping logic.
-Service Interface: FrtRequestService.java
-package com.yourpackage.service;
+  return (
+    <TableHead>
+      <TableRow sx={{ backgroundColor: "#b9def0" }}>
+        <TableCell padding="checkbox" align="center">
+          <Box
+            sx={{ display: "flex", alignItems: "center", whiteSpace: "nowrap" }}
+          >
+            <Checkbox
+              color="primary"
+              indeterminate={numSelected > 0 && numSelected < rowCount}
+              checked={rowCount > 0 && numSelected === rowCount}
+              onChange={onSelectAllClick}
+              inputProps={{ "aria-label": "select all requests" }}
+            />
 
-import java.util.List;
-import java.util.Map;
+            <b>Select All</b>
+          </Box>
+        </TableCell>
+        <TableCell align="center">
+          <b>Req ID</b>
+        </TableCell>
+        <TableCell align="center">
+          <b>Branch Code</b>
+        </TableCell>
+        <TableCell align="left">
+          <b>Branch Name</b>
+        </TableCell>
+        <TableCell align="center">
+          <b>Existing Status</b>
+        </TableCell>
+        <TableCell align="center">
+          <b>New Requested Status</b>
+        </TableCell>
+        <TableCell align="center">
+          <b>Requested Status</b>
+        </TableCell>
+        <TableCell align="center">
+          <b>Requested By</b>
+        </TableCell>
+      </TableRow>
+    </TableHead>
+  );
+};
 
-public interface FrtRequestService {
-    List<Map<String, Object>> getPendingRequests(String quarterDate);
-}
+const FRTAuditStatusReq = () => {
+  const [requests, setRequests] = useState([]);
+  const [selected, setSelected] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [dialog, setDialog] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
-Service Implementation: FrtRequestServiceImpl.java
-package com.yourpackage.service;
+  useEffect(() => {
+    // Simulate fetching data
+    document.title = "FRT | Audit Status Requests";
+    setTimeout(() => {
+      setRequests(initialRows);
+      setLoading(false);
+    }, 1500);
+  }, []);
 
-import com.yourpackage.repository.FrtRequestRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import java.util.List;
-import java.util.Map;
-
-@Service
-public class FrtRequestServiceImpl implements FrtRequestService {
-
-    @Autowired
-    private FrtRequestRepository frtRequestRepository;
-
-    @Override
-    public List<Map<String, Object>> getPendingRequests(String quarterDate) {
-        return frtRequestRepository.findPendingRequestsFormatted(quarterDate);
+  const handleSelectAllClick = (event) => {
+    if (event.target.checked) {
+      const newSelected = requests.map((n) => n.id);
+      setSelected(newSelected);
+      return;
     }
-}
+    setSelected([]);
+  };
 
-3. Controller Layer
-The controller's method signature is updated to reflect the new return type from the service.
-FrtRequestController.java
-package com.yourpackage.controller;
+  const handleClick = (event, id) => {
+    const selectedIndex = selected.indexOf(id);
+    let newSelected = [];
 
-import com.yourpackage.service.FrtRequestService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import java.util.List;
-import java.util.Map;
-
-@RestController
-@RequestMapping("/api/frt")
-public class FrtRequestController {
-
-    @Autowired
-    private FrtRequestService frtRequestService;
-
-    @GetMapping("/requests/{quarterDate}")
-    public ResponseEntity<List<Map<String, Object>>> getPendingFrtRequests(@PathVariable String quarterDate) {
-        List<Map<String, Object>> requests = frtRequestService.getPendingRequests(quarterDate);
-        return ResponseEntity.ok(requests);
+    if (selectedIndex === -1) {
+      newSelected = newSelected.concat(selected, id);
+    } else if (selectedIndex === 0) {
+      newSelected = newSelected.concat(selected.slice(1));
+    } else if (selectedIndex === selected.length - 1) {
+      newSelected = newSelected.concat(selected.slice(0, -1));
+    } else if (selectedIndex > 0) {
+      newSelected = newSelected.concat(
+        selected.slice(0, selectedIndex),
+        selected.slice(selectedIndex + 1)
+      );
     }
-}
+    setSelected(newSelected);
+  };
 
+  const handleAction = (action) => {
+    setLoading(true);
+    // Simulate API call for approve/reject
+    setTimeout(() => {
+      const remainingRequests = requests.filter(
+        (req) => !selected.includes(req.id)
+      );
+      setRequests(remainingRequests);
+      const successfulCount = selected.length;
+      setSelected([]);
+      setLoading(false);
+      setDialog({
+        open: true,
+        message: `Successfully ${action} ${successfulCount} request(s).`,
+        severity: "success",
+      });
+    }, 1000);
+  };
+
+  const handleDialogClose = () => {
+    setDialog({ ...dialog, open: false });
+  };
+
+  const isSelected = (id) => selected.indexOf(id) !== -1;
+
+  const emptyRows =
+    page > 0 ? Math.max(0, (1 + page) * rowsPerPage - requests.length) : 0;
+
+  return (
+    <>
+      <Container maxWidth={false}>
+        <Paper sx={{ width: "100%", mb: 2, p: 2 }}>
+          <Typography
+            variant="h5"
+            component="div"
+            sx={{ mb: 2, textAlign: "left" }}
+          >
+            Audit Status Change Requests
+          </Typography>
+          <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+            <Button
+              variant="contained"
+              color="success"
+              sx={{ mr: 2, width: "120px" }}
+              onClick={() => handleAction("approved")}
+              disabled={selected.length === 0}
+            >
+              Approve
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              sx={{ width: "120px" }}
+              onClick={() => handleAction("rejected")}
+              disabled={selected.length === 0}
+            >
+              Reject
+            </Button>
+          </Box>
+          <TableContainer>
+            {loading ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: 370,
+                }}
+              >
+                <CircularProgress />
+              </Box>
+            ) : (
+              <Table sx={{ minWidth: 750 }} aria-labelledby="tableTitle">
+                <EnhancedTableHead
+                  numSelected={selected.length}
+                  onSelectAllClick={handleSelectAllClick}
+                  rowCount={requests.length}
+                />
+                <TableBody>
+                  {requests
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((row) => {
+                      const isItemSelected = isSelected(row.id);
+                      const labelId = `enhanced-table-checkbox-${row.id}`;
+
+                      return (
+                        <TableRow
+                          hover
+                          onClick={(event) => handleClick(event, row.id)}
+                          role="checkbox"
+                          aria-checked={isItemSelected}
+                          tabIndex={-1}
+                          key={row.id}
+                          selected={isItemSelected}
+                          sx={{ cursor: "pointer" }}
+                        >
+                          <TableCell padding="checkbox">
+                            <Checkbox
+                              color="primary"
+                              checked={isItemSelected}
+                              inputProps={{ "aria-labelledby": labelId }}
+                            />
+                          </TableCell>
+                          <TableCell align="center">{row.reqId}</TableCell>
+                          <TableCell align="center">{row.branchCode}</TableCell>
+                          <TableCell align="left">{row.branchName}</TableCell>
+                          <TableCell align="center">{row.beforeSts}</TableCell>
+                          <TableCell align="center">{row.afterSts}</TableCell>
+                          <TableCell align="center">{row.reqSts}</TableCell>
+                          <TableCell align="center">{row.reqOn}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  {emptyRows > 0 && (
+                    <TableRow style={{ height: 53 * emptyRows }}>
+                      <TableCell colSpan={8} />
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </TableContainer>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={requests.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={(e, newPage) => setPage(newPage)}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+          />
+        </Paper>
+      </Container>
+      <Dialog open={dialog.open} onClose={handleDialogClose}>
+        <DialogTitle>
+          {dialog.severity === "success" ? "Success" : "Error"}
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity={dialog.severity}>{dialog.message}</Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDialogClose}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+};
+
+export default FRTAuditStatusReq;
