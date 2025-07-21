@@ -1,13 +1,46 @@
-// Inside your service method (e.g., generateBranchListXlsx)
 
-// You need to get the circle code for the current user.
-// This might come from a session, a security context, or the request itself.
-// For example: String userCircleCode = sessionBean.getCircleCode();
-String userCircleCode = "YOUR_USER_CIRCLE_CODE"; // <-- Replace this with the actual dynamic value
+ try {
+      const response = await axios.post(
+        "/Server/EditBranch/downloadBranchList", // Correct new endpoint
+        // No request body is needed, but sending an empty object for POST
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          responseType: "blob", // IMPORTANT: This tells axios to handle the response as binary data
+        }
+      );
+	  
+//////////////////////////////////////////////////////
 
-Map<String, Object> parameters = new HashMap<>();
-parameters.put("IS_IGNORE_PAGINATION", true);
-parameters.put("CIRCLE_CODE", userCircleCode); // <-- Add this line
+express
 
-// Now fill the report with the parameters
-JasperPrint jasperPrint = JasperFillManager.fillReport(jasperStream, parameters, con);
+
+router.post("/downloadBranchList", extractToken, async (req, res) => {
+  let token = req.headers.authorization;
+  if (!token) {
+    return res.status(401).json({
+      message: "Unauthorized api call, request not from legal source",
+    });
+  }
+  try {
+    const serviceUrl = devBaseServiceUrl + "/LHODashBoard/downloadBranchList";
+
+    const response = await fetch(serviceUrl, {
+      method: "POST",
+      body: JSON.stringify({
+        user: req.user,
+        data: req.data,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({
+      status: "Failed to bring response, no connection between LB and APP",
+    });
+  }
+});
