@@ -1,102 +1,176 @@
- public List<FRTAuditStatusReq> getRequests(String quarter_date) {
+Of course. Here is a modernized version of your code using the Spring Data JPA repository pattern, broken down into the standard Controller, Service, and Repository (DAO) layers.
+This new structure is more maintainable, type-safe, and aligns with modern Spring Boot practices.
+1. DTO and Projection
+First, we need a DTO (Data Transfer Object) to hold the final, formatted data, and a JPA Projection interface to map the native query results efficiently.
+DTO: FRTAuditStatusReq.java
+This class will hold the final, user-friendly data that your API will return.
+package com.yourpackage.dto;
 
+import lombok.Data;
 
-            String query1 = "select cas.as_rt_id , cas.as_id, cas.as_branch, br_name branch_name,crs_auditable old_br_status," +
-                    "SUBSTR(bm.region_code,1,3) ||''|| SUBSTR(bm.region_code,4,3) ||''|| SUBSTR(bm.region_code,7,3) RO,bm.circle_code, " +
-                    "nvl((select ifcofr_audit_flag from crs_ifcofr_audit where ifcofr_branch=cas.as_branch and ifcofr_date=to_date(?,'dd/mm/yyyy') " +
-                    "and crt.rt_id=cas.as_rt_id),'N')ifcofr_flag, " +
-                    "cas.as_new_status, cas.as_req_status, crt.rt_status,crt.rt_date " +
-                    "from crs_request_track crt, crs_audit_status cas, branch_master bm " +
-                    "where cas.as_rt_id = crt.rt_id and cas.as_branch=bm.branchno and cas.as_req_status not in ('R','A') order by cas.as_rt_id,cas.as_id";
+@Data // Using Lombok for boilerplate code (getters, setters, etc.)
+public class FRTAuditStatusReq {
+    private String as_rt_id;
+    private String as_id;
+    private String branchCode;
+    private String branchName;
+    private String beforeSts; // e.g., "Audited", "Non-Audited"
+    private String afterSts;  // e.g., "IFCOFR Audited"
+    private String roCode;
+    private String circle_code;
+    private String reqSts;    // e.g., "Pending"
+    private String req_tracksts;
+    private String reqOn;
+}
 
-            List<FRTAuditStatusReq> list = jdbcTemplateObject.query(query1, new Object[]{quarter_date}, new ResultSetExtractor<List<FRTAuditStatusReq>>() {
+JPA Projection: FRTAuditStatusProjection.java
+This interface tells Spring Data JPA how to map the columns from your native query result set.
+package com.yourpackage.repository;
 
-                @Override
-                public List<FRTAuditStatusReq> extractData(ResultSet rs1) throws SQLException, DataAccessException {
-                    List<FRTAuditStatusReq> list = new ArrayList<>();
-                    while (rs1.next()) {
-                        FRTAuditStatusReq report = new FRTAuditStatusReq();
-                        report.setAs_rt_id(rs1.getString("AS_RT_ID"));
-                        report.setAs_id(rs1.getString("AS_ID"));
-                        report.setBranchCode(rs1.getString("AS_BRANCH"));
-                        report.setBranchName(rs1.getString("branch_name"));
-                        String oldSts =rs1.getString("old_br_status");
-                        report.setRoCode(rs1.getString("RO"));
-                        report.setCircle_code(rs1.getString("circle_code"));
-                        report.setIfcofr_flag(rs1.getString("ifcofr_flag"));
-                        String ifcoflag =rs1.getString("ifcofr_flag");
-                        if(oldSts.equalsIgnoreCase("Y")){
-                            if(ifcoflag.equalsIgnoreCase("Y")){
-                                report.setBeforeSts("IFCOFR Audited");
-                            }else {
-                                report.setBeforeSts("Audited");
-                            }
-                        }
-                        else{
-                            report.setBeforeSts("Non-Audited");
-                        }
+public interface FRTAuditStatusProjection {
+    String getAsRtId();
+    String getAsId();
+    String getAsBranch();
+    String getBranchName();
+    String getOldBrStatus();
+    String getRO();
+    String getCircleCode();
+    String getIfcofrFlag();
+    String getAsNewStatus();
+    String getAsReqStatus();
+    String getRtStatus();
+    String getRtDate();
+}
 
-                        String newSts =rs1.getString("as_new_status");
-                        if (newSts.equalsIgnoreCase("A")){
-                            report.setAfterSts("Audited");
-                        }else if(newSts.equalsIgnoreCase("I")){
-                            report.setAfterSts("IFCOFR Audited");
-                        }
-                        else{
-                            report.setAfterSts("Non-Audited");
-                        }
+2. Repository Layer (DAO)
+This repository interface uses a native query with the projection to fetch the raw data from the database.
+FrtRequestRepository.java
+package com.yourpackage.repository;
 
-                        String sts= rs1.getString("as_req_status");
-                        if (sts.equalsIgnoreCase("P")){
-                            report.setReqSts("Pending");
-                        }
-                        report.setReq_tracksts(rs1.getString("rt_status"));
-                        report.setReqOn(rs1.getString("rt_date"));
-
-                        list.add(report);
-                    }
-                    log.info("size of the list: "+list.size());
-                    return list;
-                }
-
-            });
-        log.info("size of the list: "+list.size());
-            return list;
-
-    }
-/////////////////////////////////////////////////////////
-new code refernece 
-
-package com.crs.dashboardService.repositories;
-
-import com.crs.dashboardService.models.CrsRequestTrack;
-import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
+import com.yourpackage.model.CrsRequestTrack; // Assuming you have a base entity to anchor the repository
 import java.util.List;
-import java.util.Map;
 
 @Repository
-public interface CrsRequestTrackRepository extends JpaRepository<CrsRequestTrack, String> {
-    @Query(value = "select RT_ID,RT_TYPE,RT_BRANCH,RT_STATUS,(SELECT NAME from WFL_user where wfl_user_id=rt_maker) RT_MAKER,RT_SUBTYPE,RT_FILE_NAME FROM CRS_REQUEST_TRACK WHERE RT_QED= to_date(:quarterEndDate,'DD/MM/YYYY') order by RT_STATUS, RT_ID desc", nativeQuery = true)
-    List<Map<String, Object>> fetchCrsRequests(@Param("quarterEndDate") String quarterEndDate);
+// You can anchor the repository to a relevant entity like CrsRequestTrack
+public interface FrtRequestRepository extends JpaRepository<CrsRequestTrack, String> {
 
-    @Transactional
-    @Modifying
-    @Query(value="update crs_request_track set rt_status = :rtStatus where rt_id = :reqId", nativeQuery = true)
-    int cancelCrsRequests(@Param("reqId")String reqId, @Param("rtStatus")String rtStatus);
+    @Query(value = "select cas.as_rt_id AS asRtId, cas.as_id AS asId, cas.as_branch AS asBranch, br_name AS branchName, crs_auditable AS oldBrStatus, " +
+            "SUBSTR(bm.region_code,1,3) ||''|| SUBSTR(bm.region_code,4,3) ||''|| SUBSTR(bm.region_code,7,3) AS ro, bm.circle_code AS circleCode, " +
+            "nvl((select ifcofr_audit_flag from crs_ifcofr_audit where ifcofr_branch=cas.as_branch and ifcofr_date=to_date(:quarterDate,'dd/mm/yyyy')),'N') AS ifcofrFlag, " +
+            "cas.as_new_status AS asNewStatus, cas.as_req_status AS asReqStatus, crt.rt_status AS rtStatus, crt.rt_date AS rtDate " +
+            "from crs_request_track crt, crs_audit_status cas, branch_master bm " +
+            "where cas.as_rt_id = crt.rt_id and cas.as_branch=bm.branch_no and cas.as_req_status not in ('R','A') order by cas.as_rt_id, cas.as_id",
+            nativeQuery = true)
+    List<FRTAuditStatusProjection> findPendingRequests(@Param("quarterDate") String quarterDate);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-data to render
+3. Service Layer
+The service layer contains the business logic to transform the raw database values into the user-friendly text seen in your old code.
+Service Interface: FrtRequestService.java
+package com.yourpackage.service;
 
-103	31430	00067	DUMMY BRANCH	A	555555555	007	N	I	P	1	03-APR-23
-105	31431	00004	DUMMY BRANCH	A	555555555	004	N	I	P	1	03-APR-23
-325	31462	01000	DUMMY BRANCH	A	555555555	020	N	N	P	4	08-JUL-25
-325	31463	95441	DUMMY BRANCH	A	555555555	002	N	I	P	4	08-JUL-25
-362	31482	10109	DUMMY BRANCH	A	555555555	010	N	I	P	4	21-JUL-25
-363	31483	24545	DUMMY BRANCH	A	555555555	006	N	I	P	4	21-JUL-25
+import com.yourpackage.dto.FRTAuditStatusReq;
+import java.util.List;
+
+public interface FrtRequestService {
+    List<FRTAuditStatusReq> getPendingRequests(String quarterDate);
+}
+
+Service Implementation: FrtRequestServiceImpl.java
+package com.yourpackage.service;
+
+import com.yourpackage.dto.FRTAuditStatusReq;
+import com.yourpackage.repository.FrtRequestRepository;
+import com.yourpackage.repository.FRTAuditStatusProjection;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class FrtRequestServiceImpl implements FrtRequestService {
+
+    @Autowired
+    private FrtRequestRepository frtRequestRepository;
+
+    @Override
+    public List<FRTAuditStatusReq> getPendingRequests(String quarterDate) {
+        List<FRTAuditStatusProjection> results = frtRequestRepository.findPendingRequests(quarterDate);
+
+        // Map the raw projection results to the final DTO with business logic
+        return results.stream().map(this::mapProjectionToDto).collect(Collectors.toList());
+    }
+
+    private FRTAuditStatusReq mapProjectionToDto(FRTAuditStatusProjection proj) {
+        FRTAuditStatusReq dto = new FRTAuditStatusReq();
+        dto.setAs_rt_id(proj.getAsRtId());
+        dto.setAs_id(proj.getAsId());
+        dto.setBranchCode(proj.getAsBranch());
+        dto.setBranchName(proj.getBranchName());
+        dto.setRoCode(proj.getRO());
+        dto.setCircle_code(proj.getCircleCode());
+        dto.setReq_tracksts(proj.getRtStatus());
+        dto.setReqOn(proj.getRtDate());
+
+        // Logic for 'Before Status'
+        if ("Y".equalsIgnoreCase(proj.getOldBrStatus())) {
+            dto.setBeforeSts("Y".equalsIgnoreCase(proj.getIfcofrFlag()) ? "IFCOFR Audited" : "Audited");
+        } else {
+            dto.setBeforeSts("Non-Audited");
+        }
+
+        // Logic for 'After Status'
+        String newSts = proj.getAsNewStatus();
+        if ("A".equalsIgnoreCase(newSts)) {
+            dto.setAfterSts("Audited");
+        } else if ("I".equalsIgnoreCase(newSts)) {
+            dto.setAfterSts("IFCOFR Audited");
+        } else {
+            dto.setAfterSts("Non-Audited");
+        }
+
+        // Logic for 'Request Status'
+        if ("P".equalsIgnoreCase(proj.getAsReqStatus())) {
+            dto.setReqSts("Pending");
+        } else {
+            dto.setReqSts(proj.getAsReqStatus()); // Fallback
+        }
+
+        return dto;
+    }
+}
+
+4. Controller Layer
+Finally, the controller exposes an API endpoint to trigger the service and return the data.
+FrtRequestController.java
+package com.yourpackage.controller;
+
+import com.yourpackage.dto.FRTAuditStatusReq;
+import com.yourpackage.service.FrtRequestService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/frt")
+public class FrtRequestController {
+
+    @Autowired
+    private FrtRequestService frtRequestService;
+
+    @GetMapping("/requests/{quarterDate}")
+    public ResponseEntity<List<FRTAuditStatusReq>> getPendingFrtRequests(@PathVariable String quarterDate) {
+        // The quarterDate should be in 'dd-MM-yyyy' format to match the query's to_date format
+        List<FRTAuditStatusReq> requests = frtRequestService.getPendingRequests(quarterDate);
+        return ResponseEntity.ok(requests);
+    }
+}
+
