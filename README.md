@@ -22,6 +22,12 @@ import {
   CircularProgress,
 } from "@mui/material";
 import axios from "axios";
+import { encrypt } from "../Security/AES-GCM256";
+
+const iv = crypto.getRandomValues(new Uint8Array(12));
+const ivBase64 = btoa(String.fromCharCode.apply(null, iv));
+const salt = crypto.getRandomValues(new Uint8Array(16));
+const saltBase64 = btoa(String.fromCharCode.apply(null, salt));
 
 // Table Header Component
 const EnhancedTableHead = (props) => {
@@ -76,6 +82,7 @@ const FRTAuditStatusReq = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+  const user = JSON.parse(localStorage.getItem("user"));
   const [dialog, setDialog] = useState({
     open: false,
     message: "",
@@ -85,23 +92,26 @@ const FRTAuditStatusReq = () => {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      // Get quarter date from user session in localStorage
-      const user = JSON.parse(localStorage.getItem("user"));
-      const quarterDate = user?.quarterEndDate || "31-03-2024"; // Fallback date
+      let jsonFormData = JSON.stringify({ quarterDate: user?.quarterEndDate });
+      await encrypt(iv, salt, jsonFormData).then(function (result) {
+        jsonFormData = result;
+      });
+      let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
 
-      const response = await axios.get(
-        `/api/frt/requests/${quarterDate}`,
+      const response = await axios.post(
+        "/Server/EditBranch/getPendingRequests",
+        payload,
         {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }
       );
-      
+      console.log("response.data.result", response.data.result);
       // Map the response to ensure each row has a unique 'id' for selection
-      const mappedData = response.data.map(item => ({ ...item, id: item.as_id }));
+      const mappedData = response.data.result.map((item) => ({
+        ...item,
+        id: item.as_id,
+      }));
       setRequests(mappedData);
-
     } catch (error) {
       console.error("Failed to fetch requests:", error);
       setDialog({
@@ -151,8 +161,8 @@ const FRTAuditStatusReq = () => {
   const handleAction = async (action) => {
     setLoading(true);
     // 'action' will be 'approve' or 'reject'
-    const endpoint = `/api/frt/${action}`; 
-    
+    const endpoint = `/api/frt/${action}`;
+
     try {
       const response = await axios.post(
         endpoint,
@@ -163,33 +173,33 @@ const FRTAuditStatusReq = () => {
           },
         }
       );
-      
+
       // Show success message from backend
       setDialog({
         open: true,
-        message: response.data.message || `Successfully performed action on ${selected.length} request(s).`,
+        message:
+          response.data.message ||
+          `Successfully performed action on ${selected.length} request(s).`,
         severity: "success",
       });
       setSelected([]); // Clear selection
       fetchRequests(); // Refresh the data table
-
     } catch (error) {
       console.error(`Failed to ${action} requests:`, error);
       setDialog({
         open: true,
-        message: error.response?.data?.message || `Failed to ${action} requests.`,
+        message:
+          error.response?.data?.message || `Failed to ${action} requests.`,
         severity: "error",
       });
     } finally {
-       setLoading(false);
+      setLoading(false);
     }
   };
 
   const handleDialogClose = () => {
     setDialog({ ...dialog, open: false });
   };
-
-
 
   const isSelected = (id) => selected.indexOf(id) !== -1;
 
@@ -287,7 +297,7 @@ const FRTAuditStatusReq = () => {
                       <TableCell colSpan={8} />
                     </TableRow>
                   )}
-                   {requests.length === 0 && !loading && (
+                  {requests.length === 0 && !loading && (
                     <TableRow>
                       <TableCell colSpan={8} align="center">
                         No pending requests found.
@@ -328,3 +338,87 @@ const FRTAuditStatusReq = () => {
 };
 
 export default FRTAuditStatusReq;
+
+
+
+//////////////////////////////////////////////////////////
+[
+    {
+        "ROCODE": "555555555",
+        "CIRCLE_CODE": "007",
+        "REQ_TRACKSTS": 1,
+        "BEFORESTS": "Non-Audited",
+        "REQSTS": "Pending",
+        "BRANCHNAME": "DUMMY BRANCH",
+        "AS_ID": 31430,
+        "REQON": "2023-04-03T07:42:57.000+00:00",
+        "AS_RT_ID": 103,
+        "AFTERSTS": "IFCOFR Audited",
+        "BRANCHCODE": "00067"
+    },
+    {
+        "CIRCLE_CODE": "004",
+        "ROCODE": "555555555",
+        "AS_ID": 31431,
+        "REQ_TRACKSTS": 1,
+        "BEFORESTS": "Non-Audited",
+        "AS_RT_ID": 105,
+        "REQSTS": "Pending",
+        "BRANCHNAME": "DUMMY BRANCH",
+        "REQON": "2023-04-03T09:35:14.000+00:00",
+        "BRANCHCODE": "00004",
+        "AFTERSTS": "IFCOFR Audited"
+    },
+    {
+        "ROCODE": "555555555",
+        "REQ_TRACKSTS": 4,
+        "BRANCHCODE": "01000",
+        "REQON": "2025-07-08T11:13:52.000+00:00",
+        "BEFORESTS": "Non-Audited",
+        "REQSTS": "Pending",
+        "BRANCHNAME": "DUMMY BRANCH",
+        "AS_ID": 31462,
+        "AFTERSTS": "Non-Audited",
+        "AS_RT_ID": 325,
+        "CIRCLE_CODE": "020"
+    },
+    {
+        "ROCODE": "555555555",
+        "REQ_TRACKSTS": 4,
+        "REQON": "2025-07-08T11:13:52.000+00:00",
+        "AS_ID": 31463,
+        "BEFORESTS": "Non-Audited",
+        "REQSTS": "Pending",
+        "BRANCHNAME": "DUMMY BRANCH",
+        "CIRCLE_CODE": "002",
+        "AS_RT_ID": 325,
+        "AFTERSTS": "IFCOFR Audited",
+        "BRANCHCODE": "95441"
+    },
+    {
+        "ROCODE": "555555555",
+        "REQ_TRACKSTS": 4,
+        "AS_RT_ID": 362,
+        "BEFORESTS": "Non-Audited",
+        "BRANCHCODE": "10109",
+        "REQSTS": "Pending",
+        "BRANCHNAME": "DUMMY BRANCH",
+        "REQON": "2025-07-21T07:10:23.000+00:00",
+        "AS_ID": 31482,
+        "CIRCLE_CODE": "010",
+        "AFTERSTS": "IFCOFR Audited"
+    },
+    {
+        "ROCODE": "555555555",
+        "REQ_TRACKSTS": 4,
+        "CIRCLE_CODE": "006",
+        "BEFORESTS": "Non-Audited",
+        "REQSTS": "Pending",
+        "BRANCHNAME": "DUMMY BRANCH",
+        "AS_RT_ID": 363,
+        "REQON": "2025-07-21T07:15:14.000+00:00",
+        "AS_ID": 31483,
+        "BRANCHCODE": "24545",
+        "AFTERSTS": "IFCOFR Audited"
+    }
+]
