@@ -1,10 +1,11 @@
-Of course. Following the structure you provided, here is the approve and reject functionality refactored to accept a Map in the controller and use only native queries in the repository for all database operations.
-This implementation removes the need for transient variables by having the service layer orchestrate calls to specific native queries that perform targeted updates.
-## Backend Refactoring (Approve/Reject)
+Of course. Here is the full backend code for the approve and reject functionality, refactored according to your specified architecture.
+This solution uses a Map payload in the controller and exclusively uses native queries in the repository. The complex conditional logic from the original approveReq1 method has been moved into the transactional service layer. This design avoids the use of DTOs and @Transient variables.
+## Backend Code (Full Refactoring)
 1. Controller (FrtRequestController.java)
-The controller is updated with /approveRequests and /rejectRequests endpoints. Both methods accept a standard Map and delegate the processing to the service layer, maintaining a clean and consistent API design.
+The controller provides the API endpoints. It accepts a Map for the request body and delegates all processing to the service layer, keeping the controller clean and focused on handling HTTP requests.
 package com.tcs.controllers;
 
+import com.tcs.services.FrtRequestService;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +13,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import com.tcs.services.FrtRequestService;
 
 import java.util.Map;
 
@@ -25,34 +25,29 @@ public class FrtRequestController {
     @Autowired
     private FrtRequestService frtRequestService;
 
-    // ... existing frtSubmitRequest method ...
-
     /**
-     * Handles the approval of one or more FRT requests.
-     * @param payload A map containing a list of request IDs under the key "requestIds".
-     * @return A ResponseEntity with the result of the operation.
+     * Endpoint to approve audit status change requests.
+     * The payload map is expected to contain a 'requestIds' list and a 'quarterDate' string.
      */
     @PostMapping("/approveRequests")
     public ResponseEntity<Map<String, Object>> approveRequests(@RequestBody Map<String, Object> payload) {
-        log.info("Processing approve request for payload: " + payload);
+        log.info("Processing approve request with payload: " + payload);
         return frtRequestService.approveRequests(payload);
     }
 
     /**
-     * Handles the rejection of one or more FRT requests.
-     * @param payload A map containing a list of request IDs under the key "requestIds".
-     * @return A ResponseEntity with the result of the operation.
+     * Endpoint to reject audit status change requests.
+     * The payload map is expected to contain a 'requestIds' list.
      */
     @PostMapping("/rejectRequests")
     public ResponseEntity<Map<String, Object>> rejectRequests(@RequestBody Map<String, Object> payload) {
-        log.info("Processing reject request for payload: " + payload);
+        log.info("Processing reject request with payload: " + payload);
         return frtRequestService.rejectRequests(payload);
     }
 }
 
-<hr>
-2. Service Layer (FrtRequestServiceImpl.java)
-The service methods are transactional to ensure data integrity across multiple database updates. They extract the list of IDs from the incoming Map, loop through them, and call the appropriate repository methods to execute the approval or rejection logic.
+2. Service (FrtRequestServiceImpl.java)
+This is the core of the application. The approveRequests method is transactional to ensure data integrity. It fetches the necessary details for each request and replicates the original DAO's conditional logic by calling specific native query methods in the repository.
 package com.tcs.services;
 
 import com.tcs.dao.FrtDataRepository;
@@ -76,57 +71,103 @@ public class FrtRequestServiceImpl implements FrtRequestService {
     @Autowired
     private FrtDataRepository frtDataRepository;
 
-    // ... existing processFrtRequest method ...
-
     @Override
-    @Transactional // Ensures all operations are atomic
+    @Transactional
     public ResponseEntity<Map<String, Object>> approveRequests(Map<String, Object> payload) {
         Map<String, Object> response = new HashMap<>();
-        List<String> requestIds = (List<String>) payload.getOrDefault("requestIds", new ArrayList<>());
+        List<String> requestIds = (List<String>) payload.get("requestIds");
+        String quarterDate = (String) payload.get("quarterDate");
+        String userId = (String) payload.get("userId"); // Assuming userId is passed from session
 
-        if (requestIds.isEmpty()) {
-            response.put("message", "Bad Request: No request IDs provided.");
+        if (requestIds == null || requestIds.isEmpty() || quarterDate == null) {
+            response.put("message", "Bad Request: 'requestIds' and 'quarterDate' are required.");
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
 
+        int successCount = 0;
         try {
-            int successCount = 0;
             for (String reqId : requestIds) {
-                [span_0](start_span)// The complex logic from the original DAO's approveReq1 method[span_0](end_span) would be implemented here.
-                // You would first fetch the request details to decide which updates to run.
-                // For this example, we directly call the final status update.
-                frtDataRepository.updateRequestStatus(reqId, "A"); [span_1](start_span)// 'A' for Approved[span_1](end_span)
+                // Fetch details needed to make decisions, returns Object[]
+                Object[] details = frtDataRepository.findRequestDetailsById(reqId, quarterDate);
+                if (details == null) continue;
+
+                String branchCode = (String) details[0];
+                String beforeSts = (String) details[1];
+                String afterSts = (String) details[2];
+                String ifcofrFlagForUpdate = "A".equals(afterSts) ? "N" : "Y"; // Determine new IFCOFR flag
+
+                String marQuarter = quarterDate.substring(3, 5);
+
+                // Replicating the logic from the original DAO's `approveReq1` method
+                if ("Non-Audited".equalsIgnoreCase(beforeSts) && "Audited".equalsIgnoreCase(afterSts)) {
+                    frtDataRepository.updateBranchMaster("Y", branchCode);
+                    frtDataRepository.updateReportsMasterListAuditable("Y", branchCode, quarterDate);
+                    if ("03".equals(marQuarter)) {
+                        frtDataRepository.updateLfarBranch("Y", branchCode, quarterDate);
+                    }
+                } else if ("Non-Audited".equalsIgnoreCase(beforeSts) && "IFCOFR Audited".equalsIgnoreCase(afterSts)) {
+                    frtDataRepository.updateBranchMaster("Y", branchCode);
+                    frtDataRepository.updateReportsMasterListAuditable("Y", branchCode, quarterDate);
+                    frtDataRepository.updateIfcofrAudit(ifcofrFlagForUpdate, userId, branchCode, quarterDate);
+                    if ("03".equals(marQuarter)) {
+                        frtDataRepository.updateLfarBranch("Y", branchCode, quarterDate);
+                    }
+                } else if ("Audited".equalsIgnoreCase(beforeSts) && "IFCOFR Audited".equalsIgnoreCase(afterSts)) {
+                    frtDataRepository.updateIfcofrAudit(ifcofrFlagForUpdate, userId, branchCode, quarterDate);
+                } else if ("Audited".equalsIgnoreCase(beforeSts) && "Non-Audited".equalsIgnoreCase(afterSts)) {
+                    frtDataRepository.updateBranchMaster("N", branchCode);
+                    frtDataRepository.updateReportsMasterListAuditable("N", branchCode, quarterDate);
+                    frtDataRepository.deleteReportsMasterListByReportId("1033", branchCode, quarterDate);
+                    if ("03".equals(marQuarter)) {
+                        frtDataRepository.updateLfarBranch("N", branchCode, quarterDate);
+                        frtDataRepository.deleteLfarReportsMasterList(branchCode, quarterDate);
+                    }
+                } else if ("IFCOFR Audited".equalsIgnoreCase(beforeSts) && "Audited".equalsIgnoreCase(afterSts)) {
+                    frtDataRepository.updateIfcofrAudit(ifcofrFlagForUpdate, userId, branchCode, quarterDate);
+                    frtDataRepository.deleteReportsMasterListByReportId("4065", branchCode, quarterDate);
+                } else if ("IFCOFR Audited".equalsIgnoreCase(beforeSts) && "Non-Audited".equalsIgnoreCase(afterSts)) {
+                    frtDataRepository.updateBranchMaster("N", branchCode);
+                    frtDataRepository.updateReportsMasterListAuditable("N", branchCode, quarterDate);
+                    frtDataRepository.updateIfcofrAudit(ifcofrFlagForUpdate, userId, branchCode, quarterDate);
+                    frtDataRepository.deleteReportsMasterListByReportId("4065", branchCode, quarterDate);
+                    frtDataRepository.deleteReportsMasterListByReportId("1033", branchCode, quarterDate);
+                    if ("03".equals(marQuarter)) {
+                        frtDataRepository.updateLfarBranch("N", branchCode, quarterDate);
+                        frtDataRepository.deleteLfarReportsMasterList(branchCode, quarterDate);
+                    }
+                }
+                
+                // Finally, update the request's status to 'Approved'
+                frtDataRepository.updateRequestStatus(reqId, "A");
                 successCount++;
             }
-            log.info("Successfully approved " + successCount + " requests.");
+
             response.put("message", successCount + " request(s) approved successfully.");
             return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
-            log.error("Error during request approval process: ", e);
-            response.put("message", "An error occurred during approval.");
+            log.error("Exception during request approval process: ", e);
+            response.put("message", "An internal error occurred during approval.");
+            // The @Transactional annotation will automatically handle the rollback.
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
+    
     @Override
     @Transactional
     public ResponseEntity<Map<String, Object>> rejectRequests(Map<String, Object> payload) {
         Map<String, Object> response = new HashMap<>();
-        List<String> requestIds = (List<String>) payload.getOrDefault("requestIds", new ArrayList<>());
+        List<String> requestIds = (List<String>) payload.get("requestIds");
 
-        if (requestIds.isEmpty()) {
+        if (requestIds == null || requestIds.isEmpty()) {
             response.put("message", "Bad Request: No request IDs provided.");
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
 
         try {
-            int successCount = 0;
             for (String reqId : requestIds) {
-                frtDataRepository.updateRequestStatus(reqId, "R"); [span_2](start_span)// 'R' for Rejected[span_2](end_span)
-                successCount++;
+                frtDataRepository.updateRequestStatus(reqId, "R"); // 'R' for Rejected
             }
-            log.info("Successfully rejected " + successCount + " requests.");
-            response.put("message", successCount + " request(s) rejected successfully.");
+            response.put("message", requestIds.size() + " request(s) rejected successfully.");
             return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
             log.error("Error during request rejection process: ", e);
@@ -136,10 +177,9 @@ public class FrtRequestServiceImpl implements FrtRequestService {
     }
 }
 
-The FrtRequestService.java interface would be updated with the new approveRequests and rejectRequests method definitions.
-<hr>
-3. Repository Layer (FrtDataRepository.java)
-The repository is updated with a single, flexible updateRequestStatus method. It uses a native query and the @Modifying annotation to perform UPDATE operations for both approving and rejecting requests based on the status provided by the service layer.
+Note: A corresponding FrtRequestService.java interface would define these methods.
+3. DAO / Repository (FrtDataRepository.java)
+The repository contains only native queries. The @Modifying annotation is used for all UPDATE and DELETE operations. Each method corresponds to a specific SQL statement from the original DAO, allowing the service layer to call them as needed.
 package com.tcs.dao;
 
 import com.tcs.beans.AuditStatusRequest;
@@ -149,29 +189,49 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-
 @Repository
 public interface FrtDataRepository extends JpaRepository<AuditStatusRequest, String> {
 
-    // ... existing getFrtRequestData method ...
-
     /**
-     * Updates the status of a single request in the CRS_AUDIT_STATUS table.
-     * This method uses a native query to perform the update.
-     * The @Modifying annotation is required for queries that change data.
-     * @param reqId The ID of the request to update (AS_ID).
-     * @param status The new status to set (e.g., 'A' for Approved, 'R' for Rejected).
+     * Fetches details for a specific request to enable business logic decisions in the service layer.
+     * This query mirrors the logic used to create the before/after status strings in the original DAO.
      */
+    @Query(value = "SELECT cas.as_branch, " +
+                   "  CASE WHEN bm.crs_auditable = 'Y' THEN (CASE WHEN nvl(cia.ifcofr_audit_flag, 'N') = 'Y' THEN 'IFCOFR Audited' ELSE 'Audited' END) ELSE 'Non-Audited' END as before_status, " +
+                   "  CASE cas.as_new_status WHEN 'A' THEN 'Audited' WHEN 'I' THEN 'IFCOFR Audited' ELSE 'Non-Audited' END as after_status " +
+                   "FROM crs_audit_status cas " +
+                   "JOIN branch_master bm ON cas.as_branch = bm.branchno " +
+                   "LEFT JOIN crs_ifcofr_audit cia ON cas.as_branch = cia.ifcofr_branch AND cia.ifcofr_date = TO_DATE(:quarterDate, 'DD/MM/YYYY') " +
+                   "WHERE cas.as_id = :reqId", nativeQuery = true)
+    Object[] findRequestDetailsById(@Param("reqId") String reqId, @Param("quarterDate") String quarterDate);
+
+
     @Modifying
     @Query(value = "UPDATE CRS_AUDIT_STATUS SET AS_REQ_STATUS = :status WHERE AS_ID = :reqId", nativeQuery = true)
     void updateRequestStatus(@Param("reqId") String reqId, @Param("status") String status);
-    
-    [span_3](start_span)// Note: To fully replicate the original logic[span_3](end_span), you would add more native query methods here
-    // for each specific UPDATE or DELETE operation required during the approval process.
-    // For example:
-    // @Modifying
-    // @Query(value="update branch_master set crs_auditable=? where BRANCHNO=?", nativeQuery = true)
-    // void updateBranchMaster(String auditableFlag, String branchNo);
+
+    @Modifying
+    @Query(value = "UPDATE branch_master SET crs_auditable = :auditableFlag WHERE BRANCHNO = :branchCode", nativeQuery = true)
+    void updateBranchMaster(@Param("auditableFlag") String auditableFlag, @Param("branchCode") String branchCode);
+
+    @Modifying
+    @Query(value = "UPDATE REPORTS_MASTER_LIST SET AUDITABLE = :auditableFlag WHERE BRANCH_CODE = :branchCode AND QUARTER_DATE = TO_DATE(:quarterDate, 'DD/MM/YYYY')", nativeQuery = true)
+    void updateReportsMasterListAuditable(@Param("auditableFlag") String auditableFlag, @Param("branchCode") String branchCode, @Param("quarterDate") String quarterDate);
+
+    @Modifying
+    @Query(value = "UPDATE lfar_branch SET CRS_AUDITABLE = :auditableFlag WHERE BRANCHNO = :branchCode AND BRANCH_DATE = TO_DATE(:quarterDate, 'DD/MM/YYYY')", nativeQuery = true)
+    void updateLfarBranch(@Param("auditableFlag") String auditableFlag, @Param("branchCode") String branchCode, @Param("quarterDate") String quarterDate);
+
+    @Modifying
+    @Query(value = "UPDATE CRS_IFCOFR_AUDIT SET IFCOFR_AUDIT_FLAG = :ifcofrFlag, IFCOFR_UPDATE_DATE = SYSDATE, IFCOFR_UPDATED_BY = :userId WHERE IFCOFR_BRANCH = :branchCode AND IFCOFR_DATE = TO_DATE(:quarterDate, 'DD/MM/YYYY')", nativeQuery = true)
+    void updateIfcofrAudit(@Param("ifcofrFlag") String ifcofrFlag, @Param("userId") String userId, @Param("branchCode") String branchCode, @Param("quarterDate") String quarterDate);
+
+    @Modifying
+    @Query(value = "DELETE FROM REPORTS_MASTER_LIST WHERE REPORT_MASTER_ID = :reportMasterId AND BRANCH_CODE = :branchCode AND QUARTER_DATE = TO_DATE(:quarterDate, 'DD/MM/YYYY')", nativeQuery = true)
+    void deleteReportsMasterListByReportId(@Param("reportMasterId") String reportMasterId, @Param("branchCode") String branchCode, @Param("quarterDate") String quarterDate);
+
+    @Modifying
+    @Query(value = "DELETE FROM LFAR_REPORTS_MASTER_LIST WHERE BRANCH_CODE = :branchCode AND QUARTER_DATE = TO_DATE(:quarterDate, 'DD/MM/YYYY')", nativeQuery = true)
+    void deleteLfarReportsMasterList(@Param("branchCode") String branchCode, @Param("quarterDate") String quarterDate);
 }
 
