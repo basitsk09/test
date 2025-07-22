@@ -1,34 +1,37 @@
-Of course. The error is because you're iterating over requestIds.toString() instead of the list itself, and you have a type mismatch.
-To fix this, you should retrieve the list as List<Integer> and then convert each integer to a String inside the loop.
-Here is the corrected code:
-// Retrieve the list correctly as a List of Integers.
-List<Integer> requestIds = (List<Integer>) data.get("requestIds");
-String quarterDate = (String) data.get("quarterDate");
-String userId = String.valueOf(data.get("userId"));
+You've found the exact problem. 👍
+If you're only getting the auditflag in the 0th index, it confirms that the SQL query in your findRequestDetailsById method is incorrect. It's only selecting one column, but your Java code expects three.
+To fix this, you need to replace the current SQL in that repository method with the correct query that joins the necessary tables and selects all three required pieces of information.
+## The Solution
+Replace the entire findRequestDetailsById method in your FrtDataRepository.java file with the following code. This query will return the three columns your service layer code is expecting.
+@Repository
+public interface FrtDataRepository extends JpaRepository<AuditStatusRequest, String> {
 
-if (requestIds == null || requestIds.isEmpty() || quarterDate == null) {
-    response.put("message", "Bad Request: 'requestIds' and 'quarterDate' are required.");
-    return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    /**
+     * This is the corrected query.
+     * It joins the necessary tables to select three columns:
+     * 1. The branch code.
+     * 2. The calculated 'before' status string.
+     * 3. The calculated 'after' status string.
+     */
+    @Query(value = "SELECT " +
+                   "    cas.as_branch, " +
+                   "    CASE " +
+                   "        WHEN bm.crs_auditable = 'Y' THEN (CASE WHEN nvl(cia.ifcofr_audit_flag, 'N') = 'Y' THEN 'IFCOFR Audited' ELSE 'Audited' END) " +
+                   "        ELSE 'Non-Audited' " +
+                   "    END as before_status, " +
+                   "    CASE cas.as_new_status " +
+                   "        WHEN 'A' THEN 'Audited' " +
+                   "        WHEN 'I' THEN 'IFCOFR Audited' " +
+                   "        ELSE 'Non-Audited' " +
+                   "    END as after_status " +
+                   "FROM " +
+                   "    crs_audit_status cas " +
+                   "JOIN branch_master bm ON cas.as_branch = bm.branchno " +
+                   "LEFT JOIN crs_ifcofr_audit cia ON cas.as_branch = cia.ifcofr_branch AND cia.ifcofr_date = TO_DATE(:quarterDate, 'DD/MM/YYYY') " +
+                   "WHERE cas.as_id = :reqId", nativeQuery = true)
+    Object[] findRequestDetailsById(@Param("reqId") String reqId, @Param("quarterDate") String quarterDate);
+
+    // ... all your other repository methods ...
 }
 
-int successCount = 0;
-try {
-    // 1. Iterate directly over the 'requestIds' list, not its string representation.
-    for (Integer reqId : requestIds) {
-
-        // 2. Convert the Integer 'reqId' to a String before passing it to the repository.
-        String reqIdAsString = String.valueOf(reqId);
-
-        Object[] details = crsAuditStatusRepository.findRequestDetailsById(reqIdAsString, quarterDate);
-        if (details == null) continue;
-        
-        // ... continue your logic
-    }
-    // ...
-} catch (Exception e) {
-    // ...
-}
-
-Why This Works
- * Correct Iteration: The loop for (Integer reqId : requestIds) now correctly iterates through each Integer element in the list. Your original code, requestIds.toString(), was converting the list to a single string like "[123, 456]" and then looping through its individual characters ('[', '1', '2', '3', ...).
- * Type Conversion: String.valueOf(reqId) safely converts each Integer from the list into the String format that your repository method findRequestDetailsById expects.
+After updating your repository with this correct query, the details array in your service will have 3 elements, and the ArrayIndexOutOfBoundsException will be resolved.
