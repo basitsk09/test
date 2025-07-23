@@ -53,17 +53,17 @@ function Row(props) {
         quarterDate: row.quarterDate,
       });
 
-      // This endpoint now uses the new, more detailed query
+      // UPDATED: Using the 'fetchReports' endpoint as requested
       const response = await axios.post(
-        "/Server/EditBranch/deleteReportList",
+        "/Server/EditBranch/fetchReports",
         payload,
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }
       );
 
-      // The backend now returns a direct array of objects (Map<String, Object>)
-      const rawData = response.data?.data || [];
+      // UPDATED: Parsing the new data structure from the image
+      const rawData = response.data?.result?.reportList || [];
       const formattedReports = rawData.map((report) => {
         let pendingStatus = report.CURRENT_STATUS;
         if (pendingStatus) {
@@ -212,8 +212,6 @@ const FRTCheckerAddDeleteReq = () => {
   }, []);
 
   const handleAction = (request, action) => {
-    // For delete approvals, show a confirmation dialog first.
-    // For all other actions, process them immediately.
     if (action === 'approve' && request.requestType === 'Delete Branch') {
       setConfirmDialog({ open: true, request: request });
     } else {
@@ -221,7 +219,6 @@ const FRTCheckerAddDeleteReq = () => {
     }
   };
   
-  // Handles Add-Approve and all Rejects
   const processSimpleAction = async (request, action) => {
     setProcessing(true);
     try {
@@ -254,30 +251,22 @@ const FRTCheckerAddDeleteReq = () => {
     }
   };
 
-  // This function orchestrates the entire multi-step deletion approval process
   const handleConfirmDelete = async () => {
     const request = confirmDialog.request;
     if (!request) return;
 
     setProcessing(true);
-    setConfirmDialog({ open: false, request: null }); // Close confirmation dialog
+    setConfirmDialog({ open: false, request: null });
 
     try {
-      // Step 1: Fetch the list of reports that need to be reset
       const reportsToReset = await fetchReportsForDeletion(request.branchCode, user.quarterEndDate);
       if (reportsToReset === null) {
           throw new Error("Failed to fetch the list of reports for deletion.");
       }
-
-      // Step 2: Reset all fetched reports
       await resetAllReports(reportsToReset);
-
-      // Step 3: If reset is successful, send the final approval
       await sendFinalApproval(request);
-      
       setDialog({ open: true, title: "Success", message: `Branch ${request.branchCode} and all its reports have been successfully deleted.` });
       fetchBranchRequests();
-
     } catch (error) {
       console.error("Deletion process failed:", error);
       setDialog({ open: true, title: "Deletion Failed", message: error.message || "An unexpected error occurred during the deletion process." });
@@ -289,10 +278,12 @@ const FRTCheckerAddDeleteReq = () => {
   const fetchReportsForDeletion = async (branchCode, quarterDate) => {
     try {
         const payload = await getEncryptedPayload({ branchCode, quarterDate });
-        const response = await axios.post("/Server/EditBranch/deleteReportList", payload, {
+        // UPDATED: Using the 'fetchReports' endpoint here as well for consistency
+        const response = await axios.post("/Server/EditBranch/fetchReports", payload, {
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         });
-        return response.data?.data || [];
+        // UPDATED: Parsing new data structure
+        return response.data?.result?.reportList || [];
     } catch (error) {
         console.error("Error in fetchReportsForDeletion:", error);
         return null;
@@ -322,7 +313,6 @@ const FRTCheckerAddDeleteReq = () => {
         successCount++;
       } catch (e) {
         console.error(`Failed to reset report ${report.REPORT_ID}:`, e);
-        // Throw an error to stop the entire process if one report fails
         throw new Error(`Failed to reset report: ${report.REPORT_NAME}. Aborting deletion.`);
       }
     }
