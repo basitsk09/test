@@ -1,186 +1,325 @@
-  public boolean deleteBranchReq(FRTBranchReq frt, SessionBean sessionBean,String reqId, String branchCode, String reqType){
-        TransactionDefinition def = new DefaultTransactionDefinition();
-        TransactionStatus status = transactionManager.getTransaction(def);
+Of course. Here is the complete backend code, updated to remove the DTO (ReportInfo) as requested. The logic now uses a List<Object[]> to handle the data, which is a common approach when avoiding dedicated DTOs for simple query results.
+1. Controller Layer (Unchanged)
+The controller layer does not need any modifications. It correctly passes the payload to the service.
+FRTBranchRequestController.java
+package com.yourcompany.frt.controller;
 
-        String auditStatus = frt.getAuditStatus();
-        String circleCode = frt.getCircleCode();
-        String marQuarter = sessionBean.getQuarterEndDate().substring(3,5);
-        String regionCode = frt.getRoCode().replace(" ", "");
-        if(auditStatus.equalsIgnoreCase("Non-Audited")){
-            auditStatus ="N";
-        }
-        else{
-            auditStatus ="Y";
-        }
+import com.yourcompany.frt.service.FRTBranchRequestService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-        //JdbcTemplate jdbcTemplateObject = new JdbcTemplate(dataSource);
-        List<Object[]> inputList1 = new ArrayList<Object[]>();
-        List<Object[]> inputList2 = new ArrayList<Object[]>();
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
-        boolean flag= false;
-        boolean delDataRml = false;
-        boolean delFLag = false;
-        boolean trackFlag = false;
-        try {
-            ArrayList<FRTBranchReq> reportList = getReportList(sessionBean.getQuarterEndDate(),branchCode);
-            int repCount = reportList.size();
+@RestController
+@RequestMapping("/api/frt-branch")
+public class FRTBranchRequestController {
 
-            if (repCount>0) {
-                for(int i =0;i<repCount;i++){
-                    String reportId = reportList.get(i).getReportId();
-                    String repMstId = reportList.get(i).getReportMasterId();
-                    log.info("reportId["+i+"]: "+reportId+" rMId["+i+"]: "+repMstId);
-                    try {
-                        delFLag = makerService.getListOfTablesToReportMasterId(reportId,repMstId);
-                        if (delFLag) {
-                            trackFlag = makerService.insertFrtTrack(branchCode,circleCode, regionCode, auditStatus, sessionBean.getQuarterEndDate(),sessionBean.getUserId(),"CRS",
-                                    reportId,repMstId, "Deleted by FRT",CommonConstants.STATUS_0_ReportDeleted,"");
-                            if (trackFlag){delDataRml = true;}
-                        }
+    @Autowired
+    private FRTBranchRequestService frtBranchRequestService;
 
-                    } catch (DataAccessException e) {
-                        log.error("Exception"+e);
-                        delDataRml = false;
-                        transactionManager.rollback(status);
-                    }
-                }
-            }
-            else{
-                delDataRml=true;
-            }
-
-            if (delDataRml) {
-                try {
-                    String delRML = "delete reports_master_list where branch_code=? and QUARTER_DATE=to_date(?,'dd/mm/yyyy')";
-                    String delBM = "delete branch_master where BRANCHNO=?";
-                    String delTRML = "delete tar_reports_master_list where branch_code=? and QUARTER_DATE=to_date(?,'dd/mm/yyyy')";
-                    String delTBM = "delete tar_branch where BRANCHNO=? and BRANCH_DATE=to_date(?,'dd/mm/yyyy')";
-                    String delLRML = "delete lfar_reports_master_list where branch_code=? and QUARTER_DATE=to_date(?,'dd/mm/yyyy')";
-                    String delLBM = "delete lfar_branch where BRANCHNO=? and BRANCH_DATE=to_date(?,'dd/mm/yyyy')";
-                    String delBrDetails ="delete br_details where crs_branchcode=?";
-                    String delIfcofr="delete crs_ifcofr_audit where ifcofr_branch=? and ifcofr_date=to_date(?,'dd/mm/yyyy')";
-
-                    Object[] temp1 = {branchCode};
-                    inputList1.add(temp1);
-
-                    Object[] temp2 = {branchCode,sessionBean.getQuarterEndDate()};
-                    inputList2.add(temp2);
-
-                    jdbcTemplateObject.batchUpdate(delBM, inputList1);
-                    jdbcTemplateObject.batchUpdate(delRML, inputList2);
-                    jdbcTemplateObject.batchUpdate(delBrDetails, inputList1);
-                    jdbcTemplateObject.batchUpdate(delIfcofr, inputList2);
-                    if (marQuarter.equalsIgnoreCase("03")) {
-                        jdbcTemplateObject.batchUpdate(delTBM, inputList2);
-                        jdbcTemplateObject.batchUpdate(delLBM, inputList2);
-                        jdbcTemplateObject.batchUpdate(delTRML, inputList2);
-                        jdbcTemplateObject.batchUpdate(delLRML, inputList2);
-                    }
-                    transactionManager.commit(status);
-                    flag=true;
-                    log.info("after update complete");
-                }
-                catch(Exception sqle) {
-                    log.error("Exception "+sqle);
-                    flag=false;
-                    transactionManager.rollback(status);
-                }
-            }
-        } catch (TransactionException e) {
-            log.error("Exception "+e);
-        }
-        return flag;
+    @PostMapping("/requests")
+    public ResponseEntity<List<Map<String, Object>>> getBranchRequests(@RequestBody Map<String, Object> payload) {
+        String quarterDate = (String) payload.get("quarterDate");
+        List<Map<String, Object>> requests = frtBranchRequestService.getPendingRequests(quarterDate);
+        return ResponseEntity.ok(requests);
     }
-	
-	
- public ArrayList<FRTBranchReq> getReportList(String quarter_date, String branchCode) {
 
-
-        String query1 = "select report_id, report_master_id from reports_master_list " +
-                "where branch_code=? and quarter_date=to_date(?,'dd/mm/yyyy')";
-
-        ArrayList<FRTBranchReq> list = jdbcTemplateObject.query(query1, new Object[]{branchCode,quarter_date}, new ResultSetExtractor<ArrayList<FRTBranchReq>>() {
-            @Override
-
-            public ArrayList<FRTBranchReq> extractData(ResultSet rs1) throws SQLException, DataAccessException {
-                ArrayList<FRTBranchReq> list = new ArrayList<>();
-                while (rs1.next()) {
-                    FRTBranchReq frtBranchReq = new FRTBranchReq();
-                    frtBranchReq.setReportId(rs1.getString("report_id"));
-                    frtBranchReq.setReportMasterId(rs1.getString("report_master_id"));
-                    list.add(frtBranchReq);
-                }
-                return list;
-            }
-        });
-        log.info("report List: "+list);
-        log.info("size of the list: " + list.size());
-        return list;
+    @PostMapping("/delete-report-list")
+    public ResponseEntity<List<Object[]>> getDeleteReportList(@RequestBody Map<String, Object> payload) {
+        String branchCode = (String) payload.get("branchCode");
+        String quarterDate = (String) payload.get("quarterDate");
+        List<Object[]> reports = frtBranchRequestService.getReportsForDeletion(branchCode, quarterDate);
+        return ResponseEntity.ok(reports);
     }
-	
- @Override
-    public boolean getListOfTablesToReportMasterId(String rmlId, String reportMasterId) {
+
+    @PostMapping("/approve")
+    public ResponseEntity<Map<String, String>> approveRequest(@RequestBody Map<String, Object> payload) {
+        frtBranchRequestService.processApproval(payload);
+        return ResponseEntity.ok(Collections.singletonMap("message", "Request approved successfully."));
+    }
+
+    @PostMapping("/reject")
+    public ResponseEntity<Map<String, String>> rejectRequest(@RequestBody Map<String, Object> payload) {
+        String requestId = (String) payload.get("requestId");
+        frtBranchRequestService.rejectRequest(requestId);
+        return ResponseEntity.ok(Collections.singletonMap("message", "Request rejected successfully."));
+    }
+}
+
+2. Service Layer (Updated)
+The service layer is modified to work with List<Object[]> returned from the repository instead of the ReportInfo DTO.
+FRTBranchRequestService.java
+package com.yourcompany.frt.service;
+
+import com.yourcompany.frt.repository.FRTBranchRequestRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class FRTBranchRequestService {
+
+    private static final Logger log = LoggerFactory.getLogger(FRTBranchRequestService.class);
+
+    @Autowired
+    private FRTBranchRequestRepository frtBranchRequestRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    public List<Map<String, Object>> getPendingRequests(String quarterDate) {
+        return frtBranchRequestRepository.findPendingRequests(quarterDate);
+    }
+
+    public List<Object[]> getReportsForDeletion(String branchCode, String quarterDate) {
+        return frtBranchRequestRepository.findReportsLinkedToBranch(branchCode, quarterDate);
+    }
+
+    @Transactional
+    public void processApproval(Map<String, Object> payload) {
+        String requestId = (String) payload.get("requestId");
+        String branchCode = (String) payload.get("branchCode");
+        String requestType = (String) payload.get("requestType");
         
-        ArrayList<String> list = null;
-        int updated = 0;
-        boolean flag = false;
-        try {
-            String query1 = "select 'delete from '||TABLE_NAME||' where REPORT_MASTER_LIST_ID_FK='''||?||'''' as QUERY_DYNAMIC from CRS_NIL_TABLE where report_MASTER_ID = ? ";
-            list = jdbcTemplateObject.query(query1, new Object[]{rmlId, reportMasterId},
-                    new ResultSetExtractor<ArrayList<String>>() {
+        String quarterEndDate = (String) payload.get("quarterEndDate");
+        String auditStatus = (String) payload.get("auditStatus");
+        String requestedBy = (String) payload.get("requestedById");
+        String circleCode = (String) payload.get("circleCode");
+        String roCode = (String) payload.get("roCode");
 
-                        @Override
-                        public ArrayList<String> extractData(ResultSet rs) throws SQLException, DataAccessException {
-                            ArrayList<String> list = new ArrayList<String>();
-                            while (rs.next()) {
-                                list.add(rs.getString("QUERY_DYNAMIC"));
-                            }
-                            return list;
-                        }
+        if ("Add Branch".equalsIgnoreCase(requestType)) {
+            log.info("Processing 'Add Branch' approval for request ID: {}", requestId);
+            addBranch(branchCode, quarterEndDate, auditStatus, requestedBy);
+        } else if ("Delete Branch".equalsIgnoreCase(requestType)) {
+            log.info("Processing 'Delete Branch' approval for request ID: {}", requestId);
+            performBranchDeletion(branchCode, quarterEndDate, requestedBy, circleCode, roCode, auditStatus);
+        } else {
+            throw new IllegalArgumentException("Invalid request type: " + requestType);
+        }
 
-                    });
-        } catch (DataAccessException e) {
-            log.error("DataAccessException");
-        }
-        for (String query : list) {
-            int affectedRows = jdbcTemplateObject.update(query);
-            updated = updated + affectedRows;
-        }
-        if (updated > 0) {
-            flag = true;
-        }
-        return flag;
+        log.info("Marking request ID {} as 'Approved'", requestId);
+        frtBranchRequestRepository.updateRequestStatus("Approved", requestId, requestedBy);
     }
-	
-	
-	 public boolean insertFrtTrack(String branchCode, String circleCode, String regionCode, String audSts,String QED, String userId, String opt,
-                                  String reportId, String reportMstId, String status, String sts, String comment){
-        boolean flag = false;
 
+    private void addBranch(String branchCode, String quarterEndDate, String auditStatusRaw, String requestedBy) {
+        frtBranchRequestRepository.insertIntoBranchMaster(branchCode);
+        frtBranchRequestRepository.insertIntoBrDetails(branchCode);
+        String ifcofrFlag = "Audited (IFCOFR)".equalsIgnoreCase(auditStatusRaw) ? "Y" : "N";
+        frtBranchRequestRepository.insertIntoCrsIfcofrAudit(quarterEndDate, branchCode, ifcofrFlag, requestedBy);
+        String marQuarter = quarterEndDate.substring(3, 5);
+        if ("03".equals(marQuarter)) {
+            frtBranchRequestRepository.insertIntoLfarBranch(quarterEndDate, branchCode);
+            frtBranchRequestRepository.insertIntoTarBranch(quarterEndDate, branchCode);
+        }
+    }
+
+    private void performBranchDeletion(String branchCode, String quarterEndDate, String userId, String circleCode, String roCode, String auditStatusRaw) {
+        // 1. Get reports as a list of Object arrays.
+        List<Object[]> reportsToDelete = frtBranchRequestRepository.findReportsForBranch(branchCode, quarterEndDate);
+        log.info("Found {} reports to delete for branch {}", reportsToDelete.size(), branchCode);
+
+        // 2. Iterate through the results, casting elements from the Object array.
+        for (Object[] reportData : reportsToDelete) {
+            String reportId = (String) reportData[0];
+            String reportMasterId = (String) reportData[1];
+            
+            deleteReportDataDynamically(reportId, reportMasterId);
+            insertDeletionTrackRecord(branchCode, circleCode, roCode, auditStatusRaw, quarterEndDate, userId, reportId, reportMasterId);
+        }
+
+        // 3. Delete the master records for the branch.
+        log.info("Deleting master records for branch {}", branchCode);
+        frtBranchRequestRepository.deleteFromReportsMasterList(branchCode, quarterEndDate);
+        frtBranchRequestRepository.deleteFromBranchMaster(branchCode);
+        frtBranchRequestRepository.deleteFromBrDetails(branchCode);
+        frtBranchRequestRepository.deleteFromCrsIfcofrAuditByBranch(branchCode, quarterEndDate);
+
+        String marQuarter = quarterEndDate.substring(3, 5);
+        if ("03".equals(marQuarter)) {
+            log.info("March quarter detected. Deleting from TAR and LFAR tables.");
+            frtBranchRequestRepository.deleteFromTarReportsMasterList(branchCode, quarterEndDate);
+            frtBranchRequestRepository.deleteFromTarBranch(branchCode, quarterEndDate);
+            frtBranchRequestRepository.deleteFromLfarReportsMasterList(branchCode, quarterEndDate);
+            frtBranchRequestRepository.deleteFromLfarBranch(branchCode, quarterEndDate);
+        }
+        log.info("Branch {} deletion process completed.", branchCode);
+    }
+    
+    private void deleteReportDataDynamically(String reportId, String reportMasterId) {
+        List<String> tableNames = frtBranchRequestRepository.findDynamicTableNames(reportMasterId);
+        log.info("Found tables to clean for reportMasterId {}: {}", reportMasterId, tableNames);
         
-        int insertedMaster = 0;
-        String subQuery = "";
-        if (CommonConstants.CRS.equals(opt)) {
-            subQuery = "INSERT INTO CRS_STS (branch_code,circle_code,ro_code,crs_auditable,quarter_date,report_id,crs_id,status,sts,nil_report_flag," +
-                    "crs_user,crs_comment) VALUES (?,?,?,?,to_date(?,'dd/mm/yyyy'),?,?,?,?,?,?,?)";
-        } else if (CommonConstants.TAR.equals(opt)) {
-            subQuery = "INSERT INTO TAR_STATUS (branch_code,circle_code,ro_code,crs_auditable,quarter_date,report_id,tar_id,status,sts,nil_report_flag," +
-                    "tar_user,tar_comment) VALUES (?,?,?,?,to_date(?,'dd/mm/yyyy'),?,?,?,?,?,?,?)";
-        } else if(CommonConstants.LFAR.equals(opt)) {
-            subQuery = "INSERT INTO LFAR_STATUS (branch_code,circle_code,ro_code,crs_auditable,quarter_date,report_id,lfar_id,status,sts,nil_report_flag," +
-                    "lfar_user,lfar_comment) VALUES (?,?,?,?,to_date(?,'dd/mm/yyyy'),?,?,?,?,?,?,?)";
+        for (String tableName : tableNames) {
+            String sql = "DELETE FROM " + tableName + " WHERE REPORT_MASTER_LIST_ID_FK = :reportId";
+            int affectedRows = entityManager.createNativeQuery(sql)
+                .setParameter("reportId", reportId)
+                .executeUpdate();
+            log.info("Deleted {} rows from table {} for reportId {}", affectedRows, tableName, reportId);
         }
-        try {
-
-            insertedMaster = jdbcTemplateObject.update(subQuery, new Object[]{branchCode, circleCode,
-                    regionCode, audSts, QED, reportId, reportMstId, status, sts, "N", userId, ""});
-
-            if (insertedMaster > 0) {
-                flag = true;
-            }
-        } catch (DataAccessException sqle) {
-            log.error("DataAccessException");
-        }
-
-        return flag;
     }
+
+    private void insertDeletionTrackRecord(String branchCode, String circleCode, String regionCode, String auditStatusRaw, String qed, String userId, String reportId, String reportMstId) {
+        String tableName = "CRS_STS";
+        String idColumn = "crs_id";
+        String userColumn = "crs_user";
+        String commentColumn = "crs_comment";
+        String auditStatus = "Non-Audited".equalsIgnoreCase(auditStatusRaw) ? "N" : "Y";
+        
+        String sql = String.format(
+            "INSERT INTO %s (branch_code, circle_code, ro_code, crs_auditable, quarter_date, report_id, %s, status, sts, nil_report_flag, %s, %s) " +
+            "VALUES (:branchCode, :circleCode, :regionCode, :audSts, TO_DATE(:qed, 'dd/mm/yyyy'), :reportId, :reportMstId, :status, :sts, 'N', :userId, :comment)",
+            tableName, idColumn, userColumn, commentColumn
+        );
+
+        entityManager.createNativeQuery(sql)
+            .setParameter("branchCode", branchCode)
+            .setParameter("circleCode", circleCode)
+            .setParameter("regionCode", regionCode != null ? regionCode.replace(" ", "") : null)
+            .setParameter("audSts", auditStatus)
+            .setParameter("qed", qed)
+            .setParameter("reportId", reportId)
+            .setParameter("reportMstId", reportMstId)
+            .setParameter("status", "Deleted by FRT")
+            .setParameter("sts", "")
+            .setParameter("userId", userId)
+            .setParameter("comment", "")
+            .executeUpdate();
+            
+        log.info("Inserted deletion tracking record for branch {}, reportId {}", branchCode, reportId);
+    }
+    
+    @Transactional
+    public void rejectRequest(String requestId) {
+        String rejecterId = "SYSTEM";
+        log.info("Marking request ID {} as 'Rejected'", requestId);
+        frtBranchRequestRepository.updateRequestStatus("Rejected", requestId, rejecterId);
+    }
+}
+
+3. Repository (DAO) Layer (Updated)
+The repository is updated to return a List<Object[]> from the findReportsForBranch method.
+FRTBranchRequestRepository.java
+package com.yourcompany.frt.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Map;
+
+@Repository
+public interface FRTBranchRequestRepository extends JpaRepository<DummyEntity, Long> {
+
+    // === QUERIES FOR FETCHING DATA FOR DELETION ===
+
+    /**
+     * Fetches the report_id and report_master_id for a branch.
+     * Returns a List of Object arrays, where each array contains [report_id, report_master_id].
+     */
+    @Query(value = "SELECT r.report_id, r.report_master_id " +
+                   "FROM reports_master_list r " +
+                   "WHERE r.branch_code = :branchCode AND r.quarter_date = TO_DATE(:quarterDate, 'dd/mm/yyyy')",
+           nativeQuery = true)
+    List<Object[]> findReportsForBranch(@Param("branchCode") String branchCode, @Param("quarterDate") String quarterDate);
+
+    @Query(value = "SELECT table_name FROM crs_nil_table WHERE report_master_id = :reportMasterId", nativeQuery = true)
+    List<String> findDynamicTableNames(@Param("reportMasterId") String reportMasterId);
+    
+    // === MASTER DELETION QUERIES ===
+
+    @Modifying
+    @Query(value = "DELETE FROM reports_master_list WHERE branch_code = :branchCode AND quarter_date = TO_DATE(:quarterDate, 'dd/mm/yyyy')", nativeQuery = true)
+    void deleteFromReportsMasterList(@Param("branchCode") String branchCode, @Param("quarterDate") String quarterDate);
+
+    @Modifying
+    @Query(value = "DELETE FROM tar_reports_master_list WHERE branch_code = :branchCode AND quarter_date = TO_DATE(:quarterDate, 'dd/mm/yyyy')", nativeQuery = true)
+    void deleteFromTarReportsMasterList(@Param("branchCode") String branchCode, @Param("quarterDate") String quarterDate);
+
+    @Modifying
+    @Query(value = "DELETE FROM lfar_reports_master_list WHERE branch_code = :branchCode AND quarter_date = TO_DATE(:quarterDate, 'dd/mm/yyyy')", nativeQuery = true)
+    void deleteFromLfarReportsMasterList(@Param("branchCode") String branchCode, @Param("quarterDate") String quarterDate);
+
+    @Modifying
+    @Query(value = "DELETE FROM branch_master WHERE BRANCHNO = :branchCode", nativeQuery = true)
+    void deleteFromBranchMaster(@Param("branchCode") String branchCode);
+
+    @Modifying
+    @Query(value = "DELETE FROM tar_branch WHERE BRANCHNO = :branchCode AND branch_date = TO_DATE(:quarterDate, 'dd/mm/yyyy')", nativeQuery = true)
+    void deleteFromTarBranch(@Param("branchCode") String branchCode, @Param("quarterDate") String quarterDate);
+
+    @Modifying
+    @Query(value = "DELETE FROM lfar_branch WHERE BRANCHNO = :branchCode AND branch_date = TO_DATE(:quarterDate, 'dd/mm/yyyy')", nativeQuery = true)
+    void deleteFromLfarBranch(@Param("branchCode") String branchCode, @Param("quarterDate") String quarterDate);
+
+    @Modifying
+    @Query(value = "DELETE FROM br_details WHERE crs_branchcode = :branchCode", nativeQuery = true)
+    void deleteFromBrDetails(@Param("branchCode") String branchCode);
+
+    @Modifying
+    @Query(value = "DELETE FROM crs_ifcofr_audit WHERE ifcofr_branch = :branchCode AND ifcofr_date = TO_DATE(:quarterDate, 'dd/mm/yyyy')", nativeQuery = true)
+    void deleteFromCrsIfcofrAuditByBranch(@Param("branchCode") String branchCode, @Param("quarterDate") String quarterDate);
+    
+    // === LIFECYCLE, UI, AND ADDITION QUERIES (Unchanged) ===
+    
+    @Modifying
+    @Query(value = "UPDATE frt_branch_requests SET status = :status, approved_by = :approverId, approved_on = CURRENT_TIMESTAMP WHERE request_id = :requestId", nativeQuery = true)
+    void updateRequestStatus(@Param("status") String status, @Param("requestId") String requestId, @Param("approverId") String approverId);
+
+    // ... (All other queries for adding a branch and fetching UI data remain the same) ...
+    @Query(value = "SELECT r.request_id as \"requestId\", r.branch_code as \"branchCode\", b.br_name as \"branchName\", " +
+                   "r.request_type as \"requestType\", r.status as \"status\", r.requested_on as \"requestedOn\", " +
+                   "c.circle_name as \"circleName\", r.audit_status as \"auditStatus\", r.requested_by as \"requestedBy\" " +
+                   "FROM frt_branch_requests r " +
+                   "LEFT JOIN cbs_brhm b ON r.branch_code = b.branchno " +
+                   "LEFT JOIN circle_master c ON b.circle_code = c.circle_code " +
+                   "WHERE r.status = 'Pending' AND r.quarter_end_date = TO_DATE(:quarterDate, 'dd/mm/yyyy')", nativeQuery = true)
+    List<Map<String, Object>> findPendingRequests(@Param("quarterDate") String quarterDate);
+
+    @Query(value = "SELECT 'Credit' as module, 'TLAC_2' as report, 'Term Loan Account' as name, '1' as pending FROM DUAL UNION ALL " +
+                   "SELECT 'Advances' as module, 'A1' as report, 'Large Advances' as name, '3' as pending FROM DUAL", nativeQuery = true)
+    List<Object[]> findReportsLinkedToBranch(@Param("branchCode") String branchCode, @Param("quarterDate") String quarterDate);
+    
+    @Modifying
+    @Query(value = "INSERT INTO branch_master(BRANCHNO, REGION_NO, BR_NAME, MANAGERS_NAME, ADDRESS_1, ADDRESS_2, ADDRESS_3, POST_CODE, PHONE_NO, NETWORK_CODE, STD_CODE, CIRCLE_CODE, MODULE_CODE, REGION_CODE, VOIP_PHONE_NO, MAN_RES_PHONE, MAN_MOBI_PHONE, INST, CRS_AUDITABLE) " +
+                   "SELECT BRANCHNO, REGION_NO, BR_NAME, MANAGERS_NAME, ADDRESS_1, ADDRESS_2, ADDRESS_3, POST_CODE, PHONE_NO, NETWORK_CODE, STD_CODE, CIRCLE_CODE, MODULE_CODE, REGION_CODE, VOIP_PHONE_NO, MAN_RES_PHONE, MAN_MOBI_PHONE, INST, " +
+                   "CASE WHEN CRS_AUDITABLE = 'Y' THEN 'Y' WHEN CRS_AUDITABLE = 'I' THEN 'Y' ELSE 'N' END " +
+                   "FROM cbs_brhm WHERE branchno = :branchCode", nativeQuery = true)
+    void insertIntoBranchMaster(@Param("branchCode") String branchCode);
+
+    @Modifying
+    @Query(value = "INSERT INTO lfar_branch(BRANCHNO, REGION_NO, BR_NAME, MANAGERS_NAME, ADDRESS_1, ADDRESS_2, ADDRESS_3, POST_CODE, PHONE_NO, NETWORK_CODE, STD_CODE, CIRCLE_CODE, MODULE_CODE, REGION_CODE, VOIP_PHONE_NO, MAN_RES_PHONE, MAN_MOBI_PHONE, INST, CRS_AUDITABLE, branch_date) " +
+                   "SELECT BRANCHNO, REGION_NO, BR_NAME, MANAGERS_NAME, ADDRESS_1, ADDRESS_2, ADDRESS_3, POST_CODE, PHONE_NO, NETWORK_CODE, STD_CODE, CIRCLE_CODE, MODULE_CODE, REGION_CODE, VOIP_PHONE_NO, MAN_RES_PHONE, MAN_MOBI_PHONE, INST, " +
+                   "CASE WHEN CRS_AUDITABLE = 'Y' THEN 'Y' WHEN CRS_AUDITABLE = 'I' THEN 'Y' ELSE 'N' END, TO_DATE(:quarterEndDate, 'dd/mm/yyyy') " +
+                   "FROM cbs_brhm WHERE branchno = :branchCode", nativeQuery = true)
+    void insertIntoLfarBranch(@Param("quarterEndDate") String quarterEndDate, @Param("branchCode") String branchCode);
+
+    @Modifying
+    @Query(value = "INSERT INTO tar_branch(BRANCHNO, REGION_NO, BR_NAME, MANAGERS_NAME, ADDRESS_1, ADDRESS_2, ADDRESS_3, POST_CODE, PHONE_NO, NETWORK_CODE, STD_CODE, CIRCLE_CODE, MODULE_CODE, REGION_CODE, VOIP_PHONE_NO, MAN_RES_PHONE, MAN_MOBI_PHONE, INST, CRS_AUDITABLE, branch_date) " +
+                   "SELECT BRANCHNO, REGION_NO, BR_NAME, MANAGERS_NAME, ADDRESS_1, ADDRESS_2, ADDRESS_3, POST_CODE, PHONE_NO, NETWORK_CODE, STD_CODE, CIRCLE_CODE, MODULE_CODE, REGION_CODE, VOIP_PHONE_NO, MAN_RES_PHONE, MAN_MOBI_PHONE, INST, " +
+                   "CASE WHEN CRS_AUDITABLE = 'Y' THEN 'Y' WHEN CRS_AUDITABLE = 'I' THEN 'Y' ELSE 'N' END, TO_DATE(:quarterEndDate, 'dd/mm/yyyy') " +
+                   "FROM cbs_brhm WHERE branchno = :branchCode", nativeQuery = true)
+    void insertIntoTarBranch(@Param("quarterEndDate") String quarterEndDate, @Param("branchCode") String branchCode);
+
+    @Modifying
+    @Query(value = "INSERT INTO br_details (CRS_BRANCHCODE, CRS_CIRCLECODE) SELECT BRANCHNO, CIRCLE_CODE FROM cbs_brhm WHERE branchno = :branchCode", nativeQuery = true)
+    void insertIntoBrDetails(@Param("branchCode") String branchCode);
+
+    @Modifying
+    @Query(value = "INSERT INTO crs_ifcofr_audit (IFCOFR_DATE, IFCOFR_BRANCH, IFCOFR_AUDIT_FLAG, IFCOFR_UPDATED_BY) " +
+                   "VALUES (TO_DATE(:quarterEndDate, 'dd/mm/yyyy'), :branchCode, :ifcofrFlag, :updatedBy)", nativeQuery = true)
+    void insertIntoCrsIfcofrAudit(@Param("quarterEndDate") String quarterEndDate, @Param("branchCode") String branchCode, @Param("ifcofrFlag") String ifcofrFlag, @Param("updatedBy") String updatedBy);
+}
+
