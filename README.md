@@ -81,8 +81,38 @@
     }
 /////////////////////////////////////////////////////
 
+ public boolean acceptReq(FRTBranchReq frt, SessionBean sessionBean, String reqId, String branchCode, String reqType){
+        boolean flag = false;
+        if(reqType.equalsIgnoreCase("Add Branch")){
+            log.info("Add Branch Service File");
+            boolean add = frtBranchReqDao.addBranchReq(frt, sessionBean,reqId,branchCode,reqType);
+            if (add){
+                boolean approve = frtBranchReqDao.approveReq(reqId);
+                if(approve){
+                    flag = true;
+                }
+                else {
+                    flag = false;
+                }
+            }
+        }
+        else{
+            log.info("Delete Branch Service File");
+            boolean delete = frtBranchReqDao.deleteBranchReq(frt,sessionBean,reqId,branchCode,reqType);
+            if (delete){
+                boolean approve = frtBranchReqDao.approveReq(reqId);
+                if(approve){
+                    flag = true;
+                }
+                else {
+                    flag = false;
+                }
+            }
+        }
+        return flag;
+    }
 
-
+////////////////////////////////////////////////////
 import React, { useState, useEffect } from "react";
 import {
   Box,
