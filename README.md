@@ -1,73 +1,3 @@
- @Query(value = "select 'CRS' module, report_name report, " +
-            "(SELECT report_desc FROM report_master where report_id=report_master_id) name, status pending " +
-            "from reports_master_list where branch_code = :branchCode and quarter_date = to_date(:quarterDate ,'dd/mm/yyyy') " +
-            "union all " +
-            "select 'TAR' module, report_name, " +
-            "(SELECT report_desc FROM tar_report_master where report_id=report_master_id) report_desc, status " +
-            "from tar_reports_master_list where branch_code = :branchCode and quarter_date = to_date(:quarterDate ,'dd/mm/yyyy') " +
-            "union all " +
-            "select 'LFAR' module, report_name, " +
-            "(SELECT report_desc FROM LFAR_report_master where report_id=report_master_id) report_desc, status " +
-            "from lfar_reports_master_list where branch_code = :branchCode and quarter_date = to_date(:quarterDate ,'dd/mm/yyyy')", nativeQuery = true)
-    List<Object[]> findReportsForBranch(@Param("quarterDate") String quarterDate, @Param("branchCode") String branchCode);
-	
-	////////////////////////////////////////////////////////////
-	instead of above query i am making use of below query to show reports for deletion.
-	
-	 @Query(value = """
-                        select
-                        'CRS' as module,
-                        rcm.report_id,
-                        rcm.report_name,
-                        rcm.report_desc,
-                        rcs.submission_id,
-                        rcs.current_status,
-                        rcm.REPORT_JRXML_NAME,
-                        rcm.report_type,
-                        rcm.audited,
-                        nvl(rcs.nil_report, 'N') nil_report
-                        from report_submission rcs, report_master rcm
-                        where rcs.report_id_fk = rcm.report_id
-                        and rcs.branch_code = :branchCode
-                        and rcs.report_date = to_date(:quarterDate, 'dd/MM/yyyy')
-                        UNION
-                        select
-                        'TAR' as module,
-                        rtm.REPORT_ID ,
-                        rtm.REPORT_NAME,
-                        rtm.REPORT_DESC,
-                        CAST(rts.REPORT_ID AS int) as SUBMISSION_ID,
-                        rts.STATUS as CURRENT_STATUS,
-                        nvl(rts.NIL_REPORT_FLAG,'N') NIL_REPORT,
-                        rtm.REPORT_JRXML_NAME,
-                        rtm.report_type,
-                        rtm.audited
-                        from TAR_REPORTS_MASTER_LIST rts, TAR_REPORT_MASTER rtm
-                        where rts.report_master_id = rtm.REPORT_ID
-                        and rts.BRANCH_CODE =:branchCode
-                        and rts.QUARTER_DATE =to_date(:quarterDate, 'dd/MM/yyyy')
-                        UNION
-                        select
-                        'LFAR' as module,
-                        rm.REPORT_ID,
-                        rm.report_name,
-                        rm.report_desc,
-                        CAST(rml.REPORT_ID AS int) as SUBMISSION_ID,
-                        rml.STATUS as CURRENT_STATUS,
-                        rm.REPORT_JRXML_NAME,
-                        rm.REPORT_TYPE,
-                        rm.AUDITED,
-                        nvl(rml.NIL_REPORT_FLAG, 'N') NIL_REPORT
-                        from lfar_reports_master_list rml, lfar_report_master rm
-                        where rml.REPORT_MASTER_ID = rm.REPORT_ID
-                        and rml.BRANCH_CODE = :branchCode
-                        and rml.STATUS = '50'
-                        and rml.QUARTER_DATE = to_date(:quarterDate, 'dd/MM/yyyy')
-                        order by module,report_name""", nativeQuery = true)
-        List<Map<String, Object>> getAllReportList(@Param("branchCode") String branchCode,
-                        @Param("quarterDate") String quarterDate);
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -107,6 +37,7 @@ const getEncryptedPayload = async (data) => {
   return { iv: ivBase64, salt: saltBase64, data: encryptedData };
 };
 
+// --- Row Sub-Component ---
 function Row(props) {
   const { row, onAction } = props;
   const [open, setOpen] = useState(false);
@@ -122,6 +53,7 @@ function Row(props) {
         quarterDate: row.quarterDate,
       });
 
+      // This endpoint now uses the new, more detailed query
       const response = await axios.post(
         "/Server/EditBranch/deleteReportList",
         payload,
@@ -130,36 +62,28 @@ function Row(props) {
         }
       );
 
-      const rawData = response.data.data;
-
-      if (rawData && rawData.length > 1) {
-        const headers = rawData[0];
-        const dataRows = rawData.slice(1);
-        const formattedReports = dataRows.map((dataRow) => {
-          let reportObj = {};
-          headers.forEach((header, index) => {
-            if (header === "pending") {
-              if (dataRow[index].split("")[0] === "1") {
-                dataRow[index] = "Maker";
-              } else if (dataRow[index].split("")[0] === "2") {
-                dataRow[index] = "Branch Manager";
-              } else if (dataRow[index].split("")[0] === "3") {
-                dataRow[index] = "Branch Auditor";
-              } else if (dataRow[index].split("")[0] === "4") {
-                dataRow[index] = "RO Manager";
-              } else if (dataRow[index].split("")[0] === "5") {
-                dataRow[index] = "Freezed";
-              }
-            }
-            reportObj[header] = dataRow[index];
-          });
-          return reportObj;
-        });
-        setReports(formattedReports);
-      }
+      // The backend now returns a direct array of objects (Map<String, Object>)
+      const rawData = response.data?.data || [];
+      const formattedReports = rawData.map((report) => {
+        let pendingStatus = report.CURRENT_STATUS;
+        if (pendingStatus) {
+            const statusStr = String(pendingStatus);
+            if (statusStr.startsWith("1")) pendingStatus = "Maker";
+            else if (statusStr.startsWith("2")) pendingStatus = "Branch Manager";
+            else if (statusStr.startsWith("3")) pendingStatus = "Branch Auditor";
+            else if (statusStr.startsWith("4")) pendingStatus = "RO Manager";
+            else if (statusStr.startsWith("5")) pendingStatus = "Freezed";
+        }
+        return {
+            module: report.MODULE,
+            report: report.REPORT_NAME,
+            name: report.REPORT_DESC,
+            pending: pendingStatus,
+        };
+      });
+      setReports(formattedReports);
     } catch (error) {
       console.error("Failed to fetch reports for branch:", error);
-      // Optionally show an error message
     } finally {
       setLoadingReports(false);
     }
@@ -168,7 +92,6 @@ function Row(props) {
   const handleRowClick = () => {
     const shouldOpen = !open;
     setOpen(shouldOpen);
-    // Fetch reports only when a 'Delete' row is opened for the first time
     if (shouldOpen && isDelete && reports.length === 0) {
       fetchReportsForBranch();
     }
@@ -183,11 +106,7 @@ function Row(props) {
     <React.Fragment>
       <TableRow sx={rowStyle}>
         <TableCell>
-          <IconButton
-            aria-label="expand row"
-            size="small"
-            onClick={handleRowClick}
-          >
+          <IconButton aria-label="expand row" size="small" onClick={handleRowClick}>
             {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
@@ -201,29 +120,12 @@ function Row(props) {
       <TableRow>
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
           <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box
-              sx={{
-                margin: 1,
-                p: 2,
-                backgroundColor: isDelete ? "#fff0f0" : "#f0fff0",
-              }}
-            >
+            <Box sx={{ margin: 1, p: 2, backgroundColor: isDelete ? "#fff0f0" : "#f0fff0" }}>
               <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={3}>
-                  <b>Circle:</b> {row.circleName}
-                </Grid>
-                <Grid item xs={3}>
-                  <b>RO:</b> {row.roCode}
-                </Grid>
-                <Grid item xs={3}>
-                  <b>Audited Status:</b> {row.auditStatus}
-                </Grid>
-                <Grid item xs={3}>
-                  <b>Requested By:</b> {row.requestedBy}
-                </Grid>
-                <Grid item xs={12}>
-                  <b>No of Branches in Circle:</b> {row.circleCount}
-                </Grid>
+                <Grid item xs={3}><b>Circle:</b> {row.circleName}</Grid>
+                <Grid item xs={3}><b>RO:</b> {row.roCode}</Grid>
+                <Grid item xs={3}><b>Audited Status:</b> {row.auditStatus}</Grid>
+                <Grid item xs={3}><b>Requested By:</b> {row.requestedBy}</Grid>
               </Grid>
 
               {isDelete && (
@@ -240,8 +142,8 @@ function Row(props) {
                           <TableHead>
                             <TableRow>
                               <TableCell>MODULE</TableCell>
-                              <TableCell>REPORT</TableCell>
-                              <TableCell>NAME</TableCell>
+                              <TableCell>REPORT NAME</TableCell>
+                              <TableCell>REPORT DESCRIPTION</TableCell>
                               <TableCell>PENDING WITH</TableCell>
                             </TableRow>
                           </TableHead>
@@ -262,26 +164,11 @@ function Row(props) {
                 </Box>
               )}
 
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  mt: 2,
-                  gap: 2,
-                }}
-              >
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={() => onAction(row.requestId, "approve")}
-                >
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 2, gap: 2 }}>
+                <Button variant="contained" color="success" onClick={() => onAction(row, "approve")}>
                   Approve
                 </Button>
-                <Button
-                  variant="contained"
-                  color="error"
-                  onClick={() => onAction(row.requestId, "reject")}
-                >
+                <Button variant="contained" color="error" onClick={() => onAction(row, "reject")}>
                   Reject
                 </Button>
               </Box>
@@ -297,34 +184,22 @@ function Row(props) {
 const FRTCheckerAddDeleteReq = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
   const [dialog, setDialog] = useState({ open: false, title: "", message: "" });
-  const user = JSON.parse(localStorage.getItem("user")); // Assuming user info is in localStorage
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, request: null });
+  const user = JSON.parse(localStorage.getItem("user"));
 
-  // **API Call to fetch the initial list of pending requests**
   const fetchBranchRequests = async () => {
     setLoading(true);
     try {
-      const payload = await getEncryptedPayload({
-        quarterDate: user?.quarterEndDate,
+      const payload = await getEncryptedPayload({ quarterDate: user?.quarterEndDate });
+      const response = await axios.post("/Server/EditBranch/getBranchRequests", payload, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-
-      const response = await axios.post(
-        "/Server/EditBranch/getBranchRequests",
-        payload,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
-      // Assuming the backend sends data in a 'data' property
-      console.log(response.data.data);
       setRequests(response.data.data || []);
     } catch (error) {
       console.error("Failed to fetch requests:", error);
-      setDialog({
-        open: true,
-        title: "Error",
-        message: "Failed to load requests. Please try again.",
-      });
+      setDialog({ open: true, title: "Error", message: "Failed to load requests. Please try again." });
       setRequests([]);
     } finally {
       setLoading(false);
@@ -336,59 +211,147 @@ const FRTCheckerAddDeleteReq = () => {
     fetchBranchRequests();
   }, []);
 
-  // **API Call to handle Approve/Reject actions**
-  const handleAction = async (reqId, action) => {
-    const request = requests.find((r) => r.requestId === reqId);
-    console.log(request);
+  const handleAction = (request, action) => {
+    // For delete approvals, show a confirmation dialog first.
+    // For all other actions, process them immediately.
+    if (action === 'approve' && request.requestType === 'Delete Branch') {
+      setConfirmDialog({ open: true, request: request });
+    } else {
+      processSimpleAction(request, action);
+    }
+  };
+  
+  // Handles Add-Approve and all Rejects
+  const processSimpleAction = async (request, action) => {
+    setProcessing(true);
     try {
-      // NOTE: A new backend endpoint is assumed here for handling these specific actions.
-
-      // console.log("payload", payload);
-      // const response = await axios.post(`/api/frt-branch/${action}`, payload);
-
       const payload = await getEncryptedPayload({
-        requestId: reqId,
+        requestId: request.requestId,
         branchCode: request.branchCode,
-        circleCode: request.circleCode,
         requestType: request.requestType,
         auditStatus: request.auditStatus,
         requestedById: request.requestedBy,
+        circleCode: request.circleCode,
+        roCode: request.roCode,
         quarterEndDate: user.quarterEndDate,
       });
 
-      const response = await axios.post(
-        `/Server/EditBranch/${action}`,
-        payload,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
-      // Assuming the backend sends data in a 'data' property
-      console.log(response.data.data);
-
-      // Show the success message from the backend
-      setDialog({
-        open: true,
-        title: `Request ${action}`,
-        message: response.data.message,
+      const response = await axios.post(`/Server/EditBranch/${action}`, payload, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      // Refresh the list of requests after a successful action
-      fetchBranchRequests();
+      
+      setDialog({ open: true, title: `Request ${action}d`, message: `Request ${request.requestId} has been successfully ${action}d.`});
+      fetchBranchRequests(); // Refresh list
     } catch (error) {
       console.error(`Failed to ${action} request:`, error);
       setDialog({
         open: true,
         title: "Action Failed",
-        message:
-          error.response?.data?.message ||
-          `An error occurred while processing the request.`,
+        message: error.response?.data?.message || "An error occurred while processing the request.",
       });
+    } finally {
+        setProcessing(false);
     }
   };
 
-  const handleDialogClose = () => {
-    setDialog({ open: false, title: "", message: "" });
+  // This function orchestrates the entire multi-step deletion approval process
+  const handleConfirmDelete = async () => {
+    const request = confirmDialog.request;
+    if (!request) return;
+
+    setProcessing(true);
+    setConfirmDialog({ open: false, request: null }); // Close confirmation dialog
+
+    try {
+      // Step 1: Fetch the list of reports that need to be reset
+      const reportsToReset = await fetchReportsForDeletion(request.branchCode, user.quarterEndDate);
+      if (reportsToReset === null) {
+          throw new Error("Failed to fetch the list of reports for deletion.");
+      }
+
+      // Step 2: Reset all fetched reports
+      await resetAllReports(reportsToReset);
+
+      // Step 3: If reset is successful, send the final approval
+      await sendFinalApproval(request);
+      
+      setDialog({ open: true, title: "Success", message: `Branch ${request.branchCode} and all its reports have been successfully deleted.` });
+      fetchBranchRequests();
+
+    } catch (error) {
+      console.error("Deletion process failed:", error);
+      setDialog({ open: true, title: "Deletion Failed", message: error.message || "An unexpected error occurred during the deletion process." });
+    } finally {
+      setProcessing(false);
+    }
   };
+
+  const fetchReportsForDeletion = async (branchCode, quarterDate) => {
+    try {
+        const payload = await getEncryptedPayload({ branchCode, quarterDate });
+        const response = await axios.post("/Server/EditBranch/deleteReportList", payload, {
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+        return response.data?.data || [];
+    } catch (error) {
+        console.error("Error in fetchReportsForDeletion:", error);
+        return null;
+    }
+  };
+
+  const resetAllReports = async (reportsList) => {
+    if (reportsList.length === 0) {
+      console.log("No reports to reset, proceeding.");
+      return;
+    }
+    
+    let successCount = 0;
+    for (const report of reportsList) {
+      try {
+        const payload = await getEncryptedPayload({
+          submissionId: report.SUBMISSION_ID,
+          reportId: report.REPORT_ID,
+          reportType: report.REPORT_TYPE,
+          module: report.MODULE,
+          method: "resetAll",
+        });
+
+        await axios.post("/Server/EditBranch/resetReportsForDeletion", payload, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+        successCount++;
+      } catch (e) {
+        console.error(`Failed to reset report ${report.REPORT_ID}:`, e);
+        // Throw an error to stop the entire process if one report fails
+        throw new Error(`Failed to reset report: ${report.REPORT_NAME}. Aborting deletion.`);
+      }
+    }
+
+    if (successCount !== reportsList.length) {
+        throw new Error("Not all reports could be reset. Aborting deletion.");
+    }
+    console.log("All reports have been successfully reset.");
+  };
+
+  const sendFinalApproval = async (request) => {
+      const payload = await getEncryptedPayload({
+        requestId: request.requestId,
+        branchCode: request.branchCode,
+        requestType: request.requestType,
+        auditStatus: request.auditStatus,
+        requestedById: request.requestedBy,
+        circleCode: request.circleCode,
+        roCode: request.roCode,
+        quarterEndDate: user.quarterEndDate,
+      });
+
+      await axios.post(`/Server/EditBranch/approve`, payload, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+  };
+
+  const handleDialogClose = () => setDialog({ open: false, title: "", message: "" });
+  const handleConfirmDialogClose = () => setConfirmDialog({ open: false, request: null });
 
   return (
     <>
@@ -397,57 +360,39 @@ const FRTCheckerAddDeleteReq = () => {
           CRS Scope Change Requests
         </Typography>
         <TableContainer component={Paper}>
-          {loading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-              <CircularProgress />
+          {(loading || processing) ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4, alignItems: 'center', flexDirection: 'column' }}>
+                <CircularProgress />
+                {processing && <Typography sx={{mt: 2}}>Processing request, please wait...</Typography>}
             </Box>
           ) : (
             <Table aria-label="collapsible table">
               <TableHead sx={{ backgroundColor: "#b9def0" }}>
                 <TableRow>
                   <TableCell />
-                  <TableCell>
-                    <b>Request ID</b>
-                  </TableCell>
-                  <TableCell>
-                    <b>Branch</b>
-                  </TableCell>
-                  <TableCell>
-                    <b>Branch Name</b>
-                  </TableCell>
-                  <TableCell>
-                    <b>Request Type</b>
-                  </TableCell>
-                  <TableCell>
-                    <b>Status</b>
-                  </TableCell>
-                  <TableCell>
-                    <b>Requested on</b>
-                  </TableCell>
+                  <TableCell><b>Request ID</b></TableCell>
+                  <TableCell><b>Branch</b></TableCell>
+                  <TableCell><b>Branch Name</b></TableCell>
+                  <TableCell><b>Request Type</b></TableCell>
+                  <TableCell><b>Status</b></TableCell>
+                  <TableCell><b>Requested on</b></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {requests.map((row) => (
-                  <Row
-                    key={row.requestId}
-                    row={{ ...row, quarterDate: user?.quarterEndDate }}
-                    onAction={handleAction}
-                  />
+                  <Row key={row.requestId} row={{ ...row, quarterDate: user?.quarterEndDate }} onAction={handleAction} />
                 ))}
               </TableBody>
             </Table>
           )}
         </TableContainer>
       </Container>
+      
+      {/* General Feedback Dialog */}
       <Dialog open={dialog.open} onClose={handleDialogClose}>
         <DialogTitle>{dialog.title}</DialogTitle>
         <DialogContent>
-          {/* Using Alert to give a better visual feedback */}
-          <Alert
-            severity={
-              dialog.title.toLowerCase().includes("error") ? "error" : "success"
-            }
-          >
+          <Alert severity={dialog.title.toLowerCase().includes("failed") ? "error" : "success"}>
             {dialog.message}
           </Alert>
         </DialogContent>
@@ -455,136 +400,26 @@ const FRTCheckerAddDeleteReq = () => {
           <Button onClick={handleDialogClose}>Continue</Button>
         </DialogActions>
       </Dialog>
+      
+      {/* Deletion Confirmation Dialog */}
+      <Dialog open={confirmDialog.open} onClose={handleConfirmDialogClose}>
+        <DialogTitle>Confirm Branch Deletion</DialogTitle>
+        <DialogContent>
+            <Typography>
+                Are you sure you want to approve the deletion of branch <b>{confirmDialog.request?.branchCode}</b>?
+            </Typography>
+            <Typography sx={{mt: 1, color: 'red'}}>
+                This action will permanently reset and delete all associated reports and cannot be undone.
+            </Typography>
+        </DialogContent>
+        <DialogActions>
+            <Button onClick={handleConfirmDialogClose}>Cancel</Button>
+            <Button onClick={handleConfirmDelete} color="error" variant="contained">Confirm Delete</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
 
 export default FRTCheckerAddDeleteReq;
-//////////////////////////////////////////////////////////////////
-integrate below call into above component
 
- const fetchReports = async () => {
-    try {
-      let jsonFormData = JSON.stringify({ branchCode: branchCode });
-
-      await encrypt(iv, salt, jsonFormData).then(function (result) {
-        jsonFormData = result;
-      });
-
-      let payload = {
-        iv: ivBase64,
-        salt: saltBase64,
-        data: jsonFormData,
-      };
-
-      const response = await axios.post(
-        "/Server/EditBranch/fetchReports",
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
-      if (
-        response.data?.result &&
-        response.data?.result?.reportList.length !== 0
-      ) {
-        setReportsList(response.data.result.reportList);
-        setShowReports(true);
-        handleDialogClose();
-      } else if (
-        response.data?.result &&
-        response.data?.result?.reportList.length === 0
-      ) {
-        let samp = branchData;
-        samp.SCOPE = "O";
-        setbranchData({ ...samp });
-        handleDialogClose();
-      } else {
-        setSnackbar({
-          children: "Failed to fetch reports data.",
-          severity: "error",
-        });
-        handleDialogClose();
-      }
-    } catch (e) {
-      console.error(e);
-      setSnackbar({
-        children: "An error occurred. Please try again after some time.",
-        severity: "error",
-      });
-      handleDialogClose();
-    }
-  };
-  
-  
-  /////////////////////////////////////////////////////////////////
-  this call is to delete report list backend is already there. in tegrate this also in above component
-  
-  const resetAllReports = async () => {
-    let newList = reportsList;
-
-    if (newList.length > 0) {
-      let count = 0;
-
-      for (const newSamp of newList) {
-        try {
-          let data = {
-            submissionId: newSamp.SUBMISSION_ID,
-            reportId: newSamp.REPORT_ID,
-            reportType: newSamp.REPORT_TYPE,
-            module: newSamp.MODULE,
-            method: "resetAll",
-          };
-
-          let jsonFormData = JSON.stringify(data);
-
-          await encrypt(iv, salt, jsonFormData).then(function (result) {
-            jsonFormData = result;
-          });
-
-          let payload = {
-            iv: ivBase64,
-            salt: saltBase64,
-            data: jsonFormData,
-          };
-
-          const response = await axios.post(
-            "/Server/EditBranch/resetReportsForDeletion",
-            payload,
-            {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-              },
-            }
-          );
-
-          if (
-            response.data.result?.reset === 1 ||
-            response.data.result?.Reset === 1 ||
-            response.data.result?.status
-          )
-            count++;
-        } catch (e) {
-          console.error(e);
-          if (e.response.status === 400) {
-            console.log("An error occurred. Please try again after some time.");
-          }
-        }
-      }
-
-      if (newList.length === count) {
-        handleConfirmSubmit();
-      } else {
-        setSnackbar({
-          children: "An error occurred. Please try again after some time.",
-          severity: "error",
-        });
-        handleDialogClose();
-      }
-    } else {
-      handleConfirmSubmit();
-    }
-  };
