@@ -53,37 +53,16 @@ function Row(props) {
         quarterDate: row.quarterDate,
       });
 
-      // UPDATED: Using the 'fetchReports' endpoint as requested
-      const response = await axios.post(
-        "/Server/EditBranch/fetchReports",
-        payload,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
-
-      // UPDATED: Parsing the new data structure from the image
-      const rawData = response.data?.result?.reportList || [];
-      const formattedReports = rawData.map((report) => {
-        let pendingStatus = report.CURRENT_STATUS;
-        if (pendingStatus) {
-            const statusStr = String(pendingStatus);
-            if (statusStr.startsWith("1")) pendingStatus = "Maker";
-            else if (statusStr.startsWith("2")) pendingStatus = "Branch Manager";
-            else if (statusStr.startsWith("3")) pendingStatus = "Branch Auditor";
-            else if (statusStr.startsWith("4")) pendingStatus = "RO Manager";
-            else if (statusStr.startsWith("5")) pendingStatus = "Freezed";
-        }
-        return {
-            module: report.MODULE,
-            report: report.REPORT_NAME,
-            name: report.REPORT_DESC,
-            pending: pendingStatus,
-        };
+      const response = await axios.post("/Server/EditBranch/fetchReports", payload, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      setReports(formattedReports);
+
+      const rawData = response.data?.result?.reportList || [];
+      // We store the original raw data to pass it up for the reset operation
+      setReports(rawData);
     } catch (error) {
       console.error("Failed to fetch reports for branch:", error);
+      setReports([]); // Ensure reports is an empty array on failure
     } finally {
       setLoadingReports(false);
     }
@@ -95,6 +74,17 @@ function Row(props) {
     if (shouldOpen && isDelete && reports.length === 0) {
       fetchReportsForBranch();
     }
+  };
+
+  const getPendingStatusText = (status) => {
+    if (!status) return "N/A";
+    const statusStr = String(status);
+    if (statusStr.startsWith("1")) return "Maker";
+    if (statusStr.startsWith("2")) return "Branch Manager";
+    if (statusStr.startsWith("3")) return "Branch Auditor";
+    if (statusStr.startsWith("4")) return "RO Manager";
+    if (statusStr.startsWith("5")) return "Freezed";
+    return statusStr;
   };
 
   const rowStyle = {
@@ -130,13 +120,9 @@ function Row(props) {
 
               {isDelete && (
                 <Box sx={{ my: 2 }}>
-                  {loadingReports ? (
-                    <CircularProgress size={24} />
-                  ) : (
+                  {loadingReports ? ( <CircularProgress size={24} /> ) : (
                     <>
-                      <Typography sx={{ color: "red", mb: 1 }}>
-                        *Following reports will be deleted on branch deletion.
-                      </Typography>
+                      <Typography sx={{ color: "red", mb: 1 }}>*Following reports will be deleted on branch deletion.</Typography>
                       <TableContainer component={Paper}>
                         <Table size="small">
                           <TableHead>
@@ -150,10 +136,10 @@ function Row(props) {
                           <TableBody>
                             {reports.map((report, index) => (
                               <TableRow key={index}>
-                                <TableCell>{report.module}</TableCell>
-                                <TableCell>{report.report}</TableCell>
-                                <TableCell>{report.name}</TableCell>
-                                <TableCell>{report.pending}</TableCell>
+                                <TableCell>{report.MODULE}</TableCell>
+                                <TableCell>{report.REPORT_NAME}</TableCell>
+                                <TableCell>{report.REPORT_DESC}</TableCell>
+                                <TableCell>{getPendingStatusText(report.CURRENT_STATUS)}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -165,12 +151,9 @@ function Row(props) {
               )}
 
               <Box sx={{ display: "flex", justifyContent: "center", mt: 2, gap: 2 }}>
-                <Button variant="contained" color="success" onClick={() => onAction(row, "approve")}>
-                  Approve
-                </Button>
-                <Button variant="contained" color="error" onClick={() => onAction(row, "reject")}>
-                  Reject
-                </Button>
+                {/* UPDATED: Pass the fetched reports list up to the parent on action */}
+                <Button variant="contained" color="success" onClick={() => onAction(row, "approve", reports)}>Approve</Button>
+                <Button variant="contained" color="error" onClick={() => onAction(row, "reject")}>Reject</Button>
               </Box>
             </Box>
           </Collapse>
@@ -211,65 +194,65 @@ const FRTCheckerAddDeleteReq = () => {
     fetchBranchRequests();
   }, []);
 
-  const handleAction = (request, action) => {
+  const handleAction = (request, action, reports = []) => {
     if (action === 'approve' && request.requestType === 'Delete Branch') {
-      setConfirmDialog({ open: true, request: request });
+      // Store the request and its already-fetched reports in the dialog state
+      setConfirmDialog({ open: true, request: { ...request, reports } });
     } else {
       processSimpleAction(request, action);
     }
   };
-  
+
   const processSimpleAction = async (request, action) => {
     setProcessing(true);
     try {
       const payload = await getEncryptedPayload({
         requestId: request.requestId,
-        branchCode: request.branchCode,
-        requestType: request.requestType,
-        auditStatus: request.auditStatus,
-        requestedById: request.requestedBy,
-        circleCode: request.circleCode,
-        roCode: request.roCode,
+        branchCode: request.branchCode, requestType: request.requestType,
+        auditStatus: request.auditStatus, requestedById: request.requestedBy,
+        circleCode: request.circleCode, roCode: request.roCode,
         quarterEndDate: user.quarterEndDate,
       });
-
-      const response = await axios.post(`/Server/EditBranch/${action}`, payload, {
+      await axios.post(`/Server/EditBranch/${action}`, payload, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      
       setDialog({ open: true, title: `Request ${action}d`, message: `Request ${request.requestId} has been successfully ${action}d.`});
-      fetchBranchRequests(); // Refresh list
+      fetchBranchRequests();
     } catch (error) {
       console.error(`Failed to ${action} request:`, error);
-      setDialog({
-        open: true,
-        title: "Action Failed",
-        message: error.response?.data?.message || "An error occurred while processing the request.",
-      });
+      setDialog({ open: true, title: "Action Failed", message: error.response?.data?.message || "An error occurred." });
     } finally {
-        setProcessing(false);
+      setProcessing(false);
     }
   };
 
   const handleConfirmDelete = async () => {
-    const request = confirmDialog.request;
+    const { request } = confirmDialog;
     if (!request) return;
 
     setProcessing(true);
     setConfirmDialog({ open: false, request: null });
 
     try {
-      const reportsToReset = await fetchReportsForDeletion(request.branchCode, user.quarterEndDate);
-      if (reportsToReset === null) {
-          throw new Error("Failed to fetch the list of reports for deletion.");
+      let reportsToReset = request.reports;
+
+      // SAFETY NET: If reports weren't available, fetch them now.
+      if (!reportsToReset || reportsToReset.length === 0) {
+        reportsToReset = await fetchReportsForDeletion(request.branchCode, user.quarterEndDate);
       }
+
+      if (reportsToReset === null) {
+        throw new Error("Failed to get the list of reports for deletion.");
+      }
+
       await resetAllReports(reportsToReset);
       await sendFinalApproval(request);
+      
       setDialog({ open: true, title: "Success", message: `Branch ${request.branchCode} and all its reports have been successfully deleted.` });
       fetchBranchRequests();
     } catch (error) {
       console.error("Deletion process failed:", error);
-      setDialog({ open: true, title: "Deletion Failed", message: error.message || "An unexpected error occurred during the deletion process." });
+      setDialog({ open: true, title: "Deletion Failed", message: error.message || "An unexpected error occurred." });
     } finally {
       setProcessing(false);
     }
@@ -277,67 +260,49 @@ const FRTCheckerAddDeleteReq = () => {
 
   const fetchReportsForDeletion = async (branchCode, quarterDate) => {
     try {
-        const payload = await getEncryptedPayload({ branchCode, quarterDate });
-        // UPDATED: Using the 'fetchReports' endpoint here as well for consistency
-        const response = await axios.post("/Server/EditBranch/fetchReports", payload, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        });
-        // UPDATED: Parsing new data structure
-        return response.data?.result?.reportList || [];
+      console.log("Fetching reports from API as a fallback...");
+      const payload = await getEncryptedPayload({ branchCode, quarterDate });
+      const response = await axios.post("/Server/EditBranch/fetchReports", payload, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      return response.data?.result?.reportList || [];
     } catch (error) {
-        console.error("Error in fetchReportsForDeletion:", error);
-        return null;
+      console.error("Error in fetchReportsForDeletion fallback:", error);
+      return null;
     }
   };
 
   const resetAllReports = async (reportsList) => {
     if (reportsList.length === 0) {
-      console.log("No reports to reset, proceeding.");
       return;
     }
-    
-    let successCount = 0;
     for (const report of reportsList) {
       try {
         const payload = await getEncryptedPayload({
-          submissionId: report.SUBMISSION_ID,
-          reportId: report.REPORT_ID,
-          reportType: report.REPORT_TYPE,
-          module: report.MODULE,
+          submissionId: report.SUBMISSION_ID, reportId: report.REPORT_ID,
+          reportType: report.REPORT_TYPE, module: report.MODULE,
           method: "resetAll",
         });
-
         await axios.post("/Server/EditBranch/resetReportsForDeletion", payload, {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         });
-        successCount++;
       } catch (e) {
         console.error(`Failed to reset report ${report.REPORT_ID}:`, e);
         throw new Error(`Failed to reset report: ${report.REPORT_NAME}. Aborting deletion.`);
       }
     }
-
-    if (successCount !== reportsList.length) {
-        throw new Error("Not all reports could be reset. Aborting deletion.");
-    }
-    console.log("All reports have been successfully reset.");
   };
 
   const sendFinalApproval = async (request) => {
-      const payload = await getEncryptedPayload({
-        requestId: request.requestId,
-        branchCode: request.branchCode,
-        requestType: request.requestType,
-        auditStatus: request.auditStatus,
-        requestedById: request.requestedBy,
-        circleCode: request.circleCode,
-        roCode: request.roCode,
-        quarterEndDate: user.quarterEndDate,
-      });
-
-      await axios.post(`/Server/EditBranch/approve`, payload, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
+    const payload = await getEncryptedPayload({
+      requestId: request.requestId, branchCode: request.branchCode,
+      requestType: request.requestType, auditStatus: request.auditStatus,
+      requestedById: request.requestedBy, circleCode: request.circleCode,
+      roCode: request.roCode, quarterEndDate: user.quarterEndDate,
+    });
+    await axios.post(`/Server/EditBranch/approve`, payload, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
   };
 
   const handleDialogClose = () => setDialog({ open: false, title: "", message: "" });
@@ -346,14 +311,12 @@ const FRTCheckerAddDeleteReq = () => {
   return (
     <>
       <Container maxWidth={false}>
-        <Typography variant="h5" sx={{ mb: 2 }}>
-          CRS Scope Change Requests
-        </Typography>
+        <Typography variant="h5" sx={{ mb: 2 }}>CRS Scope Change Requests</Typography>
         <TableContainer component={Paper}>
           {(loading || processing) ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4, alignItems: 'center', flexDirection: 'column' }}>
-                <CircularProgress />
-                {processing && <Typography sx={{mt: 2}}>Processing request, please wait...</Typography>}
+              <CircularProgress />
+              {processing && <Typography sx={{mt: 2}}>Processing request, please wait...</Typography>}
             </Box>
           ) : (
             <Table aria-label="collapsible table">
@@ -378,33 +341,25 @@ const FRTCheckerAddDeleteReq = () => {
         </TableContainer>
       </Container>
       
-      {/* General Feedback Dialog */}
       <Dialog open={dialog.open} onClose={handleDialogClose}>
         <DialogTitle>{dialog.title}</DialogTitle>
         <DialogContent>
-          <Alert severity={dialog.title.toLowerCase().includes("failed") ? "error" : "success"}>
-            {dialog.message}
-          </Alert>
+          <Alert severity={dialog.title.toLowerCase().includes("failed") ? "error" : "success"}>{dialog.message}</Alert>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleDialogClose}>Continue</Button>
         </DialogActions>
       </Dialog>
       
-      {/* Deletion Confirmation Dialog */}
       <Dialog open={confirmDialog.open} onClose={handleConfirmDialogClose}>
         <DialogTitle>Confirm Branch Deletion</DialogTitle>
         <DialogContent>
-            <Typography>
-                Are you sure you want to approve the deletion of branch <b>{confirmDialog.request?.branchCode}</b>?
-            </Typography>
-            <Typography sx={{mt: 1, color: 'red'}}>
-                This action will permanently reset and delete all associated reports and cannot be undone.
-            </Typography>
+          <Typography>Are you sure you want to approve the deletion of branch <b>{confirmDialog.request?.branchCode}</b>?</Typography>
+          <Typography sx={{mt: 1, color: 'red'}}>This action will permanently reset and delete all associated reports and cannot be undone.</Typography>
         </DialogContent>
         <DialogActions>
-            <Button onClick={handleConfirmDialogClose}>Cancel</Button>
-            <Button onClick={handleConfirmDelete} color="error" variant="contained">Confirm Delete</Button>
+          <Button onClick={handleConfirmDialogClose}>Cancel</Button>
+          <Button onClick={handleConfirmDelete} color="error" variant="contained">Confirm Delete</Button>
         </DialogActions>
       </Dialog>
     </>
@@ -412,4 +367,3 @@ const FRTCheckerAddDeleteReq = () => {
 };
 
 export default FRTCheckerAddDeleteReq;
-
