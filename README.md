@@ -1,3 +1,88 @@
+ public boolean addBranchReq(FRTBranchReq frt, SessionBean sessionBean, String reqId, String branchCode, String reqType){
+
+        TransactionDefinition def = new DefaultTransactionDefinition();
+        TransactionStatus status = transactionManager.getTransaction(def);
+
+        //JdbcTemplate jdbcTemplateObject = new JdbcTemplate(dataSource);
+        boolean flag= false;
+        String auditStatus = frt.getAuditStatus();
+        if(auditStatus.equalsIgnoreCase("Non-Audited")){
+            auditStatus ="N";
+        }
+        else if(auditStatus.equalsIgnoreCase("Audited (IFCOFR)")){
+            auditStatus ="I";
+        }
+        if(auditStatus.equalsIgnoreCase("Audited (Non-IFCOFR)")){
+            auditStatus ="Y";
+        }
+        String marQuarter = sessionBean.getQuarterEndDate().substring(3,5);
+        String reqBy = frt.getRequestedById();
+        log.info("auditStatus: "+auditStatus+" reqBy: "+reqBy);
+        List<Object[]> inputList1 = new ArrayList<Object[]>();
+        List<Object[]> inputList2 = new ArrayList<Object[]>();
+        List<Object[]> inputList3 = new ArrayList<Object[]>();
+
+        try {
+            String insertBM = "insert into branch_master(select BRANCHNO , REGION_NO ,BR_NAME,MANAGERS_NAME, ADDRESS_1 ,ADDRESS_2 ,ADDRESS_3 ,POST_CODE , " +
+                    "PHONE_NO ,NETWORK_CODE ,STD_CODE ,CIRCLE_CODE ,MODULE_CODE , REGION_CODE ,VOIP_PHONE_NO ,MAN_RES_PHONE ,MAN_MOBI_PHONE , " +
+                    "INST ,case when CRS_AUDITABLE='Y' then 'Y' when CRS_AUDITABLE='I' then 'Y' else 'N' end from cbs_brhm " +
+                    "where branchno=?)";
+
+            String insertLBM = "insert into lfar_branch(select BRANCHNO , REGION_NO ,BR_NAME ,MANAGERS_NAME,ADDRESS_1 ,ADDRESS_2 ,ADDRESS_3 ,POST_CODE ," +
+                    "PHONE_NO ,NETWORK_CODE ,STD_CODE ,CIRCLE_CODE ,MODULE_CODE , REGION_CODE ,VOIP_PHONE_NO ,MAN_RES_PHONE ,MAN_MOBI_PHONE ," +
+                    "INST ,case when CRS_AUDITABLE='Y' then 'Y' " +
+                    "when CRS_AUDITABLE='I' then 'Y' else 'N' end, TO_DATE(?,'dd/mm/yyyy') branch_date from cbs_brhm where branchno=?)";
+
+            String insertTBM = "insert into tar_branch(select BRANCHNO , REGION_NO ,BR_NAME ,MANAGERS_NAME,ADDRESS_1 ,ADDRESS_2 ,ADDRESS_3 ,POST_CODE ," +
+                    "PHONE_NO ,NETWORK_CODE ,STD_CODE ,CIRCLE_CODE ,MODULE_CODE ,REGION_CODE ,VOIP_PHONE_NO ,MAN_RES_PHONE ,MAN_MOBI_PHONE ," +
+                    "INST , case when CRS_AUDITABLE='Y' then 'Y' when CRS_AUDITABLE='I' then 'Y' else 'N' end, " +
+                    "TO_DATE(?,'dd/mm/yyyy') branch_date from cbs_brhm where branchno=?)";
+
+            String insertBRDets = "insert into br_details (CRS_BRANCHCODE, CRS_CIRCLECODE )" +
+                    "select BRANCHNO , CIRCLE_CODE  from cbs_brhm WHERE branchno=?";
+
+            String insertIfcofr = "insert into crs_ifcofr_audit (IFCOFR_DATE, IFCOFR_BRANCH, IFCOFR_AUDIT_FLAG, IFCOFR_UPDATED_BY) " +
+                    "values(to_date(?,'dd/mm/yyyy'),?,?,?)";
+
+            Object[] temp1 = {branchCode};
+            inputList1.add(temp1);
+
+            Object[] temp2 = {sessionBean.getQuarterEndDate(),branchCode};
+            inputList2.add(temp2);
+
+            Object[] temp3;
+            if (auditStatus.equalsIgnoreCase("I")) {
+                temp3 = new Object[]{sessionBean.getQuarterEndDate(), branchCode, "Y", reqBy};
+                inputList3.add(temp3);
+            }
+            else {
+                temp3 = new Object[]{sessionBean.getQuarterEndDate(), branchCode, "N", reqBy};
+                inputList3.add(temp3);
+            }
+
+
+            jdbcTemplateObject.batchUpdate(insertBM, inputList1);
+            jdbcTemplateObject.batchUpdate(insertBRDets, inputList1);
+            jdbcTemplateObject.batchUpdate(insertIfcofr, inputList3);
+            if (marQuarter.equalsIgnoreCase("03")) {
+                jdbcTemplateObject.batchUpdate(insertLBM, inputList2);
+                jdbcTemplateObject.batchUpdate(insertTBM, inputList2);
+            }
+            transactionManager.commit(status);
+            flag=true;
+            log.info("after update complete");
+        }
+        catch(Exception sqle) {
+            sqle.printStackTrace();
+            flag=false;
+            transactionManager.rollback(status);
+        }
+        return flag;
+    }
+/////////////////////////////////////////////////////
+
+
+
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -37,7 +122,6 @@ const getEncryptedPayload = async (data) => {
   return { iv: ivBase64, salt: saltBase64, data: encryptedData };
 };
 
-// --- Row Component for the Collapsible Table ---
 function Row(props) {
   const { row, onAction } = props;
   const [open, setOpen] = useState(false);
@@ -45,29 +129,46 @@ function Row(props) {
   const [loadingReports, setLoadingReports] = useState(false);
   const isDelete = row.requestType === "Delete Branch";
 
-  // **API Call to fetch reports for a specific branch**
   const fetchReportsForBranch = async () => {
     setLoadingReports(true);
     try {
-      // NOTE: Using the backend endpoint built previously.
-      const response = await axios.post("/api/frt-branch/delete-report-list", {
+      const payload = await getEncryptedPayload({
         branchCode: row.branchCode,
-        quarterDate: row.quarterDate, // Assuming quarterDate is part of the row data
+        quarterDate: row.quarterDate,
       });
-      
-      // The backend returns a List of Lists, with the first being headers.
+
+      const response = await axios.post(
+        "/Server/EditBranch/deleteReportList",
+        payload,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+
       const rawData = response.data.data;
+
       if (rawData && rawData.length > 1) {
-        const headers = rawData[0]; // e.g., ["module", "report", "name"]
-        const dataRows = rawData.slice(1); // Get all rows except the header
-        
-        // Map the array data to objects for easier use
-        const formattedReports = dataRows.map(dataRow => {
-            let reportObj = {};
-            headers.forEach((header, index) => {
-                reportObj[header] = dataRow[index];
-            });
-            return reportObj;
+        const headers = rawData[0];
+        const dataRows = rawData.slice(1);
+        const formattedReports = dataRows.map((dataRow) => {
+          let reportObj = {};
+          headers.forEach((header, index) => {
+            if (header === "pending") {
+              if (dataRow[index].split("")[0] === "1") {
+                dataRow[index] = "Maker";
+              } else if (dataRow[index].split("")[0] === "2") {
+                dataRow[index] = "Branch Manager";
+              } else if (dataRow[index].split("")[0] === "3") {
+                dataRow[index] = "Branch Auditor";
+              } else if (dataRow[index].split("")[0] === "4") {
+                dataRow[index] = "RO Manager";
+              } else if (dataRow[index].split("")[0] === "5") {
+                dataRow[index] = "Freezed";
+              }
+            }
+            reportObj[header] = dataRow[index];
+          });
+          return reportObj;
         });
         setReports(formattedReports);
       }
@@ -97,7 +198,11 @@ function Row(props) {
     <React.Fragment>
       <TableRow sx={rowStyle}>
         <TableCell>
-          <IconButton aria-label="expand row" size="small" onClick={handleRowClick}>
+          <IconButton
+            aria-label="expand row"
+            size="small"
+            onClick={handleRowClick}
+          >
             {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
@@ -111,13 +216,29 @@ function Row(props) {
       <TableRow>
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
           <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box sx={{ margin: 1, p: 2, backgroundColor: isDelete ? "#fff0f0" : "#f0fff0" }}>
+            <Box
+              sx={{
+                margin: 1,
+                p: 2,
+                backgroundColor: isDelete ? "#fff0f0" : "#f0fff0",
+              }}
+            >
               <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={3}><b>Circle:</b> {row.circleName}</Grid>
-                <Grid item xs={3}><b>RO:</b> {row.roCode}</Grid>
-                <Grid item xs={3}><b>Audited Status:</b> {row.auditStatus}</Grid>
-                <Grid item xs={3}><b>Requested By:</b> {row.requestedBy}</Grid>
-                <Grid item xs={12}><b>No of Branches in Circle:</b> {row.circleCount}</Grid>
+                <Grid item xs={3}>
+                  <b>Circle:</b> {row.circleName}
+                </Grid>
+                <Grid item xs={3}>
+                  <b>RO:</b> {row.roCode}
+                </Grid>
+                <Grid item xs={3}>
+                  <b>Audited Status:</b> {row.auditStatus}
+                </Grid>
+                <Grid item xs={3}>
+                  <b>Requested By:</b> {row.requestedBy}
+                </Grid>
+                <Grid item xs={12}>
+                  <b>No of Branches in Circle:</b> {row.circleCount}
+                </Grid>
               </Grid>
 
               {isDelete && (
@@ -126,7 +247,9 @@ function Row(props) {
                     <CircularProgress size={24} />
                   ) : (
                     <>
-                      <Typography sx={{ color: "red", mb: 1 }}>*Following reports will be deleted on branch deletion.</Typography>
+                      <Typography sx={{ color: "red", mb: 1 }}>
+                        *Following reports will be deleted on branch deletion.
+                      </Typography>
                       <TableContainer component={Paper}>
                         <Table size="small">
                           <TableHead>
@@ -134,6 +257,7 @@ function Row(props) {
                               <TableCell>MODULE</TableCell>
                               <TableCell>REPORT</TableCell>
                               <TableCell>NAME</TableCell>
+                              <TableCell>PENDING WITH</TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
@@ -142,6 +266,7 @@ function Row(props) {
                                 <TableCell>{report.module}</TableCell>
                                 <TableCell>{report.report}</TableCell>
                                 <TableCell>{report.name}</TableCell>
+                                <TableCell>{report.pending}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -152,9 +277,28 @@ function Row(props) {
                 </Box>
               )}
 
-              <Box sx={{ display: "flex", justifyContent: "center", mt: 2, gap: 2 }}>
-                <Button variant="contained" color="success" onClick={() => onAction(row.requestId, "approve")}>Approve</Button>
-                <Button variant="contained" color="error" onClick={() => onAction(row.requestId, "reject")}>Reject</Button>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  mt: 2,
+                  gap: 2,
+                }}
+              >
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={() => onAction(row.requestId, "approve")}
+                >
+                  Approve
+                </Button>
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={() => onAction(row.requestId, "reject")}
+                >
+                  Reject
+                </Button>
               </Box>
             </Box>
           </Collapse>
@@ -175,16 +319,27 @@ const FRTCheckerAddDeleteReq = () => {
   const fetchBranchRequests = async () => {
     setLoading(true);
     try {
-      const payload = await getEncryptedPayload({ quarterDate: user?.quarterEndDate });
-      // NOTE: Using the backend endpoint built previously. The backend must be able to decrypt the payload.
-      const response = await axios.post("/api/frt-branch/requests", payload, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      const payload = await getEncryptedPayload({
+        quarterDate: user?.quarterEndDate,
       });
+
+      const response = await axios.post(
+        "/Server/EditBranch/getBranchRequests",
+        payload,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
       // Assuming the backend sends data in a 'data' property
+      console.log(response.data.data);
       setRequests(response.data.data || []);
     } catch (error) {
       console.error("Failed to fetch requests:", error);
-      setDialog({ open: true, title: "Error", message: "Failed to load requests. Please try again." });
+      setDialog({
+        open: true,
+        title: "Error",
+        message: "Failed to load requests. Please try again.",
+      });
       setRequests([]);
     } finally {
       setLoading(false);
@@ -205,11 +360,15 @@ const FRTCheckerAddDeleteReq = () => {
         requestId: reqId,
         branchCode: request.branchCode,
         circleCode: request.circleCode,
-        requestType: request.requestType
+        requestType: request.requestType,
       });
 
       // Show the success message from the backend
-      setDialog({ open: true, title: `Request ${action}`, message: response.data.message });
+      setDialog({
+        open: true,
+        title: `Request ${action}`,
+        message: response.data.message,
+      });
       // Refresh the list of requests after a successful action
       fetchBranchRequests();
     } catch (error) {
@@ -217,7 +376,9 @@ const FRTCheckerAddDeleteReq = () => {
       setDialog({
         open: true,
         title: "Action Failed",
-        message: error.response?.data?.message || `An error occurred while processing the request.`,
+        message:
+          error.response?.data?.message ||
+          `An error occurred while processing the request.`,
       });
     }
   };
@@ -229,7 +390,9 @@ const FRTCheckerAddDeleteReq = () => {
   return (
     <>
       <Container maxWidth={false}>
-        <Typography variant="h5" sx={{ mb: 2 }}>CRS Scope Change Requests</Typography>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          CRS Scope Change Requests
+        </Typography>
         <TableContainer component={Paper}>
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
@@ -240,17 +403,33 @@ const FRTCheckerAddDeleteReq = () => {
               <TableHead sx={{ backgroundColor: "#b9def0" }}>
                 <TableRow>
                   <TableCell />
-                  <TableCell><b>Request ID</b></TableCell>
-                  <TableCell><b>Branch</b></TableCell>
-                  <TableCell><b>Branch Name</b></TableCell>
-                  <TableCell><b>Request Type</b></TableCell>
-                  <TableCell><b>Status</b></TableCell>
-                  <TableCell><b>Requested on</b></TableCell>
+                  <TableCell>
+                    <b>Request ID</b>
+                  </TableCell>
+                  <TableCell>
+                    <b>Branch</b>
+                  </TableCell>
+                  <TableCell>
+                    <b>Branch Name</b>
+                  </TableCell>
+                  <TableCell>
+                    <b>Request Type</b>
+                  </TableCell>
+                  <TableCell>
+                    <b>Status</b>
+                  </TableCell>
+                  <TableCell>
+                    <b>Requested on</b>
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {requests.map((row) => (
-                  <Row key={row.requestId} row={{...row, quarterDate: user?.quarterEndDate}} onAction={handleAction} />
+                  <Row
+                    key={row.requestId}
+                    row={{ ...row, quarterDate: user?.quarterEndDate }}
+                    onAction={handleAction}
+                  />
                 ))}
               </TableBody>
             </Table>
@@ -261,7 +440,11 @@ const FRTCheckerAddDeleteReq = () => {
         <DialogTitle>{dialog.title}</DialogTitle>
         <DialogContent>
           {/* Using Alert to give a better visual feedback */}
-          <Alert severity={dialog.title.toLowerCase().includes("error") ? "error" : "success"}>
+          <Alert
+            severity={
+              dialog.title.toLowerCase().includes("error") ? "error" : "success"
+            }
+          >
             {dialog.message}
           </Alert>
         </DialogContent>
