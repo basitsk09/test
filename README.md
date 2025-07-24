@@ -1,7 +1,39 @@
-branchMasterRepository.insertIntoCrsSts(branchCode, circleCode, roCode, auditFlag, quarterEndDate,String.valueOf(row.get("submissionId")),
+@Transactional
+    public void processApproval(Map<String, Object> payload) {
+        Map<String, Object> data = (Map<String, Object>) payload.get("data");
+        List<Map<String, Object>> reportsToBeDeleted = (List<Map<String, Object>>) data.get("reportsToBeDeleted");
+        try {
+            String requestId = String.valueOf(data.get("requestId"));
+            String branchCode = String.valueOf(data.get("branchCode"));
+            String requestType = String.valueOf(data.get("requestType"));
+            String quarterEndDate = String.valueOf(data.get("quarterEndDate"));
+            String auditStatus = String.valueOf(data.get("auditStatus"));
+            String requestedBy = String.valueOf(data.get("requestedById"));
+            String circleCode = String.valueOf(data.get("circleCode"));
+            String roCode = String.valueOf(data.get("roCode")).replaceAll("\\s", "");
+            String auditFlag = auditStatus.equalsIgnoreCase("Audited (Non-IFCOFR)") ? "Y" : auditStatus.equalsIgnoreCase("Audited (IFCOFR)") ?"I":"N";
+
+            if ("Add Branch".equalsIgnoreCase(requestType)) {
+                log.info("Processing 'Add Branch' approval for request ID: "+ requestId);
+                addBranch(branchCode, quarterEndDate, auditStatus, requestedBy);
+            } else if ("Delete Branch".equalsIgnoreCase(requestType)) {
+                log.info("Processing 'Delete Branch' approval for request ID: "+ requestId);
+                for (Map<String, Object> row : reportsToBeDeleted) {
+                    branchMasterRepository.insertIntoCrsSts(branchCode, circleCode, roCode, auditFlag, quarterEndDate,String.valueOf(row.get("submissionId")),
                             String.valueOf(row.get("reportId")),
                             String.valueOf(row.get("nilReport")),
                             requestedBy);
+                }
+                deleteBranch(branchCode, quarterEndDate);
+
+            } else {
+                throw new IllegalArgumentException("Invalid request type: " + requestType);
+            }
+            crsRequestTrackRepository.updateCrsRequests(requestId, "2");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 							
 							
 @Modifying
