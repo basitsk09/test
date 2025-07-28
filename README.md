@@ -36,6 +36,7 @@ import DiscardIcon from "@mui/icons-material/DeleteForever";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
+import axios from "axios"; // 👈 1. Import axios
 
 export default function FrtMultipleBranchAuditStatus() {
   document.title = "CRS | FRT Multiple Branch Audit";
@@ -60,6 +61,62 @@ export default function FrtMultipleBranchAuditStatus() {
   const handleDialogClose = () =>
     setDialog({ open: false, title: "", message: "" });
   const goToSingleBranch = () => navigate("/FRTUser/singleBranch"); // Update with your actual route
+
+  /**
+   * 👇 2. New function to handle the template download via API call
+   * This replaces the simple 'href' navigation.
+   */
+  const handleDownloadTemplate = async () => {
+    setLoading(true); // Show loader while fetching
+    try {
+      const token = localStorage.getItem("token"); // Get auth token
+
+      // Make a POST request using axios.
+      // 'responseType: blob' is crucial to handle the file data correctly.
+      const response = await axios.post(
+        "/Server/EditBranch/downloadTemplate",
+        {}, // Sending an empty body as the template doesn't need input data
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob",
+        }
+      );
+
+      // --- Process the file download in the browser ---
+
+      // Extract filename from the 'Content-Disposition' header
+      const contentDisposition = response.headers["content-disposition"];
+      let filename = "AuditStatusSample.xlsx"; // A default filename
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+        if (filenameMatch.length > 1) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Create a URL for the blob object
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+
+      // Create a temporary link element to trigger the download
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up by removing the link and revoking the URL
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download template:", error);
+      setSnackbar({
+        children: "Could not download the template. Please try again.",
+        severity: "error",
+      });
+    } finally {
+      setLoading(false); // Hide loader
+    }
+  };
 
   /**
    * Validates a single field value.
@@ -259,23 +316,19 @@ export default function FrtMultipleBranchAuditStatus() {
       return;
     }
 
-    // The backend expects separate arrays for branchcode and status
     const branchCodeList = rows.map((row) =>
       String(row.branchCode.value).padStart(5, "0")
     );
     const statusList = rows.map((row) => row.auditStatus.value);
 
-    // The JSP creates a form and submits it. We can replicate this with URLSearchParams for a standard form POST.
     const params = new URLSearchParams();
     branchCodeList.forEach((bc) => params.append("branchcode", bc));
     statusList.forEach((st) => params.append("status", st));
 
     try {
-      // We expect a file download (for errors) or a redirect with a message (for success).
-      // A standard form POST is the best way to handle this ambiguity without complex response parsing.
       const form = document.createElement("form");
       form.method = "post";
-      form.action = "/FRTUser/bulkUpload"; // Your actual backend endpoint
+      form.action = "/FRTUser/bulkUpload";
 
       branchCodeList.forEach((bc) => {
         const hiddenField = document.createElement("input");
@@ -296,13 +349,11 @@ export default function FrtMultipleBranchAuditStatus() {
       document.body.appendChild(form);
       form.submit();
 
-      // After submission, we can only provide generic feedback as we don't get a direct response in the SPA.
       setSnackbar({
         children:
           "Request submitted successfully. You will be notified of any invalid records.",
         severity: "success",
       });
-      // Optionally reset the page after a delay
       setTimeout(() => {
         setRows([]);
         setShowTable(false);
@@ -344,11 +395,12 @@ export default function FrtMultipleBranchAuditStatus() {
                   <Typography variant="subtitle1" gutterBottom>
                     1. Download Template
                   </Typography>
+                  {/* 👇 3. Updated Button: removed 'href', added 'onClick' */}
                   <Button
                     variant="contained"
                     color="success"
                     startIcon={<DownloadIcon />}
-                    href="/Server/EditBranch/downloadTemplate"
+                    onClick={handleDownloadTemplate}
                   >
                     Download Excel
                   </Button>
@@ -379,35 +431,8 @@ export default function FrtMultipleBranchAuditStatus() {
                     </Typography>
                   </Box>
                 </Grid>
-                {/* <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    2. Status Guide
-                  </Typography>
-                  <List dense>
-                    <ListItem>
-                      <ListItemIcon>
-                        <CheckCircleIcon color="primary" />
-                      </ListItemIcon>
-                      <ListItemText primary="N - For Non-Audited" />
-                    </ListItem>
-                    <ListItem>
-                      <ListItemIcon>
-                        <CheckCircleIcon color="primary" />
-                      </ListItemIcon>
-                      <ListItemText primary="A - For Audited (Non-IFCOFR)" />
-                    </ListItem>
-                    <ListItem>
-                      <ListItemIcon>
-                        <CheckCircleIcon color="primary" />
-                      </ListItemIcon>
-                      <ListItemText primary="I - For IFCOFR Audited" />
-                    </ListItem>
-                  </List>
-                </Grid> */}
               </Grid>
             </Grid>
-
-            {/* Right Side: Upload */}
 
             <Grid item xs={12} sm={6} mt={5}>
               <Typography variant="subtitle1" gutterBottom>
@@ -589,92 +614,3 @@ export default function FrtMultipleBranchAuditStatus() {
     </>
   );
 }
-
-/////////////////////////////////////////////////////////////
-
-router.post("/downloadTemplate", extractToken, async (req, res) => {
-  let token = req.headers.authorization;
-  if (!token) {
-    return res.status(401).json({
-      message: "Unauthorized api call, request not from legal source",
-    });
-  }
-  try {
-    const serviceUrl = devBaseServiceUrl + "/LHODashBoard/downloadTemplate";
-
-    const response = await fetch(serviceUrl, {
-      method: "POST",
-      body: JSON.stringify({
-        user: req.user,
-        data: req.data,
-      }),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    res.setHeader("Content-Type", response.headers.get("content-type"));
-    res.setHeader(
-      "Content-Disposition",
-      response.headers.get("content-disposition")
-    );
-
-    for await (const chunk of response.body) {
-      res.write(chunk);
-    }
-    res.end();
-  } catch (e) {
-    res.status(500).json({
-      status: "Failed to bring response, no connection between LB and APP",
-    });
-  }
-});
-
-/////////////////////////////////////////////////////////////
-
-
-const handleCancelRequest = async (requestData) => {
-    handleLoadOpen();
-    try {
-      const data = {
-        reqId: requestData.ID,
-        reqType: requestData.CHANGE_REQ_TYPE,
-        branchcode: requestData.BRANCH_CODE,
-        rtStatus: "4", // '4' for Cancelled
-      };
-
-      console.log("data", data);
-
-      const successMessage = `Request successfully cancelled for Req Id: ${requestData.ID}.`;
-      const errorMessage = `Failed to cancel the request for Req Id: ${requestData.ID}.`;
-
-      let jsonFormData = JSON.stringify(data);
-      jsonFormData = await encrypt(iv, salt, jsonFormData);
-
-      let payload = { iv: ivBase64, salt: saltBase64, data: jsonFormData };
-
-      const response = await axios.post(
-        "/Server/EditBranch/cancelCrsRequests",
-        payload,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
-
-      if (response.data.statusCode === 200) {
-        await fetchData();
-        setSnackbar({ children: successMessage, severity: "success" });
-      } else {
-        setSnackbar({ children: errorMessage, severity: "error" });
-      }
-    } catch (e) {
-      console.error("Error cancelling request:", e);
-      setSnackbar({
-        children: "An error occurred. Please try again.",
-        severity: "error",
-      });
-    } finally {
-      handleDialogClose();
-    }
-  };
-
