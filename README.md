@@ -1,110 +1,110 @@
-Of course. Based on the business logic in your original legacy code, here are the proper, secure, and efficient native queries for your BulkUploadRepository.
-These queries replace the placeholders and insecure string concatenation from the previous examples with specific, parameterized SQL that correctly reflects your application's validation rules.
-## 1. Query to Get Current Branch Audit Statuses
-This query accurately translates the complex CASE statement from your original getBranchlist method. It fetches the current audit status ('I', 'A', or 'N') for a given list of branches and a specific quarter-end date.
-The Query:
-SELECT
-    bm.BRANCHNO AS branch_code,
-    CASE
-        WHEN bm.CRS_AUDITABLE = 'Y' THEN
-            COALESCE(
-                (SELECT
-                    CASE
-                        WHEN cia.ifcofr_audit_flag = 'Y' THEN 'I'
-                        ELSE 'A'
-                    END
-                 FROM crs_ifcofr_audit cia
-                 WHERE cia.ifcofr_branch = bm.BRANCHNO
-                 AND cia.IFCOFR_DATE = TO_DATE(:quarterEndDate, 'DD/MM/YYYY')),
-                'A' -- Default to 'A' if no record found in crs_ifcofr_audit
-            )
-        ELSE bm.CRS_AUDITABLE -- Will be 'N'
-    END AS current_status
-FROM
-    BRANCH_MASTER bm
-WHERE
-    bm.BRANCHNO IN :branchCodes
+const handleSubmit = async () => {
+  setLoading(true);
 
- * COALESCE: This is added to handle cases where a branch is auditable (CRS_AUDITABLE = 'Y') but has no matching entry in crs_ifcofr_audit. It prevents the subquery from returning NULL.
- * Parameters: It securely uses :branchCodes and :quarterEndDate to prevent SQL injection.
- * Efficiency: The WHERE bm.BRANCHNO IN :branchCodes clause ensures you only query the database for the branches you need to validate.
-## 2. Query to Get Pending Requests
-This query checks which of the supplied branches already have a request in a 'Pending' state for the given quarter. This query was already well-defined, but it is included here for completeness.
-The Query:
-SELECT
-    AS_BRANCH
-FROM
-    CRS_AUDIT_STATUS
-WHERE
-    AS_REQ_STATUS = 'P'
-    AND AS_BRANCH IN :branchCodes
-    AND AS_QED = TO_DATE(:quarterEndDate, 'DD/MM/YYYY')
+  // ✅ 1. CHECK IF ANY ROWS ARE SELECTED
+  // This is the new check you need.
+  if (selected.length === 0) {
+    setSnackbar({
+      children: "Please select at least one row to submit.",
+      severity: "info",
+    });
+    setLoading(false);
+    return;
+  }
 
- * Purpose: It returns a simple list of branch codes that cannot be processed because they are already pending.
- * Security & Efficiency: It is both secure and efficient, using named parameters and filtering on the primary keys.
-## Updated BulkUploadRepository.java
-Here is your final repository interface with these proper queries implemented.
-package com.yourpackage.repository;
+  // ✅ 2. GET ONLY THE SELECTED ROWS' DATA
+  // Filter the main 'rows' array to include only items whose id is in the 'selected' array.
+  const selectedRows = rows.filter(row => selected.includes(row.id));
 
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.Repository;
-import org.springframework.data.repository.query.Param;
 
-import java.util.List;
+  // 3. Check for validation errors ONLY in the selected rows
+  const hasErrors = selectedRows.some(
+    (row) => row.branchCode.error || row.auditStatus.error
+  );
 
-public interface BulkUploadRepository extends Repository<Object, Long> {
+  if (hasErrors) {
+    setSnackbar({
+      children: "Please correct errors in the selected rows before submitting.",
+      severity: "error",
+    });
+    setLoading(false);
+    return;
+  }
 
-    /**
-     * Finds the current, calculated audit status for a list of branches.
-     * Replaces the logic from the old getBranchlist() method.
-     *
-     * @param branchCodes List of branch codes to check.
-     * @param quarterEndDate The quarter-end date as a String (e.g., "30/06/2025").
-     * @return A list of Object arrays, where each array contains [branch_code, current_status].
-     */
-    @Query(value = """
-        SELECT
-            bm.BRANCHNO AS branch_code,
-            CASE
-                WHEN bm.CRS_AUDITABLE = 'Y' THEN
-                    COALESCE(
-                        (SELECT
-                            CASE
-                                WHEN cia.ifcofr_audit_flag = 'Y' THEN 'I'
-                                ELSE 'A'
-                            END
-                         FROM crs_ifcofr_audit cia
-                         WHERE cia.ifcofr_branch = bm.BRANCHNO
-                         AND cia.IFCOFR_DATE = TO_DATE(:quarterEndDate, 'DD/MM/YYYY')),
-                        'A'
-                    )
-                ELSE bm.CRS_AUDITABLE
-            END AS current_status
-        FROM
-            BRANCH_MASTER bm
-        WHERE
-            bm.BRANCHNO IN :branchCodes
-    """, nativeQuery = true)
-    List<Object[]> findBranchStatusesByCodes(@Param("branchCodes") List<String> branchCodes, @Param("quarterEndDate") String quarterEndDate);
+  // ✅ 4. BUILD THE PAYLOAD FROM SELECTED ROWS
+  // The .map() function now runs on the 'selectedRows' array, not the full 'rows' array.
+  const branchCodeList = selectedRows.map((row) =>
+    String(row.branchCode.value).padStart(5, "0")
+  );
+  const statusList = selectedRows.map((row) => row.auditStatus.value);
 
-    /**
-     * Finds all branches from a given list that have a pending request for a specific quarter.
-     * Replaces the logic from the old getBranchRequestPendingList() method.
-     *
-     * @param branchCodes List of branch codes to check.
-     * @param quarterEndDate The quarter-end date as a String (e.g., "30/06/2025").
-     * @return A list of branch codes that have pending requests.
-     */
-    @Query(value = """
-        SELECT
-            AS_BRANCH
-        FROM
-            CRS_AUDIT_STATUS
-        WHERE
-            AS_REQ_STATUS = 'P'
-            AND AS_BRANCH IN :branchCodes
-            AND AS_QED = TO_DATE(:quarterEndDate, 'DD/MM/YYYY')
-    """, nativeQuery = true)
-    List<String> findPendingRequestsForBranches(@Param("branchCodes") List<String> branchCodes, @Param("quarterEndDate") String quarterEndDate);
-}
+  const payload = {
+    branchCodes: branchCodeList,
+    statuses: statusList,
+  };
 
+  try {
+    const response = await axios.post("/api/v1/frt/bulk-upload", payload, {
+      headers: {
+        "Content-Type": "application/json",
+        // Authorization: `Bearer ${localStorage.getItem("token")}`
+      },
+    });
+
+    // ... The rest of the function remains the same ...
+    const { message, invalidRecords } = response.data;
+
+    if (invalidRecords && invalidRecords.length > 0) {
+      const errorMessages = invalidRecords
+        .map((rec) => `Branch ${rec.branchCode}: ${rec.reason}`)
+        .join("\n");
+
+      setDialog({
+        open: true,
+        title: "Upload Completed with Errors",
+        message: `${message}\n\nValidation Errors:\n${errorMessages}`,
+        goNext: false,
+      });
+    } else {
+      setSnackbar({
+        children: message || "Request submitted successfully.",
+        severity: "success",
+      });
+    }
+
+    // Refresh the table by removing submitted rows
+    const remainingRows = rows.filter(row => !selected.includes(row.id));
+    setRows(remainingRows);
+    setSelected([]);
+    if (remainingRows.length === 0) {
+        setShowTable(false);
+    }
+
+  } catch (error) {
+    console.error("Submission failed:", error);
+
+    if (
+      error.response &&
+      error.response.data &&
+      error.response.data.invalidRecords
+    ) {
+      const { message, invalidRecords } = error.response.data;
+      const errorMessages = invalidRecords
+        .map((rec) => `Branch ${rec.branchCode}: ${rec.reason}`)
+        .join("\n");
+      setDialog({
+        open: true,
+        title: "Upload Failed",
+        message: `${message}\n\nValidation Errors:\n${errorMessages}`,
+        goNext: false,
+      });
+    } else {
+      setSnackbar({
+        children: "An unexpected error occurred during submission.",
+        severity: "error",
+      });
+    }
+  } finally {
+    setLoading(false);
+  }
+};
