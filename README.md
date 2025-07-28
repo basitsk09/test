@@ -1,63 +1,141 @@
-@Transactional
-    public void processApproval(Map<String, Object> payload) {
-        Map<String, Object> data = (Map<String, Object>) payload.get("data");
-        List<Map<String, Object>> reportsToBeDeleted = (List<Map<String, Object>>) data.get("reportsToBeDeleted");
-        try {
-            String requestId = String.valueOf(data.get("requestId"));
-            String branchCode = String.valueOf(data.get("branchCode"));
-            String requestType = String.valueOf(data.get("requestType"));
-            String quarterEndDate = String.valueOf(data.get("quarterEndDate"));
-            String auditStatus = String.valueOf(data.get("auditStatus"));
-            String requestedBy = String.valueOf(data.get("requestedById"));
-            String circleCode = String.valueOf(data.get("circleCode"));
-            String roCode = String.valueOf(data.get("roCode")).replaceAll("\\s", "");
-            String auditFlag = auditStatus.equalsIgnoreCase("Audited (Non-IFCOFR)") ? "Y" : auditStatus.equalsIgnoreCase("Audited (IFCOFR)") ?"I":"N";
-
-            if ("Add Branch".equalsIgnoreCase(requestType)) {
-                log.info("Processing 'Add Branch' approval for request ID: "+ requestId);
-                addBranch(branchCode, quarterEndDate, auditStatus, requestedBy);
-            } else if ("Delete Branch".equalsIgnoreCase(requestType)) {
-                log.info("Processing 'Delete Branch' approval for request ID: "+ requestId);
-                for (Map<String, Object> row : reportsToBeDeleted) {
-                    branchMasterRepository.insertIntoCrsSts(branchCode, circleCode, roCode, auditFlag, quarterEndDate,String.valueOf(row.get("submissionId")),
-                            String.valueOf(row.get("reportId")),
-                            String.valueOf(row.get("nilReport")),
-                            requestedBy);
-                }
-                deleteBranch(branchCode, quarterEndDate);
-
-            } else {
-                throw new IllegalArgumentException("Invalid request type: " + requestType);
-            }
-            crsRequestTrackRepository.updateCrsRequests(requestId, "2");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+ @RequestMapping(value = "/downloadExcel", method = RequestMethod.GET)
+    public ModelAndView downloadExcel(HSSFWorkbook workbook, HttpServletRequest request, HttpServletResponse response) {
+        List<ExcelCol> list = new ArrayList<ExcelCol>();
+        // return a view which will be resolved by an excel view resolver
+        return new ModelAndView("excelView", "listBooks", list);
     }
-							
-							
-@Modifying
-    @Query(value = "INSERT INTO CRS_STS (branch_code,circle_code,ro_code,crs_auditable,quarter_date,report_id,crs_id,status,sts,nil_report_flag,crs_user,crs_comment) VALUES (:branchCode,:circleCode,:roCode,:auditStatus,TO_DATE(:quarterEndDate, 'dd/mm/yyyy'),:submissionId,:reportId,'Deleted by FRT','0',:nilReportFlag,:requestedById,null)", nativeQuery = true)
-    void insertIntoCrsSts(@Param("branchCode") String branchCode,
-                          @Param("circleCode") String circleCode,
-                          @Param("roCode") String roCode,
-                          @Param("auditStatus") String auditFlag,
-                          @Param("quarterEndDate") String quarterEndDate,
-                          @Param("submissionId") String submissionId,
-                          @Param("reportId") String reportId,
-                          @Param("nilReport") String nilReport,
-                          @Param("requestedBy") String requestedBy);
-						  
-BRANCH_CODE	VARCHAR2(5 BYTE)	Yes
-CIRCLE_CODE	VARCHAR2(3 BYTE)	Yes
-RO_CODE	VARCHAR2(9 BYTE)	Yes
-CRS_AUDITABLE	VARCHAR2(1 BYTE)	Yes
-QUARTER_DATE	DATE	Yes
-REPORT_ID	VARCHAR2(10 BYTE)	Yes
-CRS_ID	VARCHAR2(10 BYTE)	Yes
-STATUS	VARCHAR2(50 BYTE)	Yes
-STS	VARCHAR2(2 BYTE)	Yes
-NIL_REPORT_FLAG	VARCHAR2(1 BYTE)	Yes
-LAST_UPDATE_DATE	DATE	Yes
-CRS_COMMENT	VARCHAR2(150 BYTE)	Yes
-CRS_USER	VARCHAR2(20 BYTE)	Yes
+	
+	
+public class ExcelBuilder extends AbstractExcelView {
+
+    static Logger log = Logger.getLogger(ExcelBuilder.class.getName());
+
+    @Override
+    protected void buildExcelDocument(
+            Map<String, Object> model,
+            HSSFWorkbook workbook,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) throws Exception {
+
+        try {
+
+
+        // get data model which is passed by the Spring container
+        List<ExcelCol> list = (List<ExcelCol>) model.get("listBooks");
+        log.info("LIST SIZE : " +list.size());
+
+        //log.info(list.get(0).getCol3());
+
+        String fileName = "AuditStatusSample.xls"; //Your file name here.
+
+        /*String col3Data = list.get(0).getCol3();
+        if (col3Data != null) {
+            fileName = "UploadError.xls";
+        }*/
+
+        if (list.size() > 0) {
+            fileName = "UploadError.xls";
+        }
+
+
+        //response.setContentType("application/vnd.ms-excel"); //Tell the browser to expect an excel file
+        response.setContentType("text/plain");
+        response.setHeader("Content-Disposition", "attachment; filename="+fileName); //Tell the browser it should be named as the custom file name
+
+        HSSFSheet sheet;
+        if (list.size() > 0) {
+            // create a new Excel sheet
+            sheet = workbook.createSheet("Error");
+        } else {
+            // create a new Excel sheet
+            sheet = workbook.createSheet("Sample");
+        }
+
+        sheet.setDefaultColumnWidth(30);
+        //https://stackoverflow.com/questions/9187048/how-to-set-excel-default-row-height-in-apache-poi
+        //sheet.setDefaultRowHeight((short) (2 * sheet.getDefaultRowHeightInPoints()));
+        sheet.setDefaultRowHeightInPoints((2 * sheet.getDefaultRowHeightInPoints()));
+
+        Font font = workbook.createFont();
+        font.setFontName("Arial");
+        font.setBoldweight(HSSFFont.BOLDWEIGHT_BOLD);
+        font.setColor(HSSFColor.BLACK.index);
+        //font.setFontHeightInPoints((short) (2 * font.getFontHeightInPoints()));
+        font.setFontHeightInPoints((short) (15));
+
+        // create style for header cells
+        CellStyle style = workbook.createCellStyle();
+        style.setAlignment(CellStyle.ALIGN_CENTER);
+        style.setVerticalAlignment(CellStyle.ALIGN_CENTER);
+        style.setFillForegroundColor(HSSFColor.CORNFLOWER_BLUE.index);
+        style.setFillPattern(CellStyle.SOLID_FOREGROUND);
+        style.setFont(font);
+        //style.setWrapText(true);
+
+        // create header row
+        HSSFRow header = sheet.createRow(0);
+        header.setHeightInPoints((2 * sheet.getDefaultRowHeightInPoints()));
+
+        header.createCell(0).setCellValue("BranchCode");
+        header.getCell(0).setCellStyle(style);
+
+        header.createCell(1).setCellValue("AuditStatus");
+        header.getCell(1).setCellStyle(style);
+
+        if (list.size() > 0) {
+            header.createCell(2).setCellValue("Error");
+            header.getCell(2).setCellStyle(style);
+        } else {
+            // https://stackoverflow.com/questions/18716032/merging-cells-in-excel-using-apache-poi
+            sheet.addMergedRegion(new CellRangeAddress(1,3,4,5));
+        }
+
+        //Note Start  ");//
+        font.setFontHeightInPoints((short) (10));
+        CellStyle styleNote = workbook.createCellStyle();
+        styleNote.setFont(font);
+        styleNote.setWrapText(true);
+
+        HSSFRow note = sheet.createRow(1);
+        //https://stackoverflow.com/questions/48040638/how-to-insert-a-linebreak-as-the-data-of-a-cell-using-apache-poi
+        note.createCell(4)
+                .setCellValue(
+                        "Note: "
+                        + "\n 1. Branch Code should be valid 5 digit. "
+                        + "\n 2. Audit Status should be among :"
+                        + "\n     N - For Marking Branch As Non Audited"
+                        + "\n     I - For Marking As IFCOFR Audited"
+                        + "\n     A - For marking As Audited (Non-IFCOFR)"
+                );
+
+
+        note.getCell(4).setCellStyle(styleNote);
+        //Note End
+
+
+        // create data rows
+        int rowCount = 1;
+
+        for (ExcelCol eCol : list) {
+            //log.info("FoRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR : " + rowCount);
+            HSSFRow aRow = sheet.createRow(rowCount++);
+            //aRow.setHeight((short)-100);
+            //aRow.setHeightInPoints((2 * sheet.getDefaultRowHeightInPoints()));
+
+            aRow.createCell(0).setCellValue(eCol.getCol1());
+            aRow.createCell(1).setCellValue(eCol.getCol2());
+            aRow.createCell(2).setCellValue(eCol.getCol3());
+        }
+
+        workbook.write(response.getOutputStream());
+
+        response.getOutputStream().close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+}
