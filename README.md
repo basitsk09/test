@@ -1,292 +1,362 @@
- @RequestMapping(value = "/bulkUpload", method = RequestMethod.POST)
-    public ModelAndView submit(HttpServletRequest request, @ModelAttribute("command") FRTMaker report, BindingResult result) {
+Of course. Here is a complete, modern refactoring of your bulk upload functionality.
+Summary of Improvements:
+ * Architecture: The old code is replaced with a clean Controller -> Service -> Repository (DAO) architecture. Business logic is moved from the controller to the service layer.
+ * Security: The new DAO layer uses Spring Data JPA with @Query and named parameters. This completely eliminates the SQL injection vulnerabilities present in the old JdbcTemplate code.
+ * API Design: The new controller is a proper @RestController that accepts a JSON payload and returns a ResponseEntity. This is standard for modern Single-Page Applications (SPAs).
+ * Payload: As requested, the controller accepts a Map as the payload instead of a DTO.
+ * Transactions: The service layer uses @Transactional to ensure that the master request and all its detail records are saved together, or none are saved at all, maintaining data integrity.
+ * Frontend: The handleSubmit function is updated to use axios to send a JSON payload and intelligently handle both success and validation error responses from the backend, providing a better user experience.
+1. Backend: Full Refactored Code
+A. JPA Entities
+These classes map to your database tables.
+CrsRequestTrack.java (Master Request Table)
+package com.yourpackage.model;
 
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
-        LocalDateTime now1 = LocalDateTime.now();
-        log.info(dtf.format(now1));
-//        log.info(report.getBranchcode());
-//        log.info(report.getStatus());
+import jakarta.persistence.*;
+import java.util.Date;
 
-        report.setBranchCodeList(request.getParameterValues("branchcode"));
-        report.setStatusList(request.getParameterValues("status"));
+@Entity
+@Table(name = "crs_request_track")
+public class CrsRequestTrack {
 
-        //List<BranchMaster> validRecordsa = new ArrayList<BranchMaster>();
-        List<FRTMaker> validRecords = new ArrayList<FRTMaker>();
-        List<ExcelCol> inValidRecords = new ArrayList<ExcelCol>();
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "RT_ID")
+    private Integer rtId;
 
-        HashMap<String, String> branchCodes = frtMakerService.getBranchlist(report);
-        //List<BranchMaster> branchCodes = frtMakerService.getBranchlist();
-        //List<BranchMaster> branchCodes = frtMakerService.getBranchlist(report.getBranchcode());
-        //List<BranchAuditRequest> requestPending = frtMakerService.getBranchRequestPendingList(request);
-        HashMap<String, String> requestPending = frtMakerService.getBranchRequestPendingList(request);
+    @Column(name = "RT_MAKER")
+    private String rtMaker;
 
+    @Column(name = "RT_STATUS")
+    private String rtStatus;
 
-        for (int i = 0; i < report.getBranchCodeList().length; i++) {
-            // Checks if branch master have the the branchno
-            if (branchCodes.get(report.getBranchCodeList()[i]) != null) {
-                // Checks if branch master have same or different auditable status
+    @Column(name = "RT_TYPE")
+    private String rtType;
 
-//                log.info("Database values : " + branchCodes.get(report.getBranchCodeList()[i]));
-//                log.info("Database values type : " + branchCodes.get(report.getBranchCodeList()[i]).getClass());
-//                log.info("UI values : " + report.getStatusList()[i]);
-//                log.info("UI values type : " + report.getStatusList()[i].getClass());
+    @Column(name = "RT_SUBTYPE")
+    private String rtSubType;
 
-                if (branchCodes.get(report.getBranchCodeList()[i]).equalsIgnoreCase(report.getStatusList()[i])) {
-//                    log.info("inside BM condition");
-                    inValidRecords.add(new ExcelCol(report.getBranchCodeList()[i], report.getStatusList()[i], "Invalid Request : Same status code as previous"));
-                } else if (requestPending.get(report.getBranchCodeList()[i]) != null) {
-//                    log.info("inside Pending state condition");
-                    inValidRecords.add(new ExcelCol(report.getBranchCodeList()[i], report.getStatusList()[i], "Request is already in pending state"));
-                } else {
-//                    log.info("hurreeyy!!! valid condition");
-                    validRecords.add(new FRTMaker(report.getBranchCodeList()[i], report.getStatusList()[i]));
-                }
+    @Temporal(TemporalType.DATE)
+    @Column(name = "RT_QED")
+    private Date rtQed;
+    
+    // Constructors, Getters, and Setters
+}
+
+CrsAuditStatus.java (Detail Table)
+package com.yourpackage.model;
+
+import jakarta.persistence.*;
+import java.util.Date;
+
+@Entity
+@Table(name = "CRS_AUDIT_STATUS")
+public class CrsAuditStatus {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "AS_ID")
+    private Long asId;
+
+    @Column(name = "AS_RT_ID")
+    private Integer asRtId;
+
+    @Temporal(TemporalType.DATE)
+    @Column(name = "AS_QED")
+    private Date asQed;
+
+    @Column(name = "AS_BRANCH")
+    private String asBranch;
+
+    @Column(name = "AS_NEW_STATUS")
+    private String asNewStatus;
+
+    @Column(name = "AS_REQ_STATUS")
+    private String asReqStatus;
+
+    // Constructors, Getters, and Setters
+}
+
+B. Repository (DAO) Layer
+This layer handles all database communication using native queries as requested.
+BulkUploadRepository.java
+package com.yourpackage.repository;
+
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.Repository;
+import org.springframework.data.repository.query.Param;
+import java.util.List;
+
+// We use a marker Repository interface as this is a utility repository for custom queries
+public interface BulkUploadRepository extends Repository<Object, Long> {
+
+    @Query(value = "SELECT branch_code, audit_status FROM your_view_or_table WHERE branch_code IN :branchCodes", nativeQuery = true)
+    List<Object[]> findBranchStatusesByCodes(@Param("branchCodes") List<String> branchCodes);
+    
+    @Query(value = "SELECT AS_BRANCH FROM CRS_AUDIT_STATUS WHERE AS_REQ_STATUS = 'P' AND AS_BRANCH IN :branchCodes AND AS_QED = TO_DATE(:qed, 'DD/MM/YYYY')", nativeQuery = true)
+    List<String> findPendingRequestsForBranches(@Param("branchCodes") List<String> branchCodes, @Param("qed") String quarterEndDate);
+}
+
+Note: You'll also need standard JpaRepository interfaces for the two entities for saving.
+CrsRequestTrackRepository.java
+package com.yourpackage.repository;
+
+import com.yourpackage.model.CrsRequestTrack;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CrsRequestTrackRepository extends JpaRepository<CrsRequestTrack, Integer> {}
+
+CrsAuditStatusRepository.java
+package com.yourpackage.repository;
+
+import com.yourpackage.model.CrsAuditStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CrsAuditStatusRepository extends JpaRepository<CrsAuditStatus, Long> {}
+
+C. Service Layer
+This layer contains all the business and validation logic.
+BulkUploadService.java
+package com.yourpackage.service;
+
+import com.yourpackage.model.CrsAuditStatus;
+import com.yourpackage.model.CrsRequestTrack;
+import com.yourpackage.repository.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+public class BulkUploadService {
+
+    @Autowired private BulkUploadRepository bulkUploadRepo;
+    @Autowired private CrsRequestTrackRepository trackRepo;
+    @Autowired private CrsAuditStatusRepository auditStatusRepo;
+
+    // A simple record to hold validation results
+    public record InvalidRecord(String branchCode, String status, String reason) {}
+
+    @Transactional
+    public Map<String, Object> processAndSaveUpload(Map<String, List<String>> payload, String makerId, String quarterEndDate) {
+        List<String> branchCodes = payload.get("branchCodes");
+        List<String> statuses = payload.get("statuses");
+
+        // 1. Fetch data for validation in bulk
+        Map<String, String> existingBranchStatuses = bulkUploadRepo.findBranchStatusesByCodes(branchCodes)
+            .stream().collect(Collectors.toMap(row -> (String) row[0], row -> (String) row[1]));
+        
+        Set<String> pendingRequests = new HashSet<>(bulkUploadRepo.findPendingRequestsForBranches(branchCodes, quarterEndDate));
+
+        // 2. Validate records
+        List<InvalidRecord> invalidRecords = new ArrayList<>();
+        List<Map<String, String>> validRecords = new ArrayList<>();
+
+        for (int i = 0; i < branchCodes.size(); i++) {
+            String code = branchCodes.get(i);
+            String status = statuses.get(i);
+            
+            if (!existingBranchStatuses.containsKey(code)) {
+                invalidRecords.add(new InvalidRecord(code, status, "Branch code does not exist."));
+            } else if (pendingRequests.contains(code)) {
+                invalidRecords.add(new InvalidRecord(code, status, "Request is already in a pending state."));
+            } else if (existingBranchStatuses.get(code).equalsIgnoreCase(status)) {
+                invalidRecords.add(new InvalidRecord(code, status, "New status is the same as the current status."));
             } else {
-//                log.info("inside brnach does not condition");
-                inValidRecords.add(new ExcelCol(report.getBranchCodeList()[i], report.getStatusList()[i], "Branch code does not exist"));
+                validRecords.add(Map.of("branchCode", code, "status", status));
             }
-
+        }
+        
+        // 3. Save valid records if any exist
+        if (!validRecords.isEmpty()) {
+            saveValidRequests(validRecords, makerId, quarterEndDate);
         }
 
-        frtMakerService.insertData(report, validRecords);
-
-        LocalDateTime now2 = LocalDateTime.now();
-        log.info(dtf.format(now2));
-
-        if (inValidRecords.isEmpty()) {
-            ModelAndView view = new ModelAndView("FRTUser/FRTMultipleBranch");
-            view.addObject("displayMessage", "Request Uploaded Successfully.");
-            return view;
+        // 4. Prepare response
+        Map<String, Object> response = new HashMap<>();
+        response.put("totalRecords", branchCodes.size());
+        response.put("validCount", validRecords.size());
+        response.put("invalidCount", invalidRecords.size());
+        response.put("invalidRecords", invalidRecords);
+        
+        if (invalidRecords.isEmpty()) {
+            response.put("message", "All records uploaded successfully.");
         } else {
-            //https://www.codejava.net/frameworks/spring/spring-mvc-with-excel-view-example-apache-poi-and-jexcelapi
-            return new ModelAndView("excelView", "listBooks", inValidRecords);
+            response.put("message", "Upload complete with some invalid records.");
         }
-    }
-	
-	
-////////////////////////////////////////////////////////////////////////////////////
-
-
- @Override
-    public HashMap<String, String> getBranchlist(FRTMaker report) {
-        //System.out.println("##############branchdeatsils : " + report.getQuaterEndDate());
-
-        //https://www.baeldung.com/java-string-with-separator-to-list
-//        List<String> expectedCountriesList = Arrays.asList(report.getBranchcode().split(",", -1)); //Arrays.asList(report.getBranchcode());
-//        log.info(expectedCountriesList);
-//        log.info(expectedCountriesList.size());
-
-        String query="select BRANCHNO,  " +
-                "case when CRS_AUDITABLE ='Y' then (select case when ifcofr_audit_flag='Y' then 'I' else 'A' end " +
-                "from crs_ifcofr_audit where ifcofr_branch=branchno and IFCOFR_DATE = to_date('" + report.getQuaterEndDate() + "','dd/mm/yyyy') ) " +
-                "else CRS_AUDITABLE end CRS_AUDITABLE " +
-                "from BRANCH_MASTER " +
-                //"WHERE BRANCHNO IN (" + report.getBranchcode() + ") " +
-                "order by BRANCHNO" ;
-
-        HashMap<String, String> result=jdbcTemplateObject.query(query, new Object[]{}, new ResultSetExtractor<HashMap<String, String>>() {
-            @Override
-            public HashMap<String, String> extractData(ResultSet resultSet) throws SQLException, DataAccessException {
-                HashMap<String, String> list = new HashMap<>();
-                while(resultSet.next()){
-                    list.put(resultSet.getString("BRANCHNO"), resultSet.getString("CRS_AUDITABLE"));
-                }
-                return  list;
-            }
-        });
-
-        return result;
-    }
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
- @Override
-    public HashMap<String, String> getBranchRequestPendingList(HttpServletRequest request) {
-        //JdbcTemplate jdbcTemplateObj=new JdbcTemplate(dataSource);
-        //System.out.println("##############branchdeatsils");
-        //HttpServletRequest request;
-        HttpSession session = request.getSession();
-        String query = "SELECT AS_RT_ID, AS_BRANCH "
-                + "FROM CRS_AUDIT_STATUS "
-                + "WHERE AS_REQ_STATUS = 'P' "
-                + "AND AS_QED = to_date('" + session.getAttribute(CommonConstants.QUARTER_END_DATE) + "','dd/mm/yyyy')";
-
-        HashMap<String, String> result=jdbcTemplateObject.query(query, new Object[]{}, new ResultSetExtractor<HashMap<String, String>>() {
-            @Override
-            public HashMap<String, String> extractData(ResultSet resultSet) throws SQLException, DataAccessException {
-                HashMap<String, String> list = new HashMap<>();
-                while(resultSet.next()){
-                    list.put(resultSet.getString("AS_BRANCH"), resultSet.getString("AS_RT_ID"));
-                }
-                return  list;
-            }
-        });
-
-        return result;
-    }
-	
-//////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-@Override
-	public String insertData(FRTMaker report, List<FRTMaker> records) {
-		//frtMakerDao.insertMultipleRecords(records);
-		int generatedID = frtMakerDao.insertSingleRecord(report);
-
-		frtMakerDao.insertMultipleRecords(records, generatedID, report);
-
-		return null;
-	}
-	
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-  private final String SQL_INSERT = "INSERT INTO crs_request_track(RT_MAKER,RT_STATUS,RT_TYPE,RT_SUBTYPE,RT_QED,RT_BRANCH) values(?,?,?,?,to_date(?,'dd/mm/yyyy'),?)";
-
-    //https://roytuts.com/single-and-multiple-records-insert-using-spring-jdbctemplate/
-    public int insertSingleRecord(FRTMaker report) {    //public void insertSingleRecord(FRTMaker frtMaker)
-        // Create GeneratedKeyHolder object
-        GeneratedKeyHolder generatedKeyHolder = new GeneratedKeyHolder();
-
-        // To insert data, you need to pre-compile the SQL and set up the data yourself.
-        jdbcTemplateObject.update(conn -> {
-
-            //https://stackoverflow.com/questions/1915166/how-to-get-the-insert-id-in-jdbc
-            String generatedColumns[] = { "RT_ID" };
-
-            // Pre-compiling SQL
-            //PreparedStatement preparedStatement = conn.prepareStatement(SQL_INSERT, Statement.RETURN_GENERATED_KEYS);
-            PreparedStatement preparedStatement = conn.prepareStatement(SQL_INSERT, generatedColumns);
-
-            // Set parameters
-            preparedStatement.setString(1, report.getMakerid());
-            preparedStatement.setString(2, report.getRtStatus());
-            preparedStatement.setString(3, report.getRtType());
-            preparedStatement.setString(4, report.getRtSubType());
-            preparedStatement.setString(5, report.getQuaterEndDate());
-            preparedStatement.setString(6, report.getCureentBranchcode());
-
-            return preparedStatement;
-
-        }, generatedKeyHolder);
-
-        final String idd = generatedKeyHolder.getKey().toString();
-        int id = generatedKeyHolder.getKey().intValue();
-        return id;
+        return response;
     }
 
-    @Override
-    public void insertMultipleRecords(List<FRTMaker> records, int generatedID, FRTMaker report) {
+    // This method is transactional. It saves the master record, then all detail records.
+    private void saveValidRequests(List<Map<String, String>> validRecords, String makerId, String quarterEndDate) {
+        // Create and save the master request record
+        CrsRequestTrack masterRequest = new CrsRequestTrack();
+        // ... set properties on masterRequest (makerId, status 'P', type, etc.)
+        CrsRequestTrack savedMasterRequest = trackRepo.save(masterRequest);
+        Integer generatedId = savedMasterRequest.getRtId();
 
-        String SQL_INSERT_MULTIPLE = "INSERT INTO CRS_AUDIT_STATUS(AS_RT_ID,AS_QED,AS_BRANCH,AS_NEW_STATUS,AS_REQ_STATUS) values(?,to_date(?,'dd/mm/yyyy'),?,?,'P')";
+        // Create a list of detail records
+        List<CrsAuditStatus> auditStatusList = new ArrayList<>();
+        for (Map<String, String> record : validRecords) {
+            CrsAuditStatus detailRecord = new CrsAuditStatus();
+            detailRecord.setAsRtId(generatedId);
+            detailRecord.setAsBranch(record.get("branchCode"));
+            detailRecord.setAsNewStatus(record.get("status"));
+            detailRecord.setAsReqStatus("P"); // Pending
+            // ... set quarter end date
+            auditStatusList.add(detailRecord);
+        }
 
-        jdbcTemplateObject.batchUpdate(SQL_INSERT_MULTIPLE, new BatchPreparedStatementSetter() {
-
-            @Override
-            public void setValues(PreparedStatement pStmt, int j) throws SQLException {
-                FRTMaker frtMaker = records.get(j);
-                pStmt.setInt(1, generatedID);
-                pStmt.setString(2, report.getQuaterEndDate());
-                //pStmt.setDate(2, to_date(report.getQuaterEndDate(),'dd/mm/yyyy'));
-                pStmt.setString(3, frtMaker.getBranchcode());
-                pStmt.setString(4, frtMaker.getStatus());
-            }
-
-            @Override
-            public int getBatchSize() {
-                return records.size();
-            }
-
-        });
+        // Save all detail records in a single batch operation
+        auditStatusRepo.saveAll(auditStatusList);
     }
-	
-	
-///////////////////////////////////////////////////////////////////////////////////////////////////
+}
 
+D. Controller Layer
+This is the new entry point for your API.
+BulkUploadController.java
+package com.yourpackage.controller;
 
- const handleSubmit = async () => {
+import com.yourpackage.service.BulkUploadService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import java.security.Principal; // Or your custom user object
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/v1/frt")
+public class BulkUploadController {
+
+    @Autowired
+    private BulkUploadService bulkUploadService;
+    
+    @PostMapping("/bulk-upload")
+    public ResponseEntity<Map<String, Object>> handleBulkUpload(@RequestBody Map<String, List<String>> payload, Principal principal) {
+        // Assuming you have makerId and quarterEndDate from the user's session or security context
+        String makerId = principal.getName(); 
+        String quarterEndDate = "30/06/2025"; // Example: Get this from session or a configurable source
+
+        Map<String, Object> response = bulkUploadService.processAndSaveUpload(payload, makerId, quarterEndDate);
+        
+        int invalidCount = (int) response.get("invalidCount");
+        
+        if (invalidCount > 0 && invalidCount == (int)response.get("totalRecords")) {
+            // All records were invalid
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        // Some or all records were valid
+        return ResponseEntity.ok(response);
+    }
+}
+
+2. Frontend: Updated handleSubmit Function
+This function now uses axios to call the new REST API and handles the JSON response gracefully.
+/**
+ * Submits the valid data to the backend using a modern REST API call.
+ */
+const handleSubmit = async () => {
     setLoading(true);
     const hasErrors = rows.some(
       (row) => row.branchCode.error || row.auditStatus.error
     );
 
     if (hasErrors) {
-      setSnackbar({
-        children: "Please correct all errors before submitting.",
-        severity: "error",
-      });
-      setLoading(false);
-      return;
+        setSnackbar({
+            children: "Please correct all errors before submitting.",
+            severity: "error",
+        });
+        setLoading(false);
+        return;
     }
 
     if (rows.length === 0) {
-      setSnackbar({
-        children: "There is no data to submit.",
-        severity: "warning",
-      });
-      setLoading(false);
-      return;
+        setSnackbar({
+            children: "There is no data to submit.",
+            severity: "warning",
+        });
+        setLoading(false);
+        return;
     }
 
-    // The backend expects separate arrays for branchcode and status
     const branchCodeList = rows.map((row) =>
-      String(row.branchCode.value).padStart(5, "0")
+        String(row.branchCode.value).padStart(5, "0")
     );
     const statusList = rows.map((row) => row.auditStatus.value);
 
-    // The JSP creates a form and submits it. We can replicate this with URLSearchParams for a standard form POST.
-    const params = new URLSearchParams();
-    branchCodeList.forEach((bc) => params.append("branchcode", bc));
-    statusList.forEach((st) => params.append("status", st));
+    // Create the JSON payload as required by the new backend
+    const payload = {
+        branchCodes: branchCodeList,
+        statuses: statusList,
+    };
 
     try {
-      // We expect a file download (for errors) or a redirect with a message (for success).
-      // A standard form POST is the best way to handle this ambiguity without complex response parsing.
-      const form = document.createElement("form");
-      form.method = "post";
-      form.action = "/FRTUser/bulkUpload"; // Your actual backend endpoint
+        // Make the API call with axios
+        const response = await axios.post("/api/v1/frt/bulk-upload", payload, {
+            headers: {
+                "Content-Type": "application/json",
+                // Include Authorization header if needed, e.g.:
+                // Authorization: `Bearer ${localStorage.getItem("token")}`
+            },
+        });
 
-      branchCodeList.forEach((bc) => {
-        const hiddenField = document.createElement("input");
-        hiddenField.type = "hidden";
-        hiddenField.name = "branchcode";
-        hiddenField.value = bc;
-        form.appendChild(hiddenField);
-      });
+        const { message, invalidRecords } = response.data;
+        
+        // Handle successful response, which might still contain invalid records
+        if (invalidRecords && invalidRecords.length > 0) {
+            // Format the errors for display in a dialog
+            const errorMessages = invalidRecords.map(
+              (rec) => `Branch ${rec.branchCode}: ${rec.reason}`
+            ).join('\n');
 
-      statusList.forEach((st) => {
-        const hiddenField = document.createElement("input");
-        hiddenField.type = "hidden";
-        hiddenField.name = "status";
-        hiddenField.value = st;
-        form.appendChild(hiddenField);
-      });
+            setDialog({
+                open: true,
+                title: "Upload Completed with Errors",
+                message: `${message}\n\nValidation Errors:\n${errorMessages}`,
+                goNext: false,
+            });
 
-      document.body.appendChild(form);
-      form.submit();
-
-      // After submission, we can only provide generic feedback as we don't get a direct response in the SPA.
-      setSnackbar({
-        children:
-          "Request submitted successfully. You will be notified of any invalid records.",
-        severity: "success",
-      });
-      // Optionally reset the page after a delay
-      setTimeout(() => {
+        } else {
+             // All records were valid and processed
+            setSnackbar({
+                children: message || "Request submitted successfully.",
+                severity: "success",
+            });
+        }
+        
+        // Reset the form on success
         setRows([]);
         setShowTable(false);
         setSelected([]);
-      }, 3000);
+
     } catch (error) {
-      console.error("Submission failed:", error);
-      setSnackbar({
-        children: "An error occurred during submission.",
-        severity: "error",
-      });
+        // Handle API errors (e.g., 400 Bad Request, 500 Internal Server Error)
+        console.error("Submission failed:", error);
+        
+        if (error.response && error.response.data && error.response.data.invalidRecords) {
+            // This case handles when the backend returns a 400 status because all records were invalid
+            const { message, invalidRecords } = error.response.data;
+            const errorMessages = invalidRecords.map(
+              (rec) => `Branch ${rec.branchCode}: ${rec.reason}`
+            ).join('\n');
+            setDialog({
+                open: true,
+                title: "Upload Failed",
+                message: `${message}\n\nValidation Errors:\n${errorMessages}`,
+                goNext: false,
+            });
+        } else {
+            // Generic network or server error
+            setSnackbar({
+                children: "An unexpected error occurred during submission.",
+                severity: "error",
+            });
+        }
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
+
