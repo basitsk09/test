@@ -1,298 +1,213 @@
-import React, { useState } from "react";
-import {
-  TextField,
-  Grid,
-  Button,
-  Typography,
-  Divider,
-  TableContainer,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  Paper,
-  Box,
-  Container,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  CircularProgress,
-  Snackbar,
-  Alert,
-  Checkbox,
-  Link,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-} from "@mui/material";
-import DownloadIcon from "@mui/icons-material/CloudDownload";
-import UploadIcon from "@mui/icons-material/CloudUpload";
-import SubmitIcon from "@mui/icons-material/Save";
-import DiscardIcon from "@mui/icons-material/DeleteForever";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import { useNavigate } from "react-router-dom";
-import * as XLSX from "xlsx";
-import axios from "axios"; // 👈 1. Import axios
+ @RequestMapping(value = "/bulkUpload", method = RequestMethod.POST)
+    public ModelAndView submit(HttpServletRequest request, @ModelAttribute("command") FRTMaker report, BindingResult result) {
 
-export default function FrtMultipleBranchAuditStatus() {
-  document.title = "CRS | FRT Multiple Branch Audit";
-  const navigate = useNavigate();
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
+        LocalDateTime now1 = LocalDateTime.now();
+        log.info(dtf.format(now1));
+//        log.info(report.getBranchcode());
+//        log.info(report.getStatus());
 
-  // --- State Management ---
-  const [rows, setRows] = useState([]);
-  const [selected, setSelected] = useState([]);
-  const [showTable, setShowTable] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [snackbar, setSnackbar] = useState(null);
-  const [dialog, setDialog] = useState({
-    open: false,
-    title: "",
-    message: "",
-    goNext: false,
-  });
-  const [fileInputKey, setFileInputKey] = useState(Date.now()); // Used to reset the file input
+        report.setBranchCodeList(request.getParameterValues("branchcode"));
+        report.setStatusList(request.getParameterValues("status"));
 
-  // --- Handlers ---
-  const handleSnackbarClose = () => setSnackbar(null);
-  const handleDialogClose = () =>
-    setDialog({ open: false, title: "", message: "" });
-  const goToSingleBranch = () => navigate("/FRTUser/singleBranch"); // Update with your actual route
+        //List<BranchMaster> validRecordsa = new ArrayList<BranchMaster>();
+        List<FRTMaker> validRecords = new ArrayList<FRTMaker>();
+        List<ExcelCol> inValidRecords = new ArrayList<ExcelCol>();
 
-  /**
-   * 👇 2. New function to handle the template download via API call
-   * This replaces the simple 'href' navigation.
-   */
-  const handleDownloadTemplate = async () => {
-    setLoading(true); // Show loader while fetching
-    try {
-      const token = localStorage.getItem("token"); // Get auth token
+        HashMap<String, String> branchCodes = frtMakerService.getBranchlist(report);
+        //List<BranchMaster> branchCodes = frtMakerService.getBranchlist();
+        //List<BranchMaster> branchCodes = frtMakerService.getBranchlist(report.getBranchcode());
+        //List<BranchAuditRequest> requestPending = frtMakerService.getBranchRequestPendingList(request);
+        HashMap<String, String> requestPending = frtMakerService.getBranchRequestPendingList(request);
 
-      // Make a POST request using axios.
-      // 'responseType: blob' is crucial to handle the file data correctly.
-      const response = await axios.post(
-        "/Server/EditBranch/downloadTemplate",
-        {}, // Sending an empty body as the template doesn't need input data
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: "blob",
+
+        for (int i = 0; i < report.getBranchCodeList().length; i++) {
+            // Checks if branch master have the the branchno
+            if (branchCodes.get(report.getBranchCodeList()[i]) != null) {
+                // Checks if branch master have same or different auditable status
+
+//                log.info("Database values : " + branchCodes.get(report.getBranchCodeList()[i]));
+//                log.info("Database values type : " + branchCodes.get(report.getBranchCodeList()[i]).getClass());
+//                log.info("UI values : " + report.getStatusList()[i]);
+//                log.info("UI values type : " + report.getStatusList()[i].getClass());
+
+                if (branchCodes.get(report.getBranchCodeList()[i]).equalsIgnoreCase(report.getStatusList()[i])) {
+//                    log.info("inside BM condition");
+                    inValidRecords.add(new ExcelCol(report.getBranchCodeList()[i], report.getStatusList()[i], "Invalid Request : Same status code as previous"));
+                } else if (requestPending.get(report.getBranchCodeList()[i]) != null) {
+//                    log.info("inside Pending state condition");
+                    inValidRecords.add(new ExcelCol(report.getBranchCodeList()[i], report.getStatusList()[i], "Request is already in pending state"));
+                } else {
+//                    log.info("hurreeyy!!! valid condition");
+                    validRecords.add(new FRTMaker(report.getBranchCodeList()[i], report.getStatusList()[i]));
+                }
+            } else {
+//                log.info("inside brnach does not condition");
+                inValidRecords.add(new ExcelCol(report.getBranchCodeList()[i], report.getStatusList()[i], "Branch code does not exist"));
+            }
+
         }
-      );
 
-      // --- Process the file download in the browser ---
+        frtMakerService.insertData(report, validRecords);
 
-      // Extract filename from the 'Content-Disposition' header
-      const contentDisposition = response.headers["content-disposition"];
-      let filename = "AuditStatusSample.xlsx"; // A default filename
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
-        if (filenameMatch.length > 1) {
-          filename = filenameMatch[1];
+        LocalDateTime now2 = LocalDateTime.now();
+        log.info(dtf.format(now2));
+
+        if (inValidRecords.isEmpty()) {
+            ModelAndView view = new ModelAndView("FRTUser/FRTMultipleBranch");
+            view.addObject("displayMessage", "Request Uploaded Successfully.");
+            return view;
+        } else {
+            //https://www.codejava.net/frameworks/spring/spring-mvc-with-excel-view-example-apache-poi-and-jexcelapi
+            return new ModelAndView("excelView", "listBooks", inValidRecords);
         }
-      }
-
-      // Create a URL for the blob object
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-
-      // Create a temporary link element to trigger the download
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", filename);
-      document.body.appendChild(link);
-      link.click();
-
-      // Clean up by removing the link and revoking the URL
-      link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Failed to download template:", error);
-      setSnackbar({
-        children: "Could not download the template. Please try again.",
-        severity: "error",
-      });
-    } finally {
-      setLoading(false); // Hide loader
     }
-  };
+	
+	
+////////////////////////////////////////////////////////////////////////////////////
 
-  /**
-   * Validates a single field value.
-   * @param {string} field - The name of the field ('branchCode' or 'auditStatus').
-   * @param {string} value - The value to validate.
-   * @returns {string|null} - An error message string or null if valid.
-   */
-  const validateField = (field, value) => {
-    if (field === "branchCode") {
-      if (!/^\d{1,5}$/.test(value)) {
-        return "Must be a 5-digit number.";
-      }
-    }
-    if (field === "auditStatus") {
-      const validStatuses = ["I", "A", "N"];
-      if (!validStatuses.includes(value.toUpperCase())) {
-        return "Must be I, A, or N.";
-      }
-    }
-    return null;
-  };
 
-  /**
-   * Handles the file upload process, including parsing and validation.
-   */
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    setLoading(true);
-    // Reset state for new upload
-    setRows([]);
-    setShowTable(false);
-    const validExtensions = [".xlsx", ".xls"];
-    const fileExtension = file.name
-      .substring(file.name.lastIndexOf("."))
-      .toLowerCase();
-    if (!validExtensions.includes(fileExtension)) {
-      setSnackbar({
-        children: "Invalid file type. Please upload an Excel file.",
-        severity: "error",
-      });
-      setLoading(false);
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      // 2 MB
-      setSnackbar({
-        children: "File size cannot exceed 2 MB.",
-        severity: "error",
-      });
-      setLoading(false);
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = e.target.result;
-        const workbook = XLSX.read(data, { type: "binary" });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(worksheet);
-        if (
-          !json[0] ||
-          !json[0].hasOwnProperty("BranchCode") ||
-          !json[0].hasOwnProperty("AuditStatus")
-        ) {
-          throw new Error(
-            "Invalid Excel format. Please use the provided template."
-          );
-        }
-        if (json.length < 5) {
-          setDialog({
-            open: true,
-            title: "Warning: Low Record Count",
-            message:
-              "For bulk uploads, at least 5 records are recommended. Would you like to proceed or use the single branch page?",
-            goNext: true,
-          });
-          setLoading(false);
-          return;
-        }
-        const parsedRows = json.map((row, index) => {
-          const branchCode = String(row.BranchCode || "").trim();
-          const auditStatus = String(row.AuditStatus || "")
-            .trim()
-            .toUpperCase();
-          return {
-            id: index,
-            branchCode: {
-              value: branchCode,
-              error: validateField("branchCode", branchCode),
-            },
-            auditStatus: {
-              value: auditStatus,
-              error: validateField("auditStatus", auditStatus),
-            },
-          };
+ @Override
+    public HashMap<String, String> getBranchlist(FRTMaker report) {
+        //System.out.println("##############branchdeatsils : " + report.getQuaterEndDate());
+
+        //https://www.baeldung.com/java-string-with-separator-to-list
+//        List<String> expectedCountriesList = Arrays.asList(report.getBranchcode().split(",", -1)); //Arrays.asList(report.getBranchcode());
+//        log.info(expectedCountriesList);
+//        log.info(expectedCountriesList.size());
+
+        String query="select BRANCHNO,  " +
+                "case when CRS_AUDITABLE ='Y' then (select case when ifcofr_audit_flag='Y' then 'I' else 'A' end " +
+                "from crs_ifcofr_audit where ifcofr_branch=branchno and IFCOFR_DATE = to_date('" + report.getQuaterEndDate() + "','dd/mm/yyyy') ) " +
+                "else CRS_AUDITABLE end CRS_AUDITABLE " +
+                "from BRANCH_MASTER " +
+                //"WHERE BRANCHNO IN (" + report.getBranchcode() + ") " +
+                "order by BRANCHNO" ;
+
+        HashMap<String, String> result=jdbcTemplateObject.query(query, new Object[]{}, new ResultSetExtractor<HashMap<String, String>>() {
+            @Override
+            public HashMap<String, String> extractData(ResultSet resultSet) throws SQLException, DataAccessException {
+                HashMap<String, String> list = new HashMap<>();
+                while(resultSet.next()){
+                    list.put(resultSet.getString("BRANCHNO"), resultSet.getString("CRS_AUDITABLE"));
+                }
+                return  list;
+            }
         });
-        setRows(parsedRows);
-        setShowTable(true);
-      } catch (err) {
-        console.error(err);
-        setSnackbar({
-          children: err.message || "An error occurred while parsing the file.",
-          severity: "error",
+
+        return result;
+    }
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+ @Override
+    public HashMap<String, String> getBranchRequestPendingList(HttpServletRequest request) {
+        //JdbcTemplate jdbcTemplateObj=new JdbcTemplate(dataSource);
+        //System.out.println("##############branchdeatsils");
+        //HttpServletRequest request;
+        HttpSession session = request.getSession();
+        String query = "SELECT AS_RT_ID, AS_BRANCH "
+                + "FROM CRS_AUDIT_STATUS "
+                + "WHERE AS_REQ_STATUS = 'P' "
+                + "AND AS_QED = to_date('" + session.getAttribute(CommonConstants.QUARTER_END_DATE) + "','dd/mm/yyyy')";
+
+        HashMap<String, String> result=jdbcTemplateObject.query(query, new Object[]{}, new ResultSetExtractor<HashMap<String, String>>() {
+            @Override
+            public HashMap<String, String> extractData(ResultSet resultSet) throws SQLException, DataAccessException {
+                HashMap<String, String> list = new HashMap<>();
+                while(resultSet.next()){
+                    list.put(resultSet.getString("AS_BRANCH"), resultSet.getString("AS_RT_ID"));
+                }
+                return  list;
+            }
         });
-      } finally {
-        setLoading(false);
-        setFileInputKey(Date.now()); // Reset file input to allow re-uploading the same file
-      }
-    };
-    reader.readAsBinaryString(file);
-  };
 
-  /**
-   * Handles changes to the text fields within the table for real-time validation.
-   */
-  const handleInputChange = (id, field, value) => {
-    const newRows = rows.map((row) => {
-      if (row.id === id) {
-        const updatedField = { value, error: validateField(field, value) };
-        return { ...row, [field]: updatedField };
-      }
-      return row;
-    });
-    setRows(newRows);
-  };
-
-  /**
-   * Handles row selection for the discard functionality.
-   */
-  const handleSelect = (event, id) => {
-    const selectedIndex = selected.indexOf(id);
-    let newSelected = [];
-
-    if (selectedIndex === -1) {
-      newSelected = newSelected.concat(selected, id);
-    } else {
-      newSelected = selected.filter((selId) => selId !== id);
+        return result;
     }
-    setSelected(newSelected);
-  };
+	
+//////////////////////////////////////////////////////////////////////////////////////////////////
 
-  const handleSelectAll = (event) => {
-    if (event.target.checked) {
-      const newSelecteds = rows.map((n) => n.id);
-      setSelected(newSelecteds);
-      return;
+
+
+@Override
+	public String insertData(FRTMaker report, List<FRTMaker> records) {
+		//frtMakerDao.insertMultipleRecords(records);
+		int generatedID = frtMakerDao.insertSingleRecord(report);
+
+		frtMakerDao.insertMultipleRecords(records, generatedID, report);
+
+		return null;
+	}
+	
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+  private final String SQL_INSERT = "INSERT INTO crs_request_track(RT_MAKER,RT_STATUS,RT_TYPE,RT_SUBTYPE,RT_QED,RT_BRANCH) values(?,?,?,?,to_date(?,'dd/mm/yyyy'),?)";
+
+    //https://roytuts.com/single-and-multiple-records-insert-using-spring-jdbctemplate/
+    public int insertSingleRecord(FRTMaker report) {    //public void insertSingleRecord(FRTMaker frtMaker)
+        // Create GeneratedKeyHolder object
+        GeneratedKeyHolder generatedKeyHolder = new GeneratedKeyHolder();
+
+        // To insert data, you need to pre-compile the SQL and set up the data yourself.
+        jdbcTemplateObject.update(conn -> {
+
+            //https://stackoverflow.com/questions/1915166/how-to-get-the-insert-id-in-jdbc
+            String generatedColumns[] = { "RT_ID" };
+
+            // Pre-compiling SQL
+            //PreparedStatement preparedStatement = conn.prepareStatement(SQL_INSERT, Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement preparedStatement = conn.prepareStatement(SQL_INSERT, generatedColumns);
+
+            // Set parameters
+            preparedStatement.setString(1, report.getMakerid());
+            preparedStatement.setString(2, report.getRtStatus());
+            preparedStatement.setString(3, report.getRtType());
+            preparedStatement.setString(4, report.getRtSubType());
+            preparedStatement.setString(5, report.getQuaterEndDate());
+            preparedStatement.setString(6, report.getCureentBranchcode());
+
+            return preparedStatement;
+
+        }, generatedKeyHolder);
+
+        final String idd = generatedKeyHolder.getKey().toString();
+        int id = generatedKeyHolder.getKey().intValue();
+        return id;
     }
-    setSelected([]);
-  };
 
-  /**
-   * Removes the selected rows from the table.
-   */
-  const handleDiscard = () => {
-    if (selected.length === 0) {
-      setSnackbar({
-        children: "Please select rows to discard.",
-        severity: "info",
-      });
-      return;
+    @Override
+    public void insertMultipleRecords(List<FRTMaker> records, int generatedID, FRTMaker report) {
+
+        String SQL_INSERT_MULTIPLE = "INSERT INTO CRS_AUDIT_STATUS(AS_RT_ID,AS_QED,AS_BRANCH,AS_NEW_STATUS,AS_REQ_STATUS) values(?,to_date(?,'dd/mm/yyyy'),?,?,'P')";
+
+        jdbcTemplateObject.batchUpdate(SQL_INSERT_MULTIPLE, new BatchPreparedStatementSetter() {
+
+            @Override
+            public void setValues(PreparedStatement pStmt, int j) throws SQLException {
+                FRTMaker frtMaker = records.get(j);
+                pStmt.setInt(1, generatedID);
+                pStmt.setString(2, report.getQuaterEndDate());
+                //pStmt.setDate(2, to_date(report.getQuaterEndDate(),'dd/mm/yyyy'));
+                pStmt.setString(3, frtMaker.getBranchcode());
+                pStmt.setString(4, frtMaker.getStatus());
+            }
+
+            @Override
+            public int getBatchSize() {
+                return records.size();
+            }
+
+        });
     }
-    const newRows = rows.filter((row) => !selected.includes(row.id));
-    setRows(newRows);
-    setSelected([]);
-    setSnackbar({
-      children: `${selected.length} row(s) discarded.`,
-      severity: "success",
-    });
-  };
+	
+	
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-  /**
-   * Submits the valid data to the backend.
-   */
-  const handleSubmit = async () => {
+
+ const handleSubmit = async () => {
     setLoading(true);
     const hasErrors = rows.some(
       (row) => row.branchCode.error || row.auditStatus.error
@@ -316,19 +231,23 @@ export default function FrtMultipleBranchAuditStatus() {
       return;
     }
 
+    // The backend expects separate arrays for branchcode and status
     const branchCodeList = rows.map((row) =>
       String(row.branchCode.value).padStart(5, "0")
     );
     const statusList = rows.map((row) => row.auditStatus.value);
 
+    // The JSP creates a form and submits it. We can replicate this with URLSearchParams for a standard form POST.
     const params = new URLSearchParams();
     branchCodeList.forEach((bc) => params.append("branchcode", bc));
     statusList.forEach((st) => params.append("status", st));
 
     try {
+      // We expect a file download (for errors) or a redirect with a message (for success).
+      // A standard form POST is the best way to handle this ambiguity without complex response parsing.
       const form = document.createElement("form");
       form.method = "post";
-      form.action = "/FRTUser/bulkUpload";
+      form.action = "/FRTUser/bulkUpload"; // Your actual backend endpoint
 
       branchCodeList.forEach((bc) => {
         const hiddenField = document.createElement("input");
@@ -349,11 +268,13 @@ export default function FrtMultipleBranchAuditStatus() {
       document.body.appendChild(form);
       form.submit();
 
+      // After submission, we can only provide generic feedback as we don't get a direct response in the SPA.
       setSnackbar({
         children:
           "Request submitted successfully. You will be notified of any invalid records.",
         severity: "success",
       });
+      // Optionally reset the page after a delay
       setTimeout(() => {
         setRows([]);
         setShowTable(false);
@@ -369,248 +290,3 @@ export default function FrtMultipleBranchAuditStatus() {
       setLoading(false);
     }
   };
-
-  return (
-    <>
-      <Box sx={{ p: 2 }}>
-        <Typography variant="h5" gutterBottom>
-          Change Multiple Branch Audit Status
-        </Typography>
-        <Divider />
-      </Box>
-
-      <Container maxWidth="xl" sx={{ mt: 2 }}>
-        <Paper elevation={3} sx={{ p: 3 }}>
-          <Typography color="error" gutterBottom>
-            [Note: For bulk upload, at least 5 records should be present in the
-            Excel file.]
-          </Typography>
-          <Grid container spacing={8}>
-            <Grid item xs={12} md={6}>
-              <Typography variant="h6" gutterBottom>
-                Instructions
-              </Typography>
-              <Grid container spacing={6}>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    1. Download Template
-                  </Typography>
-                  {/* 👇 3. Updated Button: removed 'href', added 'onClick' */}
-                  <Button
-                    variant="contained"
-                    color="success"
-                    startIcon={<DownloadIcon />}
-                    onClick={handleDownloadTemplate}
-                  >
-                    Download Excel
-                  </Button>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    2. Upload File
-                  </Typography>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 2,
-                    }}
-                  >
-                    <Button variant="contained" component="label">
-                      Choose File
-                      <input
-                        type="file"
-                        hidden
-                        key={fileInputKey}
-                        accept=".xlsx, .xls"
-                        onChange={handleFileUpload}
-                      />
-                    </Button>
-                    <Typography variant="body2" color="text.secondary">
-                      Max size: 2MB
-                    </Typography>
-                  </Box>
-                </Grid>
-              </Grid>
-            </Grid>
-
-            <Grid item xs={12} sm={6} mt={5}>
-              <Typography variant="subtitle1" gutterBottom>
-                3. Status Guide
-              </Typography>
-              <List dense>
-                <ListItem>
-                  <ListItemIcon>
-                    <CheckCircleIcon color="primary" />
-                  </ListItemIcon>
-                  <ListItemText primary="N - For Non-Audited" />
-                </ListItem>
-                <ListItem>
-                  <ListItemIcon>
-                    <CheckCircleIcon color="primary" />
-                  </ListItemIcon>
-                  <ListItemText primary="A - For Audited (Non-IFCOFR)" />
-                </ListItem>
-                <ListItem>
-                  <ListItemIcon>
-                    <CheckCircleIcon color="primary" />
-                  </ListItemIcon>
-                  <ListItemText primary="I - For IFCOFR Audited" />
-                </ListItem>
-              </List>
-            </Grid>
-          </Grid>
-
-          {/* Table Section */}
-          {showTable && (
-            <Box mt={4}>
-              <Divider sx={{ mb: 2 }} />
-              <Typography variant="h6" gutterBottom>
-                Verify and Submit Data
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead sx={{ backgroundColor: "#b9def0" }}>
-                    <TableRow>
-                      <TableCell padding="checkbox">
-                        <Checkbox
-                          color="primary"
-                          indeterminate={
-                            selected.length > 0 && selected.length < rows.length
-                          }
-                          checked={
-                            rows.length > 0 && selected.length === rows.length
-                          }
-                          onChange={handleSelectAll}
-                        />
-                      </TableCell>
-                      <TableCell align="center">Branch Code</TableCell>
-                      <TableCell align="center">Audit Status (I/A/N)</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {rows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        hover
-                        selected={selected.indexOf(row.id) !== -1}
-                      >
-                        <TableCell padding="checkbox">
-                          <Checkbox
-                            color="primary"
-                            checked={selected.indexOf(row.id) !== -1}
-                            onClick={(event) => handleSelect(event, row.id)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <TextField
-                            fullWidth
-                            variant="standard"
-                            value={row.branchCode.value}
-                            onChange={(e) =>
-                              handleInputChange(
-                                row.id,
-                                "branchCode",
-                                e.target.value
-                              )
-                            }
-                            error={!!row.branchCode.error}
-                            helperText={row.branchCode.error}
-                            inputProps={{ style: { textAlign: "center" } }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <TextField
-                            fullWidth
-                            variant="standard"
-                            value={row.auditStatus.value}
-                            onChange={(e) =>
-                              handleInputChange(
-                                row.id,
-                                "auditStatus",
-                                e.target.value
-                              )
-                            }
-                            error={!!row.auditStatus.error}
-                            helperText={row.auditStatus.error}
-                            inputProps={{
-                              style: {
-                                textAlign: "center",
-                                textTransform: "uppercase",
-                              },
-                            }}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<SubmitIcon />}
-                  onClick={handleSubmit}
-                >
-                  Submit
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  startIcon={<DiscardIcon />}
-                  onClick={handleDiscard}
-                >
-                  Discard Selected
-                </Button>
-              </Box>
-            </Box>
-          )}
-        </Paper>
-      </Container>
-
-      {/* --- Dialogs and Loaders --- */}
-      <Dialog open={loading}>
-        <DialogContent
-          sx={{ display: "flex", alignItems: "center", gap: 2, p: 4 }}
-        >
-          <CircularProgress />
-          <Typography>Processing...</Typography>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={dialog.open} onClose={handleDialogClose}>
-        <DialogTitle>{dialog.title}</DialogTitle>
-        <DialogContent>
-          <DialogContentText>{dialog.message}</DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDialogClose}>Close</Button>
-          {dialog.goNext && (
-            <Button onClick={goToSingleBranch} variant="contained">
-              Go to Single Branch Page
-            </Button>
-          )}
-        </DialogActions>
-      </Dialog>
-
-      {snackbar && (
-        <Snackbar
-          open
-          autoHideDuration={6000}
-          onClose={handleSnackbarClose}
-          anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        >
-          <Alert
-            onClose={handleSnackbarClose}
-            severity={snackbar.severity}
-            variant="filled"
-            sx={{ width: "100%" }}
-          >
-            {snackbar.children}
-          </Alert>
-        </Snackbar>
-      )}
-    </>
-  );
-}
