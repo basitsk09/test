@@ -592,6 +592,46 @@ export default function FrtMultipleBranchAuditStatus() {
 
 /////////////////////////////////////////////////////////////
 
+router.post("/downloadTemplate", extractToken, async (req, res) => {
+  let token = req.headers.authorization;
+  if (!token) {
+    return res.status(401).json({
+      message: "Unauthorized api call, request not from legal source",
+    });
+  }
+  try {
+    const serviceUrl = devBaseServiceUrl + "/LHODashBoard/downloadTemplate";
+
+    const response = await fetch(serviceUrl, {
+      method: "POST",
+      body: JSON.stringify({
+        user: req.user,
+        data: req.data,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    res.setHeader("Content-Type", response.headers.get("content-type"));
+    res.setHeader(
+      "Content-Disposition",
+      response.headers.get("content-disposition")
+    );
+
+    for await (const chunk of response.body) {
+      res.write(chunk);
+    }
+    res.end();
+  } catch (e) {
+    res.status(500).json({
+      status: "Failed to bring response, no connection between LB and APP",
+    });
+  }
+});
+
+/////////////////////////////////////////////////////////////
+
 
 const handleCancelRequest = async (requestData) => {
     handleLoadOpen();
