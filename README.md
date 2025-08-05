@@ -9,7 +9,6 @@ import {
   TableHead,
   TableRow,
   Paper,
-  TextField,
   CircularProgress,
   Container,
   Typography,
@@ -28,7 +27,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
 import useApi from '../../../../common/hooks/useApi';
 
-// Styled components for a consistent look
+// #region --- Styled Components ---
 const StyledHeader = styled(TableCell)(() => ({
   textAlign: 'center',
   fontWeight: 'bold',
@@ -39,60 +38,68 @@ const StyledHeader = styled(TableCell)(() => ({
 const StyledCell = styled(TableCell)({
   padding: '8px 16px',
 });
+// #endregion
 
-// Main Component
+// #region --- Main Component ---
 const WriteOff = () => {
-  // #region --- State Management ---
+  // #region --- State and Hooks Setup ---
   const user = JSON.parse(localStorage.getItem('user'));
-
   const { state } = useLocation();
-  const [reportObject, setReportObject] = useState(state?.report || null);
   const navigate = useNavigate();
   const { callApi } = useApi();
   const setSnackbarMessage = useCustomSnackbar();
+
+  const [reportObject, setReportObject] = useState(state?.report || null);
   const [rows, setRows] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogAction, setDialogAction] = useState(null);
   // #endregion
-  const getBasePayload = useCallback(
-    () => ({
-      circleCode: user?.circleCode,
-      qed: user?.quarterEndDate,
-      userCapacity: user?.userCapacity,
-      reportId: reportObject?.reportId,
-      reportMasterId: reportObject?.reportMasterId,
-      currentStatus: reportObject?.status,
-      userId: user.userId,
-    }),
-    [user, reportObject]
-  );
-  // --- Data Fetching and Initialization ---
+
+  // #region --- Data Fetching ---
   useEffect(() => {
-    // Simulate fetching data from an API
-    setIsLoading(true);
-    const fetchData = () => {
-      const mockData = [
-        { circleCode: 'MUM', amount: '150000.75', status: 'Accepted' },
-        { circleCode: 'DEL', amount: '75000.00', status: 'Rejected' },
-        { circleCode: 'KOL', amount: '98500.50', status: 'Pending' },
-        { circleCode: 'CHE', amount: '120000.00', status: 'Accepted' },
-        { circleCode: 'HYD', amount: '45000.25', status: 'Pending' },
-      ];
-      // Simulate network delay
-      setTimeout(() => {
-        setRows(mockData);
-        setIsLoading(false);
-      }, 1500);
+    let isMounted = true;
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // Define payload for the API call, fetching data for the current quarter
+        const payload = { qed: user?.quarterEndDate };
+        
+        // Call the API to get the list of circles and their status
+        const response = await callApi('/getCircleList', payload, 'POST');
+
+        // Only update state if the component is still mounted
+        if (isMounted && response?.data) {
+          setRows(response.data);
+        } else if (isMounted) {
+          // Handle cases where API returns no data
+          setSnackbarMessage('No data found for the current period.', 'info');
+          setRows([]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch circle list:', error);
+        if (isMounted) {
+          setSnackbarMessage('Error loading circle status data.', 'error');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
     };
-    console.log('reportObject:', reportObject);
 
     fetchData();
-  }, []);
 
-  // --- Handlers ---
+    // Cleanup function to run when the component unmounts
+    return () => {
+      isMounted = false;
+    };
+  }, [callApi, setSnackbarMessage, user?.quarterEndDate]); // Dependencies for the effect
+  // #endregion
+
+  // #region --- Event Handlers ---
   const handleAmountChange = (index, value) => {
-    // Basic numeric validation (allows decimals)
+    // Basic numeric validation (allows decimals and empty string)
     if (/^\d*\.?\d*$/.test(value)) {
       const updatedRows = [...rows];
       updatedRows[index].amount = value;
@@ -110,16 +117,35 @@ const WriteOff = () => {
     setDialogAction(null);
   };
 
-  const handleConfirmAction = () => {
-    console.log(`Action: ${dialogAction}`);
-    console.log('Current Data:', rows);
-    // Here you would typically make an API call to save or submit the data
-    // For demonstration, we just log to the console.
-    handleCloseDialog();
-    // You would show a success snackbar here
-  };
+  const handleConfirmAction = async () => {
+    // Here you would make an API call to save or submit the data
+    const actionEndpoint = dialogAction === 'save' ? '/saveWriteOff' : '/submitWriteOff';
+    const successMessage = dialogAction === 'save' ? 'Data saved successfully!' : 'Data submitted successfully!';
 
-  // --- Helper for Status Styling ---
+    // Create a payload with the current data
+    const payload = {
+      qed: user?.quarterEndDate,
+      userId: user?.userId,
+      data: rows,
+    };
+
+    try {
+        await callApi(actionEndpoint, payload, 'POST');
+        setSnackbarMessage(successMessage, 'success');
+        if (dialogAction === 'submit') {
+            // Optionally navigate away or disable fields after submission
+            setTimeout(() => navigate(-1), 1500);
+        }
+    } catch (error) {
+        console.error(`Error during ${dialogAction}:`, error);
+        setSnackbarMessage(`An error occurred while trying to ${dialogAction}.`, 'error');
+    } finally {
+        handleCloseDialog();
+    }
+  };
+  // #endregion
+
+  // #region --- Helper Functions ---
   const getStatusChip = (status) => {
     let color;
     switch (status) {
@@ -137,6 +163,7 @@ const WriteOff = () => {
     }
     return <Chip label={status} color={color} size="small" sx={{ fontWeight: 'bold' }} />;
   };
+  // #endregion
 
   // #region --- Render Logic ---
   if (isLoading) {
@@ -152,10 +179,6 @@ const WriteOff = () => {
 
   return (
     <Container maxWidth="xl" sx={{ mt: 2, mb: 2 }}>
-      {/* <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
-        Circle Status Report
-      </Typography> */}
-
       <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
         <CustomButton buttonType={'save'} label={'Save'} onClickHandler={() => handleOpenDialog('save')} />
         <CustomButton buttonType={'submit'} label={'Submit'} onClickHandler={() => handleOpenDialog('submit')} />
@@ -172,18 +195,29 @@ const WriteOff = () => {
           </TableHead>
           <TableBody>
             {rows.map((row, index) => (
-              <TableRow key={index} hover>
+              <TableRow key={row.circleCode || index} hover>
                 <StyledCell sx={{ fontWeight: 'medium', textAlign: 'center' }}>{row.circleCode}</StyledCell>
                 <StyledCell>
                   <FormInput
                     value={row.amount}
                     onChange={(e) => handleAmountChange(index, e.target.value)}
                     inputProps={{ style: { textAlign: 'right' } }}
+                    // You might want to disable the input based on status
+                    // readOnly={row.status === 'Accepted' || row.status === 'Rejected'}
                   />
                 </StyledCell>
                 <StyledCell align="center">{getStatusChip(row.status)}</StyledCell>
               </TableRow>
             ))}
+             {rows.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={3} align="center">
+                  <Typography sx={{ p: 4, color: 'text.secondary' }}>
+                    No circle data to display.
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>
@@ -197,7 +231,7 @@ const WriteOff = () => {
           <DialogContentText>
             {dialogAction === 'save'
               ? 'Are you sure you want to save the changes?'
-              : 'Are you sure you want to submit? Once submitted, the data cannot be edited.'}
+              : 'Are you sure you want to submit? Once submitted, the data may not be editable.'}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -215,35 +249,3 @@ const WriteOff = () => {
 // #endregion
 
 export default WriteOff;
-
-useEffect(() => {
-    let isMounted = true;
-    const fetchData = async () => {
-      setIsLoading(true);
-
-      showSnackbar('Loading data...', 'info');
-      console.log('reportObj', reportObject);
-      const payload = { circleCode: user.circleCode, quarterEndDate: user.quarterEndDate };
-      try {
-        const response = await callApi('/Maker/getSavedDataNineA', payload, 'POST');
-        if (!isMounted) return;
-
-        const enriched = response.map((r, i) => ({ ...initialRow, ...r, id: r.id || `row-${Date.now()}-${i}` }));
-        setRows(enriched);
-      } catch (error) {
-        console.log('error', error);
-        if (!isMounted) return;
-        setSnackbarMessage('Error loading saved data.', 'error');
-      } finally {
-        // if (!isMounted) return;
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-    return () => {
-      isMounted = false;
-    };
-  }, []); // Added callApi to dependency array
-
-
-/getCircleList
