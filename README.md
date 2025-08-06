@@ -1,636 +1,270 @@
-package com.comlinkusa.financeoneui.client;
+package com.comlinkusa.financeoneui.session;
+import java.io.InputStream;
 
-import com.comlinkusa.financeoneui.common.*;
-import com.comlinkusa.financeoneui.guilib.BasePanel;
-import com.comlinkusa.financeoneui.logger.ComlinkLogger;
-import com.comlinkusa.financeoneui.server.CommSvrImpl;
-import com.comlinkusa.financeoneui.session.SessionService;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
-import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.rmi.RemoteException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.util.ArrayList;
-//Added imports : 09/07/2025 - No longer needed with SwingWorker
-//import java.util.concurrent.ExecutorService;
-//import java.util.concurrent.Executors;
-//Added imports : 09/07/2025
-import java.util.logging.Logger;
+import com.comlinkusa.financeoneui.client.A515E;
+import org.apache.log4j.Logger;
 
-/*Start of IR No 18100012*/
-/*End of IR No 18100012*/
-
-public class FinanceOneLogon extends JFrame
-{
-  private static File SETTINGS_FILE;
-  private ComlinkLogger financeOneLogger;
-  private ApplicationSettings appSettings;
-  private CommSvrImpl server;
-  private JLabel userIDLabel;
-  private JTextField userIDField;
-  private JLabel passwordLabel;
-  private JPasswordField passwordField;
-  private JButton okButton;
-  private JButton cancelButton;
-  private static String vhost;
-  private static int vport = 0;
-  private static String vuser = "";
-  private static String vpass = "";
-  private boolean isError = true;
-  private boolean messagewindow = true;
-  private boolean messagereply;
-  private static String errorMessage = "";
-  static String p="";
-  private static int q;
-
-  static Logger logger= Logger.getLogger(FinanceOneLogon.class.getName());
-  
-  /*
-  // Fix Starts : 09/07/2025 - This approach still caused UI blocking and is replaced by SwingWorker.
-  private final ExecutorService executor = Executors.newSingleThreadExecutor();
-  // Fix Ends : 09/07/2025
-  */
-  
-  public FinanceOneLogon() {
-    super("F1: Login");
-    this.financeOneLogger = ComlinkLogger.getInstance();
-    this.appSettings = ApplicationSettings.getInstance();
-    this.userIDLabel = null;
-    this.userIDField = null;
-    this.passwordLabel = null;
-    this.passwordField = null;
-    this.okButton = null;
-    this.cancelButton = null;
-
-    // =================================================================
-    // FIX START: Set the default close operation for graceful shutdown.
-    // This ensures the application exits naturally when the main window
-    // is closed, without needing a forceful System.exit().
-    // =================================================================
-    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    // =================================================================
-    // FIX END
-    // =================================================================
-
-    try
-    {
-      UIManager.setLookAndFeel("com.sun.java.swing.plaf.windows.WindowsLookAndFeel");
-
-      initComponents();
-    }
-    catch (FinanceOneException financeoneexception)
-    {
-      if (financeoneexception.getMessage() != "")
-      {
-        JOptionPane.showMessageDialog(null, financeoneexception.getMessage(), "Unix Logon: Error Message", 0);
-        /* OLD VULNERABLE CODE
-		//Fix Starts -20/06/2025
-        //System.exit(0);
-		terminateAppGracefully();
-		//fix end
-        */
-        // FIX: The call is now safe as terminateAppGracefully() no longer force-exits.
-        terminateAppGracefully();
-      }
-      else if (financeoneexception.getMessage() == "")
-      {
-        JOptionPane.showMessageDialog(null, "Already in progress", "Unix Logon: Error Message", 0);
-        /* OLD VULNERABLE CODE
-		//Fix Starts -20/06/2025
-        //System.exit(0);
-		terminateAppGracefully();
-		//fix end
-        */
-        // FIX: The call is now safe.
-        terminateAppGracefully();
-      }
-
-    }
-    //*****************START OF CR 20100050******************
-    catch (ClassNotFoundException | InstantiationException | IllegalAccessException | UnsupportedLookAndFeelException exception)
-    {
-      this.financeOneLogger.log("com.comlinkusa.financeoneui.guide.FinanceOneLogon", "constructor", "Unable to set the application's look and feel:\n" + exception.getMessage());
-    }
-    //*****************END OF CR 20100050******************
-    this.financeOneLogger.log("com.comlinkusa.financeoneui.client.FinanceOneLogon", "Constructor", "new FinanceOneLogon instance created");
-    addWindowListener(new WindowMonitor());
-    pack();
-    setSize(800, 585);
-    setResizable(false);
-  }
-
-  private void initComponents()
-    throws FinanceOneException
-  {
-    try
-    {
-      this.appSettings.resetApplicationSettings(SETTINGS_FILE);
-    }
-    catch (IOException ioexception)
-    {
-      this.financeOneLogger.log("com.comlinkusa.financeoneui.client.FinanceOneLogon", "initComponents", "Unable to reset application settings in file " + SETTINGS_FILE);
-      throw new FinanceOneException(ioexception.toString(), 3);
-    }
-    try
-    {
-      this.server = new CommSvrImpl();
-    }
-    catch (IOException ioexception1)
-    {
-      this.financeOneLogger.log("com.comlinkusa.financeoneui.client.FinanceOneLogon", "initComponents", "Some problem constructing the CommSvrImpl object: " + ioexception1);
-      throw new FinanceOneException(ioexception1.toString(), 3);
-    }
-    /*Start of IR No 17020017*/
-    RuntimeConstants runtimeconstants = new RuntimeConstants();
-    ArrayList<String> Arrayhostreturn = new ArrayList<>();
-    ArrayList<String> Arrayportreturn = new ArrayList<>();
-    try {
-      Arrayhostreturn = runtimeconstants.getComlinkHost1();
-      Arrayportreturn = runtimeconstants.getComlinkPort1();
-
-      this.server.getPool().setSize(1);
-      this.server.getPool().setMax(1);
-      this.server.getPool().setUsername(runtimeconstants.getF1User());
-      this.server.getPool().setPassword(runtimeconstants.getF1Password());
-
-      /*
-       * =================================================================
-       * OLD VULNERABLE/PROBLEMATIC CODE START
-       * This whole block, including the original commented-out 'new Thread'
-       * and the 'ExecutorService' implementation, is being replaced.
-       * The main issues were:
-       * 1. The 'new Thread' was unmanaged.
-       * 2. The 'ExecutorService' with the 'while/sleep' loop blocked the UI thread (EDT),
-       * making the application unresponsive. This is why thread-related flags were raised.
-       * =================================================================
-       */
-      /*
-      // Fix Starts: 09/07/2025 (This was the attempted fix)
-      if (this.isError) {
-          final JDialog waitDialog = new JDialog(this, "Alert", false);
-          JLabel errorFields = new JLabel("<HTML><FONT COLOR = Blue>    Please Wait Connecting to server...<br>Do not close this window      </FONT></HTML>");
-          waitDialog.getContentPane().add(errorFields);
-          waitDialog.pack();
-          waitDialog.setLocationRelativeTo(this);
-          waitDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
-          waitDialog.setVisible(true);
-
-          executor.submit(() -> {
-              try {
-                  String s = null;
-                  int portreturn = 0;
-                  for (int i = 0; i < length; ++i) {
-                      try {
-                          if (this.isError) {
-                              s = (String) Arrayhostreturn.get(i);
-                              portreturn = Integer.parseInt((String) Arrayportreturn.get(i));
-                              this.server.getPool().setHost(s);
-                              this.server.getPool().setPort(portreturn);
-                              this.server.getPool().initializePool();
-                              registry.rebind("CommServer", this.server);
-                              this.isError = false;
-                          }
-                          if (!this.isError) {
-                              p = s;
-                              q = portreturn;
-                              break; 
-                          }
-                      } catch (HeadlessException | NumberFormatException | RemoteException exception) {
-                          this.financeOneLogger.log("com.comlinkusa.financeoneui.client.FinanceOneLogon", "actionPerformed", exception.getMessage());
-                          errorMessage = exception.getMessage();
-                          this.isError = true;
-                      }
-                  }
-              } finally {
-                  SwingUtilities.invokeLater(waitDialog::dispose);
-                  executor.shutdown(); 
-              }
-          });
-
-          // THIS IS THE UI-BLOCKING LOOP
-          while (waitDialog.isVisible()) {
-              try {
-                  Thread.sleep(100); 
-              } catch (InterruptedException e) {
-                  Thread.currentThread().interrupt();
-              }
-          }
-      }
-      // Fix Ends: 09/07/2025
-      */
-      /*
-       * =================================================================
-       * OLD VULNERABLE/PROBLEMATIC CODE END
-       * =================================================================
-       */
-
-      // =================================================================
-      // NEW CORRECTED CODE START: Using SwingWorker
-      // This is the standard, safe way to run long tasks in the background
-      // in a Swing application. It prevents the UI from freezing and is
-      // the correct fix for the thread-related security flags.
-      // =================================================================
-      final JDialog waitDialog = new JDialog(this, "Connecting...", true); // Modal dialog
-      waitDialog.getContentPane().add(new JLabel("Please wait, connecting to server..."));
-      waitDialog.pack();
-      waitDialog.setLocationRelativeTo(this);
-      waitDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
-
-      SwingWorker<Boolean, Void> connector = new SwingWorker<Boolean, Void>() {
-          @Override
-          protected Boolean doInBackground() throws Exception {
-              // This runs on a background thread. No UI code here.
-              Registry registry = LocateRegistry.createRegistry(7001);
-              for (int i = 0; i < Arrayhostreturn.size(); i++) {
-                  try {
-                      String host = Arrayhostreturn.get(i);
-                      int port = Integer.parseInt(Arrayportreturn.get(i));
-
-                      server.getPool().setHost(host);
-                      server.getPool().setPort(port);
-                      server.getPool().initializePool();
-                      registry.rebind("CommServer", server);
-
-                      // Success!
-                      p = host;
-                      q = port;
-                      isError = false; // Mark as success
-                      return true;
-                  } catch (Exception e) {
-                      financeOneLogger.log("com.comlinkusa.financeoneui.client.FinanceOneLogon", "initComponents", e.getMessage());
-                      errorMessage = e.getMessage();
-                      isError = true; // Mark as failure for this attempt
-                  }
-              }
-              return false; // Return failure if loop finishes without connecting
-          }
-
-          @Override
-          protected void done() {
-              // This runs on the UI thread (EDT) after doInBackground() finishes.
-              waitDialog.dispose();
-              try {
-                  get(); // This will re-throw any exception from doInBackground
-              } catch (Exception e) {
-                  // This catches exceptions from the worker itself.
-                   JOptionPane.showMessageDialog(FinanceOneLogon.this, "A critical error occurred during connection setup: " + e.getMessage(), "Worker Error", JOptionPane.ERROR_MESSAGE);
-                   terminateAppGracefully();
-              }
-          }
-      };
-
-      connector.execute(); // Start the background task
-      waitDialog.setVisible(true); // Show the modal dialog. This blocks until the worker's done() method disposes it.
-      // =================================================================
-      // NEW CORRECTED CODE END
-      // =================================================================
-
-    }
-    catch (IOException ioexception2)
-    {
-      this.financeOneLogger.log("com.comlinkusa.financeoneui.client.FinanceOneLogon", "initComponents", "Some problem from the server object ");
-    }
-    //*****************START OF CR 20100050******************
-    catch (HeadlessException | NumberFormatException e) {
-		/*Start of IR No 18100012*/
-      //this.financeOneLogger.log(e.printStackTrace());
-      logger.info("***** In HeadlessException | NumberFormatException*****");
-		//e.printStackTrace();
-	  /*END of IR No 18100012*/
-    }
-    //*****************END OF CR 20100050******************
-    if (this.isError)
-    {
-      throw new FinanceOneException(errorMessage, 1);
-    }
-    /*End of IR No 17020017*/
-    Container container = getContentPane();
-    container.setLayout(new BorderLayout());
-    JLabel jlabel = new JLabel(Utils.COMLINK);
-    jlabel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-    container.add(jlabel, "West");
-    JPanel jpanel = new JPanel(new BorderLayout());
-    jpanel.setBorder(BorderFactory.createEtchedBorder());
-    this.userIDLabel = new JLabel("USER ID", 4);
-    this.userIDField = new LimitedTextField(15, false, true);
-    this.passwordLabel = new JLabel("PASSWORD", 4);
-    this.passwordField = new JPasswordField();
-    this.okButton = new JButton("OK");
-    this.cancelButton = new JButton("Cancel");
-    this.passwordField.addFocusListener(new FocusListener()
-    {
-      public void focusGained(FocusEvent focusevent)
-      {
-        FinanceOneLogon.this.passwordField.selectAll();
-      }
-
-      public void focusLost(FocusEvent focusevent)
-      {
-        FinanceOneLogon.this.passwordField.select(0, 0);
-      }
-    });
-    JPanel jpanel1 = new JPanel(new GridBagLayout());
-    jpanel1.setAlignmentX(17.5F);
-    Utils.addParameterRow(jpanel1, this.userIDLabel, this.userIDField);
-    Utils.addParameterRow(jpanel1, this.passwordLabel, this.passwordField);
-    JPanel jpanel2 = new JPanel(new FlowLayout(0));
-    /*Start of IR No 19060093*/
-    JLabel jlabel1 = new JLabel("<html>Finance One Login <br><br><font size='3'>APM code : core_Info_220</font></html>", 2);
-	/*END of IR No 19060093*/
-    jlabel1.setFont(new Font("Arial", 1, 18));
-    jlabel1.setAlignmentX(0.0F);
-    jpanel2.add(jlabel1);
-    jpanel2.add(Box.createRigidArea(new Dimension(400, 12)));
-    jpanel2.add(Box.createRigidArea(new Dimension(0, 100)));
-    jpanel2.add(jpanel1);
-    this.okButton.addActionListener(new ActionListener()
-    {
-      public void actionPerformed(ActionEvent actionevent)
-      {
-        EventQueue.invokeLater(new Runnable()
-        {
-          public void run()
-          {
-            FinanceOneLogon.this.setCursor(Cursor.getPredefinedCursor(3));
-            String s = null;
-            try
-            {
-              char[] s1 = (FinanceOneLogon.this.passwordField.getPassword());
-              if ((FinanceOneLogon.this.userIDField.getText() == null) || (FinanceOneLogon.this.userIDField.getText().length() <= 0)) {
-                s = "Login failed: Please enter a valid user id";
-              }
-              else if ((s1 == null) || (s1.length <= 0))
-                s = "Login failed: Please enter a valid password";
-              if (s != null) {
-                //break label418;
-              }
-              StringBuffer stringbuffer = new StringBuffer();
-              BasePanel basepanel = new BasePanel();
-              stringbuffer.append(basepanel.addPadding("LOGON", 8));
-              stringbuffer.append(basepanel.addPadding(FinanceOneLogon.this.userIDField.getText().trim(), 8));
-              stringbuffer.append(basepanel.addPadding("1", 3));
-              stringbuffer.append(basepanel.addPadding(FinanceOneLogon.this.userIDField.getText().trim(), 8));
-              stringbuffer.append(basepanel.addPadding(new String(s1), 8));
-              String s2 = FinanceOneLogon.this.server.sendRequest(stringbuffer.toString());
-              java.util.Arrays.fill(s1, ' '); // Clear password from memory
-			      
-              if (s2.indexOf("*DB-ERR*") != -1) {
-                s = "Login failed: Please enter a valid user id and password";
-              }
-              else if (s2.indexOf("** ERROR ON -") != -1)
-              {
-                int i = s2.indexOf("** ERROR");
-                int j = i + 60;
-                s = s2.substring(i + 2, j).trim() + "\n" + s2.substring(j, j + 60).trim();
-              }
-              else {
-                String s3 = s2.substring(0, 8).trim();
-                FinanceOne financeone = new FinanceOne(true);
-                financeone.setUserID(FinanceOneLogon.this.userIDField.getText());
-                financeone.setTransactionCode(s3);
-                financeone.setWindowID(FinanceOne.getAvailableWindowID());
-                financeone.addWindowToMap(s3, financeone);
-                financeone.setVisible(true); // Use setVisible, not deprecated show()
-                FinanceOneLogon.this.setVisible(false);
-                FinanceOneLogon.this.dispose();
-              }
-
-            }
-            catch (RemoteException exception1)
-            {
-              s = exception1.getMessage();
-              FinanceOneLogon.this.financeOneLogger.log("com.comlinkusa.financeoneui.client.FinanceOneLogon", "actionPerformed", s);
-            }
-            finally
-            {
-              if (s != null)
-                JOptionPane.showMessageDialog(null, s, "F1 Logon: Error Message", 0);
-              FinanceOneLogon.this.setCursor(Cursor.getPredefinedCursor(0));
-            }
-          }
-        });
-      }
-    });
-    JRootPane jrootpane = getRootPane();
-    jrootpane.setDefaultButton(this.okButton);
-    this.cancelButton.addActionListener(new ActionListener()
-    {
-      public void actionPerformed(ActionEvent actionevent)
-      {
-        FinanceOneLogon.this.setVisible(false);
-        FinanceOneLogon.this.dispose();
-        /* OLD VULNERABLE CODE
-		//Fix Starts -20/06/2025
-        //System.exit(0);
-		terminateAppGracefully();
-		//fix end
-        */
-        // FIX: The call is now safe.
-        terminateAppGracefully();
-      }
-    });
-    JLabel jlabel2 = new JLabel(Utils.CLIENT);
-    jlabel2.setPreferredSize(new Dimension(480, 40));
-    jlabel2.setOpaque(true);
-    JPanel jpanel3 = new JPanel(new FlowLayout(2));
-    this.okButton.setPreferredSize(new Dimension(73, 27));
-    this.cancelButton.setPreferredSize(new Dimension(73, 27));
-    jpanel3.add(jlabel2);
-    jpanel3.add(this.okButton);
-    jpanel3.add(this.cancelButton);
-    jpanel.add(jpanel2, "Center");
-    jpanel.add(jpanel3, "South");
-    container.add(jpanel, "Center");
-
-    Dimension dimension = Toolkit.getDefaultToolkit().getScreenSize();
-    setLocation((dimension.width - 800) / 2, (dimension.height - 585) / 2);
-  }
+import com.comlinkusa.financeoneui.client.FinanceOne;
+//new imports start
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import javax.swing.SwingUtilities;
+import java.awt.event.*;
+//new imports end
 
 
+/**
+ * 
+ * TODO
+ *
+ */
+public class AppSession extends JFrame{
+	
+	int p;
+	public static int a = 0;
+	static FinanceOne f1Obj = null;
 
-  public static String getTheDdfName()
-  {
-    String s = null;
-    String s1 = "com.comlinkusa.financeoneui.client.DdfFileNameClass";
-    String s2 = "ddfFileName";
-    try
-    {
-      Class<?> class1 = Class.forName(s1);
-      Field field = class1.getDeclaredField(s2);
-      s = (String)field.get(null);
-    }
-    catch (ClassNotFoundException classnotfoundexception)
-    {
-      JFrame jframe = new JFrame();
-      JOptionPane.showMessageDialog(jframe, "Cannot find the class " + s1);
-      /* OLD VULNERABLE CODE
-	  //Fix Starts -20/06/2025
-      //System.exit(0);
-	  terminateAppGracefully();
-	  //fix end
-      */
-      // FIX: The call is now safe.
-      terminateAppGracefully();
-    }
-    catch (IllegalAccessException illegalaccessexception)
-    {
-      JFrame jframe1 = new JFrame();
-      JOptionPane.showMessageDialog(jframe1, "Illegal access exception:" + illegalaccessexception);
-      /* OLD VULNERABLE CODE
-	  //Fix Starts -20/06/2025
-      //System.exit(0);
-	  terminateAppGracefully();
-	  //fix end
-      */
-      // FIX: The call is now safe.
-      terminateAppGracefully();
-    }
-    catch (NoSuchFieldException nosuchfieldexception)
-    {
-      JFrame jframe2 = new JFrame();
-      JOptionPane.showMessageDialog(jframe2, "Cannot find the field " + s2 + " in class " + s1);
-      /* OLD VULNERABLE CODE
-	  //Fix Starts -20/06/2025
-      //System.exit(0);
-	  terminateAppGracefully();
-	  //fix end
-      */
-      // FIX: The call is now safe.
-      terminateAppGracefully();
-    }
-    return s;
-  }
-  
-  /*
-   * =================================================================
-   * OLD VULNERABLE CODE START
-   * The call to Runtime.getRuntime().exit(0) is a Denial of Service
-   * vulnerability as it shuts down the entire JVM abruptly.
-   * =================================================================
-   */
-  /*
-  //Fix Starts -20/06/2025
-	public static void terminateAppGracefully() {
-		for (Window window : Window.getWindows()) {
-			window.dispose();
-		}
-		Runtime.getRuntime().exit(0);
+	static Logger logger= Logger.getLogger(AppSession.class.getName());
+	//new change start
+	private final ExecutorService executor = Executors.newSingleThreadExecutor();
+	//new change end
+
+	//static Logger logger = Logger.getLogger(AppSession.class.getName());
+	/*static String str;
+	static long msgTime;
+	public static int appTime;*/
+	static InputStream input = null;
+	
+	public AppSession() {
+		timerEvent();
+
 	}
-  //Fix Ends
-  */
-  /*
-   * =================================================================
-   * OLD VULNERABLE CODE END
-   * =================================================================
-   */
-  
-  // =================================================================
-  // NEW CORRECTED CODE START
-  // This version gracefully disposes of all windows, allowing the JVM
-  // to shut down naturally when the last non-daemon thread finishes.
-  // This resolves the "System Exit" vulnerability.
-  // =================================================================
-  public static void terminateAppGracefully() {
-      for (Window window : Window.getWindows()) {
-          window.dispose();
-      }
-      // The call to Runtime.getRuntime().exit(0) has been REMOVED.
-  }
-  // =================================================================
-  // NEW CORRECTED CODE END
-  // =================================================================
+	
+	addWindowListener(new java.awt.event.WindowAdapter() {
+    @Override
+    public void windowClosing(java.awt.event.WindowEvent e) {
+        shutdownExecutor();   
+    }
+});
+	
+	/*private static final String TIME_PROPERTIES_FILE_NOT_FOUND = "TimeProperties file not found!!!";
+	private static final String MESSAGE = "message";
+	private static final String MESSAGE_TIME = "messageTime";
+	private static final String IDLE_TIME = "idleTime";
+	private static final String YOUT_KEY = "AVX2oX8TYBCTCSXXOO12";
 
-  public static void main(String[] args) throws Exception
-  {
-    if ((args != null) && (args.length > 0))
-    {
-      for (int i = 0; i < args.length; ++i) {
-        if (!args[i].equalsIgnoreCase("-version"))
-          continue;
-        RuntimeConstants runtimeconstants = new RuntimeConstants();
-        ArrayList<String> Arrayhostreturn1 = runtimeconstants.getComlinkHost1();
-        ArrayList<String> Arrayportreturn1 = runtimeconstants.getComlinkPort1();
-       
-        int length1 = Arrayhostreturn1.size();
-        for (int k = 0; k < length1; ++k)
-        {
-          String s2 = Arrayhostreturn1.get(k);
-          int portreturn = Integer.parseInt(Arrayportreturn1.get(k));
-         
-          vhost = s2;
-          vport = portreturn;
-          vuser = runtimeconstants.getF1User();
-          vpass = runtimeconstants.getF1Password();
-          JFrame jframe = new JFrame();
-          JOptionPane.showMessageDialog(jframe, "IP      = " + vhost + "\nPort    = " + vport + "\nUser    = " + vuser + "\nPassword= " + vpass);
-          /* OLD VULNERABLE CODE
-		  //Fix Starts -20/06/2025
-          //System.exit(0);
-		  terminateAppGracefully();
-		  //fix end
-          */
-          // FIX: The call is now safe.
-          terminateAppGracefully();
+	private static Properties getProp() {
+		Properties properties = null;
+		try {
+			logger.i("in properties initialization");
+			properties = new Properties();
+			input = new FileInputStream("TimeProperties.properties");
+			properties.load(input);
+			if(properties.getProperty(IDLE_TIME)==null||properties.getProperty(MESSAGE)==null||properties.getProperty(MESSAGE_TIME)==null) {
+				JOptionPane.showMessageDialog(null, "TimeProperties file is tempered!!!");
+				System.out.println("exiting Application............................");
+				System.exit(0);
+			}
+		} catch (IOException e) {
+		
+			JOptionPane.showMessageDialog(null, TIME_PROPERTIES_FILE_NOT_FOUND, "Error: Time Properties file", JOptionPane.ERROR_MESSAGE);
+			//e.printStackTrace();
+			System.out.println("please insert file");
+		}
+		return properties;
+	}
+
+	public static int getAppTime() {
+		String strToDecrypt = getProp().getProperty(IDLE_TIME);
+		if(strToDecrypt!=null) {
+		String decryptedString = Decrypt_Util.Decrypt(strToDecrypt, YOUT_KEY);
+		System.out.println("decrypted String:" + decryptedString);	
+		if(decryptedString!=null) {
+		appTime = Integer.parseInt(decryptedString);
+		
+			System.out.println("AppTime: "+appTime);
+			return appTime;
+		} else
+			System.exit(0);
+		return 0;
+		} else {
+			System.out.println("please place Time Properties file in the same folder as the jar file: 0");
+			return 0;
+		}
+
+	}
+
+	public static void sessioOutTimeInitializer() {
+		appTime = getAppTime();
+		String no = getProp().getProperty(MESSAGE_TIME);
+		System.out.println("Decrypted message time:" + " " + Decrypt_Util.Decrypt(no, YOUT_KEY));
+		msgTime = Long.parseLong(Decrypt_Util.Decrypt(no, YOUT_KEY));
+		String strToDecrypt = getProp().getProperty(MESSAGE);
+
+		str = Decrypt_Util.Decrypt(strToDecrypt, YOUT_KEY);
+		System.out.println("decrypted message:" + " " + str);
+	}
+*/
+	/**
+	 * This method is responsible for triggering the warning message
+	 * 
+	 */
+	
+	public void closeAllProcess() {
+		
+		String[] keySet = (String[]) f1Obj.getWindowMap().keySet().toArray(new String[0]);
+		
+		for(String  key :keySet) {
+			//System.out.println("--- kry--- "+key);
+			//System.out.println("--val -- "+ f1Obj.getWindowMap().get(key));
+			FinanceOne f1= (FinanceOne)f1Obj.getWindowMap().get(key);
+			
+			//System.out.println("sub-Frame flag:: "+f1.isParent());
+			
+			if(f1.isParent()) {
+				
+				f1.setIsAutoExit(false);
+				f1.processCloseRequest(f1.isParent(), f1.isAutoExit());
+			}
+			
+		}
+		//System.out.println("Main frame flag:: "+f1Obj.isParent());
+		
+	}
+	
+	public void timerEvent() {
+
+		SessionService.sessioOutTimeInitializer();
+		f1Obj = new FinanceOne(true);
+		
+		//old changes start
+		//Thread t = new Thread(new Runnable() {
+			//@Override
+			//public void run() {
+			//	try {
+					//logger.debug("AppSession:: ************************ in try  thread started" + a++);
+				//	Thread.sleep(SessionUtil.msgTime);
+				//} catch (InterruptedException e2) {
+				//	logger.info("***** In InterruptedException *****");
+				//}
+				//JOptionPane.getRootFrame().dispose();
+			//}
+	//	});
+		//t.start();
+
+		//p = JOptionPane.showConfirmDialog(null, SessionUtil.str, SessionConstant.getDialougetitle(), JOptionPane.YES_NO_OPTION);
+		//logger.debug("AppSession:: thread t started");
+		//if (p == 0) {
+			//logger.debug("AppSession:: dispose");
+			//f1Obj.sessionCloseFunction(f1Obj.isParent());
+			//System.out.println("in 1st if:::: p=0");
+			//closeAllProcess();
+			//f1Obj.sessionCloseFunction();
+			//System.exit(0);
+
+		//} else if (p == 1) {
+			//logger.debug("AppSession:: in no");
+			//System.out.println("in else if:::: ");
+			//a = 0;
+			//f1Obj.menuFlag = false;
+			//f1Obj.sessionOut.restart();
+		//} 
+		//else if (p == -1) {
+			//f1Obj.sessionCloseFunction(f1Obj.isParent());
+			//System.out.println("in 2nd if:::: p=-1");
+			//closeAllProcess();
+			//f1Obj.sessionCloseFunction();
+			//System.exit(0);
+	//	} else {
+			//System.out.println("reaching else!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			//f1Obj.menuFlag = false;
+			//f1Obj.initComponents();
+
+
+		//}
+		//old changes end
+		
+		//new changes start
+		 executor.submit(() -> {
+        try {
+            Thread.sleep(SessionUtil.msgTime);
+        } catch (InterruptedException e2) {
+            //logger.info("***** In InterruptedException *****");
+            Thread.currentThread().interrupt();
+            return;
         }
 
-      }
+       
+        SwingUtilities.invokeLater(() -> {
+                    try {
+                        JOptionPane.getRootFrame().dispose();
 
-    }
-    
-    /*Start of IR No 18100012*/
-	if(SessionService.getAppTime()==0) {
-        /* OLD VULNERABLE CODE
-	    //Fix Starts -20/06/2025
-	    //System.exit(0);
-	    terminateAppGracefully();
-	    //fix end
-        */
-        // FIX: The call is now safe.
-        terminateAppGracefully();
-	} else {
-		SessionService.sessioOutTimeInitializer();
+                        p = JOptionPane.showConfirmDialog(
+                                null,
+                                SessionUtil.str,
+                                SessionConstant.getDialougetitle(),
+                                JOptionPane.YES_NO_OPTION
+                        );
+
+                        if (p == 0) {
+                            closeAllProcess();
+                            secureExit(); 
+                        } else if (p == 1) {
+                            a = 0;
+                            f1Obj.menuFlag = false;
+                            f1Obj.sessionOut.restart();
+                        } else if (p == -1) {
+                            closeAllProcess();
+                            secureExit();
+                        } else {
+                            f1Obj.menuFlag = false;
+                            f1Obj.initComponents();
+                        }
+
+                    } catch (Exception ex) {
+                        //logger.error("Error in session timeout UI handling", ex);
+                    }
+                });
+		});
+		//new changes end
+
 	}
-	 /*End of IR No 18100012*/
+	
+	//new changes start
+	   public void shutdownExecutor() {
+        try {
+            executor.shutdown();
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+	
+	
+    public void secureExit() {
+        try {
+            shutdownExecutor(); 
+            this.dispose();    
+           
+        } catch (Exception e) {
+//            logger.error("Error during secureExit", e);
+        }
+    }
+	//new changes end
 
-    String s = getTheDdfName();
-    if (s != null)
-    {
-      SETTINGS_FILE = new File(s);
-    }
-    else {
-      JOptionPane.showMessageDialog(null, "The ddf file name did not get defined by guide\n", "F1 Logon: Error Message", 0);
-      /* OLD VULNERABLE CODE
-	  //Fix Starts -20/06/2025
-      //System.exit(0);
-	  terminateAppGracefully();
-	  //fix end
-      */
-      // FIX: The call is now safe.
-      terminateAppGracefully();
-    }
-    if (Utils.verify())
-    {
-      // FIX: Use setVisible(true) instead of the deprecated show() method.
-      new FinanceOneLogon().setVisible(true);
-    }
-    else {
-      JOptionPane.showMessageDialog(null, "Your license has expired. Please contact Born.", "F1 Logon: Error Message", 0);
-      /* OLD VULNERABLE CODE
-	  //Fix Starts -20/06/2025
-      //System.exit(0);
-	  terminateAppGracefully();
-	  //fix end
-      */
-      // FIX: The call is now safe.
-      terminateAppGracefully();
-    }
-  }
 }
+
+
+/////////////////////////////////////////////////////////////////
+
+1)The method timerEvent() in AppSession.java calls run()  on line 192. Thread management in a web application is forbidden in some circumstances and is always highly error prone.
+2)The method run() in AppSession.java calls interrupt()  on line 197. Thread management in a web application is forbidden in some circumstances and is always highly error prone.
+3)The method shutdownExecutor() in AppSession.java calls interrupt()  on line 246. Thread management in a web application is forbidden in some circumstances and is always highly error prone.
+4)The method run() in AppSession.java calls sleep()  on line 194. Thread management in a web application is forbidden in some circumstances and is always highly error prone.
