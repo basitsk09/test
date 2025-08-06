@@ -44,13 +44,17 @@ const StyledCell = styled(TableCell)({
 const WriteOff = () => {
   // #region --- State and Hooks Setup ---
   const user = JSON.parse(localStorage.getItem('user'));
-  //const { state } = useLocation();
+  const { state } = useLocation();
   const navigate = useNavigate();
   const { callApi } = useApi();
   const setSnackbarMessage = useCustomSnackbar();
 
-  // const [reportObject, setReportObject] = useState(state?.report || null);
+  // Mock reportObject for demonstration. In a real app, this comes from navigation state.
+  // I've defaulted to status '11' to demonstrate the "update" payload. Change to '10' to see the "create" payload.
+  const [reportObject, setReportObject] = useState(state?.report || { status: '11' });
+
   const [rows, setRows] = useState([]);
+  const [originalRows, setOriginalRows] = useState([]); // State to hold the initial data
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogAction, setDialogAction] = useState(null);
@@ -65,11 +69,14 @@ const WriteOff = () => {
         const payload = { qed: user?.quarterEndDate };
         const response = await callApi('/getCircleList', payload, 'POST');
         if (isMounted && response?.data) {
-          // Assuming backend returns array of objects, which is standard
-          setRows(response.data);
+          const fetchedData = response.data;
+          setRows(fetchedData);
+          // Create a deep copy of the initial data to serve as "old values"
+          setOriginalRows(JSON.parse(JSON.stringify(fetchedData)));
         } else if (isMounted) {
           setSnackbarMessage('No data found for the current period.', 'info');
           setRows([]);
+          setOriginalRows([]);
         }
       } catch (error) {
         console.error('Failed to fetch circle list:', error);
@@ -86,12 +93,11 @@ const WriteOff = () => {
     return () => {
       isMounted = false;
     };
-  }, [user?.quarterEndDate, callApi, setSnackbarMessage]); // Added dependencies
+  }, [user?.quarterEndDate, callApi, setSnackbarMessage]);
   // #endregion
 
   // #region --- Event Handlers ---
   const handleAmountChange = (index, value) => {
-    // Basic numeric validation
     if (/^\d*\.?\d*$/.test(value)) {
       const updatedRows = [...rows];
       updatedRows[index].amount = value;
@@ -112,21 +118,30 @@ const WriteOff = () => {
   const handleConfirmAction = async () => {
     const actionEndpoint = dialogAction === 'save' ? '/saveWriteOff' : '/submitWriteOff';
     const successMessage = dialogAction === 'save' ? 'Data saved successfully!' : 'Data submitted successfully!';
+    let dataList;
 
-    // Transform the array of objects into a list of lists
-    const dataList = rows.map((row) => [
-      row.circleCode,
-      row.amount || '0', // Ensure amount is not null/undefined
-      row.status,
-    ]);
+    // Conditionally build the payload based on the report status
+    if (reportObject?.status === '11') {
+      // --- UPDATE PAYLOAD (Status 11) ---
+      // Format: [circleCode, old_amount, new_amount, status]
+      dataList = rows.map((currentRow) => {
+        const originalRow = originalRows.find((oRow) => oRow.circleCode === currentRow.circleCode);
+        const oldAmount = originalRow ? originalRow.amount : '0'; // Default to '0' if it's a new row added in the UI
+        return [currentRow.circleCode, oldAmount, currentRow.amount || '0', currentRow.status];
+      });
+    } else {
+      // --- CREATE PAYLOAD (Status 10 or other) ---
+      // Format: [circleCode, amount, status]
+      dataList = rows.map((row) => [row.circleCode, row.amount || '0', row.status]);
+    }
 
     const payload = {
       qed: user?.quarterEndDate,
       userId: user?.userId,
-      data: dataList, // The data is now a list of lists
+      data: dataList,
     };
 
-    console.log('Payload being sent to backend:', JSON.stringify(payload, null, 2));
+    console.log(`Payload for status '${reportObject?.status}':`, JSON.stringify(payload, null, 2));
 
     try {
       await callApi(actionEndpoint, payload, 'POST');
@@ -200,7 +215,6 @@ const WriteOff = () => {
                     value={row.amount}
                     onChange={(e) => handleAmountChange(index, e.target.value)}
                     inputProps={{ style: { textAlign: 'right' } }}
-                    // Disable input if status is not 'Pending' (or any other appropriate logic)
                     readOnly={row.status === 'Accepted' || row.status === 'Rejected'}
                   />
                 </StyledCell>
