@@ -1,258 +1,347 @@
-package com.comlinkusa.financeoneui.session;
-import java.io.InputStream;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import com.comlinkusa.financeoneui.client.A515E;
-import org.apache.log4j.Logger;
-import com.comlinkusa.financeoneui.client.FinanceOne;
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useLocation, replace } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { styled } from '@mui/material/styles';
+import {
+  Avatar,
+  Box,
+  Divider,
+  Drawer as MuiDrawer,
+  Stack,
+  Typography,
+  Tooltip,
+  Button,
+  IconButton,
+} from '@mui/material';
+import { drawerClasses } from '@mui/material/Drawer';
+import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 
-// =================================================================
-// FIX START: Replaced concurrent imports with the Swing Timer.
-// =================================================================
-import javax.swing.Timer;
-import java.awt.event.ActionListener;
-import java.awt.event.ActionEvent;
-// =================================================================
-// FIX END
-// =================================================================
+import SelectModule from './SelectModule';
+import CustomizedTreeView from './CustomizedTreeView';
 
+import { roleMapping, roleOptionsMap } from '../../../constants/RoleConstants';
+import { convertToKebabCase } from '../../../utils/commonUtils';
+import {
+  updateSelectedMenuOption,
+  updateSelectedModule,
+  setFilteredSideMenuOptions,
+} from '../../../../app/features/sidebarSlice';
 
-/**
- * * TODO
- *
- */
-public class AppSession extends JFrame{
-	
-	int p;
-	public static int a = 0;
-	static FinanceOne f1Obj = null;
+// Assets
+import companyLogo from '../../../../assets/logos/6-cropped.png';
+import {
+  buildNavigationPath,
+  createUserAvatar,
+  findMenuOptionById,
+  findMenuOptionByPath,
+  useMenuFiltering,
+  useUser,
+} from './sideMenuUtils';
+import ConfirmationDialog from '../../ui/dialogs/ConfirmationDialog';
 
-	static Logger logger= Logger.getLogger(AppSession.class.getName());
-	
-    /*
-     * =================================================================
-     * OLD CODE START: ExecutorService is not needed for this task.
-     * A Swing Timer is the correct and simpler tool.
-     * =================================================================
-     */
-	/*
-	//new change start
-	private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    //new change end
-    */
-    /*
-     * =================================================================
-     * OLD CODE END
-     * =================================================================
-     */
+// Constants
+const DRAWER_WIDTH = 240;
 
-	static InputStream input = null;
-	
-	public AppSession() {
-		timerEvent();
+const MODULES = {
+  BALANCE_SHEET: 'BS',
+  CFS: 'CFS',
+};
 
-        /*
-         * =================================================================
-         * OLD CODE START: This WindowListener was syntactically incorrect
-         * (outside a method) and is no longer needed since we are not
-         * manually managing an ExecutorService.
-         * =================================================================
-         */
-        /*
-        addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override
-            public void windowClosing(java.awt.event.WindowEvent e) {
-                shutdownExecutor();   
-            }
-        });
-        */
-        /*
-         * =================================================================
-         * OLD CODE END
-         * =================================================================
-         */
-	}
-	
-	/*
-    * The commented-out property loading and decryption logic remains here.
-    * No changes are needed for it.
-    */
-	/*private static final String TIME_PROPERTIES_FILE_NOT_FOUND = "TimeProperties file not found!!!";
-	// ... rest of the old property methods
-    */
+const StyledDrawer = styled(MuiDrawer)({
+  width: DRAWER_WIDTH,
+  flexShrink: 0,
+  boxSizing: 'border-box',
+  [`& .${drawerClasses.paper}`]: {
+    width: DRAWER_WIDTH,
+    boxSizing: 'border-box',
+  },
+});
 
+// Main Component
+const SideMenu = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useDispatch();
+  const user = useUser();
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-	/**
-	 * This method is responsible for triggering the warning message
-	 * */
-	
-	public void closeAllProcess() {
-		
-		String[] keySet = (String[]) f1Obj.getWindowMap().keySet().toArray(new String[0]);
-		
-		for(String  key :keySet) {
-			FinanceOne f1= (FinanceOne)f1Obj.getWindowMap().get(key);
-			
-			if(f1.isParent()) {
-				f1.setIsAutoExit(false);
-				f1.processCloseRequest(f1.isParent(), f1.isAutoExit());
-			}
-		}
-	}
-	
-	public void timerEvent() {
+  // Redux State
+  const selectedMenuOption = useSelector((state) => state.sidebar.selectedMenuOption.value);
+  const currentModule = useSelector((state) => state.sidebar.selectedModule.value);
 
-		SessionService.sessioOutTimeInitializer();
-		f1Obj = new FinanceOne(true);
-		
-        /*
-         * =================================================================
-         * OLD CODE START: Both the original 'new Thread()' and the newer
-         * 'ExecutorService' approach are replaced by the much simpler
-         * Swing Timer below. This removes the need for manual thread
-         * management, sleep calls, and invokeLater.
-         * =================================================================
-         */
-		/*
-		//old changes start
-		//Thread t = new Thread(new Runnable() { ... });
-		//t.start();
-        // ... JOptionPane logic ...
-		//old changes end
-		
-		//new changes start
-		 executor.submit(() -> {
-            try {
-                Thread.sleep(SessionUtil.msgTime);
-            } catch (InterruptedException e2) {
-                //logger.info("***** In InterruptedException *****");
-                Thread.currentThread().interrupt();
-                return;
-            }
+  const [navigationPath, setNavigationPath] = useState([]);
+  const [displayedMenuOptions, setDisplayedMenuOptions] = useState([]);
 
-            SwingUtilities.invokeLater(() -> {
-                try {
-                    JOptionPane.getRootFrame().dispose();
+  // Ref to track navigation source
+  const isInternalNavigation = useRef(false);
 
-                    p = JOptionPane.showConfirmDialog(
-                            null,
-                            SessionUtil.str,
-                            SessionConstant.getDialougetitle(),
-                            JOptionPane.YES_NO_OPTION
-                    );
+  // Custom Hooks
+  const filterMenuOptions = useMenuFiltering(user, currentModule);
 
-                    if (p == 0) {
-                        closeAllProcess();
-                        secureExit(); 
-                    } else if (p == 1) {
-                        a = 0;
-                        f1Obj.menuFlag = false;
-                        f1Obj.sessionOut.restart();
-                    } else if (p == -1) {
-                        closeAllProcess();
-                        secureExit();
-                    } else {
-                        f1Obj.menuFlag = false;
-                        f1Obj.initComponents();
-                    }
-                } catch (Exception ex) {
-                    //logger.error("Error in session timeout UI handling", ex);
-                }
-            });
-		});
-        //new changes end
-        */
-        /*
-         * =================================================================
-         * OLD CODE END
-         * =================================================================
-         */
+  // Prevent page reload
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = 'Do you want to refresh? All data will be lost.';
+      return event.returnValue;
+    };
 
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
 
-        // =================================================================
-        // NEW CORRECTED CODE START: Using javax.swing.Timer
-        // This is the standard, secure, and simplest way to handle delayed
-        // UI events in Swing. It resolves all thread-related security flags.
-        // =================================================================
-        ActionListener sessionTimeoutListener = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent evt) {
-                // This code runs on the UI thread after the delay automatically.
-                p = JOptionPane.showConfirmDialog(
-                        null,
-                        SessionUtil.str,
-                        SessionConstant.getDialougetitle(),
-                        JOptionPane.YES_NO_OPTION
-                );
+  // Handle URL navigation (only when navigationPath changes from user interaction)
+  useEffect(() => {
+    if (!navigationPath.length || !isInternalNavigation.current) return;
 
-                if (p == JOptionPane.YES_OPTION) { // p == 0
-                    //logger.debug("AppSession:: User chose YES, closing session.");
-                    closeAllProcess();
-                    // System.exit() should be avoided. The application will close
-                    // when the last window is disposed.
-                    // secureExit(); // No longer needed
-                } else if (p == JOptionPane.NO_OPTION) { // p == 1
-                    //logger.debug("AppSession:: User chose NO, restarting timer.");
-                    a = 0;
-                    if (f1Obj != null) {
-                        f1Obj.menuFlag = false;
-                        if (f1Obj.sessionOut != null) {
-                           f1Obj.sessionOut.restart();
-                        }
-                    }
-                } else { // User closed the dialog (p == -1) or another case
-                    //logger.debug("AppSession:: Dialog closed, closing session.");
-                    closeAllProcess();
-                    // secureExit(); // No longer needed
-                }
-            }
-        };
+    let urlPath = navigationPath.map((item) => convertToKebabCase(item.label)).join('/');
 
-        // Create a timer that will fire ONCE after the specified message time.
-        Timer sessionTimer = new Timer((int) SessionUtil.msgTime, sessionTimeoutListener);
-        sessionTimer.setRepeats(false); // Ensure it only runs once
-        sessionTimer.start();
-        // =================================================================
-        // NEW CORRECTED CODE END
-        // =================================================================
-	}
-	
-    /*
-     * =================================================================
-     * OLD CODE START: This logic for shutting down the executor is no
-     * longer necessary because we are using a Swing Timer, which is
-     * managed by the framework.
-     * =================================================================
-     */
-	/*
-	//new changes start
-	public void shutdownExecutor() {
-        try {
-            executor.shutdown();
-            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
-                executor.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            executor.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
+    // Special case for incomplete branch users
+    // if (user.capacity === '52' && user.isBranchFinal !== 'Y') {
+    //   urlPath = 'user-details';
+    // }
+
+    if (urlPath && user.capacity && roleMapping[user.capacity]) {
+      const fullPath = `/${convertToKebabCase(roleMapping[user.capacity].role)}/${urlPath}`;
+
+      // Only navigate if the current path is different to prevent infinite loops
+      if (location.pathname !== fullPath) {
+        navigate(fullPath);
+      }
     }
-	
-	
-    public void secureExit() {
-        try {
-            shutdownExecutor(); 
-            this.dispose();    
-           
-        } catch (Exception e) {
-//            logger.error("Error during secureExit", e);
+
+    // Reset the flag after navigation
+    isInternalNavigation.current = false;
+  }, [navigationPath, user.capacity, navigate, location.pathname]);
+
+  // Sync selected option with current URL (runs whenever URL changes)
+  useEffect(() => {
+    const urlSegments = location.pathname.split('/').filter(Boolean);
+    const expectedRole = convertToKebabCase(roleMapping[user.capacity]?.role || '');
+
+    if (urlSegments.length > 0 && urlSegments[0] === expectedRole) {
+      const pathSegments = urlSegments.slice(1);
+      const availableOptions = roleOptionsMap[currentModule]?.[user.capacity] || [];
+      let options;
+      if (user?.circleCode !== '020') {
+        options = availableOptions.filter((n) => n?.id !== '1.4');
+      } else {
+        options = availableOptions;
+      }
+      const matchedOption = findMenuOptionByPath(pathSegments, options);
+      console.log('matchedOption', matchedOption);
+
+      if (matchedOption) {
+        // Only update if the selected option is different to avoid infinite loops
+        if (!selectedMenuOption || selectedMenuOption.id !== matchedOption.id) {
+          dispatch(updateSelectedMenuOption({ value: matchedOption }));
+          const fullPath = buildNavigationPath(matchedOption.id, availableOptions);
+          if (fullPath) {
+            setNavigationPath(fullPath);
+          }
         }
+      } else if (pathSegments.length > 0) {
+        // Only warn if there are actual path segments (not just the role)
+        console.warn('Invalid route detected:', location.pathname);
+        // Clear selected option if route is invalid
+        dispatch(updateSelectedMenuOption({ value: null }));
+        setNavigationPath([]);
+      }
+    } else {
+      // Clear selection if not in the expected role path
+      dispatch(updateSelectedMenuOption({ value: null }));
+      setNavigationPath([]);
     }
-    //new changes end
-    */
-    /*
-     * =================================================================
-     * OLD CODE END
-     * =================================================================
-     */
-}
+  }, [location.pathname, user.capacity, currentModule, selectedMenuOption, dispatch]);
+
+  // Handle menu option selection
+  const handleMenuOptionSelect = useCallback(
+    (event, optionId) => {
+      const periodCount = (optionId.match(/\./g) || []).length;
+
+      // Only select if it's a sub-option (has more than one period)
+      if (optionId && periodCount > 1) {
+        const availableOptions = roleOptionsMap[currentModule]?.[user.capacity] || [];
+        const selectedOption = findMenuOptionById(optionId, availableOptions);
+
+        if (selectedOption) {
+          // Mark as internal navigation
+          isInternalNavigation.current = true;
+
+          dispatch(updateSelectedMenuOption({ value: selectedOption }));
+          const fullPath = buildNavigationPath(optionId, availableOptions);
+          if (fullPath) {
+            setNavigationPath(fullPath);
+          }
+        }
+      }
+    },
+    [currentModule, user.capacity, dispatch]
+  );
+
+  // Handle module change
+  const handleModuleChange = useCallback(
+    (event) => {
+      dispatch(updateSelectedModule({ value: event.target.value }));
+      navigate(
+        '/' + convertToKebabCase(roleMapping[user.capacity]?.role) + (roleMapping[user.capacity].role ? '/home' : ''),
+        { replace: true }
+      );
+    },
+    [dispatch]
+  );
+
+  // Filter and set menu options
+  useEffect(() => {
+    const availableOptions = roleOptionsMap[currentModule]?.[user.capacity] || [];
+    const filteredOptions = filterMenuOptions(availableOptions);
+
+    dispatch(setFilteredSideMenuOptions({ value: filteredOptions }));
+    setDisplayedMenuOptions(filteredOptions);
+  }, [currentModule, filterMenuOptions, dispatch, user]);
+
+  const showModuleSelector = ['51', '52'].includes(user.capacity);
+
+  const moduleOptions = [
+    { value: MODULES.BALANCE_SHEET, name: 'Balance Sheet' },
+    { value: MODULES.CFS, name: 'CFS' },
+  ];
+
+  // Handle user logout
+  const handleLogout = useCallback(() => {
+    // localStorage.removeItem('user');
+    navigate('/');
+  }, [navigate]);
+
+  const handleLogoutClick = () => {
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+  };
+
+  // Render nothing if user data is not available
+  if (!user.capacity) {
+    return null;
+  }
+
+  return (
+    <StyledDrawer
+      variant="permanent"
+      sx={{
+        display: { xs: 'none', md: 'block' },
+        [`& .${drawerClasses.paper}`]: {
+          backgroundColor: 'background.paper',
+        },
+      }}
+    >
+      {/* Header */}
+      <Box
+        sx={{
+          display: 'flex',
+          mt: 'calc(var(--template-frame-height, 0px) + 4px)',
+          p: 1.5,
+          alignItems: 'center',
+          overflow: 'hidden',
+        }}
+      >
+        <img
+          src={companyLogo}
+          alt="Balance Sheet Logo"
+          style={{
+            filter: 'brightness(120%)',
+            height: 70,
+            width: 70,
+            borderRadius: 50,
+            objectFit: 'contain',
+          }}
+        />
+        <Typography
+          variant="subtitle1"
+          sx={{ color: 'text.secondary', ml: 1, lineHeight: 1.2, fontSize: 16, fontWeight: 'bold' }}
+        >
+          Balance Sheet Automation
+        </Typography>
+      </Box>
+
+      <Divider />
+
+      {/* Module Selector */}
+      {showModuleSelector && (
+        <>
+          <Box sx={{ p: 1.5 }}>
+            <SelectModule
+              value={currentModule}
+              onChange={handleModuleChange}
+              fullWidth
+              sx={{ borderRadius: '10px' }}
+              options={moduleOptions}
+            />
+          </Box>
+          <Divider />
+        </>
+      )}
+
+      {/* Menu Content */}
+      <Box
+        sx={{
+          overflow: 'auto',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <CustomizedTreeView options={displayedMenuOptions} handleSelectOption={handleMenuOptionSelect} />
+      </Box>
+
+      {/* User Info and Logout */}
+      <Stack
+        direction="row"
+        sx={{
+          p: 2,
+          gap: 1,
+          alignItems: 'center',
+          borderTop: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <Avatar {...createUserAvatar(user.userName || 'User')} sx={{ width: 36, height: 36 }} />
+        <Box sx={{ mr: 'auto' }}>
+          <Typography
+            variant="body1"
+            sx={{
+              fontWeight: 'medium',
+              lineHeight: '16px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'none',
+              width: 120,
+            }}
+          >
+            {user.userName || 'Unknown User'}
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: 13, mt: 0.5 }}>
+            {roleMapping[user.capacity]?.role || 'Unknown Role'}
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: 13 }}>{user.userId || 'Unknown ID'}</Typography>
+        </Box>
+        <Tooltip title={'Logout'}>
+          <IconButton size="medium" onClick={handleLogoutClick}>
+            <LogoutRoundedIcon fontSize="medium" />
+          </IconButton>
+        </Tooltip>
+      </Stack>
+
+      <ConfirmationDialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        onButtonClick={handleLogout}
+        dialogTitle={'Confirm Logout'}
+        dialogContent={'Are you sure you want to log out?'}
+      />
+    </StyledDrawer>
+  );
+};
+
+export default SideMenu;
