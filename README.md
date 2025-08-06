@@ -65,6 +65,7 @@ const WriteOff = () => {
         const payload = { qed: user?.quarterEndDate };
         const response = await callApi('/getCircleList', payload, 'POST');
         if (isMounted && response?.data) {
+          // Assuming backend returns array of objects, which is standard
           setRows(response.data);
         } else if (isMounted) {
           setSnackbarMessage('No data found for the current period.', 'info');
@@ -85,11 +86,12 @@ const WriteOff = () => {
     return () => {
       isMounted = false;
     };
-  }, [user?.quarterEndDate]);
+  }, [user?.quarterEndDate, callApi, setSnackbarMessage]); // Added dependencies
   // #endregion
 
   // #region --- Event Handlers ---
   const handleAmountChange = (index, value) => {
+    // Basic numeric validation
     if (/^\d*\.?\d*$/.test(value)) {
       const updatedRows = [...rows];
       updatedRows[index].amount = value;
@@ -110,31 +112,21 @@ const WriteOff = () => {
   const handleConfirmAction = async () => {
     const actionEndpoint = dialogAction === 'save' ? '/saveWriteOff' : '/submitWriteOff';
     const successMessage = dialogAction === 'save' ? 'Data saved successfully!' : 'Data submitted successfully!';
-    const data = [
-      {
-        circleCode: 'MH',
-        amount: '15000.50',
-        status: 'Pending',
-      },
-      {
-        circleCode: 'GJ',
-        amount: '2500.00',
-        status: 'Accepted',
-      },
-      {
-        circleCode: 'DL',
-        amount: '0',
-        status: 'Pending',
-      },
-    ];
-    setRows(data);
-    console.log(rows.values);
-    const dataList = Array.from(rows.values());
+
+    // Transform the array of objects into a list of lists
+    const dataList = rows.map((row) => [
+      row.circleCode,
+      row.amount || '0', // Ensure amount is not null/undefined
+      row.status,
+    ]);
+
     const payload = {
       qed: user?.quarterEndDate,
       userId: user?.userId,
-      data: dataList,
+      data: dataList, // The data is now a list of lists
     };
+
+    console.log('Payload being sent to backend:', JSON.stringify(payload, null, 2));
 
     try {
       await callApi(actionEndpoint, payload, 'POST');
@@ -208,6 +200,7 @@ const WriteOff = () => {
                     value={row.amount}
                     onChange={(e) => handleAmountChange(index, e.target.value)}
                     inputProps={{ style: { textAlign: 'right' } }}
+                    // Disable input if status is not 'Pending' (or any other appropriate logic)
                     readOnly={row.status === 'Accepted' || row.status === 'Rejected'}
                   />
                 </StyledCell>
