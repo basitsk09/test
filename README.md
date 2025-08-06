@@ -1,3 +1,4 @@
+Of course. Here is the full component code with the handleSave function modified to send all data in a single API request, eliminating the loop. I've also added the requested console.log to show the exact payload being sent.
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Tabs,
@@ -474,35 +475,39 @@ const RW04 = () => {
 
   const handleSave = async () => {
     const basePayload = getBasePayload();
+    let finalPayload;
+    let endpoint;
+
+    if (tabIndex === 0) {
+      endpoint = '/RW04/saveData'; // Endpoint for bulk saving RW04 data
+      const allRows = [...rw04StaticRows, ...rw04DynamicRows.filter((r) => r.particulars.trim())];
+      const data = allRows.map((row) => [
+        row.label || row.particulars,
+        row.provAmtStart || '0.00',
+        row.writeOff || '0.00',
+        row.addRed || '0.00',
+        row.provAmtEnd || '0.00',
+        String(row.dbId),
+      ]);
+      finalPayload = { ...basePayload, data };
+    } else {
+      endpoint = '/RW05/saveData'; // Endpoint for bulk saving RW05 data
+      const allRows = [...rw05StaticRows, ...rw05DynamicRows.filter((r) => r.particulars.trim())];
+      const data = allRows.map((row) => [
+        row.label || row.particulars,
+        row.provAmtStart || '0.00',
+        row.addReversal || '0.00',
+        row.provAmtEnd || '0.00',
+        String(row.dbId),
+      ]);
+      finalPayload = { ...basePayload, data };
+    }
+
+    // Log the final payload to the console
+    console.log(`Payload for ${endpoint}:`, JSON.stringify(finalPayload, null, 2));
+
     try {
-      if (tabIndex === 0) {
-        const allRows = [...rw04StaticRows, ...rw04DynamicRows.filter((r) => r.particulars.trim())];
-        for (const row of allRows) {
-          const value = [
-            row.label || row.particulars,
-            row.provAmtStart || '0.00',
-            row.writeOff || '0.00',
-            row.addRed || '0.00',
-            row.provAmtEnd || '0.00',
-            String(row.dbId),
-          ];
-          console.log('basePayload , value:', basePayload, value);
-          await callApi('/RW04/saveRow', { ...basePayload, value }, 'POST');
-        }
-      } else {
-        const allRows = [...rw05StaticRows, ...rw05DynamicRows.filter((r) => r.particulars.trim())];
-        for (const row of allRows) {
-          const value = [
-            row.label || row.particulars,
-            row.provAmtStart || '0.00',
-            row.addReversal || '0.00',
-            row.provAmtEnd || '0.00',
-            String(row.dbId),
-          ];
-          console.log('basePayload , value:', basePayload, value);
-          await callApi('/RW05/saveRow', { ...basePayload, value }, 'POST');
-        }
-      }
+      await callApi(endpoint, finalPayload, 'POST');
       setSnackbarMessage('Data saved successfully!', 'success');
       loadRw04Data();
       loadRw05Data();
@@ -841,3 +846,62 @@ const RW04 = () => {
 };
 
 export default RW04;
+
+Key Changes in handleSave 💾
+The handleSave function was refactored to be more efficient. Instead of making a separate API call for every single row in a loop, it now gathers all the row data into one large payload and sends it in a single API request.
+1. Data Aggregation:
+The code now uses the .map() method to transform the array of row objects into an array of arrays, where each inner array contains the string values for a single row. This is done for both RW-04 and RW-05 tabs.
+2. Consolidated Payload:
+This data array is then added to a finalPayload object, which also contains the base information (like circleCode, qed, userId, etc.).
+3. Single API Call:
+Finally, a single call to callApi is made with the new, consolidated payload. This significantly reduces the number of network requests from potentially dozens to just one, improving performance and reducing server load.
+4. New API Endpoints:
+The endpoints were updated from /RW04/saveRow to /RW04/saveData (and similarly for RW05) to reflect that they now handle a batch of data rather than a single row.
+5. Payload Logging:
+As requested, a console.log has been added to print the complete JSON payload to the browser's developer console right before the API call is made, which is extremely helpful for debugging.
+Example of the Logged Payload
+When you click "Save" on the RW-04 tab, you will see a message like this in your browser's developer console. Notice how the data property is an array containing all the row data.
+{
+  "circleCode": "MH",
+  "qed": "2025-06-30",
+  "userCapacity": "MAKER",
+  "reportId": 123,
+  "reportMasterId": 45,
+  "currentStatus": "10",
+  "userId": "user123",
+  "data": [
+    [
+      "FRAUDS - DEBITED TO RECALLED ASSETS A/c (Prod Cd 6998-9981)**",
+      "1000.00",
+      "100.00",
+      "50.00",
+      "950.00",
+      "1"
+    ],
+    [
+      "OTHERS LOSSES IN RECALLED ASSETS (Prod cd 6998 - 9982)#",
+      "2000.00",
+      "0.00",
+      "200.00",
+      "2200.00",
+      "2"
+    ],
+    [
+      "BGL Number 2399969 Internal Fraud ##1",
+      "500.00",
+      "500.00",
+      "0.00",
+      "0.00",
+      "3"
+    ],
+    [
+      "New custom expense",
+      "0.00",
+      "0.00",
+      "750.00",
+      "750.00",
+      "0"
+    ]
+  ]
+}
+
