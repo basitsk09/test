@@ -552,5 +552,17 @@ public class FinanceOneLogon extends JFrame
   }
 }
 
-/////////////////////////////////////////
-The method initComponents() in FinanceOneLogon.java calls run()  on line 225. Thread management in a web application is forbidden in some circumstances and is always highly error prone.
+
+//////////////////////////////////////////////////////////////////
+
+comments by security
+
+1)The method initComponents() in FinanceOneLogon.java calls run()  on line 225. Thread management in a web application is forbidden in some circumstances and is always highly error prone.
+
+2)The method initComponents() in FinanceOneLogon.java calls interrupt()  on line 263. Thread management in a web application is forbidden in some circumstances and is always highly error prone.
+
+3)The method terminateAppGracefully() in FinanceOneLogon.java calls exit()  on line 477. Thread management in a web application is forbidden in some circumstances and is always highly error prone.
+
+4)The method initComponents() in FinanceOneLogon.java calls sleep()  on line 261. Thread management in a web application is forbidden in some circumstances and is always highly error prone.
+
+5)The call to exit() in terminateAppGracefully() at FinanceOneLogon.java line 477 shuts down the web application container. A web application should not attempt to shut down its container.
