@@ -42,8 +42,6 @@ const CircleMakerRouter = () => {
     <Routes>
       <Route index element={<Navigate to="home" />} />
       <Route path="home" element={<HomePage />} />
-      {/* <Route index element={<Navigate to="Write-Off" />} />
-      <Route path="Write-Off" element={<WriteOff />} /> */}
 
       <Route
         path="write-off"
