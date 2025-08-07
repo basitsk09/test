@@ -1,271 +1,258 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
-import NotFoundPage from '../common/Pages/NotFoundPage';
-import HomePage from '../common/Pages/HomePage';
-import Worklist from '../domains/circle/Worklist';
-import MiscellaneousWorklist from '../domains/circle/MiscellaneousWorklist';
-import PageLayout from '../common/components/layout/PageLayout';
-import Schedule9Table from '../domains/circle/maker/components/Schedule9Table';
-import Schedule9ATable from '../domains/circle/maker/components/Schedule9ATable';
-import YSASupplementary from '../domains/circle/maker/pages/ysa-sup/YSASupplementary';
-import PnlSupplementary from '../domains/circle/maker/pages/pnl-sup/PnlSupplementaryMain';
-import MOCPosting from '../domains/circle/maker/components/MOC/MOCPosting';
-import Schedule9B from '../domains/circle/maker/pages/schedule-9b/Schedule9B';
-import DownloadReports from '../domains/circle/DownloadReports';
-import Annex2C from '../domains/circle/maker/components/Annex2C';
-import ArchiveReportsPage from '../domains/circle/checker/pages/ArchiveReportsPage';
-const Schedule9CProvisionTable = lazy(() => import('../domains/circle/maker/components/Schedule9CProvision'));
-const Schedule10 = lazy(() => import('../domains/circle/maker/components/Schedule10'));
-//import Schedule10 from '../domains/circle/maker/components/Schedule10';
-import RejectedMOC from '../domains/circle/maker/components/MOC/RejectedMoc';
-import CFSWorklist from '../domains/circle/CFS/CFSWorklist';
-import Schedule9CMigration from '../domains/circle/maker/components/Schedule9CMigration';
-import IntraGroupLiability from '../domains/circle/CFS/IntraGroupLiability';
-import SC9Supplementary from '../domains/circle/maker/components/SC9Supplementary';
-import DownloadArchiveReports from '../domains/circle/CFS/DownloadArchiveReports';
-import CircleMakerWorklist from '../domains/circle/maker/CircleMakerWorklist';
-import DICGCReport from '../domains/circle/maker/components/DICGC/DICGCReport';
-import RW04 from '../domains/circle/maker/components/RW04';
-import RW05 from '../domains/circle/maker/components/RW05';
-import WriteOff from '../domains/circle/maker/components/Writeoff';
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  CircularProgress,
+  Container,
+  Typography,
+  Stack,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Chip,
+} from '@mui/material';
+import { styled } from '@mui/material/styles';
+import FormInput from '../../../../common/components/ui/FormInput';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import { useLocation, useNavigate } from 'react-router-dom';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../common/hooks/useApi';
 
-export function Loading() {
-  return (
-    <p>
-      <i>Loading...</i>
-    </p>
-  );
-}
+// #region --- Styled Components ---
+const StyledHeader = styled(TableCell)(() => ({
+  textAlign: 'center',
+  fontWeight: 'bold',
+  backgroundColor: 'hsl(220, 20%, 35%)',
+  color: 'white',
+}));
 
-const CircleMakerRouter = () => {
-  return (
-    <Routes>
-      <Route index element={<Navigate to="home" />} />
-      <Route path="home" element={<HomePage />} />
+const StyledCell = styled(TableCell)({
+  padding: '8px 16px',
+});
+// #endregion
 
-      <Route
-        path="write-off"
-        element={
-          <PageLayout heading={'Write-Off'}>
-            <WriteOff />
-          </PageLayout>
+// #region --- Main Component ---
+const WriteOff = () => {
+  // #region --- State and Hooks Setup ---
+  const user = JSON.parse(localStorage.getItem('user'));
+  const { state } = useLocation();
+  const navigate = useNavigate();
+  const { callApi } = useApi();
+  const setSnackbarMessage = useCustomSnackbar();
+  const [reportObject, setReportObject] = useState(state?.report || null);
+  const [rows, setRows] = useState([]);
+  const [originalRows, setOriginalRows] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogAction, setDialogAction] = useState(null);
+  // #endregion
+
+  // #region --- Data Fetching ---
+  useEffect(() => {
+    let isMounted = true;
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const payload = { qed: user?.quarterEndDate };
+        const response = await callApi('/getCircleList', payload, 'POST');
+        if (isMounted && response?.data) {
+          const fetchedData = response.data;
+          setRows(fetchedData);
+          // Create a deep copy of the initial data to serve as "old values"
+          setOriginalRows(JSON.parse(JSON.stringify(fetchedData)));
+        } else if (isMounted) {
+          setSnackbarMessage('No data found for the current period.', 'info');
+          setRows([]);
+          setOriginalRows([]);
         }
-      />
+      } catch (error) {
+        console.error('Failed to fetch circle list:', error);
+        if (isMounted) {
+          setSnackbarMessage('Error loading circle status data.', 'error');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+    fetchData();
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.quarterEndDate, callApi, setSnackbarMessage]);
+  // #endregion
 
-      <Route path="cfs-worklist">
-        <Route
-          index
-          element={
-            <PageLayout heading={'CFS Worklist'}>
-              <CFSWorklist />
-            </PageLayout>
-          }
-        />
+  // #region --- Event Handlers ---
+  const handleAmountChange = (index, value) => {
+    if (/^\d*\.?\d*$/.test(value)) {
+      const updatedRows = [...rows];
+      updatedRows[index].amount = value;
+      setRows(updatedRows);
+    }
+  };
 
-        <Route
-          path="intra-group-liablity"
-          element={
-            <PageLayout heading={'Intra Group Liability'}>
-              <IntraGroupLiability />
-            </PageLayout>
-          }
-        />
-      </Route>
+  const handleOpenDialog = (action) => {
+    setDialogAction(action);
+    setDialogOpen(true);
+  };
 
-      <Route path="download-reports">
-        <Route index element={<Navigate to="download-archive-reports" />} />
-        <Route
-          index
-          path="download-archive-reports"
-          element={
-            <PageLayout heading={'Download Archive Reports'}>
-              <DownloadArchiveReports />
-            </PageLayout>
-          }
-        />
-      </Route>
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setDialogAction(null);
+  };
 
-      <Route path="worklists">
-        <Route index element={<Navigate to="worklist" />} />
-        <Route path="worklist">
-          <Route
-            index
-            element={
-              <PageLayout showCircleFreezed={true} heading={'Balance Sheet Worklist'}>
-                <CircleMakerWorklist />
-              </PageLayout>
-            }
-          />
-          <Route
-            path="pnl-sup"
-            element={
-              <PageLayout heading={'PNL Supplementary'} /* showCircleFreezed={true} */>
-                <PnlSupplementary />
-              </PageLayout>
-            }
-          />
-          <Route
-            path="sc-09"
-            element={
-              <PageLayout heading={'Schedule 09'}>
-                <Schedule9Table />
-              </PageLayout>
-            }
-          />
-          <Route path="sh-02" element={<PageLayout heading={'SH 02'}>{/* <Sh02 /> */}</PageLayout>} />
-          <Route
-            path="ysa"
-            element={
-              <PageLayout heading={'YSA Supplementary'}>
-                <YSASupplementary />
-              </PageLayout>
-            }
-          />
-          <Route path="shc-01" element={<PageLayout heading={'SHC 01'}>{/* <Shc01 /> */}</PageLayout>} />
-          <Route
-            path="sc-10"
-            element={
-              <PageLayout heading={'Schedule 10'}>
-                <Suspense fallback={<Loading />}>
-                  <Schedule10 />
-                </Suspense>
-              </PageLayout>
-            }
-          />
-          <Route
-            path="sc-9c"
-            element={
-              <PageLayout heading={'Schedule 9C - Provisions'}>
-                <Suspense fallback={<Loading />}>
-                  <Schedule9CProvisionTable />
-                </Suspense>
-              </PageLayout>
-            }
-          />
-          <Route
-            path="schedule-9b"
-            element={
-              <PageLayout heading={'Schedule 9B'}>
-                <Schedule9B />
-              </PageLayout>
-            }
-          />
-          <Route
-            path="sc-9a"
-            element={
-              <PageLayout heading={'Schedule 9A'}>
-                <Schedule9ATable />
-              </PageLayout>
-            }
-          />
-          <Route
-            path="sc-9c-migration"
-            element={
-              <PageLayout heading={'Schedule 9C Migration'}>
-                <Schedule9CMigration />
-              </PageLayout>
-            }
-          />
-          <Route
-            path="sc-09-supl"
-            element={
-              <PageLayout heading={'SC 09 Supplementary'}>
-                <SC9Supplementary />
-              </PageLayout>
-            }
-          />
-          <Route path="qrc-1" element={<PageLayout heading={'QRC 1'}>{/* <Qrc1 /> */}</PageLayout>} />
-          <Route path="qrc-4" element={<PageLayout heading={'QRC 4'}>{/* <Qrc4 /> */}</PageLayout>} />
-          <Route path="qrc-16" element={<PageLayout heading={'QRC 16'}>{/* <Qrc16 /> */}</PageLayout>} />
-        </Route>
+  const handleConfirmAction = async () => {
+    const actionEndpoint = dialogAction === 'save' ? '/saveWriteOff' : '/submitWriteOff';
+    const successMessage = dialogAction === 'save' ? 'Data saved successfully!' : 'Data submitted successfully!';
+    let dataList;
 
-        <Route path="miscellaneous-worklist">
-          <Route
-            index
-            element={
-              <PageLayout /* showCircleFreezed={false} */ heading={'Miscellaneous Worklist'}>
-                <MiscellaneousWorklist />
-              </PageLayout>
-            }
-          />
-          <Route
-            path="dicgc"
-            element={
-              <PageLayout heading={'DI & CGC'}>
-                <DICGCReport />
-              </PageLayout>
-            }
-          />
-          <Route
-            path="annex-2c"
-            element={
-              <PageLayout heading={'Annexure - 2C'}>
-                <Annex2C />
-              </PageLayout>
-            }
-          />
-          <Route
-            path="RW-04"
-            element={
-              <PageLayout heading={'RW-04'}>
-                <RW04 />
-              </PageLayout>
-            }
-          />
-          <Route
-            path="RW-05"
-            element={
-              <PageLayout heading={'RW-05'}>
-                <RW05 />
-              </PageLayout>
-            }
-          />
-        </Route>
-      </Route>
+    if (reportObject?.status === '11') {
+      dataList = rows.map((currentRow) => {
+        const originalRow = originalRows.find((oRow) => oRow.circleCode === currentRow.circleCode);
+        const oldAmount = originalRow ? originalRow.amount : '0';
+        return [currentRow.circleCode, oldAmount, currentRow.amount || '0', currentRow.status];
+      });
+    } else {
+      dataList = rows.map((row) => [row.circleCode, row.amount || '0', row.status]);
+    }
 
-      <Route path="download">
-        <Route index element={<Navigate to="reports" />} />
-        <Route
-          path="reports"
-          element={
-            <PageLayout heading={'Download Reports'}>
-              <DownloadReports />
-            </PageLayout>
-          }
-        />
-        <Route
-          path="archive-reports"
-          element={
-            <PageLayout heading={'Download Archive Reports'}>
-              <ArchiveReportsPage />
-            </PageLayout>
-          }
-        />
-      </Route>
+    const payload = {
+      circleCode: user.circleCode,
+      reportName: reportObject.name,
+      reportMasterId: reportObject.reportMasterId,
+      reportId: reportObject.reportId,
+      currentStatus: reportObject.status,
+      userCapacity: user.capacity,
+      qed: user?.quarterEndDate,
+      userId: user?.userId,
+      data: dataList,
+    };
 
-      <Route path="moc">
-        <Route index element={<Navigate to="moc-posting" />} />
-        <Route
-          path="moc-posting"
-          element={
-            <PageLayout showCircleFreezed={true} heading={'MOC'}>
-              <MOCPosting />
-            </PageLayout>
-          }
-        />
-        <Route
-          path="rejected-mocs"
-          element={
-            <PageLayout showCircleFreezed={true} heading={'Rejected MOCs'}>
-              <RejectedMOC />
-            </PageLayout>
-          }
-        />
-      </Route>
+    console.log(`Payload for status '${reportObject?.status}':`, JSON.stringify(payload, null, 2));
 
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+    try {
+      await callApi(actionEndpoint, payload, 'POST');
+      setSnackbarMessage(successMessage, 'success');
+      if (dialogAction === 'submit') {
+        setTimeout(() => navigate(-1), 1500);
+      }
+    } catch (error) {
+      console.error(`Error during ${dialogAction}:`, error);
+      setSnackbarMessage(`An error occurred while trying to ${dialogAction}.`, 'error');
+    } finally {
+      handleCloseDialog();
+    }
+  };
+  // #endregion
+
+  // #region --- Helper Functions ---
+  const getStatusChip = (status) => {
+    let color;
+    switch (status) {
+      case 'Accepted':
+        color = 'success';
+        break;
+      case 'Rejected':
+        color = 'error';
+        break;
+      case 'Pending':
+        color = 'warning';
+        break;
+      default:
+        color = 'default';
+    }
+    return <Chip label={status} color={color} size="small" sx={{ fontWeight: 'bold' }} />;
+  };
+  // #endregion
+
+  // #region --- Render Logic ---
+  if (isLoading) {
+    return (
+      <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+        <Stack alignItems="center" spacing={2}>
+          <CircularProgress />
+          <Typography>Loading Data...</Typography>
+        </Stack>
+      </Container>
+    );
+  }
+
+  return (
+    <Container maxWidth="xl" sx={{ mt: 2, mb: 2 }}>
+      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+        <CustomButton buttonType={'save'} label={'Save'} onClickHandler={() => handleOpenDialog('save')} />
+        <CustomButton buttonType={'submit'} label={'Submit'} onClickHandler={() => handleOpenDialog('submit')} />
+      </Stack>
+
+      <TableContainer component={Paper} elevation={3}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <StyledHeader sx={{ width: '33%' }}>Circle Code</StyledHeader>
+              <StyledHeader sx={{ width: '34%' }}>Amount</StyledHeader>
+              <StyledHeader sx={{ width: '33%' }}>RW-04 Part A Status</StyledHeader>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((row, index) => (
+              <TableRow key={row.circleCode || index} hover>
+                <StyledCell sx={{ fontWeight: 'medium', textAlign: 'center' }}>{row.circleCode}</StyledCell>
+                <StyledCell>
+                  <FormInput
+                    value={row.amount}
+                    onChange={(e) => handleAmountChange(index, e.target.value)}
+                    inputProps={{ style: { textAlign: 'right' } }}
+                    readOnly={row.status === 'Accepted' || row.status === 'Rejected'}
+                  />
+                </StyledCell>
+                <StyledCell align="center">{getStatusChip(row.status)}</StyledCell>
+              </TableRow>
+            ))}
+            {rows.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={3} align="center">
+                  <Typography sx={{ p: 4, color: 'text.secondary' }}>No circle data to display.</Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={dialogOpen} onClose={handleCloseDialog}>
+        <DialogTitle sx={{ fontWeight: 'bold' }}>
+          {dialogAction === 'save' ? 'Confirm Save' : 'Confirm Submission'}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {dialogAction === 'save'
+              ? 'Are you sure you want to save the changes?'
+              : 'Are you sure you want to submit? Once submitted, the data may not be editable.'}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} color="secondary">
+            Cancel
+          </Button>
+          <Button onClick={handleConfirmAction} color="primary" variant="contained" autoFocus>
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
   );
 };
+// #endregion
 
-export default CircleMakerRouter;
+export default WriteOff;
