@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Import useCallback
 import {
   Box,
   Button,
@@ -58,62 +58,56 @@ const WriteOff = () => {
   // #endregion
 
   // #region --- Data Fetching from API ---
-  useEffect(() => {
-    let isMounted = true;
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const payload = {
-          qed: user?.quarterEndDate,
-          userCapacity: user?.capacity,
-        };
-        const response = await callApi('/getWriteOffTotalData', payload, 'POST');
 
-        if (isMounted && response?.writeOffData) {
-          const dataList = response.writeOffData;
-          const formattedData = dataList.map((row) => ({
-            circleName: row[0].split('~')[1].toUpperCase(),
-            circleCode: row[0].split('~')[0],
-            amount: row[1],
-            status: row[2],
-            statusOfReport: row[3].split('~')[0],
-            statusReportCode: row[3].split('~')[1],
-          }));
-          setRows(formattedData);
-          setOriginalRows(JSON.parse(JSON.stringify(formattedData)));
-        } else if (isMounted) {
-          setSnackbarMessage('No data found for the current period.', 'info');
-          setRows([]);
-          setOriginalRows([]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch write-off data:', error);
-        if (isMounted) {
-          setSnackbarMessage('Error loading data from the server.', 'error');
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+  // ✅ STEP 1: Define fetchData outside of useEffect using useCallback
+  const fetchData = useCallback(async () => {
+    // isMounted check is no longer needed here as useCallback manages the function's identity
+    setIsLoading(true);
+    try {
+      const payload = {
+        qed: user?.quarterEndDate,
+        userCapacity: user?.capacity,
+      };
+      const response = await callApi('/getWriteOffTotalData', payload, 'POST');
+
+      if (response?.writeOffData) {
+        const dataList = response.writeOffData;
+        const formattedData = dataList.map((row) => ({
+          circleName: row[0].split('~')[1]?.toUpperCase() || 'N/A',
+          circleCode: row[0].split('~')[0],
+          amount: row[1],
+          status: row[2],
+          statusOfReport: row[3]?.split('~')[0] || 'N/A',
+          statusReportCode: row[3]?.split('~')[1] || '',
+        }));
+        setRows(formattedData);
+        setOriginalRows(JSON.parse(JSON.stringify(formattedData)));
+      } else {
+        setSnackbarMessage('No data found for the current period.', 'info');
+        setRows([]);
+        setOriginalRows([]);
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch write-off data:', error);
+      setSnackbarMessage('Error loading data from the server.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.quarterEndDate, user?.capacity, callApi, setSnackbarMessage]); // Dependencies for useCallback
 
+  // ✅ STEP 2: useEffect now calls the memoized fetchData function
+  useEffect(() => {
     if (user?.quarterEndDate && user?.capacity) {
       fetchData();
     } else {
       setIsLoading(false);
       setSnackbarMessage('User information is missing. Cannot load data.', 'error');
     }
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user?.quarterEndDate, user?.capacity, callApi, setSnackbarMessage]);
+  }, [fetchData, user?.quarterEndDate, user?.capacity, setSnackbarMessage]); // Depend on the fetchData function itself
   // #endregion
 
   // #region --- Event Handlers ---
   const handleAmountChange = (index, value) => {
-    // Only allow maker to edit if status is editable
     const isEditable = ['0', '11', '12'].includes(rows[index].status);
     if (user.capacity === '51' && isEditable && /^\d*\.?\d*$/.test(value)) {
       const updatedRows = [...rows];
@@ -136,34 +130,40 @@ const WriteOff = () => {
 
   const handleConfirmAction = async () => {
     if (!selectedRow) return;
-    let actionEndpoint = '';
+    let actionEndpoint = '/updateStatus'; // All actions use the same endpoint
     let successMessage = '';
-    const payloadData = [selectedRow.circleCode, selectedRow.amount || '0', selectedRow.status];
+    const payloadData = [selectedRow.circleCode, selectedRow.amount || '0'];
+    
+    // Determine the new status to be sent in the payload
+    let newStatus = selectedRow.status;
+    if (user.capacity === '51') { // Maker actions
+        newStatus = dialogAction === 'save' ? '11' : '20';
+    } else if (user.capacity === '52') { // Checker actions
+        newStatus = dialogAction === 'accept' ? '51' : '12';
+    }
+
+
     const payload = {
       qed: user.quarterEndDate,
       circleCode: user.circleCode,
       reportName: reportObject.name,
       userId: user.userId,
       data: payloadData,
-      status: selectedRow.status === '0' ? '0' : dialogAction === 'save' ? '11' : '20',
+      status: newStatus,
       reportStatus: selectedRow.statusReportCode,
     };
 
     switch (dialogAction) {
       case 'save':
-        actionEndpoint = '/updateStatus';
         successMessage = `Data for circle ${selectedRow.circleName} saved!`;
         break;
       case 'submit':
-        actionEndpoint = '/updateStatus';
         successMessage = `Data for circle ${selectedRow.circleName} submitted!`;
         break;
       case 'accept':
-        actionEndpoint = '/updateStatus';
         successMessage = `Circle ${selectedRow.circleName} has been accepted!`;
         break;
       case 'reject':
-        actionEndpoint = '/updateStatus';
         successMessage = `Circle ${selectedRow.circleName} has been rejected!`;
         break;
       default:
@@ -173,8 +173,9 @@ const WriteOff = () => {
 
     try {
       await callApi(actionEndpoint, payload, 'POST');
-      fetchData();
       setSnackbarMessage(successMessage, 'success');
+      // ✅ STEP 3: Call fetchData here to refresh the data after a successful API call
+      fetchData();
     } catch (error) {
       console.error(`Error during ${dialogAction}:`, error);
       setSnackbarMessage(`An error occurred while trying to ${dialogAction}.`, 'error');
@@ -185,7 +186,6 @@ const WriteOff = () => {
   // #endregion
 
   // #region --- Helper Functions ---
-
   const getStatusDetails = (status) => {
     switch (String(status)) {
       case '0':
@@ -292,7 +292,6 @@ const WriteOff = () => {
                       }
                       // == CHECKER (52) VIEW LOGIC ==
                       else if (user.capacity === '52') {
-                        // For 'Submitted' status, show both Accept and Reject
                         if (row.status === '20') {
                           return (
                             <Stack direction="row" spacing={1} justifyContent="center">
@@ -309,7 +308,6 @@ const WriteOff = () => {
                             </Stack>
                           );
                         }
-                        // For status 51, show ONLY Reject
                         else if (row.status === '51') {
                           return (
                             <CustomButton
@@ -320,7 +318,6 @@ const WriteOff = () => {
                           );
                         }
                       }
-                      // For all other cases, render nothing
                       return null;
                     })()}
                   </StyledCell>
@@ -329,7 +326,7 @@ const WriteOff = () => {
             })}
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} align="center">
+                <TableCell colSpan={5} align="center">
                   <Typography sx={{ p: 4, color: 'text.secondary' }}>No data to display.</Typography>
                 </TableCell>
               </TableRow>
@@ -341,7 +338,7 @@ const WriteOff = () => {
       {/* --- Confirmation Dialog --- */}
       <Dialog open={dialogOpen} onClose={handleCloseDialog}>
         <DialogTitle sx={{ fontWeight: 'bold' }}>
-          {getDialogInfo().title} for Circle: {selectedRow?.circleCode}
+          {getDialogInfo().title} for Circle: {selectedRow?.circleName}
         </DialogTitle>
         <DialogContent>
           <DialogContentText>{getDialogInfo().text}</DialogContentText>
