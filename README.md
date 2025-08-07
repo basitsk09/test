@@ -67,22 +67,18 @@ const WriteOff = () => {
           qed: user?.quarterEndDate,
           userCapacity: user?.capacity,
         };
-
-        console.log('payload', payload);
-
         const response = await callApi('/getWriteOffTotalData', payload, 'POST');
-        console.log('response?.data', response);
+
         if (isMounted && response?.writeOffData) {
           const dataList = response.writeOffData;
-
           const formattedData = dataList.map((row) => ({
-            circleCode: row[0],
+            // Splits "001~KOLKATA" into just "001"
+            circleCode: row[0].split('~')[0],
             amount: row[1],
+            // Assumes status code is the 3rd element
             status: row[2],
           }));
-
           setRows(formattedData);
-
           setOriginalRows(JSON.parse(JSON.stringify(formattedData)));
         } else if (isMounted) {
           setSnackbarMessage('No data found for the current period.', 'info');
@@ -111,12 +107,14 @@ const WriteOff = () => {
     return () => {
       isMounted = false;
     };
-  }, [user?.quarterEndDate, user?.capacity]);
+  }, [user?.quarterEndDate, user?.capacity, callApi, setSnackbarMessage]);
   // #endregion
 
   // #region --- Event Handlers ---
   const handleAmountChange = (index, value) => {
-    if (user.capacity === '51' && /^\d*\.?\d*$/.test(value)) {
+    // Only allow maker to edit if status is editable
+    const isEditable = ['0', '11', '12'].includes(rows[index].status);
+    if (user.capacity === '51' && isEditable && /^\d*\.?\d*$/.test(value)) {
       const updatedRows = [...rows];
       updatedRows[index].amount = value;
       setRows(updatedRows);
@@ -137,10 +135,17 @@ const WriteOff = () => {
 
   const handleConfirmAction = async () => {
     if (!selectedRow) return;
-
     let actionEndpoint = '';
     let successMessage = '';
-    let payloadData = [];
+    // The payload now correctly sends the combined circle code and name back if needed,
+    // or just the code. Here we assume just the code is needed.
+    const payloadData = [[selectedRow.circleCode, selectedRow.amount || '0', selectedRow.status]];
+    const payload = {
+      circleCode: user.circleCode,
+      reportName: reportObject.name,
+      userId: user.userId,
+      data: payloadData,
+    };
 
     switch (dialogAction) {
       case 'save':
@@ -164,21 +169,6 @@ const WriteOff = () => {
         return;
     }
 
-    if (reportObject?.status === '11') {
-      const originalRow = originalRows.find((oRow) => oRow.circleCode === selectedRow.circleCode);
-      const oldAmount = originalRow ? originalRow.amount : '0';
-      payloadData = [[selectedRow.circleCode, oldAmount, selectedRow.amount || '0', selectedRow.status]];
-    } else {
-      payloadData = [[selectedRow.circleCode, selectedRow.amount || '0', selectedRow.status]];
-    }
-
-    const payload = {
-      circleCode: user.circleCode,
-      reportName: reportObject.name,
-      userId: user.userId,
-      data: payloadData,
-    };
-
     try {
       await callApi(actionEndpoint, payload, 'POST');
       setSnackbarMessage(successMessage, 'success');
@@ -192,22 +182,26 @@ const WriteOff = () => {
   // #endregion
 
   // #region --- Helper Functions ---
-  const getStatusChip = (status) => {
-    let color;
-    switch (status) {
-      case 'Accepted':
-        color = 'success';
-        break;
-      case 'Rejected':
-        color = 'error';
-        break;
-      case 'Pending':
-        color = 'warning';
-        break;
+  /**
+   * Translates a status code into a display text and color for the UI Chip.
+   * @param {string} status - The status code from the API (e.g., '0', '11', '51').
+   * @returns {{text: string, color: string}} - an object with the text and color.
+   */
+  const getStatusDetails = (status) => {
+    switch (String(status)) {
+      case '0':
+        return { text: 'Not Created', color: 'default' };
+      case '11':
+        return { text: 'Saved', color: 'info' };
+      case '12':
+        return { text: 'Rejected', color: 'error' };
+      case '20':
+        return { text: 'Submitted', color: 'primary' };
+      case '51':
+        return { text: 'Pending Approval', color: 'warning' };
       default:
-        color = 'default';
+        return { text: `Unknown (${status})`, color: 'default' };
     }
-    return <Chip label={status} color={color} size="small" sx={{ fontWeight: 'bold' }} />;
   };
 
   const getDialogInfo = () => {
@@ -251,62 +245,77 @@ const WriteOff = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row, index) => (
-              <TableRow key={row.circleCode} hover>
-                <StyledCell sx={{ fontWeight: 'medium', textAlign: 'center' }}>{row.circleCode}</StyledCell>
-                <StyledCell>
-                  <FormInput
-                    value={row.amount}
-                    onChange={(e) => handleAmountChange(index, e.target.value)}
-                    inputProps={{ style: { textAlign: 'right' } }}
-                    readOnly={user.capacity === '52' || row.status === 'Accepted' || row.status === 'Rejected'}
-                  />
-                </StyledCell>
-                <StyledCell align="center">{getStatusChip(row.status)}</StyledCell>
-                <StyledCell align="center">
-                  {(() => {
-                    if (user.capacity === '51') {
-                      // == MAKER VIEW (Save / Submit) ==
-                      return (
-                        <Stack direction="row" spacing={1} justifyContent="center">
-                          <CustomButton
-                            label={'Save'}
-                            buttonType={'save'}
-                            onClickHandler={() => handleOpenDialog('save', row)}
-                            disabled={row.status === 'Accepted' || row.status === 'Rejected'}
-                          />
-                          <CustomButton
-                            label={'Submit'}
-                            buttonType={'submit'}
-                            onClickHandler={() => handleOpenDialog('submit', row)}
-                            disabled={row.status === 'Accepted' || row.status === 'Rejected'}
-                          />
-                        </Stack>
-                      );
-                    } else if (user.capacity === '52') {
-                      // == CHECKER VIEW (Accept / Reject) ==
-                      return (
-                        <Stack direction="row" spacing={1} justifyContent="center">
-                          <CustomButton
-                            label={'Accept'}
-                            buttonType={'accept'}
-                            onClickHandler={() => handleOpenDialog('accept', row)}
-                            disabled={row.status !== 'Pending'}
-                          />
-                          <CustomButton
-                            label={'Reject'}
-                            buttonType={'reject'}
-                            onClickHandler={() => handleOpenDialog('reject', row)}
-                            disabled={row.status !== 'Pending'}
-                          />
-                        </Stack>
-                      );
-                    }
-                    return null;
-                  })()}
-                </StyledCell>
-              </TableRow>
-            ))}
+            {rows.map((row, index) => {
+              const statusDetails = getStatusDetails(row.status);
+              const isMakerEditable = ['0', '11', '12'].includes(row.status);
+
+              return (
+                <TableRow key={row.circleCode} hover>
+                  <StyledCell sx={{ fontWeight: 'medium', textAlign: 'center' }}>{row.circleCode}</StyledCell>
+                  <StyledCell>
+                    <FormInput
+                      value={row.amount}
+                      onChange={(e) => handleAmountChange(index, e.target.value)}
+                      inputProps={{ style: { textAlign: 'right' } }}
+                      readOnly={user.capacity === '52' || !isMakerEditable}
+                    />
+                  </StyledCell>
+                  <StyledCell align="center">
+                    <Chip label={statusDetails.text} color={statusDetails.color} size="small" sx={{ fontWeight: 'bold' }} />
+                  </StyledCell>
+                  <StyledCell align="center">
+                    {(() => {
+                      // == MAKER (51) VIEW LOGIC ==
+                      if (user.capacity === '51') {
+                        return (
+                          <Stack direction="row" spacing={1} justifyContent="center">
+                            <CustomButton
+                              label={'Save'} buttonType={'save'}
+                              onClickHandler={() => handleOpenDialog('save', row)}
+                              disabled={!isMakerEditable}
+                            />
+                            <CustomButton
+                              label={'Submit'} buttonType={'submit'}
+                              onClickHandler={() => handleOpenDialog('submit', row)}
+                              disabled={!isMakerEditable}
+                            />
+                          </Stack>
+                        );
+                      }
+                      // == CHECKER (52) VIEW LOGIC ==
+                      else if (user.capacity === '52') {
+                        // For 'Submitted' status, show both Accept and Reject
+                        if (row.status === '20') {
+                          return (
+                            <Stack direction="row" spacing={1} justifyContent="center">
+                              <CustomButton
+                                label={'Accept'} buttonType={'accept'}
+                                onClickHandler={() => handleOpenDialog('accept', row)}
+                              />
+                              <CustomButton
+                                label={'Reject'} buttonType={'reject'}
+                                onClickHandler={() => handleOpenDialog('reject', row)}
+                              />
+                            </Stack>
+                          );
+                        }
+                        // For status 51, show ONLY Reject
+                        else if (row.status === '51') {
+                          return (
+                            <CustomButton
+                              label={'Reject'} buttonType={'reject'}
+                              onClickHandler={() => handleOpenDialog('reject', row)}
+                            />
+                          );
+                        }
+                      }
+                      // For all other cases, render nothing
+                      return null;
+                    })()}
+                  </StyledCell>
+                </TableRow>
+              );
+            })}
             {rows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} align="center">
