@@ -22,7 +22,6 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import FormInput from '../../../../common/components/ui/FormInput';
-// Removed CustomButton import as the common buttons are no longer used
 import { useLocation, useNavigate } from 'react-router-dom';
 import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
 import useApi from '../../../../common/hooks/useApi';
@@ -43,67 +42,65 @@ const StyledCell = styled(TableCell)({
 // #region --- Main Component ---
 const WriteOff = () => {
   // #region --- State and Hooks Setup ---
-  const user = JSON.parse(localStorage.getItem('user'));
+
+  // --- ⬇️ 1. ROLE & DATA SIMULATION ⬇️ ---
+  // This section replaces live data fetching for demonstration purposes.
+  // ✅ **CHANGE THE ROLE HERE**: Use '51' for Maker, '52' for Checker.
+  const user = {
+    capacity: '52', // <-- '51' = MAKER, '52' = CHECKER
+    circleCode: 'CORP',
+    quarterEndDate: '2025-06-30',
+    userId: 'testUser',
+  };
+  // const user = JSON.parse(localStorage.getItem('user')); // Original localStorage line
+
+  // Sample data to simulate API response.
+  const sampleData = [
+    { circleCode: '020', amount: '15000.50', status: 'Pending' },
+    { circleCode: '021', amount: '22300.00', status: 'Pending' },
+    { circleCode: '001', amount: '5400.00', status: 'Accepted' },
+    { circleCode: '008', amount: '9800.75', status: 'Rejected' },
+    { circleCode: '015', amount: '11200.00', status: 'Pending' },
+    { circleCode: '018', amount: '7650.00', status: 'Accepted' },
+  ];
+  // --- ⬆️ END OF SIMULATION SECTION ⬆️ ---
+
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { callApi } = useApi();
+  const { callApi } = useApi(); // Note: callApi is kept for button logic but won't be called.
   const setSnackbarMessage = useCustomSnackbar();
-  const [reportObject, setReportObject] = useState(state?.report || null);
+  const [reportObject, setReportObject] = useState(state?.report || { name: 'RW-04 Part A', status: '10' });
   const [rows, setRows] = useState([]);
   const [originalRows, setOriginalRows] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogAction, setDialogAction] = useState(null);
-  // --- MODIFICATION START: State to track the row being acted upon ---
   const [selectedRow, setSelectedRow] = useState(null);
-  // --- MODIFICATION END ---
   // #endregion
 
-  // #region --- Data Fetching ---
+  // #region --- Data Setup (Using Sample Data) ---
   useEffect(() => {
-    let isMounted = true;
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const payload = { qed: user?.quarterEndDate };
-        const response = await callApi('/getCircleList', payload, 'POST');
-        if (isMounted && response?.data) {
-          const fetchedData = response.data;
-          setRows(fetchedData);
-          setOriginalRows(JSON.parse(JSON.stringify(fetchedData)));
-        } else if (isMounted) {
-          setSnackbarMessage('No data found for the current period.', 'info');
-          setRows([]);
-          setOriginalRows([]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch circle list:', error);
-        if (isMounted) {
-          setSnackbarMessage('Error loading circle status data.', 'error');
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-    fetchData();
-    return () => {
-      isMounted = false;
-    };
-  }, [user?.quarterEndDate, callApi, setSnackbarMessage]);
+    // This hook loads the hardcoded sample data instead of fetching from an API.
+    setIsLoading(true);
+    setTimeout(() => {
+      setRows(sampleData);
+      setOriginalRows(JSON.parse(JSON.stringify(sampleData)));
+      setIsLoading(false);
+    }, 500); // Simulate network delay
+    // The empty dependency array [] ensures this runs only once on component mount.
+  }, []);
   // #endregion
 
   // #region --- Event Handlers ---
   const handleAmountChange = (index, value) => {
-    if (/^\d*\.?\d*$/.test(value)) {
+    // Only allow changes if the user is a Maker
+    if (user.capacity === '51' && /^\d*\.?\d*$/.test(value)) {
       const updatedRows = [...rows];
       updatedRows[index].amount = value;
       setRows(updatedRows);
     }
   };
 
-  // --- MODIFICATION START: Handler now accepts the row object ---
   const handleOpenDialog = (action, row) => {
     setDialogAction(action);
     setSelectedRow(row);
@@ -113,64 +110,76 @@ const WriteOff = () => {
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setDialogAction(null);
-    setSelectedRow(null); // Reset selected row on close
+    setSelectedRow(null);
   };
-  // --- MODIFICATION END ---
 
-  // --- MODIFICATION START: Logic updated to handle a single row action ---
   const handleConfirmAction = async () => {
-    if (!selectedRow) {
-      console.error('No row selected for action.');
-      setSnackbarMessage('An unexpected error occurred. Please try again.', 'error');
-      handleCloseDialog();
-      return;
+    if (!selectedRow) return;
+
+    let actionEndpoint = '';
+    let successMessage = '';
+    let payloadData = [];
+
+    // Determine API endpoint and success message based on the action
+    switch (dialogAction) {
+      case 'save':
+        actionEndpoint = '/saveWriteOff';
+        successMessage = `Data for circle ${selectedRow.circleCode} saved!`;
+        break;
+      case 'submit':
+        actionEndpoint = '/submitWriteOff';
+        successMessage = `Data for circle ${selectedRow.circleCode} submitted!`;
+        break;
+      case 'accept':
+        actionEndpoint = '/acceptWriteOff';
+        successMessage = `Circle ${selectedRow.circleCode} has been accepted!`;
+        break;
+      case 'reject':
+        actionEndpoint = '/rejectWriteOff';
+        successMessage = `Circle ${selectedRow.circleCode} has been rejected!`;
+        break;
+      default:
+        console.error('Unknown action:', dialogAction);
+        handleCloseDialog();
+        return;
     }
 
-    const actionEndpoint = dialogAction === 'save' ? '/saveWriteOff' : '/submitWriteOff';
-    const successMessage = dialogAction === 'save' ? 'Data saved successfully!' : 'Data submitted successfully!';
-    let dataList;
-
-    // Build payload data for the single selected row
-    if (reportObject?.status === '11') {
+    // Build the data payload for the API call
+    if (reportObject?.status === '11') { // Example of complex payload
       const originalRow = originalRows.find((oRow) => oRow.circleCode === selectedRow.circleCode);
       const oldAmount = originalRow ? originalRow.amount : '0';
-      dataList = [[selectedRow.circleCode, oldAmount, selectedRow.amount || '0', selectedRow.status]];
-    } else {
-      dataList = [[selectedRow.circleCode, selectedRow.amount || '0', selectedRow.status]];
+      payloadData = [[selectedRow.circleCode, oldAmount, selectedRow.amount || '0', selectedRow.status]];
+    } else { // Standard payload for all actions in this example
+      payloadData = [[selectedRow.circleCode, selectedRow.amount || '0', selectedRow.status]];
     }
 
     const payload = {
       circleCode: user.circleCode,
       reportName: reportObject.name,
-      reportMasterId: reportObject.reportMasterId,
-      reportId: reportObject.reportId,
-      currentStatus: reportObject.status,
-      userCapacity: user.capacity,
-      qed: user?.quarterEndDate,
-      userId: user?.userId,
-      data: dataList, // Payload now contains data for only one row
+      // ... other required payload fields
+      userId: user.userId,
+      data: payloadData,
     };
 
-    console.log(
-      `Payload for '${dialogAction}' on circle '${selectedRow.circleCode}':`,
-      JSON.stringify(payload, null, 2)
-    );
+    console.log(`SIMULATING API CALL for action: '${dialogAction}'`);
+    console.log(`Endpoint: ${actionEndpoint}`);
+    console.log('Payload:', JSON.stringify(payload, null, 2));
 
-    try {
-      await callApi(actionEndpoint, payload, 'POST');
-      setSnackbarMessage(successMessage, 'success');
-      if (dialogAction === 'submit') {
-        // Optionally, refresh data or navigate away
-        setTimeout(() => navigate(-1), 1500);
-      }
-    } catch (error) {
-      console.error(`Error during ${dialogAction}:`, error);
-      setSnackbarMessage(`An error occurred while trying to ${dialogAction}.`, 'error');
-    } finally {
-      handleCloseDialog();
-    }
+    // In a real app, the `callApi` would be executed here.
+    // For this demo, we'll just show a success message and close the dialog.
+    // try {
+    //   await callApi(actionEndpoint, payload, 'POST');
+    //   setSnackbarMessage(successMessage, 'success');
+    // } catch (error) {
+    //   console.error(`Error during ${dialogAction}:`, error);
+    //   setSnackbarMessage(`An error occurred.`, 'error');
+    // } finally {
+    //   handleCloseDialog();
+    // }
+
+    setSnackbarMessage(successMessage, 'success');
+    handleCloseDialog();
   };
-  // --- MODIFICATION END ---
   // #endregion
 
   // #region --- Helper Functions ---
@@ -191,6 +200,21 @@ const WriteOff = () => {
     }
     return <Chip label={status} color={color} size="small" sx={{ fontWeight: 'bold' }} />;
   };
+
+  const getDialogInfo = () => {
+    switch (dialogAction) {
+      case 'save':
+        return { title: 'Confirm Save', text: 'Are you sure you want to save the changes for this circle?' };
+      case 'submit':
+        return { title: 'Confirm Submission', text: 'Are you sure you want to submit? This action cannot be undone.' };
+      case 'accept':
+        return { title: 'Confirm Acceptance', text: 'Are you sure you want to accept the data for this circle?' };
+      case 'reject':
+        return { title: 'Confirm Rejection', text: 'Are you sure you want to reject the data for this circle?' };
+      default:
+        return { title: 'Confirm Action', text: 'Are you sure you want to proceed?' };
+    }
+  };
   // #endregion
 
   // #region --- Render Logic ---
@@ -207,69 +231,86 @@ const WriteOff = () => {
 
   return (
     <Container maxWidth="xl" sx={{ mt: 2, mb: 2 }}>
-      {/* --- MODIFICATION START: Removed common Save/Submit buttons ---
-      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-        <CustomButton buttonType={'save'} label={'Save'} onClickHandler={() => handleOpenDialog('save')} />
-        <CustomButton buttonType={'submit'} label={'Submit'} onClickHandler={() => handleOpenDialog('submit')} />
-      </Stack>
-      --- MODIFICATION END --- */}
+      <Typography variant="h5" sx={{ mb: 1, fontWeight: 'bold' }}>
+        Write-Off Data Entry
+      </Typography>
+      <Typography variant="subtitle1" sx={{ mb: 3 }}>
+        Current Role: <Chip label={user.capacity === '51' ? 'Maker' : 'Checker'} color="secondary" />
+      </Typography>
 
       <TableContainer component={Paper} elevation={3}>
         <Table>
           <TableHead>
             <TableRow>
-              {/* --- MODIFICATION START: Adjusted column widths --- */}
               <StyledHeader sx={{ width: '25%' }}>Circle Code</StyledHeader>
               <StyledHeader sx={{ width: '30%' }}>Amount</StyledHeader>
-              <StyledHeader sx={{ width: '25%' }}>RW-04 Part A Status</StyledHeader>
+              <StyledHeader sx={{ width: '25%' }}>Status</StyledHeader>
               <StyledHeader sx={{ width: '20%' }}>Action</StyledHeader>
-              {/* --- MODIFICATION END --- */}
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.map((row, index) => (
-              <TableRow key={row.circleCode || index} hover>
+              <TableRow key={row.circleCode} hover>
                 <StyledCell sx={{ fontWeight: 'medium', textAlign: 'center' }}>{row.circleCode}</StyledCell>
                 <StyledCell>
                   <FormInput
                     value={row.amount}
                     onChange={(e) => handleAmountChange(index, e.target.value)}
                     inputProps={{ style: { textAlign: 'right' } }}
-                    readOnly={row.status === 'Accepted' || row.status === 'Rejected'}
+                    // ✅ Field is read-only for Checkers OR if status is final.
+                    readOnly={user.capacity === '52' || row.status === 'Accepted' || row.status === 'Rejected'}
                   />
                 </StyledCell>
                 <StyledCell align="center">{getStatusChip(row.status)}</StyledCell>
-                {/* --- MODIFICATION START: Added Action cell with row-specific buttons --- */}
+
+                {/* --- ⬇️ 2. ROLE-BASED ACTION BUTTONS ⬇️ --- */}
                 <StyledCell align="center">
-                  <Stack direction="row" spacing={1} justifyContent="center">
-                    <Button
-                      variant="contained"
-                      size="small"
-                      color="primary"
-                      onClick={() => handleOpenDialog('save', row)}
-                      disabled={row.status === 'Accepted' || row.status === 'Rejected'}
-                    >
-                      Save
-                    </Button>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      color="success"
-                      onClick={() => handleOpenDialog('submit', row)}
-                      disabled={row.status === 'Accepted' || row.status === 'Rejected'}
-                    >
-                      Submit
-                    </Button>
-                  </Stack>
+                  {/* == MAKER VIEW (Save / Submit) == */}
+                  {user.capacity === '51' && (
+                    <Stack direction="row" spacing={1} justifyContent="center">
+                      <Button
+                        variant="contained" size="small" color="primary"
+                        onClick={() => handleOpenDialog('save', row)}
+                        disabled={row.status === 'Accepted' || row.status === 'Rejected'}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        variant="contained" size="small" color="success"
+                        onClick={() => handleOpenDialog('submit', row)}
+                        disabled={row.status === 'Accepted' || row.status === 'Rejected'}
+                      >
+                        Submit
+                      </Button>
+                    </Stack>
+                  )}
+
+                  {/* == CHECKER VIEW (Accept / Reject) == */}
+                  {user.capacity === '52' && (
+                    <Stack direction="row" spacing={1} justifyContent="center">
+                      <Button
+                        variant="contained" size="small" color="success"
+                        onClick={() => handleOpenDialog('accept', row)}
+                        // ✅ Checker can only act on 'Pending' items.
+                        disabled={row.status !== 'Pending'}
+                      >
+                        Accept
+                      </Button>
+                      <Button
+                        variant="outlined" size="small" color="error"
+                        onClick={() => handleOpenDialog('reject', row)}
+                        disabled={row.status !== 'Pending'}
+                      >
+                        Reject
+                      </Button>
+                    </Stack>
+                  )}
                 </StyledCell>
-                {/* --- MODIFICATION END --- */}
               </TableRow>
             ))}
             {rows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} align="center">
-                  {' '}
-                  {/* Updated colSpan to 4 */}
                   <Typography sx={{ p: 4, color: 'text.secondary' }}>No circle data to display.</Typography>
                 </TableCell>
               </TableRow>
@@ -278,25 +319,17 @@ const WriteOff = () => {
         </Table>
       </TableContainer>
 
-      {/* Confirmation Dialog (logic remains mostly the same, context is now row-specific) */}
+      {/* --- Confirmation Dialog --- */}
       <Dialog open={dialogOpen} onClose={handleCloseDialog}>
         <DialogTitle sx={{ fontWeight: 'bold' }}>
-          {dialogAction === 'save' ? 'Confirm Save' : 'Confirm Submission'} for Circle: {selectedRow?.circleCode}
+          {getDialogInfo().title} for Circle: {selectedRow?.circleCode}
         </DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            {dialogAction === 'save'
-              ? 'Are you sure you want to save the changes for this circle?'
-              : 'Are you sure you want to submit for this circle? Once submitted, the data may not be editable.'}
-          </DialogContentText>
+          <DialogContentText>{getDialogInfo().text}</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog} color="secondary">
-            Cancel
-          </Button>
-          <Button onClick={handleConfirmAction} color="primary" variant="contained" autoFocus>
-            Confirm
-          </Button>
+          <Button onClick={handleCloseDialog} color="secondary">Cancel</Button>
+          <Button onClick={handleConfirmAction} color="primary" variant="contained" autoFocus>Confirm</Button>
         </DialogActions>
       </Dialog>
     </Container>
