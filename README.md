@@ -1,347 +1,273 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useLocation, replace } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { styled } from '@mui/material/styles';
-import {
-  Avatar,
-  Box,
-  Divider,
-  Drawer as MuiDrawer,
-  Stack,
-  Typography,
-  Tooltip,
-  Button,
-  IconButton,
-} from '@mui/material';
-import { drawerClasses } from '@mui/material/Drawer';
-import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import NotFoundPage from '../common/Pages/NotFoundPage';
+import HomePage from '../common/Pages/HomePage';
+import Worklist from '../domains/circle/Worklist';
+import MiscellaneousWorklist from '../domains/circle/MiscellaneousWorklist';
+import PageLayout from '../common/components/layout/PageLayout';
+import Schedule9Table from '../domains/circle/maker/components/Schedule9Table';
+import Schedule9ATable from '../domains/circle/maker/components/Schedule9ATable';
+import YSASupplementary from '../domains/circle/maker/pages/ysa-sup/YSASupplementary';
+import PnlSupplementary from '../domains/circle/maker/pages/pnl-sup/PnlSupplementaryMain';
+import MOCPosting from '../domains/circle/maker/components/MOC/MOCPosting';
+import Schedule9B from '../domains/circle/maker/pages/schedule-9b/Schedule9B';
+import DownloadReports from '../domains/circle/DownloadReports';
+import Annex2C from '../domains/circle/maker/components/Annex2C';
+import ArchiveReportsPage from '../domains/circle/checker/pages/ArchiveReportsPage';
+const Schedule9CProvisionTable = lazy(() => import('../domains/circle/maker/components/Schedule9CProvision'));
+const Schedule10 = lazy(() => import('../domains/circle/maker/components/Schedule10'));
+//import Schedule10 from '../domains/circle/maker/components/Schedule10';
+import RejectedMOC from '../domains/circle/maker/components/MOC/RejectedMoc';
+import CFSWorklist from '../domains/circle/CFS/CFSWorklist';
+import Schedule9CMigration from '../domains/circle/maker/components/Schedule9CMigration';
+import IntraGroupLiability from '../domains/circle/CFS/IntraGroupLiability';
+import SC9Supplementary from '../domains/circle/maker/components/SC9Supplementary';
+import DownloadArchiveReports from '../domains/circle/CFS/DownloadArchiveReports';
+import CircleMakerWorklist from '../domains/circle/maker/CircleMakerWorklist';
+import DICGCReport from '../domains/circle/maker/components/DICGC/DICGCReport';
+import RW04 from '../domains/circle/maker/components/RW04';
+import RW05 from '../domains/circle/maker/components/RW05';
+import WriteOff from '../domains/circle/maker/components/Writeoff';
 
-import SelectModule from './SelectModule';
-import CustomizedTreeView from './CustomizedTreeView';
-
-import { roleMapping, roleOptionsMap } from '../../../constants/RoleConstants';
-import { convertToKebabCase } from '../../../utils/commonUtils';
-import {
-  updateSelectedMenuOption,
-  updateSelectedModule,
-  setFilteredSideMenuOptions,
-} from '../../../../app/features/sidebarSlice';
-
-// Assets
-import companyLogo from '../../../../assets/logos/6-cropped.png';
-import {
-  buildNavigationPath,
-  createUserAvatar,
-  findMenuOptionById,
-  findMenuOptionByPath,
-  useMenuFiltering,
-  useUser,
-} from './sideMenuUtils';
-import ConfirmationDialog from '../../ui/dialogs/ConfirmationDialog';
-
-// Constants
-const DRAWER_WIDTH = 240;
-
-const MODULES = {
-  BALANCE_SHEET: 'BS',
-  CFS: 'CFS',
-};
-
-const StyledDrawer = styled(MuiDrawer)({
-  width: DRAWER_WIDTH,
-  flexShrink: 0,
-  boxSizing: 'border-box',
-  [`& .${drawerClasses.paper}`]: {
-    width: DRAWER_WIDTH,
-    boxSizing: 'border-box',
-  },
-});
-
-// Main Component
-const SideMenu = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const dispatch = useDispatch();
-  const user = useUser();
-  const [dialogOpen, setDialogOpen] = useState(false);
-
-  // Redux State
-  const selectedMenuOption = useSelector((state) => state.sidebar.selectedMenuOption.value);
-  const currentModule = useSelector((state) => state.sidebar.selectedModule.value);
-
-  const [navigationPath, setNavigationPath] = useState([]);
-  const [displayedMenuOptions, setDisplayedMenuOptions] = useState([]);
-
-  // Ref to track navigation source
-  const isInternalNavigation = useRef(false);
-
-  // Custom Hooks
-  const filterMenuOptions = useMenuFiltering(user, currentModule);
-
-  // Prevent page reload
-  useEffect(() => {
-    const handleBeforeUnload = (event) => {
-      event.preventDefault();
-      event.returnValue = 'Do you want to refresh? All data will be lost.';
-      return event.returnValue;
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, []);
-
-  // Handle URL navigation (only when navigationPath changes from user interaction)
-  useEffect(() => {
-    if (!navigationPath.length || !isInternalNavigation.current) return;
-
-    let urlPath = navigationPath.map((item) => convertToKebabCase(item.label)).join('/');
-
-    // Special case for incomplete branch users
-    // if (user.capacity === '52' && user.isBranchFinal !== 'Y') {
-    //   urlPath = 'user-details';
-    // }
-
-    if (urlPath && user.capacity && roleMapping[user.capacity]) {
-      const fullPath = `/${convertToKebabCase(roleMapping[user.capacity].role)}/${urlPath}`;
-
-      // Only navigate if the current path is different to prevent infinite loops
-      if (location.pathname !== fullPath) {
-        navigate(fullPath);
-      }
-    }
-
-    // Reset the flag after navigation
-    isInternalNavigation.current = false;
-  }, [navigationPath, user.capacity, navigate, location.pathname]);
-
-  // Sync selected option with current URL (runs whenever URL changes)
-  useEffect(() => {
-    const urlSegments = location.pathname.split('/').filter(Boolean);
-    const expectedRole = convertToKebabCase(roleMapping[user.capacity]?.role || '');
-
-    if (urlSegments.length > 0 && urlSegments[0] === expectedRole) {
-      const pathSegments = urlSegments.slice(1);
-      const availableOptions = roleOptionsMap[currentModule]?.[user.capacity] || [];
-      let options;
-      if (user?.circleCode !== '020') {
-        options = availableOptions.filter((n) => n?.id !== '1.4');
-      } else {
-        options = availableOptions;
-      }
-      const matchedOption = findMenuOptionByPath(pathSegments, options);
-      console.log('matchedOption', matchedOption);
-
-      if (matchedOption) {
-        // Only update if the selected option is different to avoid infinite loops
-        if (!selectedMenuOption || selectedMenuOption.id !== matchedOption.id) {
-          dispatch(updateSelectedMenuOption({ value: matchedOption }));
-          const fullPath = buildNavigationPath(matchedOption.id, availableOptions);
-          if (fullPath) {
-            setNavigationPath(fullPath);
-          }
-        }
-      } else if (pathSegments.length > 0) {
-        // Only warn if there are actual path segments (not just the role)
-        console.warn('Invalid route detected:', location.pathname);
-        // Clear selected option if route is invalid
-        dispatch(updateSelectedMenuOption({ value: null }));
-        setNavigationPath([]);
-      }
-    } else {
-      // Clear selection if not in the expected role path
-      dispatch(updateSelectedMenuOption({ value: null }));
-      setNavigationPath([]);
-    }
-  }, [location.pathname, user.capacity, currentModule, selectedMenuOption, dispatch]);
-
-  // Handle menu option selection
-  const handleMenuOptionSelect = useCallback(
-    (event, optionId) => {
-      const periodCount = (optionId.match(/\./g) || []).length;
-
-      // Only select if it's a sub-option (has more than one period)
-      if (optionId && periodCount > 1) {
-        const availableOptions = roleOptionsMap[currentModule]?.[user.capacity] || [];
-        const selectedOption = findMenuOptionById(optionId, availableOptions);
-
-        if (selectedOption) {
-          // Mark as internal navigation
-          isInternalNavigation.current = true;
-
-          dispatch(updateSelectedMenuOption({ value: selectedOption }));
-          const fullPath = buildNavigationPath(optionId, availableOptions);
-          if (fullPath) {
-            setNavigationPath(fullPath);
-          }
-        }
-      }
-    },
-    [currentModule, user.capacity, dispatch]
-  );
-
-  // Handle module change
-  const handleModuleChange = useCallback(
-    (event) => {
-      dispatch(updateSelectedModule({ value: event.target.value }));
-      navigate(
-        '/' + convertToKebabCase(roleMapping[user.capacity]?.role) + (roleMapping[user.capacity].role ? '/home' : ''),
-        { replace: true }
-      );
-    },
-    [dispatch]
-  );
-
-  // Filter and set menu options
-  useEffect(() => {
-    const availableOptions = roleOptionsMap[currentModule]?.[user.capacity] || [];
-    const filteredOptions = filterMenuOptions(availableOptions);
-
-    dispatch(setFilteredSideMenuOptions({ value: filteredOptions }));
-    setDisplayedMenuOptions(filteredOptions);
-  }, [currentModule, filterMenuOptions, dispatch, user]);
-
-  const showModuleSelector = ['51', '52'].includes(user.capacity);
-
-  const moduleOptions = [
-    { value: MODULES.BALANCE_SHEET, name: 'Balance Sheet' },
-    { value: MODULES.CFS, name: 'CFS' },
-  ];
-
-  // Handle user logout
-  const handleLogout = useCallback(() => {
-    // localStorage.removeItem('user');
-    navigate('/');
-  }, [navigate]);
-
-  const handleLogoutClick = () => {
-    setDialogOpen(true);
-  };
-
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
-  };
-
-  // Render nothing if user data is not available
-  if (!user.capacity) {
-    return null;
-  }
-
+export function Loading() {
   return (
-    <StyledDrawer
-      variant="permanent"
-      sx={{
-        display: { xs: 'none', md: 'block' },
-        [`& .${drawerClasses.paper}`]: {
-          backgroundColor: 'background.paper',
-        },
-      }}
-    >
-      {/* Header */}
-      <Box
-        sx={{
-          display: 'flex',
-          mt: 'calc(var(--template-frame-height, 0px) + 4px)',
-          p: 1.5,
-          alignItems: 'center',
-          overflow: 'hidden',
-        }}
-      >
-        <img
-          src={companyLogo}
-          alt="Balance Sheet Logo"
-          style={{
-            filter: 'brightness(120%)',
-            height: 70,
-            width: 70,
-            borderRadius: 50,
-            objectFit: 'contain',
-          }}
-        />
-        <Typography
-          variant="subtitle1"
-          sx={{ color: 'text.secondary', ml: 1, lineHeight: 1.2, fontSize: 16, fontWeight: 'bold' }}
-        >
-          Balance Sheet Automation
-        </Typography>
-      </Box>
+    <p>
+      <i>Loading...</i>
+    </p>
+  );
+}
 
-      <Divider />
+const CircleMakerRouter = () => {
+  return (
+    <Routes>
+      <Route index element={<Navigate to="home" />} />
+      <Route path="home" element={<HomePage />} />
+      {/* <Route index element={<Navigate to="Write-Off" />} />
+      <Route path="Write-Off" element={<WriteOff />} /> */}
 
-      {/* Module Selector */}
-      {showModuleSelector && (
-        <>
-          <Box sx={{ p: 1.5 }}>
-            <SelectModule
-              value={currentModule}
-              onChange={handleModuleChange}
-              fullWidth
-              sx={{ borderRadius: '10px' }}
-              options={moduleOptions}
-            />
-          </Box>
-          <Divider />
-        </>
-      )}
-
-      {/* Menu Content */}
-      <Box
-        sx={{
-          overflow: 'auto',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <CustomizedTreeView options={displayedMenuOptions} handleSelectOption={handleMenuOptionSelect} />
-      </Box>
-
-      {/* User Info and Logout */}
-      <Stack
-        direction="row"
-        sx={{
-          p: 2,
-          gap: 1,
-          alignItems: 'center',
-          borderTop: '1px solid',
-          borderColor: 'divider',
-        }}
-      >
-        <Avatar {...createUserAvatar(user.userName || 'User')} sx={{ width: 36, height: 36 }} />
-        <Box sx={{ mr: 'auto' }}>
-          <Typography
-            variant="body1"
-            sx={{
-              fontWeight: 'medium',
-              lineHeight: '16px',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'none',
-              width: 120,
-            }}
-          >
-            {user.userName || 'Unknown User'}
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 13, mt: 0.5 }}>
-            {roleMapping[user.capacity]?.role || 'Unknown Role'}
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 13 }}>{user.userId || 'Unknown ID'}</Typography>
-        </Box>
-        <Tooltip title={'Logout'}>
-          <IconButton size="medium" onClick={handleLogoutClick}>
-            <LogoutRoundedIcon fontSize="medium" />
-          </IconButton>
-        </Tooltip>
-      </Stack>
-
-      <ConfirmationDialog
-        open={dialogOpen}
-        onClose={handleCloseDialog}
-        onButtonClick={handleLogout}
-        dialogTitle={'Confirm Logout'}
-        dialogContent={'Are you sure you want to log out?'}
+      <Route
+        path="write-off"
+        element={
+          <PageLayout heading={'Write-Off'}>
+            <WriteOff />
+          </PageLayout>
+        }
       />
-    </StyledDrawer>
+
+      <Route path="cfs-worklist">
+        <Route
+          index
+          element={
+            <PageLayout heading={'CFS Worklist'}>
+              <CFSWorklist />
+            </PageLayout>
+          }
+        />
+
+        <Route
+          path="intra-group-liablity"
+          element={
+            <PageLayout heading={'Intra Group Liability'}>
+              <IntraGroupLiability />
+            </PageLayout>
+          }
+        />
+      </Route>
+
+      <Route path="download-reports">
+        <Route index element={<Navigate to="download-archive-reports" />} />
+        <Route
+          index
+          path="download-archive-reports"
+          element={
+            <PageLayout heading={'Download Archive Reports'}>
+              <DownloadArchiveReports />
+            </PageLayout>
+          }
+        />
+      </Route>
+
+      <Route path="worklists">
+        <Route index element={<Navigate to="worklist" />} />
+        <Route path="worklist">
+          <Route
+            index
+            element={
+              <PageLayout showCircleFreezed={true} heading={'Balance Sheet Worklist'}>
+                <CircleMakerWorklist />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="pnl-sup"
+            element={
+              <PageLayout heading={'PNL Supplementary'} /* showCircleFreezed={true} */>
+                <PnlSupplementary />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="sc-09"
+            element={
+              <PageLayout heading={'Schedule 09'}>
+                <Schedule9Table />
+              </PageLayout>
+            }
+          />
+          <Route path="sh-02" element={<PageLayout heading={'SH 02'}>{/* <Sh02 /> */}</PageLayout>} />
+          <Route
+            path="ysa"
+            element={
+              <PageLayout heading={'YSA Supplementary'}>
+                <YSASupplementary />
+              </PageLayout>
+            }
+          />
+          <Route path="shc-01" element={<PageLayout heading={'SHC 01'}>{/* <Shc01 /> */}</PageLayout>} />
+          <Route
+            path="sc-10"
+            element={
+              <PageLayout heading={'Schedule 10'}>
+                <Suspense fallback={<Loading />}>
+                  <Schedule10 />
+                </Suspense>
+              </PageLayout>
+            }
+          />
+          <Route
+            path="sc-9c"
+            element={
+              <PageLayout heading={'Schedule 9C - Provisions'}>
+                <Suspense fallback={<Loading />}>
+                  <Schedule9CProvisionTable />
+                </Suspense>
+              </PageLayout>
+            }
+          />
+          <Route
+            path="schedule-9b"
+            element={
+              <PageLayout heading={'Schedule 9B'}>
+                <Schedule9B />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="sc-9a"
+            element={
+              <PageLayout heading={'Schedule 9A'}>
+                <Schedule9ATable />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="sc-9c-migration"
+            element={
+              <PageLayout heading={'Schedule 9C Migration'}>
+                <Schedule9CMigration />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="sc-09-supl"
+            element={
+              <PageLayout heading={'SC 09 Supplementary'}>
+                <SC9Supplementary />
+              </PageLayout>
+            }
+          />
+          <Route path="qrc-1" element={<PageLayout heading={'QRC 1'}>{/* <Qrc1 /> */}</PageLayout>} />
+          <Route path="qrc-4" element={<PageLayout heading={'QRC 4'}>{/* <Qrc4 /> */}</PageLayout>} />
+          <Route path="qrc-16" element={<PageLayout heading={'QRC 16'}>{/* <Qrc16 /> */}</PageLayout>} />
+        </Route>
+
+        <Route path="miscellaneous-worklist">
+          <Route
+            index
+            element={
+              <PageLayout /* showCircleFreezed={false} */ heading={'Miscellaneous Worklist'}>
+                <MiscellaneousWorklist />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="dicgc"
+            element={
+              <PageLayout heading={'DI & CGC'}>
+                <DICGCReport />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="annex-2c"
+            element={
+              <PageLayout heading={'Annexure - 2C'}>
+                <Annex2C />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="RW-04"
+            element={
+              <PageLayout heading={'RW-04'}>
+                <RW04 />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="RW-05"
+            element={
+              <PageLayout heading={'RW-05'}>
+                <RW05 />
+              </PageLayout>
+            }
+          />
+        </Route>
+      </Route>
+
+      <Route path="download">
+        <Route index element={<Navigate to="reports" />} />
+        <Route
+          path="reports"
+          element={
+            <PageLayout heading={'Download Reports'}>
+              <DownloadReports />
+            </PageLayout>
+          }
+        />
+        <Route
+          path="archive-reports"
+          element={
+            <PageLayout heading={'Download Archive Reports'}>
+              <ArchiveReportsPage />
+            </PageLayout>
+          }
+        />
+      </Route>
+
+      <Route path="moc">
+        <Route index element={<Navigate to="moc-posting" />} />
+        <Route
+          path="moc-posting"
+          element={
+            <PageLayout showCircleFreezed={true} heading={'MOC'}>
+              <MOCPosting />
+            </PageLayout>
+          }
+        />
+        <Route
+          path="rejected-mocs"
+          element={
+            <PageLayout showCircleFreezed={true} heading={'Rejected MOCs'}>
+              <RejectedMOC />
+            </PageLayout>
+          }
+        />
+      </Route>
+
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
   );
 };
 
-export default SideMenu;
+export default CircleMakerRouter;
