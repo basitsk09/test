@@ -44,17 +44,15 @@ const WriteOff = () => {
   // #region --- State and Hooks Setup ---
 
   // --- ⬇️ 1. ROLE & DATA SIMULATION ⬇️ ---
-  // This section replaces live data fetching for demonstration purposes.
   // ✅ **CHANGE THE ROLE HERE**: Use '51' for Maker, '52' for Checker.
   const user = {
-    capacity: '52', // <-- '51' = MAKER, '52' = CHECKER
+    capacity: '51', // <-- '51' = MAKER, '52' = CHECKER
     circleCode: 'CORP',
     quarterEndDate: '2025-06-30',
     userId: 'testUser',
   };
   // const user = JSON.parse(localStorage.getItem('user')); // Original localStorage line
 
-  // Sample data to simulate API response.
   const sampleData = [
     { circleCode: '020', amount: '15000.50', status: 'Pending' },
     { circleCode: '021', amount: '22300.00', status: 'Pending' },
@@ -67,7 +65,7 @@ const WriteOff = () => {
 
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { callApi } = useApi(); // Note: callApi is kept for button logic but won't be called.
+  const { callApi } = useApi();
   const setSnackbarMessage = useCustomSnackbar();
   const [reportObject, setReportObject] = useState(state?.report || { name: 'RW-04 Part A', status: '10' });
   const [rows, setRows] = useState([]);
@@ -80,20 +78,17 @@ const WriteOff = () => {
 
   // #region --- Data Setup (Using Sample Data) ---
   useEffect(() => {
-    // This hook loads the hardcoded sample data instead of fetching from an API.
     setIsLoading(true);
     setTimeout(() => {
       setRows(sampleData);
       setOriginalRows(JSON.parse(JSON.stringify(sampleData)));
       setIsLoading(false);
-    }, 500); // Simulate network delay
-    // The empty dependency array [] ensures this runs only once on component mount.
+    }, 500);
   }, []);
   // #endregion
 
   // #region --- Event Handlers ---
   const handleAmountChange = (index, value) => {
-    // Only allow changes if the user is a Maker
     if (user.capacity === '51' && /^\d*\.?\d*$/.test(value)) {
       const updatedRows = [...rows];
       updatedRows[index].amount = value;
@@ -120,7 +115,6 @@ const WriteOff = () => {
     let successMessage = '';
     let payloadData = [];
 
-    // Determine API endpoint and success message based on the action
     switch (dialogAction) {
       case 'save':
         actionEndpoint = '/saveWriteOff';
@@ -139,24 +133,21 @@ const WriteOff = () => {
         successMessage = `Circle ${selectedRow.circleCode} has been rejected!`;
         break;
       default:
-        console.error('Unknown action:', dialogAction);
         handleCloseDialog();
         return;
     }
 
-    // Build the data payload for the API call
-    if (reportObject?.status === '11') { // Example of complex payload
+    if (reportObject?.status === '11') {
       const originalRow = originalRows.find((oRow) => oRow.circleCode === selectedRow.circleCode);
       const oldAmount = originalRow ? originalRow.amount : '0';
       payloadData = [[selectedRow.circleCode, oldAmount, selectedRow.amount || '0', selectedRow.status]];
-    } else { // Standard payload for all actions in this example
+    } else {
       payloadData = [[selectedRow.circleCode, selectedRow.amount || '0', selectedRow.status]];
     }
 
     const payload = {
       circleCode: user.circleCode,
       reportName: reportObject.name,
-      // ... other required payload fields
       userId: user.userId,
       data: payloadData,
     };
@@ -164,18 +155,6 @@ const WriteOff = () => {
     console.log(`SIMULATING API CALL for action: '${dialogAction}'`);
     console.log(`Endpoint: ${actionEndpoint}`);
     console.log('Payload:', JSON.stringify(payload, null, 2));
-
-    // In a real app, the `callApi` would be executed here.
-    // For this demo, we'll just show a success message and close the dialog.
-    // try {
-    //   await callApi(actionEndpoint, payload, 'POST');
-    //   setSnackbarMessage(successMessage, 'success');
-    // } catch (error) {
-    //   console.error(`Error during ${dialogAction}:`, error);
-    //   setSnackbarMessage(`An error occurred.`, 'error');
-    // } finally {
-    //   handleCloseDialog();
-    // }
 
     setSnackbarMessage(successMessage, 'success');
     handleCloseDialog();
@@ -257,55 +236,60 @@ const WriteOff = () => {
                     value={row.amount}
                     onChange={(e) => handleAmountChange(index, e.target.value)}
                     inputProps={{ style: { textAlign: 'right' } }}
-                    // ✅ Field is read-only for Checkers OR if status is final.
                     readOnly={user.capacity === '52' || row.status === 'Accepted' || row.status === 'Rejected'}
                   />
                 </StyledCell>
                 <StyledCell align="center">{getStatusChip(row.status)}</StyledCell>
 
-                {/* --- ⬇️ 2. ROLE-BASED ACTION BUTTONS ⬇️ --- */}
+                {/* --- ⬇️ 2. CORRECTED ROLE-BASED ACTION BUTTONS ⬇️ --- */}
                 <StyledCell align="center">
-                  {/* == MAKER VIEW (Save / Submit) == */}
-                  {user.capacity === '51' && (
-                    <Stack direction="row" spacing={1} justifyContent="center">
-                      <Button
-                        variant="contained" size="small" color="primary"
-                        onClick={() => handleOpenDialog('save', row)}
-                        disabled={row.status === 'Accepted' || row.status === 'Rejected'}
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        variant="contained" size="small" color="success"
-                        onClick={() => handleOpenDialog('submit', row)}
-                        disabled={row.status === 'Accepted' || row.status === 'Rejected'}
-                      >
-                        Submit
-                      </Button>
-                    </Stack>
-                  )}
-
-                  {/* == CHECKER VIEW (Accept / Reject) == */}
-                  {user.capacity === '52' && (
-                    <Stack direction="row" spacing={1} justifyContent="center">
-                      <Button
-                        variant="contained" size="small" color="success"
-                        onClick={() => handleOpenDialog('accept', row)}
-                        // ✅ Checker can only act on 'Pending' items.
-                        disabled={row.status !== 'Pending'}
-                      >
-                        Accept
-                      </Button>
-                      <Button
-                        variant="outlined" size="small" color="error"
-                        onClick={() => handleOpenDialog('reject', row)}
-                        disabled={row.status !== 'Pending'}
-                      >
-                        Reject
-                      </Button>
-                    </Stack>
-                  )}
+                  {(() => {
+                    // This structure ensures only one set of buttons can be rendered.
+                    if (user.capacity === '51') {
+                      // == MAKER VIEW (Save / Submit) ==
+                      return (
+                        <Stack direction="row" spacing={1} justifyContent="center">
+                          <Button
+                            variant="contained" size="small" color="primary"
+                            onClick={() => handleOpenDialog('save', row)}
+                            disabled={row.status === 'Accepted' || row.status === 'Rejected'}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            variant="contained" size="small" color="success"
+                            onClick={() => handleOpenDialog('submit', row)}
+                            disabled={row.status === 'Accepted' || row.status === 'Rejected'}
+                          >
+                            Submit
+                          </Button>
+                        </Stack>
+                      );
+                    } else if (user.capacity === '52') {
+                      // == CHECKER VIEW (Accept / Reject) ==
+                      return (
+                        <Stack direction="row" spacing={1} justifyContent="center">
+                          <Button
+                            variant="contained" size="small" color="success"
+                            onClick={() => handleOpenDialog('accept', row)}
+                            disabled={row.status !== 'Pending'}
+                          >
+                            Accept
+                          </Button>
+                          <Button
+                            variant="outlined" size="small" color="error"
+                            onClick={() => handleOpenDialog('reject', row)}
+                            disabled={row.status !== 'Pending'}
+                          >
+                            Reject
+                          </Button>
+                        </Stack>
+                      );
+                    }
+                    return null; // Render nothing if role is not 51 or 52
+                  })()}
                 </StyledCell>
+                {/* --- ⬆️ END OF CORRECTION ⬆️ --- */}
               </TableRow>
             ))}
             {rows.length === 0 && (
