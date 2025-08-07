@@ -43,18 +43,7 @@ const StyledCell = styled(TableCell)({
 // #region --- Main Component ---
 const WriteOff = () => {
   // #region --- State and Hooks Setup ---
-
   const user = JSON.parse(localStorage.getItem('user'));
-  const sampleData = [
-    { circleCode: '020', amount: '15000.50', status: 'Pending' },
-    { circleCode: '021', amount: '22300.00', status: 'Pending' },
-    { circleCode: '001', amount: '5400.00', status: 'Accepted' },
-    { circleCode: '008', amount: '9800.75', status: 'Rejected' },
-    { circleCode: '015', amount: '11200.00', status: 'Pending' },
-    { circleCode: '018', amount: '7650.00', status: 'Accepted' },
-  ];
-  // --- ⬆️ END OF SIMULATION SECTION ⬆️ ---
-
   const { state } = useLocation();
   const navigate = useNavigate();
   const { callApi } = useApi();
@@ -68,15 +57,63 @@ const WriteOff = () => {
   const [selectedRow, setSelectedRow] = useState(null);
   // #endregion
 
-  // #region --- Data Setup (Using Sample Data) ---
+  // #region --- Data Fetching from API ---
   useEffect(() => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setRows(sampleData);
-      setOriginalRows(JSON.parse(JSON.stringify(sampleData)));
-      setIsLoading(false);
-    }, 500);
-  }, []);
+    let isMounted = true;
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // Prepare payload as expected by the backend
+        const payload = {
+          qed: user?.quarterEndDate,
+          userCapacity: user?.capacity,
+        };
+
+        const response = await callApi('/getWriteOffTotalData', payload, 'POST');
+
+        // Check if component is still mounted and if response contains the data
+        if (isMounted && response?.data?.writeOffData) {
+          const dataList = response.data.writeOffData;
+
+          // Transform the array of arrays into an array of objects for the table
+          const formattedData = dataList.map((row) => ({
+            circleCode: row[0],
+            amount: row[1],
+            status: row[2],
+          }));
+
+          setRows(formattedData);
+          // Create a deep copy for tracking original values
+          setOriginalRows(JSON.parse(JSON.stringify(formattedData)));
+        } else if (isMounted) {
+          setSnackbarMessage('No data found for the current period.', 'info');
+          setRows([]);
+          setOriginalRows([]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch write-off data:', error);
+        if (isMounted) {
+          setSnackbarMessage('Error loading data from the server.', 'error');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (user?.quarterEndDate && user?.capacity) {
+      fetchData();
+    } else {
+        setIsLoading(false);
+        setSnackbarMessage('User information is missing. Cannot load data.', 'error');
+    }
+
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.quarterEndDate, user?.capacity, callApi, setSnackbarMessage]);
   // #endregion
 
   // #region --- Event Handlers ---
@@ -144,12 +181,15 @@ const WriteOff = () => {
       data: payloadData,
     };
 
-    console.log(`SIMULATING API CALL for action: '${dialogAction}'`);
-    console.log(`Endpoint: ${actionEndpoint}`);
-    console.log('Payload:', JSON.stringify(payload, null, 2));
-
-    setSnackbarMessage(successMessage, 'success');
-    handleCloseDialog();
+    try {
+      await callApi(actionEndpoint, payload, 'POST');
+      setSnackbarMessage(successMessage, 'success');
+    } catch (error) {
+      console.error(`Error during ${dialogAction}:`, error);
+      setSnackbarMessage(`An error occurred while trying to ${dialogAction}.`, 'error');
+    } finally {
+      handleCloseDialog();
+    }
   };
   // #endregion
 
@@ -225,11 +265,8 @@ const WriteOff = () => {
                   />
                 </StyledCell>
                 <StyledCell align="center">{getStatusChip(row.status)}</StyledCell>
-
-                {/* --- ⬇️ 2. CORRECTED ROLE-BASED ACTION BUTTONS ⬇️ --- */}
                 <StyledCell align="center">
                   {(() => {
-                    // This structure ensures only one set of buttons can be rendered.
                     if (user.capacity === '51') {
                       // == MAKER VIEW (Save / Submit) ==
                       return (
@@ -240,7 +277,6 @@ const WriteOff = () => {
                             onClickHandler={() => handleOpenDialog('save', row)}
                             disabled={row.status === 'Accepted' || row.status === 'Rejected'}
                           />
-
                           <CustomButton
                             label={'Submit'}
                             buttonType={'submit'}
@@ -259,7 +295,6 @@ const WriteOff = () => {
                             onClickHandler={() => handleOpenDialog('accept', row)}
                             disabled={row.status !== 'Pending'}
                           />
-
                           <CustomButton
                             label={'Reject'}
                             buttonType={'reject'}
@@ -269,16 +304,15 @@ const WriteOff = () => {
                         </Stack>
                       );
                     }
-                    return null; // Render nothing if role is not 51 or 52
+                    return null;
                   })()}
                 </StyledCell>
-                {/* --- ⬆️ END OF CORRECTION ⬆️ --- */}
               </TableRow>
             ))}
             {rows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} align="center">
-                  <Typography sx={{ p: 4, color: 'text.secondary' }}>No circle data to display.</Typography>
+                  <Typography sx={{ p: 4, color: 'text.secondary' }}>No data to display.</Typography>
                 </TableCell>
               </TableRow>
             )}
