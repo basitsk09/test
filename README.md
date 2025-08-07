@@ -22,7 +22,7 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import FormInput from '../../../../common/components/ui/FormInput';
-import { CustomButton } from '../../../../common/components/ui/Buttons';
+// Removed CustomButton import as the common buttons are no longer used
 import { useLocation, useNavigate } from 'react-router-dom';
 import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
 import useApi from '../../../../common/hooks/useApi';
@@ -54,6 +54,9 @@ const WriteOff = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogAction, setDialogAction] = useState(null);
+  // --- MODIFICATION START: State to track the row being acted upon ---
+  const [selectedRow, setSelectedRow] = useState(null);
+  // --- MODIFICATION END ---
   // #endregion
 
   // #region --- Data Fetching ---
@@ -67,7 +70,6 @@ const WriteOff = () => {
         if (isMounted && response?.data) {
           const fetchedData = response.data;
           setRows(fetchedData);
-          // Create a deep copy of the initial data to serve as "old values"
           setOriginalRows(JSON.parse(JSON.stringify(fetchedData)));
         } else if (isMounted) {
           setSnackbarMessage('No data found for the current period.', 'info');
@@ -101,29 +103,40 @@ const WriteOff = () => {
     }
   };
 
-  const handleOpenDialog = (action) => {
+  // --- MODIFICATION START: Handler now accepts the row object ---
+  const handleOpenDialog = (action, row) => {
     setDialogAction(action);
+    setSelectedRow(row);
     setDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setDialogAction(null);
+    setSelectedRow(null); // Reset selected row on close
   };
+  // --- MODIFICATION END ---
 
+  // --- MODIFICATION START: Logic updated to handle a single row action ---
   const handleConfirmAction = async () => {
+    if (!selectedRow) {
+      console.error('No row selected for action.');
+      setSnackbarMessage('An unexpected error occurred. Please try again.', 'error');
+      handleCloseDialog();
+      return;
+    }
+
     const actionEndpoint = dialogAction === 'save' ? '/saveWriteOff' : '/submitWriteOff';
     const successMessage = dialogAction === 'save' ? 'Data saved successfully!' : 'Data submitted successfully!';
     let dataList;
 
+    // Build payload data for the single selected row
     if (reportObject?.status === '11') {
-      dataList = rows.map((currentRow) => {
-        const originalRow = originalRows.find((oRow) => oRow.circleCode === currentRow.circleCode);
-        const oldAmount = originalRow ? originalRow.amount : '0';
-        return [currentRow.circleCode, oldAmount, currentRow.amount || '0', currentRow.status];
-      });
+      const originalRow = originalRows.find((oRow) => oRow.circleCode === selectedRow.circleCode);
+      const oldAmount = originalRow ? originalRow.amount : '0';
+      dataList = [[selectedRow.circleCode, oldAmount, selectedRow.amount || '0', selectedRow.status]];
     } else {
-      dataList = rows.map((row) => [row.circleCode, row.amount || '0', row.status]);
+      dataList = [[selectedRow.circleCode, selectedRow.amount || '0', selectedRow.status]];
     }
 
     const payload = {
@@ -135,15 +148,16 @@ const WriteOff = () => {
       userCapacity: user.capacity,
       qed: user?.quarterEndDate,
       userId: user?.userId,
-      data: dataList,
+      data: dataList, // Payload now contains data for only one row
     };
 
-    console.log(`Payload for status '${reportObject?.status}':`, JSON.stringify(payload, null, 2));
+    console.log(`Payload for '${dialogAction}' on circle '${selectedRow.circleCode}':`, JSON.stringify(payload, null, 2));
 
     try {
       await callApi(actionEndpoint, payload, 'POST');
       setSnackbarMessage(successMessage, 'success');
       if (dialogAction === 'submit') {
+        // Optionally, refresh data or navigate away
         setTimeout(() => navigate(-1), 1500);
       }
     } catch (error) {
@@ -153,6 +167,7 @@ const WriteOff = () => {
       handleCloseDialog();
     }
   };
+  // --- MODIFICATION END ---
   // #endregion
 
   // #region --- Helper Functions ---
@@ -189,18 +204,23 @@ const WriteOff = () => {
 
   return (
     <Container maxWidth="xl" sx={{ mt: 2, mb: 2 }}>
+      {/* --- MODIFICATION START: Removed common Save/Submit buttons ---
       <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
         <CustomButton buttonType={'save'} label={'Save'} onClickHandler={() => handleOpenDialog('save')} />
         <CustomButton buttonType={'submit'} label={'Submit'} onClickHandler={() => handleOpenDialog('submit')} />
       </Stack>
+      --- MODIFICATION END --- */}
 
       <TableContainer component={Paper} elevation={3}>
         <Table>
           <TableHead>
             <TableRow>
-              <StyledHeader sx={{ width: '33%' }}>Circle Code</StyledHeader>
-              <StyledHeader sx={{ width: '34%' }}>Amount</StyledHeader>
-              <StyledHeader sx={{ width: '33%' }}>RW-04 Part A Status</StyledHeader>
+              {/* --- MODIFICATION START: Adjusted column widths --- */}
+              <StyledHeader sx={{ width: '25%' }}>Circle Code</StyledHeader>
+              <StyledHeader sx={{ width: '30%' }}>Amount</StyledHeader>
+              <StyledHeader sx={{ width: '25%' }}>RW-04 Part A Status</StyledHeader>
+              <StyledHeader sx={{ width: '20%' }}>Action</StyledHeader>
+              {/* --- MODIFICATION END --- */}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -216,11 +236,35 @@ const WriteOff = () => {
                   />
                 </StyledCell>
                 <StyledCell align="center">{getStatusChip(row.status)}</StyledCell>
+                {/* --- MODIFICATION START: Added Action cell with row-specific buttons --- */}
+                <StyledCell align="center">
+                  <Stack direction="row" spacing={1} justifyContent="center">
+                    <Button
+                      variant="contained"
+                      size="small"
+                      color="primary"
+                      onClick={() => handleOpenDialog('save', row)}
+                      disabled={row.status === 'Accepted' || row.status === 'Rejected'}
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      color="success"
+                      onClick={() => handleOpenDialog('submit', row)}
+                      disabled={row.status === 'Accepted' || row.status === 'Rejected'}
+                    >
+                      Submit
+                    </Button>
+                  </Stack>
+                </StyledCell>
+                {/* --- MODIFICATION END --- */}
               </TableRow>
             ))}
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} align="center">
+                <TableCell colSpan={4} align="center"> {/* Updated colSpan to 4 */}
                   <Typography sx={{ p: 4, color: 'text.secondary' }}>No circle data to display.</Typography>
                 </TableCell>
               </TableRow>
@@ -229,16 +273,16 @@ const WriteOff = () => {
         </Table>
       </TableContainer>
 
-      {/* Confirmation Dialog */}
+      {/* Confirmation Dialog (logic remains mostly the same, context is now row-specific) */}
       <Dialog open={dialogOpen} onClose={handleCloseDialog}>
         <DialogTitle sx={{ fontWeight: 'bold' }}>
-          {dialogAction === 'save' ? 'Confirm Save' : 'Confirm Submission'}
+          {dialogAction === 'save' ? 'Confirm Save' : 'Confirm Submission'} for Circle: {selectedRow?.circleCode}
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
             {dialogAction === 'save'
-              ? 'Are you sure you want to save the changes?'
-              : 'Are you sure you want to submit? Once submitted, the data may not be editable.'}
+              ? 'Are you sure you want to save the changes for this circle?'
+              : 'Are you sure you want to submit for this circle? Once submitted, the data may not be editable.'}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
