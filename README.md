@@ -151,7 +151,10 @@ const WriteOff = () => {
       data: dataList, // Payload now contains data for only one row
     };
 
-    console.log(`Payload for '${dialogAction}' on circle '${selectedRow.circleCode}':`, JSON.stringify(payload, null, 2));
+    console.log(
+      `Payload for '${dialogAction}' on circle '${selectedRow.circleCode}':`,
+      JSON.stringify(payload, null, 2)
+    );
 
     try {
       await callApi(actionEndpoint, payload, 'POST');
@@ -264,7 +267,9 @@ const WriteOff = () => {
             ))}
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} align="center"> {/* Updated colSpan to 4 */}
+                <TableCell colSpan={4} align="center">
+                  {' '}
+                  {/* Updated colSpan to 4 */}
                   <Typography sx={{ p: 4, color: 'text.secondary' }}>No circle data to display.</Typography>
                 </TableCell>
               </TableRow>
