@@ -25,6 +25,7 @@ import FormInput from '../../../../common/components/ui/FormInput';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
 import useApi from '../../../../common/hooks/useApi';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
 
 // #region --- Styled Components ---
 const StyledHeader = styled(TableCell)(() => ({
@@ -43,16 +44,7 @@ const StyledCell = styled(TableCell)({
 const WriteOff = () => {
   // #region --- State and Hooks Setup ---
 
-  // --- ⬇️ 1. ROLE & DATA SIMULATION ⬇️ ---
-  // ✅ **CHANGE THE ROLE HERE**: Use '51' for Maker, '52' for Checker.
-  const user = {
-    capacity: '51', // <-- '51' = MAKER, '52' = CHECKER
-    circleCode: 'CORP',
-    quarterEndDate: '2025-06-30',
-    userId: 'testUser',
-  };
-  // const user = JSON.parse(localStorage.getItem('user')); // Original localStorage line
-
+  const user = JSON.parse(localStorage.getItem('user'));
   const sampleData = [
     { circleCode: '020', amount: '15000.50', status: 'Pending' },
     { circleCode: '021', amount: '22300.00', status: 'Pending' },
@@ -210,13 +202,6 @@ const WriteOff = () => {
 
   return (
     <Container maxWidth="xl" sx={{ mt: 2, mb: 2 }}>
-      <Typography variant="h5" sx={{ mb: 1, fontWeight: 'bold' }}>
-        Write-Off Data Entry
-      </Typography>
-      <Typography variant="subtitle1" sx={{ mb: 3 }}>
-        Current Role: <Chip label={user.capacity === '51' ? 'Maker' : 'Checker'} color="secondary" />
-      </Typography>
-
       <TableContainer component={Paper} elevation={3}>
         <Table>
           <TableHead>
@@ -249,40 +234,38 @@ const WriteOff = () => {
                       // == MAKER VIEW (Save / Submit) ==
                       return (
                         <Stack direction="row" spacing={1} justifyContent="center">
-                          <Button
-                            variant="contained" size="small" color="primary"
-                            onClick={() => handleOpenDialog('save', row)}
+                          <CustomButton
+                            label={'Save'}
+                            buttonType={'save'}
+                            onClickHandler={() => handleOpenDialog('save', row)}
                             disabled={row.status === 'Accepted' || row.status === 'Rejected'}
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            variant="contained" size="small" color="success"
-                            onClick={() => handleOpenDialog('submit', row)}
+                          />
+
+                          <CustomButton
+                            label={'Submit'}
+                            buttonType={'submit'}
+                            onClickHandler={() => handleOpenDialog('submit', row)}
                             disabled={row.status === 'Accepted' || row.status === 'Rejected'}
-                          >
-                            Submit
-                          </Button>
+                          />
                         </Stack>
                       );
                     } else if (user.capacity === '52') {
                       // == CHECKER VIEW (Accept / Reject) ==
                       return (
                         <Stack direction="row" spacing={1} justifyContent="center">
-                          <Button
-                            variant="contained" size="small" color="success"
-                            onClick={() => handleOpenDialog('accept', row)}
+                          <CustomButton
+                            label={'Accept'}
+                            buttonType={'accept'}
+                            onClickHandler={() => handleOpenDialog('accept', row)}
                             disabled={row.status !== 'Pending'}
-                          >
-                            Accept
-                          </Button>
-                          <Button
-                            variant="outlined" size="small" color="error"
-                            onClick={() => handleOpenDialog('reject', row)}
+                          />
+
+                          <CustomButton
+                            label={'Reject'}
+                            buttonType={'reject'}
+                            onClickHandler={() => handleOpenDialog('reject', row)}
                             disabled={row.status !== 'Pending'}
-                          >
-                            Reject
-                          </Button>
+                          />
                         </Stack>
                       );
                     }
@@ -312,8 +295,12 @@ const WriteOff = () => {
           <DialogContentText>{getDialogInfo().text}</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog} color="secondary">Cancel</Button>
-          <Button onClick={handleConfirmAction} color="primary" variant="contained" autoFocus>Confirm</Button>
+          <Button onClick={handleCloseDialog} color="secondary">
+            Cancel
+          </Button>
+          <Button onClick={handleConfirmAction} color="primary" variant="contained" autoFocus>
+            Confirm
+          </Button>
         </DialogActions>
       </Dialog>
     </Container>
