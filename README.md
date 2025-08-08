@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'; // Import useCallback
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -26,6 +26,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
 import useApi from '../../../../common/hooks/useApi';
 import { CustomButton } from '../../../../common/components/ui/Buttons';
+import SkeletonWrapper from '../../../../common/components/ui/SkeletonWrapper';
 
 // #region --- Styled Components ---
 const StyledHeader = styled(TableCell)(() => ({
@@ -59,9 +60,7 @@ const WriteOff = () => {
 
   // #region --- Data Fetching from API ---
 
-  // ✅ STEP 1: Define fetchData outside of useEffect using useCallback
   const fetchData = useCallback(async () => {
-    // isMounted check is no longer needed here as useCallback manages the function's identity
     setIsLoading(true);
     try {
       const payload = {
@@ -87,15 +86,17 @@ const WriteOff = () => {
         setRows([]);
         setOriginalRows([]);
       }
+      setIsLoading(false);
     } catch (error) {
-      console.error('Failed to fetch write-off data:', error);
-      setSnackbarMessage('Error loading data from the server.', 'error');
+      if (error.code !== 'ERR_CANCELED') {
+        console.error('Failed to fetch write-off data:', error);
+        setSnackbarMessage('Error loading data from the server.', 'error');
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [user?.quarterEndDate, user?.capacity, callApi, setSnackbarMessage]); // Dependencies for useCallback
+  }, [user?.quarterEndDate, user?.capacity, callApi, setSnackbarMessage]);
 
-  // ✅ STEP 2: useEffect now calls the memoized fetchData function
   useEffect(() => {
     if (user?.quarterEndDate && user?.capacity) {
       fetchData();
@@ -103,11 +104,12 @@ const WriteOff = () => {
       setIsLoading(false);
       setSnackbarMessage('User information is missing. Cannot load data.', 'error');
     }
-  }, [fetchData, user?.quarterEndDate, user?.capacity, setSnackbarMessage]); // Depend on the fetchData function itself
+  }, [fetchData, user?.quarterEndDate, user?.capacity, setSnackbarMessage]);
   // #endregion
 
   // #region --- Event Handlers ---
   const handleAmountChange = (index, value) => {
+    // Only allow maker to edit if status is editable
     const isEditable = ['0', '11', '12'].includes(rows[index].status);
     if (user.capacity === '51' && isEditable && /^\d*\.?\d*$/.test(value)) {
       const updatedRows = [...rows];
@@ -130,26 +132,25 @@ const WriteOff = () => {
 
   const handleConfirmAction = async () => {
     if (!selectedRow) return;
-    let actionEndpoint = '/updateStatus'; // All actions use the same endpoint
+    let actionEndpoint = '/updateStatus';
     let successMessage = '';
-    const payloadData = [selectedRow.circleCode, selectedRow.amount || '0'];
-    
-    // Determine the new status to be sent in the payload
-    let newStatus = selectedRow.status;
-    if (user.capacity === '51') { // Maker actions
-        newStatus = dialogAction === 'save' ? '11' : '20';
-    } else if (user.capacity === '52') { // Checker actions
-        newStatus = dialogAction === 'accept' ? '51' : '12';
-    }
-
-
+    const payloadData = [selectedRow.circleCode, selectedRow.amount || '0', selectedRow.status];
     const payload = {
       qed: user.quarterEndDate,
       circleCode: user.circleCode,
       reportName: reportObject.name,
       userId: user.userId,
       data: payloadData,
-      status: newStatus,
+      status:
+        selectedRow.status === '0'
+          ? '0'
+          : dialogAction === 'save'
+          ? '11'
+          : dialogAction === 'submit'
+          ? '20'
+          : dialogAction === 'accept'
+          ? '51'
+          : '12',
       reportStatus: selectedRow.statusReportCode,
     };
 
@@ -172,10 +173,13 @@ const WriteOff = () => {
     }
 
     try {
-      await callApi(actionEndpoint, payload, 'POST');
-      setSnackbarMessage(successMessage, 'success');
-      // ✅ STEP 3: Call fetchData here to refresh the data after a successful API call
+      const response = await callApi(actionEndpoint, payload, 'POST');
       fetchData();
+      if (response?.message) {
+        setSnackbarMessage(successMessage, 'success');
+      } else {
+        setSnackbarMessage('Failed to save.', 'error');
+      }
     } catch (error) {
       console.error(`Error during ${dialogAction}:`, error);
       setSnackbarMessage(`An error occurred while trying to ${dialogAction}.`, 'error');
@@ -186,18 +190,19 @@ const WriteOff = () => {
   // #endregion
 
   // #region --- Helper Functions ---
+
   const getStatusDetails = (status) => {
     switch (String(status)) {
       case '0':
         return { text: 'Not Created', color: 'default' };
       case '11':
-        return { text: 'Saved', color: 'info' };
+        return { text: 'Saved By Maker', color: 'primary' };
       case '12':
-        return { text: 'Rejected', color: 'error' };
+        return { text: 'Rejected By Checker', color: 'error' };
       case '20':
-        return { text: 'Submitted', color: 'primary' };
+        return { text: 'Submitted By Maker', color: 'warning' };
       case '51':
-        return { text: 'Pending Approval', color: 'warning' };
+        return { text: 'Accepted By Checker', color: 'success' };
       default:
         return { text: `Unknown (${status})`, color: 'default' };
     }
@@ -210,7 +215,10 @@ const WriteOff = () => {
       case 'submit':
         return { title: 'Confirm Submission', text: 'Are you sure you want to submit? This action cannot be undone.' };
       case 'accept':
-        return { title: 'Confirm Acceptance', text: 'Are you sure you want to accept the data for this circle?' };
+        return {
+          title: 'Confirm Acceptance',
+          text: 'Are you sure you want to accept the data for this circle? Report RW-04 will be re-opened.',
+        };
       case 'reject':
         return { title: 'Confirm Rejection', text: 'Are you sure you want to reject the data for this circle?' };
       default:
@@ -220,28 +228,45 @@ const WriteOff = () => {
   // #endregion
 
   // #region --- Render Logic ---
+  // if (isLoading) {
+  //   return (
+  //     <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+  //       <Stack alignItems="center" spacing={2}>
+  //         <CircularProgress />
+  //         <Typography>Loading Data...</Typography>
+  //       </Stack>
+  //     </Container>
+  //   );
+  // }
+
   if (isLoading) {
     return (
-      <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-        <Stack alignItems="center" spacing={2}>
-          <CircularProgress />
-          <Typography>Loading Data...</Typography>
-        </Stack>
-      </Container>
+      <>
+        <SkeletonWrapper
+          isLoading={isLoading}
+          skeletonType="table"
+          skeletonConfig={{
+            rows: 15,
+            columns: 5,
+            hasHeader: true,
+            hasActions: true,
+          }}
+        />
+      </>
     );
   }
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 2, mb: 2 }}>
+    <Box sx={{ mt: 2, mb: 2, width: 1 }}>
       <TableContainer component={Paper} elevation={3} sx={{ mt: 2, maxHeight: 'calc(105vh - 250px)' }}>
         <Table stickyHeader>
           <TableHead>
             <TableRow>
-              <StyledHeader sx={{ width: '25%' }}>Circle</StyledHeader>
-              <StyledHeader sx={{ width: '25%' }}>Status of RW-04 Part A</StyledHeader>
-              <StyledHeader sx={{ width: '30%' }}>Amount</StyledHeader>
-              <StyledHeader sx={{ width: '25%' }}>Status</StyledHeader>
-              <StyledHeader sx={{ width: '20%' }}>Action</StyledHeader>
+              <StyledHeader sx={{ width: '20%' }}>CIRCLE</StyledHeader>
+              <StyledHeader sx={{ width: '20%' }}>STATUS OF RW-04 A</StyledHeader>
+              <StyledHeader sx={{ width: '20%' }}>AMOUNT</StyledHeader>
+              <StyledHeader sx={{ width: '20%' }}>STATUS</StyledHeader>
+              <StyledHeader sx={{ width: '20%' }}>ACTION</StyledHeader>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -266,7 +291,7 @@ const WriteOff = () => {
                       label={statusDetails.text}
                       color={statusDetails.color}
                       size="medium"
-                      sx={{ fontWeight: 'bold' }}
+                      sx={{ fontWeight: 'bold', width: '150px' }}
                     />
                   </StyledCell>
                   <StyledCell align="center">
@@ -292,6 +317,7 @@ const WriteOff = () => {
                       }
                       // == CHECKER (52) VIEW LOGIC ==
                       else if (user.capacity === '52') {
+                        // For 'Submitted' status, show both Accept and Reject
                         if (row.status === '20') {
                           return (
                             <Stack direction="row" spacing={1} justifyContent="center">
@@ -308,16 +334,26 @@ const WriteOff = () => {
                             </Stack>
                           );
                         }
+                        // For status 51, show ONLY Reject
                         else if (row.status === '51') {
                           return (
-                            <CustomButton
-                              label={'Reject'}
-                              buttonType={'reject'}
-                              onClickHandler={() => handleOpenDialog('reject', row)}
-                            />
+                            <Stack direction="row" spacing={1} justifyContent="center">
+                              <CustomButton
+                                label={'Accept'}
+                                buttonType={'accept'}
+                                onClickHandler={() => handleOpenDialog('accept', row)}
+                                disabled
+                              />
+                              <CustomButton
+                                label={'Reject'}
+                                buttonType={'reject'}
+                                onClickHandler={() => handleOpenDialog('reject', row)}
+                              />
+                            </Stack>
                           );
                         }
                       }
+                      // For all other cases, render nothing
                       return null;
                     })()}
                   </StyledCell>
@@ -326,7 +362,7 @@ const WriteOff = () => {
             })}
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={4} align="center">
                   <Typography sx={{ p: 4, color: 'text.secondary' }}>No data to display.</Typography>
                 </TableCell>
               </TableRow>
@@ -338,7 +374,7 @@ const WriteOff = () => {
       {/* --- Confirmation Dialog --- */}
       <Dialog open={dialogOpen} onClose={handleCloseDialog}>
         <DialogTitle sx={{ fontWeight: 'bold' }}>
-          {getDialogInfo().title} for Circle: {selectedRow?.circleName}
+          {getDialogInfo().title} for Circle: {selectedRow?.circleCode}
         </DialogTitle>
         <DialogContent>
           <DialogContentText>{getDialogInfo().text}</DialogContentText>
@@ -352,7 +388,7 @@ const WriteOff = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </Box>
   );
 };
 // #endregion
