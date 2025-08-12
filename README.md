@@ -226,18 +226,20 @@ const RW04 = () => {
   const [rw05DynamicRows, setRw05DynamicRows] = useState([]);
 
   const headers_rw04 = [
-    'PARTICULARS <br />(2)',
-    `OPENING PROVISION AS ON ${user.previousQuarterEndDate} <br />(3)`,
-    'WRITE OFF DURING THE PERIOD * (4)',
-    'ADDITONS / REDUCTIONS <br />(OTHER THAN WRITE OFF) DURING THE PERIOD <br />(5) = (6) - ( 3 + 4 )',
-    `CLOSING PROVISION AS ON ${user.quarterEndDate} <br />(6)`,
+    'PARTICULARS',
+    `OPENING PROVISION AS ON ${user.previousQuarterEndDate}`,
+    'WRITE OFF DURING THE PERIOD *',
+    'ADDITONS / REDUCTIONS <br />(OTHER THAN WRITE OFF) DURING THE PERIOD',
+    `CLOSING PROVISION AS ON ${user.quarterEndDate}`,
   ];
+  const headerSerial_rw04 = ['(1)', '(2)', '(3)', '(4)', '(5) = (6) - ( 3 + 4 )', '(6)'];
   const headers_rw05 = [
-    'PARTICULARS <br />(2)',
-    `OPENING PROVISION AS ON ${user.previousQuarterEndDate} <br />(3)`,
-    'ADDITONS / REVERSAL DURING THE PERIOD <br /> (4) = (5 - 3)',
-    `PROVISION AS ON ${user.quarterEndDate} <br /> (5)`,
+    'PARTICULARS',
+    `OPENING PROVISION AS ON ${user.previousQuarterEndDate}`,
+    'ADDITONS / REVERSAL DURING THE PERIOD',
+    `PROVISION AS ON ${user.quarterEndDate}`,
   ];
+  const headerSerial_rw05 = ['(1)', '(2)', '(3)', '(4) = (5 - 3)', '(5)'];
 
   const getBasePayload = useCallback(
     () => ({
@@ -331,7 +333,6 @@ const RW04 = () => {
     const start = parseFloat(row.provAmtStart || 0);
     const writeOff = parseFloat(row.writeOff || 0);
     const end = parseFloat(row.provAmtEnd || 0);
-    // As per header: addRed (5) = provAmtEnd (6) - (provAmtStart (3) + writeOff (4))
     row.addRed = (end - (start + writeOff)).toFixed(2);
     return row;
   };
@@ -568,14 +569,30 @@ const RW04 = () => {
           disabled={isLoading || reportObject?.status !== '11'}
         />
       </Box>
-      <TableContainer component={Paper} sx={{ mt: 2, maxHeight: 'calc(100vh - 250px)' }}>
+      <TableContainer component={Paper} sx={{ mt: 2, maxHeight: 'calc(96vh - 250px)' }}>
         <Table stickyHeader>
           <TableHead>
             <TableRow>
               <StyledTableCell>SELECT</StyledTableCell>
-              <StyledTableCell sx={{ minWidth: '60px' }}>SL. NO. (1)</StyledTableCell>
+              <StyledTableCell sx={{ minWidth: '65px' }}>SL. NO.</StyledTableCell>
 
               {(tabIndex === 0 ? headers_rw04 : headers_rw05).map((head, idx) => (
+                <StyledTableCell
+                  key={idx}
+                  sx={{ minWidth: '180px' }}
+                  dangerouslySetInnerHTML={{ __html: head }}
+                ></StyledTableCell>
+              ))}
+            </TableRow>
+            <TableRow
+              sx={{
+                position: 'sticky',
+                top: tabIndex === 0 ? 85 : 0,
+                zIndex: 1,
+              }}
+            >
+              <StyledTableCell></StyledTableCell>
+              {(tabIndex === 0 ? headerSerial_rw04 : headerSerial_rw05).map((head, idx) => (
                 <StyledTableCell
                   key={idx}
                   sx={{ minWidth: '180px' }}
@@ -597,6 +614,7 @@ const RW04 = () => {
                   </TableCell>
                   <TableCell align="center">
                     <FormInput
+                      inputType={'wholeAmountDecimal'}
                       value={row.writeOff}
                       onChange={(e) => handleRw04StaticChange(index, 'writeOff', e.target.value)}
                       sx={{ width: '200px' }}
@@ -608,6 +626,7 @@ const RW04 = () => {
                   </TableCell>
                   <TableCell align="center">
                     <FormInput
+                      inputType={'wholeAmountDecimal'}
                       value={row.provAmtEnd}
                       onChange={(e) => handleRw04StaticChange(index, 'provAmtEnd', e.target.value)}
                       sx={{ width: '200px' }}
@@ -644,6 +663,7 @@ const RW04 = () => {
                   </TableCell>
                   <TableCell align="center">
                     <FormInput
+                      inputType={'wholeAmountDecimal'}
                       value={row.writeOff}
                       onChange={(e) => handleRw04StaticChange(index + 4, 'writeOff', e.target.value)}
                       sx={{ width: '200px' }}
@@ -655,6 +675,7 @@ const RW04 = () => {
                   </TableCell>
                   <TableCell align="center">
                     <FormInput
+                      inputType={'wholeAmountDecimal'}
                       value={row.provAmtEnd}
                       onChange={(e) => handleRw04StaticChange(index + 4, 'provAmtEnd', e.target.value)}
                       sx={{ width: '200px' }}
@@ -697,6 +718,7 @@ const RW04 = () => {
                   </TableCell>
                   <TableCell align="center">
                     <FormInput
+                      inputType={'wholeAmountDecimal'}
                       value={row.provAmtStart}
                       readOnly={row.dbId !== 0} // Opening balance is read-only for saved rows
                       sx={{ width: '200px' }}
@@ -704,6 +726,7 @@ const RW04 = () => {
                   </TableCell>
                   <TableCell align="center">
                     <FormInput
+                      inputType={'wholeAmountDecimal'}
                       value={row.writeOff}
                       onChange={(e) => handleRw04DynamicChange(i, 'writeOff', e.target.value)}
                       sx={{ width: '200px' }}
@@ -715,6 +738,7 @@ const RW04 = () => {
                   </TableCell>
                   <TableCell align="center">
                     <FormInput
+                      inputType={'wholeAmountDecimal'}
                       value={row.provAmtEnd}
                       onChange={(e) => handleRw04DynamicChange(i, 'provAmtEnd', e.target.value)}
                       sx={{ width: '200px' }}
@@ -780,6 +804,7 @@ const RW04 = () => {
                   </TableCell>
                   <TableCell align="center">
                     <FormInput
+                      inputType={'wholeAmountDecimal'}
                       value={row.provAmtEnd}
                       onChange={(e) => handleRw05StaticChange(index, 'provAmtEnd', e.target.value)}
                       sx={{ width: '200px' }}
@@ -824,6 +849,7 @@ const RW04 = () => {
                   </TableCell>
                   <TableCell align="center">
                     <FormInput
+                      inputType={'wholeAmountDecimal'}
                       value={row.provAmtEnd}
                       onChange={(e) => handleRw05DynamicChange(index, 'provAmtEnd', e.target.value)}
                       sx={{ width: '200px' }}
