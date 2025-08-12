@@ -19,6 +19,7 @@ import {
   DialogTitle,
   Checkbox,
   CircularProgress,
+  TableFooter, // Added TableFooter
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -587,7 +588,7 @@ const RW04 = () => {
             <TableRow
               sx={{
                 position: 'sticky',
-                top: tabIndex === 0 ? 85 : 0,
+                top: tabIndex === 0 ? 75 : 54, // Adjusted for more accurate heights
                 zIndex: 1,
               }}
             >
@@ -603,276 +604,279 @@ const RW04 = () => {
           </TableHead>
 
           {tabIndex === 0 && (
-            <TableBody>
-              {rw04StaticRows.slice(0, 4).map((row, index) => (
-                <TableRow key={row.dbId}>
+            <>
+              <TableBody>
+                {rw04StaticRows.slice(0, 4).map((row, index) => (
+                  <TableRow key={row.dbId}>
+                    <TableCell></TableCell>
+                    <TableCell align="center">{row.slNo}</TableCell>
+                    <TableCell sx={{ textAlign: 'left' }}>{row.label}</TableCell>
+                    <TableCell align="center">
+                      <FormInput value={row.provAmtStart} readOnly sx={{ width: '200px' }} />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput
+                        inputType={'wholeAmountDecimal'}
+                        value={row.writeOff}
+                        onChange={(e) => handleRw04StaticChange(index, 'writeOff', e.target.value)}
+                        sx={{ width: '200px' }}
+                        placeholder="0.00"
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput value={row.addRed} readOnly sx={{ width: '200px' }} />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput
+                        inputType={'wholeAmountDecimal'}
+                        value={row.provAmtEnd}
+                        onChange={(e) => handleRw04StaticChange(index, 'provAmtEnd', e.target.value)}
+                        sx={{ width: '200px' }}
+                        placeholder="0.00"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow>
+                  <StyledTotalTableCell></StyledTotalTableCell>
+                  <StyledTotalTableCell></StyledTotalTableCell>
+                  <StyledTotalTableCell align="center">SUB TOTALS (ABOVE)</StyledTotalTableCell>
+                  <StyledTotalTableCell>
+                    <FormInput value={rw04Totals.subTotal1.provAmtStart} readOnly sx={{ width: '200px' }} />
+                  </StyledTotalTableCell>
+                  <StyledTotalTableCell>
+                    <FormInput value={rw04Totals.subTotal1.writeOff} readOnly sx={{ width: '200px' }} />
+                  </StyledTotalTableCell>
+                  <StyledTotalTableCell>
+                    <FormInput value={rw04Totals.subTotal1.addRed} readOnly sx={{ width: '200px' }} />{' '}
+                  </StyledTotalTableCell>
+                  <StyledTotalTableCell>
+                    <FormInput value={rw04Totals.subTotal1.provAmtEnd} readOnly sx={{ width: '200px' }} />
+                  </StyledTotalTableCell>
+                </TableRow>
+                {rw04StaticRows.slice(4).map((row, index) => (
+                  <TableRow key={row.dbId}>
+                    <TableCell></TableCell>
+                    <TableCell align="center">{row.slNo}</TableCell>
+
+                    <TableCell sx={{ textAlign: 'left' }}>{row.label}</TableCell>
+                    <TableCell align="center">
+                      <FormInput value={row.provAmtStart} readOnly sx={{ width: '200px' }} />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput
+                        inputType={'wholeAmountDecimal'}
+                        value={row.writeOff}
+                        onChange={(e) => handleRw04StaticChange(index + 4, 'writeOff', e.target.value)}
+                        sx={{ width: '200px' }}
+                        placeholder="0.00"
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput value={row.addRed} readOnly sx={{ width: '200px' }} />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput
+                        inputType={'wholeAmountDecimal'}
+                        value={row.provAmtEnd}
+                        onChange={(e) => handleRw04StaticChange(index + 4, 'provAmtEnd', e.target.value)}
+                        sx={{ width: '200px' }}
+                        placeholder="0.00"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow>
                   <TableCell></TableCell>
-                  <TableCell align="center">{row.slNo}</TableCell>
-                  <TableCell sx={{ textAlign: 'left' }}>{row.label}</TableCell>
-                  <TableCell align="center">
-                    <FormInput value={row.provAmtStart} readOnly sx={{ width: '200px' }} />
+                  <TableCell align="center" style={{ fontWeight: 'bold' }}>
+                    12
                   </TableCell>
-                  <TableCell align="center">
-                    <FormInput
-                      inputType={'wholeAmountDecimal'}
-                      value={row.writeOff}
-                      onChange={(e) => handleRw04StaticChange(index, 'writeOff', e.target.value)}
-                      sx={{ width: '200px' }}
-                      placeholder="0.00"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <FormInput value={row.addRed} readOnly sx={{ width: '200px' }} />
-                  </TableCell>
-                  <TableCell align="center">
-                    <FormInput
-                      inputType={'wholeAmountDecimal'}
-                      value={row.provAmtEnd}
-                      onChange={(e) => handleRw04StaticChange(index, 'provAmtEnd', e.target.value)}
-                      sx={{ width: '200px' }}
-                      placeholder="0.00"
-                    />
+                  <TableCell colSpan={6} style={{ fontWeight: 'bold', textAlign: 'left' }}>
+                    OTHERS (PLEASE SPECIFY BELOW)
                   </TableCell>
                 </TableRow>
-              ))}
-              <TableRow>
-                <StyledTotalTableCell></StyledTotalTableCell>
-                <StyledTotalTableCell></StyledTotalTableCell>
-                <StyledTotalTableCell align="center">SUB TOTALS (ABOVE)</StyledTotalTableCell>
-                <StyledTotalTableCell>
-                  <FormInput value={rw04Totals.subTotal1.provAmtStart} readOnly sx={{ width: '200px' }} />
-                </StyledTotalTableCell>
-                <StyledTotalTableCell>
-                  <FormInput value={rw04Totals.subTotal1.writeOff} readOnly sx={{ width: '200px' }} />
-                </StyledTotalTableCell>
-                <StyledTotalTableCell>
-                  <FormInput value={rw04Totals.subTotal1.addRed} readOnly sx={{ width: '200px' }} />{' '}
-                </StyledTotalTableCell>
-                <StyledTotalTableCell>
-                  <FormInput value={rw04Totals.subTotal1.provAmtEnd} readOnly sx={{ width: '200px' }} />
-                </StyledTotalTableCell>
-              </TableRow>
-              {rw04StaticRows.slice(4).map((row, index) => (
-                <TableRow key={row.dbId}>
-                  <TableCell></TableCell>
-                  <TableCell align="center">{row.slNo}</TableCell>
+                {rw04DynamicRows.map((row, i) => (
+                  <TableRow key={row.key}>
+                    <TableCell padding="checkbox" align="center">
+                      <Checkbox
+                        checked={!!row.selected}
+                        onChange={() => handleRw04DynamicChange(i, 'selected', !row.selected)}
+                      />
+                    </TableCell>
+                    <TableCell align="center">{String.fromCharCode(97 + i)}</TableCell>
 
-                  <TableCell sx={{ textAlign: 'left' }}>{row.label}</TableCell>
-                  <TableCell align="center">
-                    <FormInput value={row.provAmtStart} readOnly sx={{ width: '200px' }} />
-                  </TableCell>
-                  <TableCell align="center">
-                    <FormInput
-                      inputType={'wholeAmountDecimal'}
-                      value={row.writeOff}
-                      onChange={(e) => handleRw04StaticChange(index + 4, 'writeOff', e.target.value)}
-                      sx={{ width: '200px' }}
-                      placeholder="0.00"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <FormInput value={row.addRed} readOnly sx={{ width: '200px' }} />
-                  </TableCell>
-                  <TableCell align="center">
-                    <FormInput
-                      inputType={'wholeAmountDecimal'}
-                      value={row.provAmtEnd}
-                      onChange={(e) => handleRw04StaticChange(index + 4, 'provAmtEnd', e.target.value)}
-                      sx={{ width: '200px' }}
-                      placeholder="0.00"
-                    />
-                  </TableCell>
+                    <TableCell>
+                      <FormInput
+                        inputType={'alphaNumericWithSpace'}
+                        maxLength={100}
+                        value={row.particulars}
+                        onChange={(e) => handleRw04DynamicChange(i, 'particulars', e.target.value)}
+                        sx={{ width: 1 }}
+                        multiline
+                        maxRows={3}
+                        size="full"
+                        placeholder="Enter Particulars"
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput
+                        inputType={'wholeAmountDecimal'}
+                        value={row.provAmtStart}
+                        readOnly={row.dbId !== 0} // Opening balance is read-only for saved rows
+                        sx={{ width: '200px' }}
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput
+                        inputType={'wholeAmountDecimal'}
+                        value={row.writeOff}
+                        onChange={(e) => handleRw04DynamicChange(i, 'writeOff', e.target.value)}
+                        sx={{ width: '200px' }}
+                        placeholder="0.00"
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput value={row.addRed} readOnly sx={{ width: '200px' }} />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput
+                        inputType={'wholeAmountDecimal'}
+                        value={row.provAmtEnd}
+                        onChange={(e) => handleRw04DynamicChange(i, 'provAmtEnd', e.target.value)}
+                        sx={{ width: '200px' }}
+                        placeholder="0.00"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow sx={{ position: 'sticky', bottom: 58, zIndex: 1 }}>
+                  <StyledTotalTableCell></StyledTotalTableCell>
+                  <StyledTotalTableCell></StyledTotalTableCell>
+                  <StyledTotalTableCell align="center">SUB TOTAL (OTHERS)</StyledTotalTableCell>
+                  <StyledTotalTableCell>
+                    <FormInput value={rw04Totals.subTotalOthers.provAmtStart} readOnly sx={{ width: '200px' }} />
+                  </StyledTotalTableCell>
+                  <StyledTotalTableCell>
+                    <FormInput value={rw04Totals.subTotalOthers.writeOff} readOnly sx={{ width: '200px' }} />
+                  </StyledTotalTableCell>
+                  <StyledTotalTableCell>
+                    <FormInput value={rw04Totals.subTotalOthers.addRed} readOnly sx={{ width: '200px' }} />
+                  </StyledTotalTableCell>
+                  <StyledTotalTableCell>
+                    <FormInput value={rw04Totals.subTotalOthers.provAmtEnd} readOnly sx={{ width: '200px' }} />
+                  </StyledTotalTableCell>
                 </TableRow>
-              ))}
-              <TableRow>
-                <TableCell></TableCell>
-                <TableCell align="center" style={{ fontWeight: 'bold' }}>
-                  12
-                </TableCell>
-                <TableCell colSpan={6} style={{ fontWeight: 'bold', textAlign: 'left' }}>
-                  OTHERS (PLEASE SPECIFY BELOW)
-                </TableCell>
-              </TableRow>
-              {rw04DynamicRows.map((row, i) => (
-                <TableRow key={row.key}>
-                  <TableCell padding="checkbox" align="center">
-                    <Checkbox
-                      checked={!!row.selected}
-                      onChange={() => handleRw04DynamicChange(i, 'selected', !row.selected)}
-                    />
-                  </TableCell>
-                  <TableCell align="center">{String.fromCharCode(97 + i)}</TableCell>
-
-                  <TableCell>
-                    <FormInput
-                      inputType={'alphaNumericWithSpace'}
-                      maxLength={100}
-                      value={row.particulars}
-                      onChange={(e) => handleRw04DynamicChange(i, 'particulars', e.target.value)}
-                      sx={{ width: 1 }}
-                      multiline
-                      maxRows={3}
-                      size="full"
-                      placeholder="Enter Particulars"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <FormInput
-                      inputType={'wholeAmountDecimal'}
-                      value={row.provAmtStart}
-                      readOnly={row.dbId !== 0} // Opening balance is read-only for saved rows
-                      sx={{ width: '200px' }}
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <FormInput
-                      inputType={'wholeAmountDecimal'}
-                      value={row.writeOff}
-                      onChange={(e) => handleRw04DynamicChange(i, 'writeOff', e.target.value)}
-                      sx={{ width: '200px' }}
-                      placeholder="0.00"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <FormInput value={row.addRed} readOnly sx={{ width: '200px' }} />
-                  </TableCell>
-                  <TableCell align="center">
-                    <FormInput
-                      inputType={'wholeAmountDecimal'}
-                      value={row.provAmtEnd}
-                      onChange={(e) => handleRw04DynamicChange(i, 'provAmtEnd', e.target.value)}
-                      sx={{ width: '200px' }}
-                      placeholder="0.00"
-                    />
-                  </TableCell>
+                <TableRow sx={{ position: 'sticky', bottom: 0, zIndex: 1 }}>
+                  <StyledTotalTableCell></StyledTotalTableCell>
+                  <StyledTotalTableCell></StyledTotalTableCell>
+                  <StyledTotalTableCell align="center">TOTAL</StyledTotalTableCell>
+                  <StyledTotalTableCell>
+                    <FormInput value={rw04Totals.grandTotal.provAmtStart} readOnly sx={{ width: '200px' }} />
+                  </StyledTotalTableCell>
+                  <StyledTotalTableCell>
+                    <FormInput value={rw04Totals.grandTotal.writeOff} readOnly sx={{ width: '200px' }} />
+                  </StyledTotalTableCell>
+                  <StyledTotalTableCell>
+                    <FormInput value={rw04Totals.grandTotal.addRed} readOnly sx={{ width: '200px' }} />
+                  </StyledTotalTableCell>
+                  <StyledTotalTableCell>
+                    <FormInput value={rw04Totals.grandTotal.provAmtEnd} readOnly sx={{ width: '200px' }} />
+                  </StyledTotalTableCell>
                 </TableRow>
-              ))}
-              <TableRow>
-                <StyledTotalTableCell></StyledTotalTableCell>
-                <StyledTotalTableCell></StyledTotalTableCell>
-
-                <StyledTotalTableCell align="center">SUB TOTAL (OTHERS)</StyledTotalTableCell>
-                <StyledTotalTableCell>
-                  <FormInput value={rw04Totals.subTotalOthers.provAmtStart} readOnly sx={{ width: '200px' }} />
-                </StyledTotalTableCell>
-                <StyledTotalTableCell>
-                  {' '}
-                  <FormInput value={rw04Totals.subTotalOthers.writeOff} readOnly sx={{ width: '200px' }} />
-                </StyledTotalTableCell>
-                <StyledTotalTableCell>
-                  {' '}
-                  <FormInput value={rw04Totals.subTotalOthers.addRed} readOnly sx={{ width: '200px' }} />
-                </StyledTotalTableCell>
-                <StyledTotalTableCell>
-                  {' '}
-                  <FormInput value={rw04Totals.subTotalOthers.provAmtEnd} readOnly sx={{ width: '200px' }} />
-                </StyledTotalTableCell>
-              </TableRow>
-              <TableRow>
-                <StyledTotalTableCell></StyledTotalTableCell>
-                <StyledTotalTableCell></StyledTotalTableCell>
-
-                <StyledTotalTableCell align="center">TOTAL</StyledTotalTableCell>
-                <StyledTotalTableCell>
-                  <FormInput value={rw04Totals.grandTotal.provAmtStart} readOnly sx={{ width: '200px' }} />
-                </StyledTotalTableCell>
-                <StyledTotalTableCell>
-                  <FormInput value={rw04Totals.grandTotal.writeOff} readOnly sx={{ width: '200px' }} />
-                </StyledTotalTableCell>
-                <StyledTotalTableCell>
-                  <FormInput value={rw04Totals.grandTotal.addRed} readOnly sx={{ width: '200px' }} />
-                </StyledTotalTableCell>
-                <StyledTotalTableCell>
-                  <FormInput value={rw04Totals.grandTotal.provAmtEnd} readOnly sx={{ width: '200px' }} />
-                </StyledTotalTableCell>
-              </TableRow>
-            </TableBody>
+              </TableFooter>
+            </>
           )}
 
           {tabIndex === 1 && (
-            <TableBody>
-              {rw05StaticRows.map((row, index) => (
-                <TableRow key={row.dbId}>
-                  <TableCell></TableCell>
-                  <TableCell align="center">{row.slNo}</TableCell>
-                  <TableCell sx={{ textAlign: 'left' }}>{row.label}</TableCell>
-                  <TableCell align="center">
-                    <FormInput value={row.provAmtStart} readOnly sx={{ width: '200px' }} />
-                  </TableCell>
-                  <TableCell align="center">
-                    <FormInput value={row.addReversal} readOnly sx={{ width: '200px' }} />
-                  </TableCell>
-                  <TableCell align="center">
-                    <FormInput
-                      inputType={'wholeAmountDecimal'}
-                      value={row.provAmtEnd}
-                      onChange={(e) => handleRw05StaticChange(index, 'provAmtEnd', e.target.value)}
-                      sx={{ width: '200px' }}
-                      placeholder="0.00"
-                    />
-                  </TableCell>
+            <>
+              <TableBody>
+                {rw05StaticRows.map((row, index) => (
+                  <TableRow key={row.dbId}>
+                    <TableCell></TableCell>
+                    <TableCell align="center">{row.slNo}</TableCell>
+                    <TableCell sx={{ textAlign: 'left' }}>{row.label}</TableCell>
+                    <TableCell align="center">
+                      <FormInput value={row.provAmtStart} readOnly sx={{ width: '200px' }} />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput value={row.addReversal} readOnly sx={{ width: '200px' }} />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput
+                        inputType={'wholeAmountDecimal'}
+                        value={row.provAmtEnd}
+                        onChange={(e) => handleRw05StaticChange(index, 'provAmtEnd', e.target.value)}
+                        sx={{ width: '200px' }}
+                        placeholder="0.00"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {rw05DynamicRows.map((row, index) => (
+                  <TableRow key={row.key}>
+                    <TableCell padding="checkbox" align="center">
+                      <Checkbox
+                        checked={!!row.selected}
+                        onChange={() => handleRw05DynamicChange(index, 'selected', !row.selected)}
+                      />
+                    </TableCell>
+                    <TableCell align="center">{rw05StaticRows.length + index + 1}</TableCell>
+                    <TableCell>
+                      <FormInput
+                        inputType={'alphaNumericWithSpace'}
+                        maxLength={100}
+                        value={row.particulars}
+                        onChange={(e) => handleRw05DynamicChange(index, 'particulars', e.target.value)}
+                        sx={{ width: 1 }}
+                        multiline
+                        maxRows={3}
+                        size="full"
+                        placeholder="Enter Particulars"
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput
+                        value={row.provAmtStart}
+                        readOnly={row.dbId !== 0} // Opening is editable only for new rows
+                        onChange={(e) => handleRw05DynamicChange(index, 'provAmtStart', e.target.value)}
+                        sx={{ width: '200px' }}
+                        placeholder="0.00"
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput value={row.addReversal} readOnly sx={{ width: '200px' }} />
+                    </TableCell>
+                    <TableCell align="center">
+                      <FormInput
+                        inputType={'wholeAmountDecimal'}
+                        value={row.provAmtEnd}
+                        onChange={(e) => handleRw05DynamicChange(index, 'provAmtEnd', e.target.value)}
+                        sx={{ width: '200px' }}
+                        placeholder="0.00"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow sx={{ position: 'sticky', bottom: 0, zIndex: 1 }}>
+                  <StyledTotalTableCell></StyledTotalTableCell>
+                  <StyledTotalTableCell></StyledTotalTableCell>
+                  <StyledTotalTableCell align="center">TOTAL</StyledTotalTableCell>
+                  <StyledTotalTableCell>
+                    <FormInput value={rw05TotalRow.provAmtStart} readOnly sx={{ width: '200px' }} />
+                  </StyledTotalTableCell>
+                  <StyledTotalTableCell>
+                    <FormInput value={rw05TotalRow.addReversal} readOnly sx={{ width: '200px' }} />
+                  </StyledTotalTableCell>
+                  <StyledTotalTableCell>
+                    <FormInput value={rw05TotalRow.provAmtEnd} readOnly sx={{ width: '200px' }} />
+                  </StyledTotalTableCell>
                 </TableRow>
-              ))}
-              {rw05DynamicRows.map((row, index) => (
-                <TableRow key={row.key}>
-                  <TableCell padding="checkbox" align="center">
-                    <Checkbox
-                      checked={!!row.selected}
-                      onChange={() => handleRw05DynamicChange(index, 'selected', !row.selected)}
-                    />
-                  </TableCell>
-                  <TableCell align="center">{rw05StaticRows.length + index + 1}</TableCell>
-                  <TableCell>
-                    <FormInput
-                      inputType={'alphaNumericWithSpace'}
-                      maxLength={100}
-                      value={row.particulars}
-                      onChange={(e) => handleRw05DynamicChange(index, 'particulars', e.target.value)}
-                      sx={{ width: 1 }}
-                      multiline
-                      maxRows={3}
-                      size="full"
-                      placeholder="Enter Particulars"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <FormInput
-                      value={row.provAmtStart}
-                      readOnly={row.dbId !== 0} // Opening is editable only for new rows
-                      onChange={(e) => handleRw05DynamicChange(index, 'provAmtStart', e.target.value)}
-                      sx={{ width: '200px' }}
-                      placeholder="0.00"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <FormInput value={row.addReversal} readOnly sx={{ width: '200px' }} />
-                  </TableCell>
-                  <TableCell align="center">
-                    <FormInput
-                      inputType={'wholeAmountDecimal'}
-                      value={row.provAmtEnd}
-                      onChange={(e) => handleRw05DynamicChange(index, 'provAmtEnd', e.target.value)}
-                      sx={{ width: '200px' }}
-                      placeholder="0.00"
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-              <TableRow>
-                <StyledTotalTableCell></StyledTotalTableCell>
-                <StyledTotalTableCell></StyledTotalTableCell>
-                <StyledTotalTableCell align="center">TOTAL</StyledTotalTableCell>
-                <StyledTotalTableCell>
-                  <FormInput value={rw05TotalRow.provAmtStart} readOnly sx={{ width: '200px' }} />
-                </StyledTotalTableCell>
-                <StyledTotalTableCell>
-                  <FormInput value={rw05TotalRow.addReversal} readOnly sx={{ width: '200px' }} />
-                </StyledTotalTableCell>
-                <StyledTotalTableCell>
-                  <FormInput value={rw05TotalRow.provAmtEnd} readOnly sx={{ width: '200px' }} />
-                </StyledTotalTableCell>
-              </TableRow>
-            </TableBody>
+              </TableFooter>
+            </>
           )}
         </Table>
       </TableContainer>
