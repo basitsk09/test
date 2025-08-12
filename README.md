@@ -57,8 +57,8 @@ const getInitialRw04StaticRows = () => [
     label: 'FRAUDS - DEBITED TO RECALLED ASSETS A/c (Prod Cd 6998-9981)**',
     provAmtStart: '',
     writeOff: '',
-    addRed: '',
-    provAmtEnd: '0.00',
+    addRed: '0.00',
+    provAmtEnd: '',
   },
   {
     dbId: 2,
@@ -66,8 +66,8 @@ const getInitialRw04StaticRows = () => [
     label: 'OTHERS LOSSES IN RECALLED ASSETS (Prod cd 6998 - 9982)#',
     provAmtStart: '',
     writeOff: '',
-    addRed: '',
-    provAmtEnd: '0.00',
+    addRed: '0.00',
+    provAmtEnd: '',
   },
   {
     dbId: 3,
@@ -75,8 +75,8 @@ const getInitialRw04StaticRows = () => [
     label: 'BGL Number 2399969 Internal Fraud ##1',
     provAmtStart: '',
     writeOff: '',
-    addRed: '',
-    provAmtEnd: '0.00',
+    addRed: '0.00',
+    provAmtEnd: '',
   },
   {
     dbId: 4,
@@ -84,8 +84,8 @@ const getInitialRw04StaticRows = () => [
     label: 'BGL Number 2399970 External Fraud ##2',
     provAmtStart: '',
     writeOff: '',
-    addRed: '',
-    provAmtEnd: '0.00',
+    addRed: '0.00',
+    provAmtEnd: '',
   },
   {
     dbId: 6,
@@ -93,8 +93,8 @@ const getInitialRw04StaticRows = () => [
     label: 'BGL Number 4697984 Pension Overpayment unreconciled Portion',
     provAmtStart: '',
     writeOff: '',
-    addRed: '',
-    provAmtEnd: '0.00',
+    addRed: '0.00',
+    provAmtEnd: '',
   },
   {
     dbId: 7,
@@ -102,8 +102,8 @@ const getInitialRw04StaticRows = () => [
     label: 'FRAUDS - OTHER (NOT DEBITED TO RA A/c) $',
     provAmtStart: '',
     writeOff: '',
-    addRed: '',
-    provAmtEnd: '0.00',
+    addRed: '0.00',
+    provAmtEnd: '',
   },
   {
     dbId: 8,
@@ -111,8 +111,8 @@ const getInitialRw04StaticRows = () => [
     label: 'REVENUE ITEM IN SYSTEM SUSPENSE',
     provAmtStart: '',
     writeOff: '',
-    addRed: '',
-    provAmtEnd: '0.00',
+    addRed: '0.00',
+    provAmtEnd: '',
   },
   {
     dbId: 9,
@@ -120,8 +120,8 @@ const getInitialRw04StaticRows = () => [
     label: 'PROVISION ON ACCOUNT OF FSLO',
     provAmtStart: '',
     writeOff: '',
-    addRed: '',
-    provAmtEnd: '0.00',
+    addRed: '0.00',
+    provAmtEnd: '',
   },
   {
     dbId: 10,
@@ -129,8 +129,8 @@ const getInitialRw04StaticRows = () => [
     label: 'PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING IN ADJUSTING ACCOUNT FOR PREVIOUS QUARTER(S)',
     provAmtStart: '',
     writeOff: '',
-    addRed: '',
-    provAmtEnd: '0.00',
+    addRed: '0.00',
+    provAmtEnd: '',
   },
   {
     dbId: 11,
@@ -138,8 +138,8 @@ const getInitialRw04StaticRows = () => [
     label: 'PROVISION ON NPA INTREST FREE STAFF LOANS',
     provAmtStart: '',
     writeOff: '',
-    addRed: '',
-    provAmtEnd: '0.00',
+    addRed: '0.00',
+    provAmtEnd: '',
   },
 ];
 
@@ -148,8 +148,8 @@ const createInitialRw04DynamicRow = () => ({
   particulars: '',
   provAmtStart: '',
   writeOff: '',
-  addRed: '',
-  provAmtEnd: '0.00',
+  addRed: '0.00',
+  provAmtEnd: '',
   selected: false,
   key: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 });
@@ -161,35 +161,35 @@ const getInitialRw05StaticRows = () => [
     slNo: '1',
     label: 'CONTINGENT LIABILITY AS PER AS -29',
     provAmtStart: '',
-    addReversal: '',
-    provAmtEnd: '0.00',
+    addReversal: '0.00',
+    provAmtEnd: '',
   },
-  { dbId: 2, slNo: '2', label: 'DELAYED REPORTING PENALTY', provAmtStart: '', addReversal: '', provAmtEnd: '0.00' },
-  { dbId: 3, slNo: '3', label: 'EX-GRATIA PAYMENT', provAmtStart: '', addReversal: '', provAmtEnd: '0.00' },
+  { dbId: 2, slNo: '2', label: 'DELAYED REPORTING PENALTY', provAmtStart: '', addReversal: '0.00', provAmtEnd: '' },
+  { dbId: 3, slNo: '3', label: 'EX-GRATIA PAYMENT', provAmtStart: '', addReversal: '0.00', provAmtEnd: '' },
   {
     dbId: 4,
     slNo: '4',
     label: 'PROVISION ON OVERDUE DEPOSIT INTT',
     provAmtStart: '',
-    addReversal: '',
-    provAmtEnd: '0.00',
+    addReversal: '0.00',
+    provAmtEnd: '',
   },
-  { dbId: 5, slNo: '5', label: 'LEAVE ENCASHMENT', provAmtStart: '', addReversal: '', provAmtEnd: '0.00' },
+  { dbId: 5, slNo: '5', label: 'LEAVE ENCASHMENT', provAmtStart: '', addReversal: '0.00', provAmtEnd: '' },
   {
     dbId: 6,
     slNo: '6',
     label: 'PROVISION FOR PERFORMANCE LINKED INCENTIVES',
     provAmtStart: '',
-    addReversal: '',
-    provAmtEnd: '0.00',
+    addReversal: '0.00',
+    provAmtEnd: '',
   },
   {
     dbId: 7,
     slNo: '7',
     label: 'PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING IN ADJUSTING ACCOUNT FOR PREVIOUS QUARTER(S)',
     provAmtStart: '',
-    addReversal: '',
-    provAmtEnd: '0.00',
+    addReversal: '0.00',
+    provAmtEnd: '',
   },
 ];
 
@@ -199,8 +199,8 @@ const createInitialRw05DynamicRow = () => ({
   selected: false,
   particulars: '',
   provAmtStart: '',
-  addReversal: '',
-  provAmtEnd: '0.00',
+  addReversal: '0.00',
+  provAmtEnd: '',
 });
 
 // #endregion
@@ -330,15 +330,17 @@ const RW04 = () => {
   const calculateRw04Row = (row) => {
     const start = parseFloat(row.provAmtStart || 0);
     const writeOff = parseFloat(row.writeOff || 0);
-    const addRed = parseFloat(row.addRed || 0);
-    row.provAmtEnd = (start - writeOff + addRed).toFixed(2);
+    const end = parseFloat(row.provAmtEnd || 0);
+    // As per header: addRed (5) = provAmtEnd (6) - (provAmtStart (3) + writeOff (4))
+    row.addRed = (end - (start + writeOff)).toFixed(2);
     return row;
   };
 
   const handleRw04StaticChange = (index, key, value) => {
     if (!isNumeric(value)) return;
     const currentRows = [...rw04StaticRows];
-    currentRows[index] = calculateRw04Row({ ...currentRows[index], [key]: value });
+    const updatedRow = { ...currentRows[index], [key]: value };
+    currentRows[index] = calculateRw04Row(updatedRow);
     setRw04StaticRows(currentRows);
   };
 
@@ -387,15 +389,17 @@ const RW04 = () => {
   // #region --- RW05 Calculations & Handlers ---
   const calculateRw05Row = (row) => {
     const start = parseFloat(row.provAmtStart || 0);
-    const addReversal = parseFloat(row.addReversal || 0);
-    row.provAmtEnd = (start + addReversal).toFixed(2);
+    const end = parseFloat(row.provAmtEnd || 0);
+    // As per header: addReversal (4) = provAmtEnd (5) - provAmtStart (3)
+    row.addReversal = (end - start).toFixed(2);
     return row;
   };
 
   const handleRw05StaticChange = (index, key, value) => {
     if (!isNumeric(value)) return;
     const updatedRows = [...rw05StaticRows];
-    updatedRows[index] = calculateRw05Row({ ...updatedRows[index], [key]: value });
+    const updatedRow = { ...updatedRows[index], [key]: value };
+    updatedRows[index] = calculateRw05Row(updatedRow);
     setRw05StaticRows(updatedRows);
   };
 
@@ -591,19 +595,24 @@ const RW04 = () => {
                   <TableCell align="center">
                     <FormInput value={row.provAmtStart} readOnly sx={{ width: '200px' }} />
                   </TableCell>
-                  {['writeOff', 'addRed'].map((key) => (
-                    <TableCell key={key} align="center">
-                      {' '}
-                      <FormInput
-                        value={row[key]}
-                        onChange={(e) => handleRw04StaticChange(index, key, e.target.value)}
-                        sx={{ width: '200px' }}
-                        placeholder="0.00"
-                      />{' '}
-                    </TableCell>
-                  ))}
                   <TableCell align="center">
-                    <FormInput value={row.provAmtEnd} readOnly sx={{ width: '200px' }} />
+                    <FormInput
+                      value={row.writeOff}
+                      onChange={(e) => handleRw04StaticChange(index, 'writeOff', e.target.value)}
+                      sx={{ width: '200px' }}
+                      placeholder="0.00"
+                    />
+                  </TableCell>
+                  <TableCell align="center">
+                    <FormInput value={row.addRed} readOnly sx={{ width: '200px' }} />
+                  </TableCell>
+                  <TableCell align="center">
+                    <FormInput
+                      value={row.provAmtEnd}
+                      onChange={(e) => handleRw04StaticChange(index, 'provAmtEnd', e.target.value)}
+                      sx={{ width: '200px' }}
+                      placeholder="0.00"
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -633,19 +642,24 @@ const RW04 = () => {
                   <TableCell align="center">
                     <FormInput value={row.provAmtStart} readOnly sx={{ width: '200px' }} />
                   </TableCell>
-                  {['writeOff', 'addRed'].map((key) => (
-                    <TableCell key={key} align="center">
-                      {' '}
-                      <FormInput
-                        value={row[key]}
-                        onChange={(e) => handleRw04StaticChange(index + 4, key, e.target.value)}
-                        sx={{ width: '200px' }}
-                        placeholder="0.00"
-                      />{' '}
-                    </TableCell>
-                  ))}
                   <TableCell align="center">
-                    <FormInput value={row.provAmtEnd} readOnly sx={{ width: '200px' }} />
+                    <FormInput
+                      value={row.writeOff}
+                      onChange={(e) => handleRw04StaticChange(index + 4, 'writeOff', e.target.value)}
+                      sx={{ width: '200px' }}
+                      placeholder="0.00"
+                    />
+                  </TableCell>
+                  <TableCell align="center">
+                    <FormInput value={row.addRed} readOnly sx={{ width: '200px' }} />
+                  </TableCell>
+                  <TableCell align="center">
+                    <FormInput
+                      value={row.provAmtEnd}
+                      onChange={(e) => handleRw04StaticChange(index + 4, 'provAmtEnd', e.target.value)}
+                      sx={{ width: '200px' }}
+                      placeholder="0.00"
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -682,21 +696,30 @@ const RW04 = () => {
                     />
                   </TableCell>
                   <TableCell align="center">
-                    <FormInput value={row.provAmtStart} readOnly sx={{ width: '200px' }} />
+                    <FormInput
+                      value={row.provAmtStart}
+                      readOnly={row.dbId !== 0} // Opening balance is read-only for saved rows
+                      sx={{ width: '200px' }}
+                    />
                   </TableCell>
-                  {['writeOff', 'addRed'].map((key) => (
-                    <TableCell key={key} align="center">
-                      {' '}
-                      <FormInput
-                        value={row[key]}
-                        onChange={(e) => handleRw04DynamicChange(i, key, e.target.value)}
-                        sx={{ width: '200px' }}
-                        placeholder="0.00"
-                      />{' '}
-                    </TableCell>
-                  ))}
                   <TableCell align="center">
-                    <FormInput value={row.provAmtEnd} readOnly sx={{ width: '200px' }} />
+                    <FormInput
+                      value={row.writeOff}
+                      onChange={(e) => handleRw04DynamicChange(i, 'writeOff', e.target.value)}
+                      sx={{ width: '200px' }}
+                      placeholder="0.00"
+                    />
+                  </TableCell>
+                  <TableCell align="center">
+                    <FormInput value={row.addRed} readOnly sx={{ width: '200px' }} />
+                  </TableCell>
+                  <TableCell align="center">
+                    <FormInput
+                      value={row.provAmtEnd}
+                      onChange={(e) => handleRw04DynamicChange(i, 'provAmtEnd', e.target.value)}
+                      sx={{ width: '200px' }}
+                      placeholder="0.00"
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -748,21 +771,20 @@ const RW04 = () => {
                 <TableRow key={row.dbId}>
                   <TableCell></TableCell>
                   <TableCell align="center">{row.slNo}</TableCell>
-
                   <TableCell sx={{ textAlign: 'left' }}>{row.label}</TableCell>
                   <TableCell align="center">
                     <FormInput value={row.provAmtStart} readOnly sx={{ width: '200px' }} />
                   </TableCell>
                   <TableCell align="center">
+                    <FormInput value={row.addReversal} readOnly sx={{ width: '200px' }} />
+                  </TableCell>
+                  <TableCell align="center">
                     <FormInput
-                      value={row.addReversal}
-                      onChange={(e) => handleRw05StaticChange(index, 'addReversal', e.target.value)}
+                      value={row.provAmtEnd}
+                      onChange={(e) => handleRw05StaticChange(index, 'provAmtEnd', e.target.value)}
                       sx={{ width: '200px' }}
                       placeholder="0.00"
                     />
-                  </TableCell>
-                  <TableCell align="center">
-                    <FormInput value={row.provAmtEnd} readOnly sx={{ width: '200px' }} />
                   </TableCell>
                 </TableRow>
               ))}
@@ -789,18 +811,24 @@ const RW04 = () => {
                     />
                   </TableCell>
                   <TableCell align="center">
-                    <FormInput value={row.provAmtStart} readOnly sx={{ width: '200px' }} />
-                  </TableCell>
-                  <TableCell align="center">
                     <FormInput
-                      value={row.addReversal}
-                      onChange={(e) => handleRw05DynamicChange(index, 'addReversal', e.target.value)}
+                      value={row.provAmtStart}
+                      readOnly={row.dbId !== 0} // Opening is editable only for new rows
+                      onChange={(e) => handleRw05DynamicChange(index, 'provAmtStart', e.target.value)}
                       sx={{ width: '200px' }}
                       placeholder="0.00"
                     />
                   </TableCell>
                   <TableCell align="center">
-                    <FormInput value={row.provAmtEnd} readOnly sx={{ width: '200px' }} />
+                    <FormInput value={row.addReversal} readOnly sx={{ width: '200px' }} />
+                  </TableCell>
+                  <TableCell align="center">
+                    <FormInput
+                      value={row.provAmtEnd}
+                      onChange={(e) => handleRw05DynamicChange(index, 'provAmtEnd', e.target.value)}
+                      sx={{ width: '200px' }}
+                      placeholder="0.00"
+                    />
                   </TableCell>
                 </TableRow>
               ))}
