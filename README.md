@@ -51,7 +51,7 @@ const StyledTotalTableCell = styled(TableCell)(() => ({
 
 const isNumeric = (val) => val === null || val === '' || (!isNaN(parseFloat(val)) && isFinite(val));
 
-// --- RW04 Dynamic Row Creator ---
+// --- Row Creators for New/Dynamic Rows ---
 const createInitialRw04DynamicRow = () => ({
   dbId: 0,
   particulars: '',
@@ -63,45 +63,6 @@ const createInitialRw04DynamicRow = () => ({
   key: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 });
 
-// --- RW05 Initial Data (Unchanged) ---
-const getInitialRw05StaticRows = () => [
-  {
-    dbId: 1,
-    slNo: '1',
-    label: 'CONTINGENT LIABILITY AS PER AS -29',
-    provAmtStart: '',
-    addReversal: '0.00',
-    provAmtEnd: '',
-  },
-  { dbId: 2, slNo: '2', label: 'DELAYED REPORTING PENALTY', provAmtStart: '', addReversal: '0.00', provAmtEnd: '' },
-  { dbId: 3, slNo: '3', label: 'EX-GRATIA PAYMENT', provAmtStart: '', addReversal: '0.00', provAmtEnd: '' },
-  {
-    dbId: 4,
-    slNo: '4',
-    label: 'PROVISION ON OVERDUE DEPOSIT INTT',
-    provAmtStart: '',
-    addReversal: '0.00',
-    provAmtEnd: '',
-  },
-  { dbId: 5, slNo: '5', label: 'LEAVE ENCASHMENT', provAmtStart: '', addReversal: '0.00', provAmtEnd: '' },
-  {
-    dbId: 6,
-    slNo: '6',
-    label: 'PROVISION FOR PERFORMANCE LINKED INCENTIVES',
-    provAmtStart: '',
-    addReversal: '0.00',
-    provAmtEnd: '',
-  },
-  {
-    dbId: 7,
-    slNo: '7',
-    label: 'PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING IN ADJUSTING ACCOUNT FOR PREVIOUS QUARTER(S)',
-    provAmtStart: '',
-    addReversal: '0.00',
-    provAmtEnd: '',
-  },
-];
-
 const createInitialRw05DynamicRow = () => ({
   dbId: 0,
   key: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -111,6 +72,8 @@ const createInitialRw05DynamicRow = () => ({
   addReversal: '0.00',
   provAmtEnd: '',
 });
+
+// REMOVED: getInitialRw05StaticRows function is no longer needed.
 
 // #endregion
 
@@ -130,11 +93,11 @@ const RW04 = () => {
   const [rw04StaticRows, setRw04StaticRows] = useState([]);
   const [rw04DynamicRows, setRw04DynamicRows] = useState([]);
 
-  // RW05 State
-  const [rw05StaticRows, setRw05StaticRows] = useState(getInitialRw05StaticRows());
+  // RW05 State - Initialized as empty, to be populated from API
+  const [rw05StaticRows, setRw05StaticRows] = useState([]);
   const [rw05DynamicRows, setRw05DynamicRows] = useState([]);
 
-  // NEW: State for API validation amounts and mismatch flags
+  // State for API validation amounts and mismatch flags
   const [apiWriteOffAmount, setApiWriteOffAmount] = useState(null);
   const [apiYsaAmount, setApiYsaAmount] = useState(null);
   const [isWriteOffMismatch, setIsWriteOffMismatch] = useState(false);
@@ -176,16 +139,12 @@ const RW04 = () => {
       const response = await callApi('/RW04A/getData', getBasePayload(), 'POST');
       if (response?.result) {
         const { data, writeOffAmount, ysa20183Amount } = response.result;
-
-        // NEW: Store API values for validation
         setApiWriteOffAmount(writeOffAmount);
         setApiYsaAmount(ysa20183Amount);
-
         const loadedStaticRows = [];
         const loadedDynamicRows = [];
         const staticDbIds = new Set([1, 2, 3, 4, 6, 7, 8, 9, 10, 11]);
         const filteredData = data.filter((row) => row[1] && !row[1].toUpperCase().includes('SUB TOTAL'));
-
         filteredData.forEach((row) => {
           const dbId = parseInt(row[6], 10);
           const parsedRow = {
@@ -209,55 +168,65 @@ const RW04 = () => {
         setRw04DynamicRows(loadedDynamicRows);
       }
     } catch (error) {
-      if (error.message !== 'canceled') setSnackbarMessage('Failed to fetch RW04 data.', 'error');
+      if (error.message !== 'canceled') setSnackbarMessage('Failed to fetch RW04 Part A data.', 'error');
     }
-  }, [reportObject]);
+  }, [getBasePayload, setSnackbarMessage]);
 
   const loadRw05Data = useCallback(async () => {
     try {
+      // UPDATED: This function now populates Part B fully from the API
       const response = await callApi('/RW04B/getData', getBasePayload(), 'POST');
       if (response?.data) {
         const apiData = response.data;
-        const loadedStaticRows = getInitialRw05StaticRows();
+        const loadedStaticRows = [];
         const loadedDynamicRows = [];
+        // Assuming Part B static rows have dbIds 1-7 from the original hardcoded list
+        const staticDbIds = new Set([1, 2, 3, 4, 5, 6, 7]);
+
         apiData.forEach((row) => {
+          // Assuming API format [dbId, label, provAmtStart, addReversal, provAmtEnd]
           const dbId = parseInt(row[0], 10);
-          const targetRow = { provAmtStart: row[2], addReversal: row[3], provAmtEnd: row[4] };
-          const staticRowToUpdate = loadedStaticRows.find((r) => r.dbId === dbId);
-          if (staticRowToUpdate) {
-            Object.assign(staticRowToUpdate, targetRow);
+          const parsedRow = {
+            dbId,
+            slNo: String(loadedStaticRows.length + loadedDynamicRows.length + 1),
+            label: row[1],
+            provAmtStart: row[2] || '',
+            addReversal: row[3] || '',
+            provAmtEnd: row[4] || '',
+            key: dbId,
+          };
+          if (staticDbIds.has(dbId)) {
+            loadedStaticRows.push(parsedRow);
           } else {
-            loadedDynamicRows.push({
-              ...createInitialRw05DynamicRow(),
-              ...targetRow,
-              dbId,
-              key: dbId,
-              particulars: row[1],
-            });
+            loadedDynamicRows.push({ ...createInitialRw05DynamicRow(), ...parsedRow, particulars: row[1] });
           }
         });
+        // Sort by dbId to ensure correct order
+        loadedStaticRows.sort((a, b) => a.dbId - b.dbId);
+        // Re-assign slNo after sorting to ensure it's sequential
+        loadedStaticRows.forEach((row, index) => (row.slNo = String(index + 1)));
+
         setRw05StaticRows(loadedStaticRows);
         setRw05DynamicRows(loadedDynamicRows);
       }
-    } catch (error) {
-      if (error.message !== 'canceled') setSnackbarMessage('Failed to fetch RW05 data.', 'error');
+    } catch (error)      if (error.message !== 'canceled') setSnackbarMessage('Failed to fetch RW04 Part B data.', 'error');
     }
-  }, [reportObject]);
+  }, [getBasePayload, setSnackbarMessage]);
 
   useEffect(() => {
     if (reportObject) {
       loadRw04Data();
-      //loadRw05Data();
+      loadRw05Data(); // Re-enabled to load Part B data
     }
-  }, [reportObject]);
+  }, [reportObject, loadRw04Data, loadRw05Data]);
   // #endregion
 
-  // #region --- RW04 Calculations & Handlers ---
+  // #region --- Calculations & Handlers ---
   const calculateRw04Row = (row) => {
     const start = parseFloat(row.provAmtStart || 0.0);
     const writeOff = parseFloat(row.writeOff || 0.0);
     const end = parseFloat(row.provAmtEnd || 0.0);
-    row.addRed = (end - (start + writeOff)).toFixed(2); // Formula based on user feedback
+    row.addRed = (end - (start + writeOff)).toFixed(2);
     return row;
   };
 
@@ -310,9 +279,7 @@ const RW04 = () => {
       grandTotal: formatTotals(grandTotal),
     };
   }, [rw04StaticRows, rw04DynamicRows]);
-  // #endregion
 
-  // #region --- RW05 Calculations & Handlers (Unchanged) ---
   const calculateRw05Row = (row) => {
     const start = parseFloat(row.provAmtStart || 0.0);
     const end = parseFloat(row.provAmtEnd || 0.0);
@@ -320,11 +287,14 @@ const RW04 = () => {
     return row;
   };
 
-  const handleRw05StaticChange = (index, key, value) => {
+  // UPDATED: Now finds the row by dbId for accuracy.
+  const handleRw05StaticChange = (dbId, key, value) => {
     if (!isNumeric(value)) return;
     const updatedRows = [...rw05StaticRows];
-    const updatedRow = { ...updatedRows[index], [key]: value };
-    updatedRows[index] = calculateRw05Row(updatedRow);
+    const rowIndex = updatedRows.findIndex((r) => r.dbId === dbId);
+    if (rowIndex === -1) return;
+    const updatedRow = { ...updatedRows[rowIndex], [key]: value };
+    updatedRows[rowIndex] = calculateRw05Row(updatedRow);
     setRw05StaticRows(updatedRows);
   };
 
@@ -340,7 +310,8 @@ const RW04 = () => {
   };
 
   const rw05TotalRow = useMemo(() => {
-    const totals = [...rw05StaticRows, ...rw05DynamicRows].reduce(
+    const allRows = [...rw05StaticRows, ...rw05DynamicRows];
+    const totals = allRows.reduce(
       (acc, row) => {
         acc.provAmtStart += parseFloat(row.provAmtStart || 0.0);
         acc.addReversal += parseFloat(row.addReversal || 0.0);
@@ -358,20 +329,15 @@ const RW04 = () => {
   // #endregion
 
   // #region --- Validation Effect ---
-  // NEW: This effect handles the validation logic for WriteOff and YSA amounts.
   useEffect(() => {
-    // Validate Total Write Off
     if (apiWriteOffAmount !== null && rw04Totals.grandTotal.writeOff) {
       const totalWriteOff = parseFloat(rw04Totals.grandTotal.writeOff);
       const expectedWriteOff = parseFloat(apiWriteOffAmount);
-      // Use a tolerance for floating point comparison
       setIsWriteOffMismatch(Math.abs(totalWriteOff - expectedWriteOff) > 0.001);
     }
-    // Validate Sub Total Closing Provision
     if (apiYsaAmount !== null && rw04Totals.subTotal1.provAmtEnd) {
       const subTotalEnd = parseFloat(rw04Totals.subTotal1.provAmtEnd);
       const expectedYsa = parseFloat(apiYsaAmount);
-      // Use a tolerance for floating point comparison
       setIsYsaMismatch(Math.abs(subTotalEnd - expectedYsa) > 0.001);
     }
   }, [rw04Totals, apiWriteOffAmount, apiYsaAmount]);
@@ -395,7 +361,7 @@ const RW04 = () => {
   };
 
   const handleDeleteRow = async () => {
-    const endpoint = tabIndex === 0 ? '/RW04A/deleteRows' : '/RW05/deleteRow';
+    const endpoint = tabIndex === 0 ? '/RW04A/deleteRows' : '/RW04B/deleteRow';
     const dynamicRows = tabIndex === 0 ? rw04DynamicRows : rw05DynamicRows;
     const setDynamicRows = tabIndex === 0 ? setRw04DynamicRows : setRw05DynamicRows;
     const rowsToDelete = dynamicRows.filter((row) => row.selected && row.dbId !== 0);
@@ -412,7 +378,7 @@ const RW04 = () => {
     }
 
     try {
-      await callApi(endpoint, { userCapacity: user.userCapacity, rowIds: rowsToDelete.map((row) => row.dbId) }, 'POST');
+      await callApi(endpoint, { userCapacity: user.capacity, rowIds: rowsToDelete.map((row) => row.dbId) }, 'POST');
       setSnackbarMessage('Selected rows deleted successfully!', 'success');
       setDynamicRows(newRowsToKeep);
     } catch (error) {
@@ -428,7 +394,6 @@ const RW04 = () => {
     if (tabIndex === 0) {
       endpoint = '/RW04A/saveStatic';
       const allRows = [...rw04StaticRows, ...rw04DynamicRows.filter((r) => r.particulars.trim() || r.label.trim())];
-      console.log('allRows', allRows);
       const data = allRows.map((row) => [
         row.label || row.particulars,
         row.provAmtStart || '0.00',
@@ -437,28 +402,25 @@ const RW04 = () => {
         row.provAmtEnd || '0.00',
         String(row.dbId),
       ]);
-
       const subTotalRowForPayload = [
-        // '5', // slNo
-        'SUB TOTALS (ABOVE)', // label
+        'SUB TOTALS (ABOVE)',
         rw04Totals.subTotal1.provAmtStart,
         rw04Totals.subTotal1.writeOff,
         rw04Totals.subTotal1.addRed,
         rw04Totals.subTotal1.provAmtEnd,
-        '5', // dbId
+        '5',
       ];
       data.splice(4, 0, subTotalRowForPayload);
       finalPayload = { ...basePayload, value: data };
-      console.log('finalPayload', finalPayload);
     } else {
-      endpoint = '/RW05/saveData';
+      endpoint = '/RW04B/saveData';
       const allRows = [...rw05StaticRows, ...rw05DynamicRows.filter((r) => r.particulars.trim())];
       const data = allRows.map((row) => [
+        String(row.dbId),
         row.label || row.particulars,
         row.provAmtStart || '0.00',
         row.addReversal || '0.00',
         row.provAmtEnd || '0.00',
-        String(row.dbId),
       ]);
       finalPayload = { ...basePayload, value: data };
     }
@@ -494,7 +456,7 @@ const RW04 = () => {
   // #endregion
 
   // #region --- Render Logic ---
-  if (isLoading && rw04StaticRows.length === 0 && rw05StaticRows[0]?.provAmtStart === '') {
+  if (isLoading && rw04StaticRows.length === 0 && rw05StaticRows.length === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" height="50vh">
         <CircularProgress />
@@ -517,19 +479,16 @@ const RW04 = () => {
           disabled={isLoading}
         />
         <CustomButton label={'Save'} buttonType={'save'} onClickHandler={handleSave} disabled={isLoading} />
-        {/* NEW: Submit button is disabled if there is a validation mismatch */}
         {tabIndex === 1 && (
           <CustomButton
             label={'Submit RW04 Part A & B'}
             buttonType={'submit'}
             onClickHandler={handleSubmitReport}
             disabled={isLoading || reportObject?.status !== '11' || isWriteOffMismatch || isYsaMismatch}
-            // sx={{ ml: 5 }}
           />
         )}
       </Box>
 
-      {/* NEW: Validation helper text */}
       <Box mt={1} minHeight="40px">
         {tabIndex === 0 && isYsaMismatch && (
           <Alert severity="error">
@@ -550,7 +509,6 @@ const RW04 = () => {
             <TableRow>
               <StyledTableCell>SELECT</StyledTableCell>
               <StyledTableCell sx={{ minWidth: '65px' }}>SL. NO.</StyledTableCell>
-
               {(tabIndex === 0 ? headers_rw04 : headers_rw05).map((head, idx) => (
                 <StyledTableCell
                   key={idx}
@@ -628,7 +586,6 @@ const RW04 = () => {
                       <FormInput value={rw04Totals.subTotal1.addRed} readOnly sx={{ width: '200px' }} />{' '}
                     </StyledTotalTableCell>
                     <StyledTotalTableCell>
-                      {/* NEW: Error prop added for YSA validation */}
                       <FormInput
                         value={rw04Totals.subTotal1.provAmtEnd}
                         readOnly
@@ -766,7 +723,6 @@ const RW04 = () => {
                       <FormInput value={rw04Totals.grandTotal.provAmtStart} readOnly sx={{ width: '200px' }} />
                     </StyledTotalTableCell>
                     <StyledTotalTableCell>
-                      {/* NEW: Error prop added for Write Off validation */}
                       <FormInput
                         value={rw04Totals.grandTotal.writeOff}
                         readOnly
@@ -789,7 +745,8 @@ const RW04 = () => {
           {tabIndex === 1 && (
             <>
               <TableBody>
-                {rw05StaticRows.map((row, index) => (
+                {/* UPDATED: Renders Part B rows fetched from the API */}
+                {rw05StaticRows.map((row) => (
                   <TableRow key={row.dbId}>
                     <TableCell></TableCell>
                     <TableCell align="center">{row.slNo}</TableCell>
@@ -804,7 +761,7 @@ const RW04 = () => {
                       <FormInput
                         inputType={'wholeAmountDecimal'}
                         value={row.provAmtEnd}
-                        onChange={(e) => handleRw05StaticChange(index, 'provAmtEnd', e.target.value)}
+                        onChange={(e) => handleRw05StaticChange(row.dbId, 'provAmtEnd', e.target.value)}
                         sx={{ width: '200px' }}
                         placeholder="0.00"
                         debounceDuration={1}
