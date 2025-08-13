@@ -1,57 +1,57 @@
 const columns = [
-    {
-      field: 'name',
-      headerName: 'Report Name',
-      hideable: false,
-      flex: 1.5,
-    },
-    {
-      field: 'checkerRemarks',
-      headerName: 'Checker Remarks',
-      headerAlign: 'center',
-      align: 'center',
-      flex: 1.5,
-      sortable: false,
-      renderCell: (params) => (
-        <span
-          style={{
-            color: !params.value
-              ? theme.palette.grey[500]
-              : params.row.status === '53'
-              ? theme.palette.grey[500]
-              : 'inherit',
-          }}
-        >
-          {!params.value
-            ? 'checker remarks will appear here'
+  {
+    field: 'name',
+    headerName: 'Report Name',
+    hideable: false,
+    flex: 1.5,
+  },
+  {
+    field: 'checkerRemarks',
+    headerName: 'Checker Remarks',
+    // ... (rest of the column definition is unchanged)
+    renderCell: (params) => (
+      <span
+        style={{
+          color: !params.value
+            ? theme.palette.grey[500]
             : params.row.status === '53'
-            ? 'checker remarks will appear here'
-            : params.value}
-        </span>
-      ),
-    },
-    {
-      field: 'pendingStatus',
-      headerName: 'Status',
-      headerAlign: 'center',
-      align: 'center',
-      flex: 1.5,
-      hideable: false,
-      renderCell: (params) => renderStatus(params.value),
-    },
-    {
-      field: 'actions',
-      headerName: 'Action',
-      headerAlign: 'center',
-      align: 'center',
-      flex: 2,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => (
+            ? theme.palette.grey[500]
+            : 'inherit',
+        }}
+      >
+        {!params.value
+          ? 'checker remarks will appear here'
+          : params.row.status === '53'
+          ? 'checker remarks will appear here'
+          : params.value}
+      </span>
+    ),
+  },
+  {
+    field: 'pendingStatus',
+    headerName: 'Status',
+    // ... (rest of the column definition is unchanged)
+    renderCell: (params) => renderStatus(params.value),
+  },
+  {
+    field: 'actions',
+    headerName: 'Action',
+    headerAlign: 'center',
+    align: 'center',
+    flex: 2,
+    sortable: false,
+    filterable: false,
+    renderCell: (params) => {
+      // ** ADDED THIS LOGIC **
+      // This condition is true if it's the RW-04 report and its specific status is not 51.
+      const isRw04Locked =
+        params.row.reportMasterId === '3007' && params.row.rw04Status !== '51';
+
+      return (
         <Box
           sx={{
             '& .MuiDataGrid-cell:focus': {
-              outline: 'none', // Remove focus outline for cells
+              outline: 'none',
             },
             gap: 2,
             display: 'flex',
@@ -60,23 +60,39 @@ const columns = [
             m: 1,
           }}
         >
+          {/* --- EDIT BUTTON LOGIC --- */}
           {user.capacity === '51' && params.row.status && (
             <CustomButton
               onClickHandler={() => handleEdit(params.row)}
               buttonType={'edit'}
               label={'Edit'}
-              disabled={!(params.row.status === '10' || params.row.status === '11' || params.row.status === '12')}
+              // ** MODIFIED THIS LINE **
+              // Disable if original conditions are met OR if it's the locked RW-04 report.
+              disabled={
+                !(params.row.status === '10' || params.row.status === '11' || params.row.status === '12') ||
+                isRw04Locked
+              }
             />
           )}
+
           {params.row.status && (
             <CustomButton onClickHandler={() => handleView(params.row)} buttonType={'view'} label={'View'} />
           )}
 
+          {/* --- CREATE BUTTON LOGIC --- */}
           {user.capacity === '51' &&
             (params.row.status === null || params.row.status === '' || params.row.status == undefined) && (
-              <CustomButton onClickHandler={() => handleCreate(params.row)} buttonType={'create'} label={'Create'} />
+              <CustomButton
+                onClickHandler={() => handleCreate(params.row)}
+                buttonType={'create'}
+                label={'Create'}
+                // ** ADDED THIS LINE **
+                // Disable the create button if it's the locked RW-04 report.
+                disabled={isRw04Locked}
+              />
             )}
 
+          {/* --- ACCEPT / REJECT BUTTONS (Unchanged) --- */}
           {user.capacity === '52' && (
             <CustomButton
               onClickHandler={() => handleAccept(params.row)}
@@ -85,11 +101,9 @@ const columns = [
               disabled={params.row.status !== '20'}
             />
           )}
-
           {user.capacity === '52' && (
             <CustomButton
               onClickHandler={() => {
-                // handleReject(params.row);
                 setSelectedReport(params.row);
                 setOpenRejectModal(true);
               }}
@@ -99,35 +113,7 @@ const columns = [
             />
           )}
         </Box>
-      ),
+      );
     },
-  ];
-
-  
-  /////////////////////////
-  
-  {
-    "name": "RW-04 PART A & B",
-    "jrxmlName": "BS_RW04",
-    "cirlceCode": "020",
-    "date": null,
-    "type": null,
-    "reportId": "101885",
-    "description": null,
-    "reportMasterId": "3007",
-    "status": "11",
-    "stDesc": null,
-    "checkerRemarks": null,
-    "auditorRemarks": null,
-    "flowType": null,
-    "toBeSigned": null,
-    "areMocPending": false,
-    "releaseFlagDICGC": "N",
-    "bidDataFlag": "Y",
-    "customFlagDICGC": "N",
-    "pdfFilePath": null,
-    "pdfFileName": null,
-    "pendingStatus": "Saved by Maker",
-    "displayMessage": null,
-	"rw04Status": "51",
-}
+  },
+];
