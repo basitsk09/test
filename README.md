@@ -50,100 +50,7 @@ const StyledTotalTableCell = styled(TableCell)(() => ({
 
 const isNumeric = (val) => val === null || val === '' || (!isNaN(parseFloat(val)) && isFinite(val));
 
-// --- RW04 Initial Data (New Format) ---
-const getInitialRw04StaticRows = () => [
-  {
-    dbId: 1,
-    slNo: '1',
-    label: 'FRAUDS - DEBITED TO RECALLED ASSETS A/c (Prod Cd 6998-9981)**',
-    provAmtStart: '',
-    writeOff: '',
-    addRed: '0.00',
-    provAmtEnd: '',
-  },
-  {
-    dbId: 2,
-    slNo: '2',
-    label: 'OTHERS LOSSES IN RECALLED ASSETS (Prod cd 6998 - 9982)#',
-    provAmtStart: '',
-    writeOff: '',
-    addRed: '0.00',
-    provAmtEnd: '',
-  },
-  {
-    dbId: 3,
-    slNo: '3',
-    label: 'BGL Number 2399969 Internal Fraud ##1',
-    provAmtStart: '',
-    writeOff: '',
-    addRed: '0.00',
-    provAmtEnd: '',
-  },
-  {
-    dbId: 4,
-    slNo: '4',
-    label: 'BGL Number 2399970 External Fraud ##2',
-    provAmtStart: '',
-    writeOff: '',
-    addRed: '0.00',
-    provAmtEnd: '',
-  },
-  {
-    dbId: 5,
-    slNo: '5',
-    label: 'BGL Number 4697984 Pension Overpayment unreconciled Portion',
-    provAmtStart: '',
-    writeOff: '',
-    addRed: '0.00',
-    provAmtEnd: '',
-  },
-  {
-    dbId: 6,
-    slNo: '6',
-    label: 'FRAUDS - OTHER (NOT DEBITED TO RA A/c) $',
-    provAmtStart: '',
-    writeOff: '',
-    addRed: '0.00',
-    provAmtEnd: '',
-  },
-  {
-    dbId: 7,
-    slNo: '7',
-    label: 'REVENUE ITEM IN SYSTEM SUSPENSE',
-    provAmtStart: '',
-    writeOff: '',
-    addRed: '0.00',
-    provAmtEnd: '',
-  },
-  {
-    dbId: 8,
-    slNo: '8',
-    label: 'PROVISION ON ACCOUNT OF FSLO',
-    provAmtStart: '',
-    writeOff: '',
-    addRed: '0.00',
-    provAmtEnd: '',
-  },
-  {
-    dbId: 9,
-    slNo: '9',
-    label: 'PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING IN ADJUSTING ACCOUNT FOR PREVIOUS QUARTER(S)',
-    provAmtStart: '',
-    writeOff: '',
-    addRed: '0.00',
-    provAmtEnd: '',
-  },
-  {
-    dbId: 10,
-    slNo: '10',
-    label: 'PROVISION ON NPA INTREST FREE STAFF LOANS',
-    provAmtStart: '',
-    writeOff: '',
-    addRed: '0.00',
-    provAmtEnd: '',
-  },
-];
-
+// --- RW04 Dynamic Row Creator ---
 const createInitialRw04DynamicRow = () => ({
   dbId: 0,
   particulars: '',
@@ -155,7 +62,7 @@ const createInitialRw04DynamicRow = () => ({
   key: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 });
 
-// --- RW05 Initial Data (New Format) ---
+// --- RW05 Initial Data (Unchanged) ---
 const getInitialRw05StaticRows = () => [
   {
     dbId: 1,
@@ -219,12 +126,18 @@ const RW04 = () => {
   const [isSubmitConfirmOpen, setIsSubmitConfirmOpen] = useState(false);
 
   // RW04 State
-  const [rw04StaticRows, setRw04StaticRows] = useState(getInitialRw04StaticRows());
+  const [rw04StaticRows, setRw04StaticRows] = useState([]);
   const [rw04DynamicRows, setRw04DynamicRows] = useState([]);
 
   // RW05 State
   const [rw05StaticRows, setRw05StaticRows] = useState(getInitialRw05StaticRows());
   const [rw05DynamicRows, setRw05DynamicRows] = useState([]);
+
+  // NEW: State for API validation amounts and mismatch flags
+  const [apiWriteOffAmount, setApiWriteOffAmount] = useState(null);
+  const [apiYsaAmount, setApiYsaAmount] = useState(null);
+  const [isWriteOffMismatch, setIsWriteOffMismatch] = useState(false);
+  const [isYsaMismatch, setIsYsaMismatch] = useState(false);
 
   const headers_rw04 = [
     'PARTICULARS',
@@ -233,14 +146,14 @@ const RW04 = () => {
     'ADDITONS / REDUCTIONS <br />(OTHER THAN WRITE OFF) DURING THE PERIOD',
     `CLOSING PROVISION AS ON ${user.quarterEndDate}`,
   ];
-  const headerSerial_rw04 = ['(1)', '(2)', '(3)', '(4)', '(5) = (6) - ( 3 + 4 )', '(6)'];
+  const headerSerial_rw04 = ['(1)', '(2)', '(3)', '(4)', '(5)', '(6) = (5) - (2-3+4)'];
   const headers_rw05 = [
     'PARTICULARS',
     `OPENING PROVISION AS ON ${user.previousQuarterEndDate}`,
     'ADDITONS / REVERSAL DURING THE PERIOD',
     `PROVISION AS ON ${user.quarterEndDate}`,
   ];
-  const headerSerial_rw05 = ['(1)', '(2)', '(3)', '(4) = (5 - 3)', '(5)'];
+  const headerSerial_rw05 = ['(1)', '(2)', '(3)', '(4) = (2+3)'];
 
   const getBasePayload = useCallback(
     () => ({
@@ -261,36 +174,44 @@ const RW04 = () => {
   const loadRw04Data = useCallback(async () => {
     try {
       const response = await callApi('/RW04/getData', getBasePayload(), 'POST');
-      if (response?.data) {
-        const apiData = response.data;
-        const loadedStaticRows = getInitialRw04StaticRows();
-        const loadedDynamicRows = [];
-        console.log('apiData[0]', apiData[0]);
-        apiData.forEach((row) => {
-          const dbId = parseInt(row[0], 10);
+      if (response?.data?.result?.data) {
+        const { data, writeOffAmount, ysa20183Amount } = response.data.result;
 
-          const targetRow = { provAmtStart: row[2], writeOff: row[3], addRed: row[4], provAmtEnd: row[5] };
-          const staticRowToUpdate = loadedStaticRows.find((r) => r.dbId === dbId);
-          if (staticRowToUpdate) {
-            Object.assign(staticRowToUpdate, targetRow);
+        // NEW: Store API values for validation
+        setApiWriteOffAmount(writeOffAmount);
+        setApiYsaAmount(ysa20183Amount);
+
+        const loadedStaticRows = [];
+        const loadedDynamicRows = [];
+        const staticDbIds = new Set([1, 2, 3, 4, 6, 7, 8, 9, 10, 11]);
+        const filteredData = data.filter((row) => row[1] && !row[1].toUpperCase().includes('SUB TOTAL'));
+
+        filteredData.forEach((row) => {
+          const dbId = parseInt(row[6], 10);
+          const parsedRow = {
+            dbId,
+            slNo: row[0],
+            label: row[1],
+            provAmtStart: row[2] || '',
+            writeOff: row[3] || '',
+            addRed: row[4] || '',
+            provAmtEnd: row[5] || '',
+            key: dbId,
+          };
+          if (staticDbIds.has(dbId)) {
+            loadedStaticRows.push(parsedRow);
           } else {
-            loadedDynamicRows.push({
-              ...createInitialRw04DynamicRow(),
-              ...targetRow,
-              dbId,
-              key: dbId,
-              particulars: row[1],
-            });
+            loadedDynamicRows.push({ ...createInitialRw04DynamicRow(), ...parsedRow, particulars: row[1] });
           }
-          console.log(loadedDynamicRows);
         });
+        loadedStaticRows.sort((a, b) => parseInt(a.slNo) - parseInt(b.slNo));
         setRw04StaticRows(loadedStaticRows);
         setRw04DynamicRows(loadedDynamicRows);
       }
     } catch (error) {
       if (error.message !== 'canceled') setSnackbarMessage('Failed to fetch RW04 data.', 'error');
     }
-  }, [reportObject]);
+  }, [reportObject, callApi, getBasePayload, setSnackbarMessage]);
 
   const loadRw05Data = useCallback(async () => {
     try {
@@ -299,7 +220,6 @@ const RW04 = () => {
         const apiData = response.data;
         const loadedStaticRows = getInitialRw05StaticRows();
         const loadedDynamicRows = [];
-
         apiData.forEach((row) => {
           const dbId = parseInt(row[0], 10);
           const targetRow = { provAmtStart: row[2], addReversal: row[3], provAmtEnd: row[4] };
@@ -322,7 +242,7 @@ const RW04 = () => {
     } catch (error) {
       if (error.message !== 'canceled') setSnackbarMessage('Failed to fetch RW05 data.', 'error');
     }
-  }, [reportObject, callApi, setSnackbarMessage]);
+  }, [reportObject, callApi, getBasePayload, setSnackbarMessage]);
 
   useEffect(() => {
     if (reportObject) {
@@ -337,15 +257,17 @@ const RW04 = () => {
     const start = parseFloat(row.provAmtStart || 0.0);
     const writeOff = parseFloat(row.writeOff || 0.0);
     const end = parseFloat(row.provAmtEnd || 0.0);
-    row.addRed = (end - (start + writeOff)).toFixed(2);
+    row.addRed = (end - (start - writeOff)).toFixed(2); // Formula based on user feedback
     return row;
   };
 
-  const handleRw04StaticChange = (index, key, value) => {
+  const handleRw04StaticChange = (dbId, key, value) => {
     if (!isNumeric(value)) return;
     const currentRows = [...rw04StaticRows];
-    const updatedRow = { ...currentRows[index], [key]: value };
-    currentRows[index] = calculateRw04Row(updatedRow);
+    const rowIndex = currentRows.findIndex((r) => r.dbId === dbId);
+    if (rowIndex === -1) return;
+    const updatedRow = { ...currentRows[rowIndex], [key]: value };
+    currentRows[rowIndex] = calculateRw04Row(updatedRow);
     setRw04StaticRows(currentRows);
   };
 
@@ -379,7 +301,6 @@ const RW04 = () => {
       addRed: totals.addRed.toFixed(2),
       provAmtEnd: totals.provAmtEnd.toFixed(2),
     });
-
     const subTotal1 = calculateTotal(rw04StaticRows.slice(0, 4));
     const subTotalOthers = calculateTotal(rw04DynamicRows);
     const grandTotal = calculateTotal([...rw04StaticRows, ...rw04DynamicRows]);
@@ -391,11 +312,10 @@ const RW04 = () => {
   }, [rw04StaticRows, rw04DynamicRows]);
   // #endregion
 
-  // #region --- RW05 Calculations & Handlers ---
+  // #region --- RW05 Calculations & Handlers (Unchanged) ---
   const calculateRw05Row = (row) => {
     const start = parseFloat(row.provAmtStart || 0.0);
     const end = parseFloat(row.provAmtEnd || 0.0);
-    // As per header: addReversal (4) = provAmtEnd (5) - provAmtStart (3)
     row.addReversal = (end - start).toFixed(2);
     return row;
   };
@@ -435,6 +355,26 @@ const RW04 = () => {
       provAmtEnd: totals.provAmtEnd.toFixed(2),
     };
   }, [rw05StaticRows, rw05DynamicRows]);
+  // #endregion
+
+  // #region --- Validation Effect ---
+  // NEW: This effect handles the validation logic for WriteOff and YSA amounts.
+  useEffect(() => {
+    // Validate Total Write Off
+    if (apiWriteOffAmount !== null && rw04Totals.grandTotal.writeOff) {
+      const totalWriteOff = parseFloat(rw04Totals.grandTotal.writeOff);
+      const expectedWriteOff = parseFloat(apiWriteOffAmount);
+      // Use a tolerance for floating point comparison
+      setIsWriteOffMismatch(Math.abs(totalWriteOff - expectedWriteOff) > 0.001);
+    }
+    // Validate Sub Total Closing Provision
+    if (apiYsaAmount !== null && rw04Totals.subTotal1.provAmtEnd) {
+      const subTotalEnd = parseFloat(rw04Totals.subTotal1.provAmtEnd);
+      const expectedYsa = parseFloat(apiYsaAmount);
+      // Use a tolerance for floating point comparison
+      setIsYsaMismatch(Math.abs(subTotalEnd - expectedYsa) > 0.001);
+    }
+  }, [rw04Totals, apiWriteOffAmount, apiYsaAmount]);
   // #endregion
 
   // #region --- Generic Action Handlers ---
@@ -481,14 +421,13 @@ const RW04 = () => {
   };
 
   const handleSave = async () => {
-    setIsSubmitConfirmOpen(true);
     const basePayload = getBasePayload();
     let finalPayload;
     let endpoint;
 
     if (tabIndex === 0) {
       endpoint = '/RW04/saveData';
-      const allRows = [...rw04StaticRows, ...rw04DynamicRows.filter((r) => r.particulars.trim())];
+      const allRows = [...rw04StaticRows, ...rw04DynamicRows.filter((r) => r.particulars.trim() || r.label.trim())];
       const data = allRows.map((row) => [
         row.label || row.particulars,
         row.provAmtStart || '0.00',
@@ -511,18 +450,14 @@ const RW04 = () => {
       finalPayload = { ...basePayload, data };
     }
 
-    // Log the final payload to the console
-    console.log(`Payload for ${endpoint}:`, JSON.stringify(finalPayload, null, 2));
-
     try {
       await callApi(endpoint, finalPayload, 'POST');
       setSnackbarMessage('Data saved successfully!', 'success');
-      loadRw04Data();
-      loadRw05Data();
+      if (tabIndex === 0) await loadRw04Data();
+      if (tabIndex === 1) await loadRw05Data();
       setReportObject((prev) => ({ ...prev, status: '11' }));
     } catch (error) {
-      console.log('error:', error);
-      setSnackbarMessage('An error occurred while saving data.', 'error');
+      if (error.message !== 'canceled') setSnackbarMessage('An error occurred while saving data.', 'error');
     }
   };
 
@@ -534,21 +469,24 @@ const RW04 = () => {
       setSnackbarMessage('Kindly save the report before submitting.', 'warning');
       return;
     }
-    const endpoint = tabIndex === 0 ? '/RW04/submitReport' : '/RW05/submitReport';
+    const endpoint = '/RW04/submitReport';
     try {
       await callApi(endpoint, getBasePayload(), 'POST');
       setSnackbarMessage('Report submitted successfully!', 'success');
       setTimeout(() => navigate(-1), 1500);
     } catch (error) {
-      console.log('error:', error);
-      setSnackbarMessage('An error occurred during submission.', 'error');
+      if (error.message !== 'canceled') setSnackbarMessage('An error occurred during submission.', 'error');
     }
   };
   // #endregion
 
   // #region --- Render Logic ---
-  if (isLoading && !rw04StaticRows[0]?.provAmtStart && !rw05StaticRows[0]?.provAmtStart) {
-    return <CircularProgress />;
+  if (isLoading && rw04StaticRows.length === 0 && rw05StaticRows[0]?.provAmtStart === '') {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" height="50vh">
+        <CircularProgress />
+      </Box>
+    );
   }
 
   return (
@@ -557,7 +495,7 @@ const RW04 = () => {
         <Tab label="RW-04 PART A" />
         <Tab label="RW-04 PART B" />
       </Tabs>
-      <Box mt={2} display="flex" gap={2}>
+      <Box mt={2} display="flex" gap={2} flexWrap="wrap">
         <CustomButton label={'Add Row'} buttonType={'create'} onClickHandler={handleAddRow} disabled={isLoading} />
         <CustomButton
           label={'Delete Row'}
@@ -566,14 +504,31 @@ const RW04 = () => {
           disabled={isLoading}
         />
         <CustomButton label={'Save'} buttonType={'save'} onClickHandler={handleSave} disabled={isLoading} />
+        {/* NEW: Submit button is disabled if there is a validation mismatch */}
         <CustomButton
           label={'Submit'}
           buttonType={'submit'}
           onClickHandler={handleSubmitReport}
-          disabled={isLoading || reportObject?.status !== '11'}
+          disabled={isLoading || reportObject?.status !== '11' || isWriteOffMismatch || isYsaMismatch}
         />
       </Box>
-      <TableContainer component={Paper} sx={{ mt: 2, maxHeight: 'calc(96vh - 250px)' }}>
+
+      {/* NEW: Validation helper text */}
+      <Box mt={1} minHeight="40px">
+        {tabIndex === 0 && isYsaMismatch && (
+          <Typography color="error" variant="caption" display="block">
+            * Sub Total Closing Provision ({rw04Totals.subTotal1.provAmtEnd}) must match the required YSA Amount (
+            {apiYsaAmount}).
+          </Typography>
+        )}
+        {tabIndex === 0 && isWriteOffMismatch && (
+          <Typography color="error" variant="caption" display="block">
+            * Total Write Off ({rw04Totals.grandTotal.writeOff}) must match the required amount ({apiWriteOffAmount}).
+          </Typography>
+        )}
+      </Box>
+
+      <TableContainer component={Paper} sx={{ mt: 2, maxHeight: 'calc(96vh - 280px)' }}>
         <Table stickyHeader>
           <TableHead>
             <TableRow>
@@ -609,7 +564,7 @@ const RW04 = () => {
           {tabIndex === 0 && (
             <>
               <TableBody>
-                {rw04StaticRows.slice(0, 4).map((row, index) => (
+                {rw04StaticRows.slice(0, 4).map((row) => (
                   <TableRow key={row.dbId}>
                     <TableCell></TableCell>
                     <TableCell align="center">{row.slNo}</TableCell>
@@ -621,7 +576,7 @@ const RW04 = () => {
                       <FormInput
                         inputType={'wholeAmountDecimal'}
                         value={row.writeOff}
-                        onChange={(e) => handleRw04StaticChange(index, 'writeOff', e.target.value)}
+                        onChange={(e) => handleRw04StaticChange(row.dbId, 'writeOff', e.target.value)}
                         sx={{ width: '200px' }}
                         placeholder="0.00"
                       />
@@ -633,7 +588,7 @@ const RW04 = () => {
                       <FormInput
                         inputType={'wholeAmountDecimal'}
                         value={row.provAmtEnd}
-                        onChange={(e) => handleRw04StaticChange(index, 'provAmtEnd', e.target.value)}
+                        onChange={(e) => handleRw04StaticChange(row.dbId, 'provAmtEnd', e.target.value)}
                         sx={{ width: '200px' }}
                         placeholder="0.00"
                       />
@@ -654,14 +609,19 @@ const RW04 = () => {
                     <FormInput value={rw04Totals.subTotal1.addRed} readOnly sx={{ width: '200px' }} />{' '}
                   </StyledTotalTableCell>
                   <StyledTotalTableCell>
-                    <FormInput value={rw04Totals.subTotal1.provAmtEnd} readOnly sx={{ width: '200px' }} />
+                    {/* NEW: Error prop added for YSA validation */}
+                    <FormInput
+                      value={rw04Totals.subTotal1.provAmtEnd}
+                      readOnly
+                      sx={{ width: '200px' }}
+                      error={isYsaMismatch}
+                    />
                   </StyledTotalTableCell>
                 </TableRow>
-                {rw04StaticRows.slice(4).map((row, index) => (
+                {rw04StaticRows.slice(4).map((row) => (
                   <TableRow key={row.dbId}>
                     <TableCell></TableCell>
                     <TableCell align="center">{row.slNo}</TableCell>
-
                     <TableCell sx={{ textAlign: 'left' }}>{row.label.toUpperCase()}</TableCell>
                     <TableCell align="center">
                       <FormInput value={row.provAmtStart} readOnly sx={{ width: '200px' }} />
@@ -670,7 +630,7 @@ const RW04 = () => {
                       <FormInput
                         inputType={'wholeAmountDecimal'}
                         value={row.writeOff}
-                        onChange={(e) => handleRw04StaticChange(index + 4, 'writeOff', e.target.value)}
+                        onChange={(e) => handleRw04StaticChange(row.dbId, 'writeOff', e.target.value)}
                         sx={{ width: '200px' }}
                         placeholder="0.00"
                       />
@@ -682,7 +642,7 @@ const RW04 = () => {
                       <FormInput
                         inputType={'wholeAmountDecimal'}
                         value={row.provAmtEnd}
-                        onChange={(e) => handleRw04StaticChange(index + 4, 'provAmtEnd', e.target.value)}
+                        onChange={(e) => handleRw04StaticChange(row.dbId, 'provAmtEnd', e.target.value)}
                         sx={{ width: '200px' }}
                         placeholder="0.00"
                       />
@@ -692,7 +652,7 @@ const RW04 = () => {
                 <TableRow>
                   <TableCell></TableCell>
                   <TableCell align="center" style={{ fontWeight: 'bold' }}>
-                    11
+                    {rw04StaticRows.length + 1}
                   </TableCell>
                   <TableCell colSpan={6} style={{ fontWeight: 'bold', textAlign: 'left' }}>
                     OTHERS (PLEASE SPECIFY BELOW)
@@ -707,7 +667,6 @@ const RW04 = () => {
                       />
                     </TableCell>
                     <TableCell align="center">{String.fromCharCode(97 + i)}</TableCell>
-
                     <TableCell>
                       <FormInput
                         inputType={'alphaNumericWithSpace'}
@@ -723,10 +682,11 @@ const RW04 = () => {
                     </TableCell>
                     <TableCell align="center">
                       <FormInput
-                        inputType={'wholeAmountDecimal'}
                         value={row.provAmtStart}
-                        //readOnly={row.dbId !== 0}
+                        readOnly={row.dbId !== 0}
+                        onChange={(e) => handleRw04DynamicChange(i, 'provAmtStart', e.target.value)}
                         sx={{ width: '200px' }}
+                        placeholder="0.00"
                       />
                     </TableCell>
                     <TableCell align="center">
@@ -779,7 +739,13 @@ const RW04 = () => {
                     <FormInput value={rw04Totals.grandTotal.provAmtStart} readOnly sx={{ width: '200px' }} />
                   </StyledTotalTableCell>
                   <StyledTotalTableCell>
-                    <FormInput value={rw04Totals.grandTotal.writeOff} readOnly sx={{ width: '200px' }} />
+                    {/* NEW: Error prop added for Write Off validation */}
+                    <FormInput
+                      value={rw04Totals.grandTotal.writeOff}
+                      readOnly
+                      sx={{ width: '200px' }}
+                      error={isWriteOffMismatch}
+                    />
                   </StyledTotalTableCell>
                   <StyledTotalTableCell>
                     <FormInput value={rw04Totals.grandTotal.addRed} readOnly sx={{ width: '200px' }} />
@@ -842,7 +808,6 @@ const RW04 = () => {
                     <TableCell align="center">
                       <FormInput
                         value={row.provAmtStart}
-                        // readOnly={row.dbId !== 0} // Opening is editable only for new rows
                         onChange={(e) => handleRw05DynamicChange(index, 'provAmtStart', e.target.value)}
                         sx={{ width: '200px' }}
                         placeholder="0.00"
@@ -906,116 +871,3 @@ const RW04 = () => {
 };
 
 export default RW04;
-
-
-//////////////////////////////
-getdata rw04
-
-{
-    "result": {
-        "writeOffAmount": 100,
-        "data": [
-            [
-                "1",
-                "FRAUDS - DEBITED TO RECALLED ASSETS A/c (Prod Cd 6998-9981)** UP TO 30/06/2025",
-                "200",
-                "0",
-                "0",
-                "0",
-                "1"
-            ],
-            [
-                "2",
-                "OTHERS LOSSES IN RECALLED ASSETS (Prod cd 6998 - 9982)# UP TO 30/06/2025",
-                "400",
-                "0",
-                "0",
-                "0",
-                "2"
-            ],
-            [
-                "3",
-                "BGL Number 2399969 Internal Fraud ##1 UP TO 30/06/2025",
-                "200",
-                "0",
-                "0",
-                "0",
-                "3"
-            ],
-            [
-                "4",
-                "BGL Number 2399970 External Fraud ##2 UP TO 30/06/2025",
-                "400",
-                "0",
-                "0",
-                "0",
-                "4"
-            ],
-            [
-                "5",
-                "SUB TOTALS (ABOVE)",
-                "1200",
-                "0",
-                "0",
-                "0",
-                "5"
-            ],
-            [
-                "6",
-                "BGL Number 4697984 Pension Overpayment unreconciled Portion",
-                "400",
-                "0",
-                "0",
-                "0",
-                "6"
-            ],
-            [
-                "7",
-                "FRAUDS - OTHER (NOT DEBITED TO RA A/c)  $",
-                "200",
-                "0",
-                "0",
-                "0",
-                "7"
-            ],
-            [
-                "8",
-                "REVENUE ITEM IN SYSTEM SUSPENSE",
-                "400",
-                "0",
-                "0",
-                "0",
-                "8"
-            ],
-            [
-                "9",
-                "PROVISION ON ACCOUNT OF FSLO",
-                "200",
-                "0",
-                "0",
-                "0",
-                "9"
-            ],
-            [
-                "10",
-                "PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING IN ADJUSTING ACCOUNT FOR PREVIOUS QUARTER(S) (i.e. PRIOR TO CURRENT QUARTER)",
-                "400",
-                "0",
-                "0",
-                "0",
-                "10"
-            ],
-            [
-                "11",
-                "PROVISION ON N.P.A. INTEREST FREE STAFF LOANS",
-                "200",
-                "0",
-                "0",
-                "0",
-                "11"
-            ]
-        ],
-        "ysa20183Amount": 543516461.6
-    },
-    "insert": "11"
-}
