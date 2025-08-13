@@ -906,3 +906,116 @@ const RW04 = () => {
 };
 
 export default RW04;
+
+
+//////////////////////////////
+getdata rw04
+
+{
+    "result": {
+        "writeOffAmount": 100,
+        "data": [
+            [
+                "1",
+                "FRAUDS - DEBITED TO RECALLED ASSETS A/c (Prod Cd 6998-9981)** UP TO 30/06/2025",
+                "200",
+                "0",
+                "0",
+                "0",
+                "1"
+            ],
+            [
+                "2",
+                "OTHERS LOSSES IN RECALLED ASSETS (Prod cd 6998 - 9982)# UP TO 30/06/2025",
+                "400",
+                "0",
+                "0",
+                "0",
+                "2"
+            ],
+            [
+                "3",
+                "BGL Number 2399969 Internal Fraud ##1 UP TO 30/06/2025",
+                "200",
+                "0",
+                "0",
+                "0",
+                "3"
+            ],
+            [
+                "4",
+                "BGL Number 2399970 External Fraud ##2 UP TO 30/06/2025",
+                "400",
+                "0",
+                "0",
+                "0",
+                "4"
+            ],
+            [
+                "5",
+                "SUB TOTALS (ABOVE)",
+                "1200",
+                "0",
+                "0",
+                "0",
+                "5"
+            ],
+            [
+                "6",
+                "BGL Number 4697984 Pension Overpayment unreconciled Portion",
+                "400",
+                "0",
+                "0",
+                "0",
+                "6"
+            ],
+            [
+                "7",
+                "FRAUDS - OTHER (NOT DEBITED TO RA A/c)  $",
+                "200",
+                "0",
+                "0",
+                "0",
+                "7"
+            ],
+            [
+                "8",
+                "REVENUE ITEM IN SYSTEM SUSPENSE",
+                "400",
+                "0",
+                "0",
+                "0",
+                "8"
+            ],
+            [
+                "9",
+                "PROVISION ON ACCOUNT OF FSLO",
+                "200",
+                "0",
+                "0",
+                "0",
+                "9"
+            ],
+            [
+                "10",
+                "PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING IN ADJUSTING ACCOUNT FOR PREVIOUS QUARTER(S) (i.e. PRIOR TO CURRENT QUARTER)",
+                "400",
+                "0",
+                "0",
+                "0",
+                "10"
+            ],
+            [
+                "11",
+                "PROVISION ON N.P.A. INTEREST FREE STAFF LOANS",
+                "200",
+                "0",
+                "0",
+                "0",
+                "11"
+            ]
+        ],
+        "ysa20183Amount": 543516461.6
+    },
+    "insert": "11"
+}
