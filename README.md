@@ -133,7 +133,7 @@ const RW04 = () => {
   const [rw05StaticRows, setRw05StaticRows] = useState(getInitialRw05StaticRows());
   const [rw05DynamicRows, setRw05DynamicRows] = useState([]);
 
-  // NEW: State for API validation amounts and mismatch flags
+  // State for API validation amounts and mismatch flags
   const [apiWriteOffAmount, setApiWriteOffAmount] = useState(null);
   const [apiYsaAmount, setApiYsaAmount] = useState(null);
   const [isWriteOffMismatch, setIsWriteOffMismatch] = useState(false);
@@ -173,11 +173,11 @@ const RW04 = () => {
   // #region --- Data Loading ---
   const loadRw04Data = useCallback(async () => {
     try {
+      // Corrected endpoint and response structure
       const response = await callApi('/RW04A/getData', getBasePayload(), 'POST');
       if (response?.result) {
         const { data, writeOffAmount, ysa20183Amount } = response.result;
 
-        // NEW: Store API values for validation
         setApiWriteOffAmount(writeOffAmount);
         setApiYsaAmount(ysa20183Amount);
 
@@ -211,7 +211,7 @@ const RW04 = () => {
     } catch (error) {
       if (error.message !== 'canceled') setSnackbarMessage('Failed to fetch RW04 data.', 'error');
     }
-  }, [reportObject]);
+  }, [reportObject, getBasePayload, setSnackbarMessage]);
 
   const loadRw05Data = useCallback(async () => {
     try {
@@ -242,14 +242,15 @@ const RW04 = () => {
     } catch (error) {
       if (error.message !== 'canceled') setSnackbarMessage('Failed to fetch RW05 data.', 'error');
     }
-  }, [reportObject]);
+  }, [reportObject, getBasePayload, setSnackbarMessage]);
 
   useEffect(() => {
     if (reportObject) {
       loadRw04Data();
-      //loadRw05Data();
+      // As per your snippet, loadRw05Data is commented out.
+      // loadRw05Data();
     }
-  }, [reportObject]);
+  }, [reportObject, loadRw04Data, loadRw05Data]);
   // #endregion
 
   // #region --- RW04 Calculations & Handlers ---
@@ -257,7 +258,7 @@ const RW04 = () => {
     const start = parseFloat(row.provAmtStart || 0.0);
     const writeOff = parseFloat(row.writeOff || 0.0);
     const end = parseFloat(row.provAmtEnd || 0.0);
-    row.addRed = (end - (start + writeOff)).toFixed(2); // Formula based on user feedback
+    row.addRed = (end - (start + writeOff)).toFixed(2);
     return row;
   };
 
@@ -358,20 +359,15 @@ const RW04 = () => {
   // #endregion
 
   // #region --- Validation Effect ---
-  // NEW: This effect handles the validation logic for WriteOff and YSA amounts.
   useEffect(() => {
-    // Validate Total Write Off
     if (apiWriteOffAmount !== null && rw04Totals.grandTotal.writeOff) {
       const totalWriteOff = parseFloat(rw04Totals.grandTotal.writeOff);
       const expectedWriteOff = parseFloat(apiWriteOffAmount);
-      // Use a tolerance for floating point comparison
       setIsWriteOffMismatch(Math.abs(totalWriteOff - expectedWriteOff) > 0.001);
     }
-    // Validate Sub Total Closing Provision
     if (apiYsaAmount !== null && rw04Totals.subTotal1.provAmtEnd) {
       const subTotalEnd = parseFloat(rw04Totals.subTotal1.provAmtEnd);
       const expectedYsa = parseFloat(apiYsaAmount);
-      // Use a tolerance for floating point comparison
       setIsYsaMismatch(Math.abs(subTotalEnd - expectedYsa) > 0.001);
     }
   }, [rw04Totals, apiWriteOffAmount, apiYsaAmount]);
@@ -426,6 +422,7 @@ const RW04 = () => {
     let endpoint;
 
     if (tabIndex === 0) {
+      // Corrected endpoint and payload key
       endpoint = '/RW04A/saveStatic';
       const allRows = [...rw04StaticRows, ...rw04DynamicRows.filter((r) => r.particulars.trim() || r.label.trim())];
       const data = allRows.map((row) => [
@@ -436,6 +433,21 @@ const RW04 = () => {
         row.provAmtEnd || '0.00',
         String(row.dbId),
       ]);
+
+      // --- NEW: Manually create and insert the subtotal row into the payload ---
+      const subTotalRowForPayload = [
+        '5', // slNo
+        'SUB TOTALS (ABOVE)', // label
+        rw04Totals.subTotal1.provAmtStart,
+        rw04Totals.subTotal1.writeOff,
+        rw04Totals.subTotal1.addRed,
+        rw04Totals.subTotal1.provAmtEnd,
+        '5', // dbId
+      ];
+      // Insert the subtotal row after the first 4 data rows.
+      data.splice(4, 0, subTotalRowForPayload);
+      // --- End of new logic ---
+
       finalPayload = { ...basePayload, value: data };
     } else {
       endpoint = '/RW05/saveData';
@@ -481,7 +493,7 @@ const RW04 = () => {
   // #endregion
 
   // #region --- Render Logic ---
-  if (isLoading && rw04StaticRows.length === 0 && rw05StaticRows[0]?.provAmtStart === '') {
+  if (isLoading && rw04StaticRows.length === 0 && (!rw05StaticRows.length || rw05StaticRows[0]?.provAmtStart === '')) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" height="50vh">
         <CircularProgress />
@@ -504,7 +516,6 @@ const RW04 = () => {
           disabled={isLoading}
         />
         <CustomButton label={'Save'} buttonType={'save'} onClickHandler={handleSave} disabled={isLoading} />
-        {/* NEW: Submit button is disabled if there is a validation mismatch */}
         <CustomButton
           label={'Submit'}
           buttonType={'submit'}
@@ -513,7 +524,6 @@ const RW04 = () => {
         />
       </Box>
 
-      {/* NEW: Validation helper text */}
       <Box mt={1} minHeight="40px">
         {tabIndex === 0 && isYsaMismatch && (
           <Typography color="error" variant="caption" display="block">
@@ -609,7 +619,6 @@ const RW04 = () => {
                     <FormInput value={rw04Totals.subTotal1.addRed} readOnly sx={{ width: '200px' }} />{' '}
                   </StyledTotalTableCell>
                   <StyledTotalTableCell>
-                    {/* NEW: Error prop added for YSA validation */}
                     <FormInput
                       value={rw04Totals.subTotal1.provAmtEnd}
                       readOnly
@@ -739,7 +748,6 @@ const RW04 = () => {
                     <FormInput value={rw04Totals.grandTotal.provAmtStart} readOnly sx={{ width: '200px' }} />
                   </StyledTotalTableCell>
                   <StyledTotalTableCell>
-                    {/* NEW: Error prop added for Write Off validation */}
                     <FormInput
                       value={rw04Totals.grandTotal.writeOff}
                       readOnly
@@ -871,15 +879,3 @@ const RW04 = () => {
 };
 
 export default RW04;
-///////////////////////
-
-
-[
-                "5",
-                "SUB TOTALS (ABOVE)",
-                "1200",
-                "0",
-                "0",
-                "0",
-                "5"
-            ],
