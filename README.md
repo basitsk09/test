@@ -146,14 +146,14 @@ const RW04 = () => {
     'ADDITONS / REDUCTIONS <br />(OTHER THAN WRITE OFF) DURING THE PERIOD',
     `CLOSING PROVISION AS ON ${user.quarterEndDate}`,
   ];
-  const headerSerial_rw04 = ['(1)', '(2)', '(3)', '(4)', '(5)', '(6) = (5) - (2-3+4)'];
+  const headerSerial_rw04 = ['(1)', '(2)', '(3)', '(4)', '(5) = (6) - ( 3 + 4 )', '(6)'];
   const headers_rw05 = [
     'PARTICULARS',
     `OPENING PROVISION AS ON ${user.previousQuarterEndDate}`,
     'ADDITONS / REVERSAL DURING THE PERIOD',
     `PROVISION AS ON ${user.quarterEndDate}`,
   ];
-  const headerSerial_rw05 = ['(1)', '(2)', '(3)', '(4) = (2+3)'];
+  const headerSerial_rw05 = ['(1)', '(2)', '(3)', '(4) = (5 - 3)', '(5)'];
 
   const getBasePayload = useCallback(
     () => ({
@@ -173,9 +173,9 @@ const RW04 = () => {
   // #region --- Data Loading ---
   const loadRw04Data = useCallback(async () => {
     try {
-      const response = await callApi('/RW04/getData', getBasePayload(), 'POST');
-      if (response?.data?.result?.data) {
-        const { data, writeOffAmount, ysa20183Amount } = response.data.result;
+      const response = await callApi('/RW04A/getData', getBasePayload(), 'POST');
+      if (response?.result) {
+        const { data, writeOffAmount, ysa20183Amount } = response.result;
 
         // NEW: Store API values for validation
         setApiWriteOffAmount(writeOffAmount);
@@ -211,7 +211,7 @@ const RW04 = () => {
     } catch (error) {
       if (error.message !== 'canceled') setSnackbarMessage('Failed to fetch RW04 data.', 'error');
     }
-  }, [reportObject, callApi, getBasePayload, setSnackbarMessage]);
+  }, [reportObject]);
 
   const loadRw05Data = useCallback(async () => {
     try {
@@ -242,14 +242,14 @@ const RW04 = () => {
     } catch (error) {
       if (error.message !== 'canceled') setSnackbarMessage('Failed to fetch RW05 data.', 'error');
     }
-  }, [reportObject, callApi, getBasePayload, setSnackbarMessage]);
+  }, [reportObject]);
 
   useEffect(() => {
     if (reportObject) {
       loadRw04Data();
-      loadRw05Data();
+      //loadRw05Data();
     }
-  }, [reportObject, loadRw04Data, loadRw05Data]);
+  }, [reportObject]);
   // #endregion
 
   // #region --- RW04 Calculations & Handlers ---
@@ -257,7 +257,7 @@ const RW04 = () => {
     const start = parseFloat(row.provAmtStart || 0.0);
     const writeOff = parseFloat(row.writeOff || 0.0);
     const end = parseFloat(row.provAmtEnd || 0.0);
-    row.addRed = (end - (start - writeOff)).toFixed(2); // Formula based on user feedback
+    row.addRed = (end - (start + writeOff)).toFixed(2); // Formula based on user feedback
     return row;
   };
 
@@ -426,7 +426,7 @@ const RW04 = () => {
     let endpoint;
 
     if (tabIndex === 0) {
-      endpoint = '/RW04/saveData';
+      endpoint = '/RW04A/saveStatic';
       const allRows = [...rw04StaticRows, ...rw04DynamicRows.filter((r) => r.particulars.trim() || r.label.trim())];
       const data = allRows.map((row) => [
         row.label || row.particulars,
@@ -436,7 +436,7 @@ const RW04 = () => {
         row.provAmtEnd || '0.00',
         String(row.dbId),
       ]);
-      finalPayload = { ...basePayload, data };
+      finalPayload = { ...basePayload, value: data };
     } else {
       endpoint = '/RW05/saveData';
       const allRows = [...rw05StaticRows, ...rw05DynamicRows.filter((r) => r.particulars.trim())];
@@ -447,7 +447,7 @@ const RW04 = () => {
         row.provAmtEnd || '0.00',
         String(row.dbId),
       ]);
-      finalPayload = { ...basePayload, data };
+      finalPayload = { ...basePayload, value: data };
     }
 
     try {
@@ -871,3 +871,15 @@ const RW04 = () => {
 };
 
 export default RW04;
+///////////////////////
+
+
+[
+                "5",
+                "SUB TOTALS (ABOVE)",
+                "1200",
+                "0",
+                "0",
+                "0",
+                "5"
+            ],
