@@ -19,7 +19,7 @@ import {
   DialogTitle,
   Checkbox,
   CircularProgress,
-  TableFooter, // Added TableFooter
+  TableFooter,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -89,9 +89,18 @@ const getInitialRw04StaticRows = () => [
     provAmtEnd: '',
   },
   {
+    dbId: 5,
+    slNo: '5',
+    label: 'BGL Number 4697984 Pension Overpayment unreconciled Portion',
+    provAmtStart: '',
+    writeOff: '',
+    addRed: '0.00',
+    provAmtEnd: '',
+  },
+  {
     dbId: 6,
     slNo: '6',
-    label: 'BGL Number 4697984 Pension Overpayment unreconciled Portion',
+    label: 'FRAUDS - OTHER (NOT DEBITED TO RA A/c) $',
     provAmtStart: '',
     writeOff: '',
     addRed: '0.00',
@@ -100,7 +109,7 @@ const getInitialRw04StaticRows = () => [
   {
     dbId: 7,
     slNo: '7',
-    label: 'FRAUDS - OTHER (NOT DEBITED TO RA A/c) $',
+    label: 'REVENUE ITEM IN SYSTEM SUSPENSE',
     provAmtStart: '',
     writeOff: '',
     addRed: '0.00',
@@ -109,7 +118,7 @@ const getInitialRw04StaticRows = () => [
   {
     dbId: 8,
     slNo: '8',
-    label: 'REVENUE ITEM IN SYSTEM SUSPENSE',
+    label: 'PROVISION ON ACCOUNT OF FSLO',
     provAmtStart: '',
     writeOff: '',
     addRed: '0.00',
@@ -118,7 +127,7 @@ const getInitialRw04StaticRows = () => [
   {
     dbId: 9,
     slNo: '9',
-    label: 'PROVISION ON ACCOUNT OF FSLO',
+    label: 'PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING IN ADJUSTING ACCOUNT FOR PREVIOUS QUARTER(S)',
     provAmtStart: '',
     writeOff: '',
     addRed: '0.00',
@@ -127,15 +136,6 @@ const getInitialRw04StaticRows = () => [
   {
     dbId: 10,
     slNo: '10',
-    label: 'PROVISION ON ACCOUNT OF ENTRIES OUTSTANDING IN ADJUSTING ACCOUNT FOR PREVIOUS QUARTER(S)',
-    provAmtStart: '',
-    writeOff: '',
-    addRed: '0.00',
-    provAmtEnd: '',
-  },
-  {
-    dbId: 11,
-    slNo: '11',
     label: 'PROVISION ON NPA INTREST FREE STAFF LOANS',
     provAmtStart: '',
     writeOff: '',
@@ -251,6 +251,7 @@ const RW04 = () => {
       reportMasterId: reportObject?.reportMasterId,
       currentStatus: reportObject?.status,
       userId: user.userId,
+      previousQuarterEndDate: user.previousQuarterEndDate,
     }),
     [user, reportObject]
   );
@@ -264,9 +265,10 @@ const RW04 = () => {
         const apiData = response.data;
         const loadedStaticRows = getInitialRw04StaticRows();
         const loadedDynamicRows = [];
-
+        console.log('apiData[0]', apiData[0]);
         apiData.forEach((row) => {
           const dbId = parseInt(row[0], 10);
+
           const targetRow = { provAmtStart: row[2], writeOff: row[3], addRed: row[4], provAmtEnd: row[5] };
           const staticRowToUpdate = loadedStaticRows.find((r) => r.dbId === dbId);
           if (staticRowToUpdate) {
@@ -280,6 +282,7 @@ const RW04 = () => {
               particulars: row[1],
             });
           }
+          console.log(loadedDynamicRows);
         });
         setRw04StaticRows(loadedStaticRows);
         setRw04DynamicRows(loadedDynamicRows);
@@ -319,7 +322,7 @@ const RW04 = () => {
     } catch (error) {
       if (error.message !== 'canceled') setSnackbarMessage('Failed to fetch RW05 data.', 'error');
     }
-  }, [reportObject]);
+  }, [reportObject, callApi, setSnackbarMessage]);
 
   useEffect(() => {
     if (reportObject) {
@@ -331,9 +334,9 @@ const RW04 = () => {
 
   // #region --- RW04 Calculations & Handlers ---
   const calculateRw04Row = (row) => {
-    const start = parseFloat(row.provAmtStart || 0);
-    const writeOff = parseFloat(row.writeOff || 0);
-    const end = parseFloat(row.provAmtEnd || 0);
+    const start = parseFloat(row.provAmtStart || 0.0);
+    const writeOff = parseFloat(row.writeOff || 0.0);
+    const end = parseFloat(row.provAmtEnd || 0.0);
     row.addRed = (end - (start + writeOff)).toFixed(2);
     return row;
   };
@@ -361,13 +364,13 @@ const RW04 = () => {
     const calculateTotal = (rows) => {
       return rows.reduce(
         (acc, row) => {
-          acc.provAmtStart += parseFloat(row.provAmtStart || 0);
-          acc.writeOff += parseFloat(row.writeOff || 0);
-          acc.addRed += parseFloat(row.addRed || 0);
-          acc.provAmtEnd += parseFloat(row.provAmtEnd || 0);
+          acc.provAmtStart += parseFloat(row.provAmtStart || 0.0);
+          acc.writeOff += parseFloat(row.writeOff || 0.0);
+          acc.addRed += parseFloat(row.addRed || 0.0);
+          acc.provAmtEnd += parseFloat(row.provAmtEnd || 0.0);
           return acc;
         },
-        { provAmtStart: 0, writeOff: 0, addRed: 0, provAmtEnd: 0 }
+        { provAmtStart: 0.0, writeOff: 0.0, addRed: 0.0, provAmtEnd: 0.0 }
       );
     };
     const formatTotals = (totals) => ({
@@ -390,8 +393,8 @@ const RW04 = () => {
 
   // #region --- RW05 Calculations & Handlers ---
   const calculateRw05Row = (row) => {
-    const start = parseFloat(row.provAmtStart || 0);
-    const end = parseFloat(row.provAmtEnd || 0);
+    const start = parseFloat(row.provAmtStart || 0.0);
+    const end = parseFloat(row.provAmtEnd || 0.0);
     // As per header: addReversal (4) = provAmtEnd (5) - provAmtStart (3)
     row.addReversal = (end - start).toFixed(2);
     return row;
@@ -419,12 +422,12 @@ const RW04 = () => {
   const rw05TotalRow = useMemo(() => {
     const totals = [...rw05StaticRows, ...rw05DynamicRows].reduce(
       (acc, row) => {
-        acc.provAmtStart += parseFloat(row.provAmtStart || 0);
-        acc.addReversal += parseFloat(row.addReversal || 0);
-        acc.provAmtEnd += parseFloat(row.provAmtEnd || 0);
+        acc.provAmtStart += parseFloat(row.provAmtStart || 0.0);
+        acc.addReversal += parseFloat(row.addReversal || 0.0);
+        acc.provAmtEnd += parseFloat(row.provAmtEnd || 0.0);
         return acc;
       },
-      { provAmtStart: 0, addReversal: 0, provAmtEnd: 0 }
+      { provAmtStart: 0.0, addReversal: 0.0, provAmtEnd: 0.0 }
     );
     return {
       provAmtStart: totals.provAmtStart.toFixed(2),
@@ -473,18 +476,18 @@ const RW04 = () => {
       setSnackbarMessage('Selected rows deleted successfully!', 'success');
       setDynamicRows(newRowsToKeep);
     } catch (error) {
-      console.log('error:', error);
-      setSnackbarMessage('An error occurred during deletion.', 'error');
+      if (error.message !== 'canceled') setSnackbarMessage('An error occurred during deletion.', 'error');
     }
   };
 
   const handleSave = async () => {
+    setIsSubmitConfirmOpen(true);
     const basePayload = getBasePayload();
     let finalPayload;
     let endpoint;
 
     if (tabIndex === 0) {
-      endpoint = '/RW04/saveData'; // Endpoint for bulk saving RW04 data
+      endpoint = '/RW04/saveData';
       const allRows = [...rw04StaticRows, ...rw04DynamicRows.filter((r) => r.particulars.trim())];
       const data = allRows.map((row) => [
         row.label || row.particulars,
@@ -496,7 +499,7 @@ const RW04 = () => {
       ]);
       finalPayload = { ...basePayload, data };
     } else {
-      endpoint = '/RW05/saveData'; // Endpoint for bulk saving RW05 data
+      endpoint = '/RW05/saveData';
       const allRows = [...rw05StaticRows, ...rw05DynamicRows.filter((r) => r.particulars.trim())];
       const data = allRows.map((row) => [
         row.label || row.particulars,
@@ -588,7 +591,7 @@ const RW04 = () => {
             <TableRow
               sx={{
                 position: 'sticky',
-                top: tabIndex === 0 ? 75 : 54, // Adjusted for more accurate heights
+                top: tabIndex === 0 ? 85 : 60,
                 zIndex: 1,
               }}
             >
@@ -610,7 +613,7 @@ const RW04 = () => {
                   <TableRow key={row.dbId}>
                     <TableCell></TableCell>
                     <TableCell align="center">{row.slNo}</TableCell>
-                    <TableCell sx={{ textAlign: 'left' }}>{row.label}</TableCell>
+                    <TableCell sx={{ textAlign: 'left' }}>{row.label.toUpperCase()}</TableCell>
                     <TableCell align="center">
                       <FormInput value={row.provAmtStart} readOnly sx={{ width: '200px' }} />
                     </TableCell>
@@ -659,7 +662,7 @@ const RW04 = () => {
                     <TableCell></TableCell>
                     <TableCell align="center">{row.slNo}</TableCell>
 
-                    <TableCell sx={{ textAlign: 'left' }}>{row.label}</TableCell>
+                    <TableCell sx={{ textAlign: 'left' }}>{row.label.toUpperCase()}</TableCell>
                     <TableCell align="center">
                       <FormInput value={row.provAmtStart} readOnly sx={{ width: '200px' }} />
                     </TableCell>
@@ -689,7 +692,7 @@ const RW04 = () => {
                 <TableRow>
                   <TableCell></TableCell>
                   <TableCell align="center" style={{ fontWeight: 'bold' }}>
-                    12
+                    11
                   </TableCell>
                   <TableCell colSpan={6} style={{ fontWeight: 'bold', textAlign: 'left' }}>
                     OTHERS (PLEASE SPECIFY BELOW)
@@ -722,7 +725,7 @@ const RW04 = () => {
                       <FormInput
                         inputType={'wholeAmountDecimal'}
                         value={row.provAmtStart}
-                        readOnly={row.dbId !== 0} // Opening balance is read-only for saved rows
+                        //readOnly={row.dbId !== 0}
                         sx={{ width: '200px' }}
                       />
                     </TableCell>
@@ -751,7 +754,7 @@ const RW04 = () => {
                 ))}
               </TableBody>
               <TableFooter>
-                <TableRow sx={{ position: 'sticky', bottom: 58, zIndex: 1 }}>
+                <TableRow sx={{ position: 'sticky', bottom: 49, zIndex: 1 }}>
                   <StyledTotalTableCell></StyledTotalTableCell>
                   <StyledTotalTableCell></StyledTotalTableCell>
                   <StyledTotalTableCell align="center">SUB TOTAL (OTHERS)</StyledTotalTableCell>
@@ -796,7 +799,7 @@ const RW04 = () => {
                   <TableRow key={row.dbId}>
                     <TableCell></TableCell>
                     <TableCell align="center">{row.slNo}</TableCell>
-                    <TableCell sx={{ textAlign: 'left' }}>{row.label}</TableCell>
+                    <TableCell sx={{ textAlign: 'left' }}>{row.label.toUpperCase()}</TableCell>
                     <TableCell align="center">
                       <FormInput value={row.provAmtStart} readOnly sx={{ width: '200px' }} />
                     </TableCell>
@@ -839,7 +842,7 @@ const RW04 = () => {
                     <TableCell align="center">
                       <FormInput
                         value={row.provAmtStart}
-                        readOnly={row.dbId !== 0} // Opening is editable only for new rows
+                        // readOnly={row.dbId !== 0} // Opening is editable only for new rows
                         onChange={(e) => handleRw05DynamicChange(index, 'provAmtStart', e.target.value)}
                         sx={{ width: '200px' }}
                         placeholder="0.00"
